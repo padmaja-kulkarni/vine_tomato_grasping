@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+
+<launch>
+    <arg name="namespace_prefix" default="iiwa_realsense_handeyecalibration"/>
+
+  <include file="$(find easy_handeye)/launch/publish.launch">
+    <arg name="eye_on_hand" value="false"/>
+  </include>
+
+  
+</launch>
