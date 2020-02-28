@@ -9,34 +9,35 @@ def publish():
     
     rospy.init_node('pose_transform', anonymous=True)
 
-    # topics
-    # rospy.Subscriber('chatter', PoseStamped, callback)
-    
-    rate = rospy.Rate(10) # 10hz
-    
-    
-    while not rospy.is_shutdown():
-        
-        endEffectorPose = get_pose_stamped()
-        rospy.loginfo(endEffectorPose)
-        
-        # rospy.sleep(1)
-        pub.publish(endEffectorPose)
-        rate.sleep()
+    rospy.sleep(0.5)
 
-def get_pose_stamped():
+    # publish first pose        
+    endEffectorPose = get_pose_stamped()
+    rospy.loginfo(endEffectorPose)
+    pub.publish(endEffectorPose)
+    
+    # wait for 5 seconds
+    rospy.sleep(5)
+    
+    # publish second pose
+    endEffectorPose = get_pose_stamped(posX = 0.1)
+    rospy.loginfo(endEffectorPose)
+    pub.publish(endEffectorPose)
+
+def get_pose_stamped(rotX = -0.310, rotY = 0.000, rotZ = 0.001, rotW = 0.951, posX = -0.014, posY = 0.262, posZ = 1.127):
     endEffectorPose = PoseStamped()
-    endEffectorPose.header.frame_id = rospy.get_param('/planning_frame')
+    
+    endEffectorPose.header.frame_id = rospy.get_param('planning_frame')
     endEffectorPose.header.stamp = rospy.Time.now()
 
         
-    endEffectorPose.pose.orientation.x = -0.310
-    endEffectorPose.pose.orientation.y = 0.000
-    endEffectorPose.pose.orientation.z = 0.001
-    endEffectorPose.pose.orientation.w = 0.951
-    endEffectorPose.pose.position.x = -0.014
-    endEffectorPose.pose.position.y = 0.262
-    endEffectorPose.pose.position.z = 1.127
+    endEffectorPose.pose.orientation.x = rotX
+    endEffectorPose.pose.orientation.y = rotY
+    endEffectorPose.pose.orientation.z = rotZ
+    endEffectorPose.pose.orientation.w = rotW
+    endEffectorPose.pose.position.x = posX
+    endEffectorPose.pose.position.y = posY
+    endEffectorPose.pose.position.z = posZ
 
     return endEffectorPose
 
