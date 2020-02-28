@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<launch>
+	<group ns="iiwa_grasp1">
+  		<node pkg="iiwa_grasp" name="pose"  type="pose_transform.py"/>
+		<param name="planning_frame" value="iiwa_base"/>
+	</group>
+  
+</launch>
