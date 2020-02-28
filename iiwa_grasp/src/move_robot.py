@@ -3,7 +3,7 @@
 import sys
 import rospy
 import moveit_commander
-import geometry_msgs.msg
+from geometry_msgs.msg import PoseStamped
 from moveit_commander.conversions import pose_to_list
 
 def all_close(goal, actual, tolerance):
@@ -42,11 +42,12 @@ class MoveRobot(object):
         rospy.init_node('Move_Robot',
                         anonymous=True)
         
-        rospy.Subscriber("endEffector", geometry_msgs.msg.PoseStamped, CBfunction)
+        callback_lambda = lambda msg: CBfunction(msg, self)
+        rospy.Subscriber("endEffectorPose", PoseStamped, callback_lambda)
         
-    def CBfunction(self, msg):
-        if self.robot_goal_pose is None:
-            self.robot_goal_pose = msg
+        def CBfunction(msg, self):
+            if self.robot_goal_pose is None:
+                self.robot_goal_pose = msg
             
     def initialise_robot(self):
         ## First initialize `moveit_commander`
@@ -84,6 +85,7 @@ class MoveRobot(object):
         self.planning_frame = planning_frame
         self.eef_link = eef_link
         self.group_names = group_names
+        self.robot_goal_pose = None
     
     def go_to_pose_goal(self):
         ## plan_to_pose
@@ -108,7 +110,7 @@ class MoveRobot(object):
     def command_robot(self):
         success = None
         if self.robot_goal_pose is not None:
-            success = MoveRobot.go_to_pose_goal()
+            success = self.go_to_pose_goal()
             if success:
                 self.robot_goal_pose is None
             else:
