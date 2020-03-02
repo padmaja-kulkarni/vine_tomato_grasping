@@ -8,13 +8,13 @@ def publish():
     pub = rospy.Publisher('endEffectorPose', PoseStamped, queue_size=5)
     
     rospy.init_node('pose_transform', anonymous=True)
-    
+    rospy.sleep(10)
     while True:
-        rospy.sleep(5)
+        
     
         # publish first pose        
         endEffectorPose = get_pose_stamped()
-        rospy.loginfo(endEffectorPose)
+        rospy.loginfo(endEffectorPose) # 'Published pose: ', 
         pub.publish(endEffectorPose)
         
         # wait for 5 seconds
@@ -24,7 +24,7 @@ def publish():
         endEffectorPose = get_pose_stamped(posX = 0.1)
         rospy.loginfo(endEffectorPose)
         pub.publish(endEffectorPose)
-    
+        rospy.sleep(5)
     
 
 def get_pose_stamped(rotX = -0.310, rotY = 0.000, rotZ = 0.001, rotW = 0.951, posX = -0.014, posY = 0.262, posZ = 1.127):

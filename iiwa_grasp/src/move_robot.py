@@ -4,6 +4,7 @@ import sys
 import rospy
 import moveit_commander
 from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import Pose
 from moveit_commander.conversions import pose_to_list
 
 def all_close(goal, actual, tolerance):
@@ -20,10 +21,10 @@ def all_close(goal, actual, tolerance):
             if abs(actual[index] - goal[index]) > tolerance:
                 return False
 
-    elif type(goal) is geometry_msgs.msg.PoseStamped:
+    elif type(goal) is PoseStamped:
         return all_close(goal.pose, actual.pose, tolerance)
 
-    elif type(goal) is geometry_msgs.msg.Pose:
+    elif type(goal) is Pose:
         return all_close(pose_to_list(goal), pose_to_list(actual), tolerance)
 
     return True
@@ -40,7 +41,8 @@ class MoveRobot(object):
         self.initialise_robot()
         
         rospy.init_node('Move_Robot',
-                        anonymous=True)
+                        anonymous=True,
+                        log_level=rospy.DEBUG)
         
         callback_lambda = lambda msg: CBfunction(msg, self)
         rospy.Subscriber("endEffectorPose", PoseStamped, callback_lambda)
@@ -48,6 +50,7 @@ class MoveRobot(object):
         def CBfunction(msg, self):
             if self.robot_goal_pose is None:
                 self.robot_goal_pose = msg
+                rospy.loginfo(self.robot_goal_pose)
             
     def initialise_robot(self):
         ## First initialize `moveit_commander`
@@ -86,7 +89,7 @@ class MoveRobot(object):
         self.eef_link = eef_link
         self.group_names = group_names
         self.robot_goal_pose = None
-    
+        
     def go_to_pose_goal(self):
         ## plan_to_pose
         ##
@@ -94,16 +97,27 @@ class MoveRobot(object):
         ## ^^^^^^^^^^^^^^^^^^^^^^^
         ## We can plan a motion for this group to a desired pose for the
         ## end-effector:
-        self.group.set_pose_target(self.robot_pose_goal)
+        rospy.logdebug('plan')
+        self.group.set_pose_target(self.robot_goal_pose)
+        self.group.set_start_state_to_current_state()
+        rospy.loginfo(self.robot.get_current_state())
+        rospy.loginfo(self.group.get_current_pose())
+        
+        
+        
         ## Now, we call the planner to compute the plan and execute it.
+        rospy.logdebug('wait')
         self.group.go(wait=True)
         # Calling `stop()` ensures that there is no residual movement
+        
+        rospy.logdebug('stop')
         self.group.stop()
         # It is always good to clear your targets after planning with poses.
         # Note: there is no equivalent function for clear_joint_value_targets()
         self.group.clear_pose_targets()
         # For testing:
-        current_pose = self.group.get_current_pose().pose
+        current_pose = self.group.get_current_pose()
+        
         return all_close(self.robot_goal_pose, current_pose, 0.02)
     
     
@@ -112,9 +126,9 @@ class MoveRobot(object):
         if self.robot_goal_pose is not None:
             success = self.go_to_pose_goal()
             if success:
-                self.robot_goal_pose is None
+                self.robot_goal_pose = None
             else:
-                print("Warning: Robot Position is not within Tolerance of Goal Position")
+                rospy.logwarn("Robot Position is not within Tolerance of Goal Position")
     
 def main():
     try:
