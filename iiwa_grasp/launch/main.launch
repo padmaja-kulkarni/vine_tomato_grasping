@@ -9,16 +9,8 @@
 	<include file="$(find timed_roslaunch)/launch/timed_roslaunch.launch">
 		<arg name="time" value="1" />
 		<arg name="pkg" value="iiwa_grasp" />
-		<arg name="file" value="sub.launch" /> <!-- $(find iiwa_grasp)/launch/ -->
-		<!--  <arg name="value" value="initial_pose_x:=17.0 initial_pose_y:=17.0" /> -->
-		<!--  <arg name="node_name" value="timed_roslaunch" /> --> <!-- This is optional argument -->
+		<arg name="file" value="sub.launch" />
 	</include>
 
 	
-
-
-	<!--  
-	<include file="$(find iiwa_grasp)/launch/sub.launch">
-	</include>
- 	--> 
 </launch>

@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 import rospy
 from geometry_msgs.msg import PoseStamped
-
   
 def publish():
 
-    pub = rospy.Publisher('endEffectorPose', PoseStamped, queue_size=5, latch=True)
+    pub = rospy.Publisher('endEffectorPose', PoseStamped, queue_size=5, latch=True) # PoseStamped
     
     rospy.init_node('pose_transform', anonymous=True)
     rospy.sleep(10)
@@ -15,16 +14,16 @@ def publish():
         # publish first pose        
         endEffectorPose = get_pose_stamped()
         rospy.loginfo(endEffectorPose) # 'Published pose: ', 
-        pub.publish(endEffectorPose)
+        pub.publish(endEffectorPose) # endEffectorPose
         
         # wait for 20 seconds
-        rospy.sleep(20)
+        rospy.sleep(10)
         
         # publish second pose
         endEffectorPose = get_pose_stamped(posX = 0.1)
         # rospy.loginfo(endEffectorPose)
-        pub.publish(endEffectorPose)
-        rospy.sleep(5)
+        pub.publish(endEffectorPose) # endEffectorPose
+        rospy.sleep(10)
     
 
 def get_pose_stamped(rotX = -0.310, rotY = 0.000, rotZ = 0.001, rotW = 0.951, posX = -0.014, posY = 0.262, posZ = 1.127):

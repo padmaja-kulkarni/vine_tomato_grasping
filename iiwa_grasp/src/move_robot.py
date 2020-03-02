@@ -45,11 +45,14 @@ class MoveRobot(object):
                         log_level=rospy.DEBUG)
         
         callback_lambda = lambda msg: CBfunction(msg, self)
+        
+        # if inbound connection is of wrong topic type, an warning will be thrown
         rospy.Subscriber("endEffectorPose", PoseStamped, callback_lambda)
         
         def CBfunction(msg, self):
             if self.robot_goal_pose is None:
                 self.robot_goal_pose = msg
+                rospy.logdebug("Received new message")
                 
             
     def initialise_robot(self):
@@ -74,16 +77,13 @@ class MoveRobot(object):
         
         ## We can plan a motion for this group to a desired pose for the
         ## end-effector:
-        rospy.logdebug('set target')
         self.group.set_pose_target(self.robot_goal_pose.pose)
         self.group.set_start_state_to_current_state()
         
         ## Now, we call the planner to compute the plan
-        rospy.logdebug('plan')
         plan = self.group.plan()
         
         # Now execute the plan
-        rospy.logdebug('execute')
         self.group.execute(plan, wait=True)
         
         # Calling `stop()` ensures that there is no residual movement
