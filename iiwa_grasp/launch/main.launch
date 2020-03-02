@@ -1,21 +1,24 @@
 <?xml version="1.0"?>
-<launch>
+<launch> 
 
-	<!-- Parameters to pass to the ROS node -->
-	<arg name="move_group" default="manipulator"/>
-  
-	<!--  This loads the robot description  -->
 	<include file="$(find iiwa_moveit)/launch/moveit_planning_execution.launch">
 		<arg name="sim" default="true" doc="If true, the robot will be simulated in Gazebo"/>
 	</include>
-    
 
 
-	<group ns="iiwa">
-  		<node pkg="iiwa_grasp" name="pose"  type="pose_transform.py" output="screen"/>
-		<node pkg="iiwa_grasp" name="move"  type="move_robot.py" output="screen"/>
-		<param name="planning_frame" value="/world"/>
-		<param name="move_group" value="$(arg move_group)"/>
-	</group>
-  
+	<include file="$(find timed_roslaunch)/launch/timed_roslaunch.launch">
+		<arg name="time" value="1" />
+		<arg name="pkg" value="iiwa_grasp" />
+		<arg name="file" value="sub.launch" /> <!-- $(find iiwa_grasp)/launch/ -->
+		<!--  <arg name="value" value="initial_pose_x:=17.0 initial_pose_y:=17.0" /> -->
+		<!--  <arg name="node_name" value="timed_roslaunch" /> --> <!-- This is optional argument -->
+	</include>
+
+	
+
+
+	<!--  
+	<include file="$(find iiwa_grasp)/launch/sub.launch">
+	</include>
+ 	--> 
 </launch>
