@@ -3,6 +3,7 @@
 import sys
 import rospy
 import moveit_commander
+from std_msgs.msg import Bool
 from geometry_msgs.msg import PoseStamped
 from geometry_msgs.msg import Pose
 from moveit_commander.conversions import pose_to_list
@@ -48,6 +49,10 @@ class MoveRobot(object):
         
         # if inbound connection is of wrong topic type, an warning will be thrown
         rospy.Subscriber("endEffectorPose", PoseStamped, callback_lambda)
+        
+        self.pub = rospy.Publisher("moveRobotSuccess", Bool, queue_size=10)
+        
+        
         
         def CBfunction(msg, self):
             if self.robot_goal_pose is None:
@@ -100,8 +105,11 @@ class MoveRobot(object):
     def command_robot(self):
         success = None
         if self.robot_goal_pose is not None:
-            success = self.go_to_pose_goal()            
-            if not(success):
+            success = self.go_to_pose_goal()
+            if success:
+                self.pub.publish(True)
+            else:
+                self.pub.publish(False)
                 rospy.logwarn("Goal Tolerance Violated")
     
 def main():
