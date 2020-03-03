@@ -50,7 +50,7 @@ class MoveRobot(object):
         # if inbound connection is of wrong topic type, an warning will be thrown
         rospy.Subscriber("endEffectorPose", PoseStamped, callback_lambda)
         
-        self.pub = rospy.Publisher("moveRobotSuccess", Bool, queue_size=10)
+        self.pub = rospy.Publisher("moveRobotSuccess", Bool, queue_size=10, latch=True)
         
         
         
