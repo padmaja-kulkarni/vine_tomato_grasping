@@ -9,5 +9,4 @@
 		<param name="planning_frame" value="/world"/>
 		<param name="move_group" value="$(arg move_group)"/>
 	</group>
-  
 </launch>

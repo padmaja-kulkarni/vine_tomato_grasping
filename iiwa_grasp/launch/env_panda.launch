@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<launch>
+
+
+	<!-- Parameters to pass to the ROS node -->
+	<arg name="move_group" default="panda_arm"/>
+
+
+	<node pkg="iiwa_grasp" name="env"  type="env_robot.py" output="screen"/>
+	<param name="move_group" value="$(arg move_group)"/>
+</launch>

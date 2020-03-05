@@ -38,11 +38,12 @@ class MoveRobot(object):
         ## First initialize a `rospy`_ node:
         moveit_commander.roscpp_initialize(sys.argv)
         
-        self.initialise_robot()
-        
         rospy.init_node('Move_Robot',
                         anonymous=True,
                         log_level=rospy.DEBUG)
+        
+        self.initialise_robot()
+        self.initialise_enviroment()
         
         callback_lambda = lambda msg: CBfunction(msg, self)
         
@@ -61,14 +62,30 @@ class MoveRobot(object):
         ## the robot:
         robot = moveit_commander.RobotCommander()
         
+        # interface to the world surrounding the robot.
+        scene = moveit_commander.PlanningSceneInterface()
+        
         ## Instantiate a `MoveGroupCommander`_ object.  This object is an interface
         ## to one group of joints.
         group_name = rospy.get_param('move_group')
         group = moveit_commander.MoveGroupCommander(group_name)
 
-        self.robot = robot
+        rospy.sleep(10)
+
+        self.robot = robot 
         self.group = group
         self.robot_goal_pose = None
+        self.scene = scene
+        
+    def initialise_enviroment(self):
+        
+        p = PoseStamped()
+        p.header.frame_id = self.robot.get_planning_frame()
+        p.pose.position.x = 0.
+        p.pose.position.y = 0.
+        p.pose.position.z = 0.
+            
+        self.scene.add_box("flat_table", p, (3, 3, 0.3))
         
     def go_to_pose_goal(self):
         ##

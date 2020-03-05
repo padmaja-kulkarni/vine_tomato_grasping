@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<launch>
+	<!-- Parameters to pass to the ROS node   -->
+	<arg name="robot_name" default="iiwa"/>  
+	<arg name="rviz" default="true"/>
+
+	<group ns="$(arg robot_name)"> 
+		<include file="$(find iiwa_moveit)/launch/move_group.launch"/>
+		<include if="$(arg rviz)" file="$(find iiwa_moveit)/launch/moveit_rviz.launch">
+			<arg name="config" value="true"/>
+		</include>
+	</group>
+  
+</launch>
