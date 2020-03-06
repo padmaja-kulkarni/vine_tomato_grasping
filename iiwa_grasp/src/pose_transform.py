@@ -12,21 +12,21 @@ def publish():
         
     
         # publish first pose        
-        endEffectorPose = get_pose_stamped()
-        rospy.loginfo(endEffectorPose) # 'Published pose: ', 
+        endEffectorPose = get_pose_stamped(posY = -0.3)
+        rospy.loginfo("Publishing feasible pose") # 'Published pose: ', 
         pub.publish(endEffectorPose) # endEffectorPose
         
         # wait for 20 seconds
-        rospy.sleep(10)
+        rospy.sleep(20)
         
         # publish second pose
-        endEffectorPose = get_pose_stamped(posX = 0.1)
-        # rospy.loginfo(endEffectorPose)
+        endEffectorPose = get_pose_stamped(posY = 2)
+        rospy.loginfo("Publishing infeasible pose")
         pub.publish(endEffectorPose) # endEffectorPose
-        rospy.sleep(10)
+        rospy.sleep(20)
     
 
-def get_pose_stamped(rotX = -0.310, rotY = 0.000, rotZ = 0.001, rotW = 0.951, posX = -0.014, posY = 0.262, posZ = 1.127):
+def get_pose_stamped(rotX = -0.310, rotY = 0.000, rotZ = 0.0, rotW = 0.951, posX = 0.0, posY = 0.3, posZ = 1):
     endEffectorPose = PoseStamped()
     
     endEffectorPose.header.frame_id = rospy.get_param('planning_frame')
