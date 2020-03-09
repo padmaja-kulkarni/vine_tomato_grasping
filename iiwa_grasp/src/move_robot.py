@@ -7,69 +7,13 @@ from geometry_msgs.msg import PoseStamped
 from geometry_msgs.msg import Pose
 from moveit_commander.conversions import pose_to_list
 from moveit_msgs.srv import GetPositionIK, GetPositionIKRequest
-from moveit_msgs.msg import MoveItErrorCodes
 
-def moveit_error_string(val):
-    """Returns a string associated with a MoveItErrorCode.
-        
-    Args:
-        val: The val field from moveit_msgs/MoveItErrorCodes.msg
-        
-    Returns: The string associated with the error value, 'UNKNOWN_ERROR_CODE'
-        if the value is invalid.
-    """ 
-    if val == MoveItErrorCodes.SUCCESS:
-        return 'SUCCESS'
-    elif val == MoveItErrorCodes.FAILURE:
-        return 'FAILURE'
-    elif val == MoveItErrorCodes.PLANNING_FAILED:
-        return 'PLANNING_FAILED'
-    elif val == MoveItErrorCodes.INVALID_MOTION_PLAN:
-        return 'INVALID_MOTION_PLAN'
-    elif val == MoveItErrorCodes.MOTION_PLAN_INVALIDATED_BY_ENVIRONMENT_CHANGE:
-        return 'MOTION_PLAN_INVALIDATED_BY_ENVIRONMENT_CHANGE'
-    elif val == MoveItErrorCodes.CONTROL_FAILED:
-        return 'CONTROL_FAILED'
-    elif val == MoveItErrorCodes.UNABLE_TO_AQUIRE_SENSOR_DATA:
-        return 'UNABLE_TO_AQUIRE_SENSOR_DATA'
-    elif val == MoveItErrorCodes.TIMED_OUT:
-        return 'TIMED_OUT'
-    elif val == MoveItErrorCodes.PREEMPTED:
-        return 'PREEMPTED'
-    elif val == MoveItErrorCodes.START_STATE_IN_COLLISION:
-        return 'START_STATE_IN_COLLISION'
-    elif val == MoveItErrorCodes.START_STATE_VIOLATES_PATH_CONSTRAINTS:
-        return 'START_STATE_VIOLATES_PATH_CONSTRAINTS'
-    elif val == MoveItErrorCodes.GOAL_IN_COLLISION:
-        return 'GOAL_IN_COLLISION'
-    elif val == MoveItErrorCodes.GOAL_VIOLATES_PATH_CONSTRAINTS:
-        return 'GOAL_VIOLATES_PATH_CONSTRAINTS'
-    elif val == MoveItErrorCodes.GOAL_CONSTRAINTS_VIOLATED:
-        return 'GOAL_CONSTRAINTS_VIOLATED'
-    elif val == MoveItErrorCodes.INVALID_GROUP_NAME:
-        return 'INVALID_GROUP_NAME'
-    elif val == MoveItErrorCodes.INVALID_GOAL_CONSTRAINTS:
-        return 'INVALID_GOAL_CONSTRAINTS'
-    elif val == MoveItErrorCodes.INVALID_ROBOT_STATE:
-        return 'INVALID_ROBOT_STATE'
-    elif val == MoveItErrorCodes.INVALID_LINK_NAME:
-        return 'INVALID_LINK_NAME'                                      
-    elif val == MoveItErrorCodes.INVALID_OBJECT_NAME:
-        return 'INVALID_OBJECT_NAME'
-    elif val == MoveItErrorCodes.FRAME_TRANSFORM_FAILURE:
-        return 'FRAME_TRANSFORM_FAILURE'
-    elif val == MoveItErrorCodes.COLLISION_CHECKING_UNAVAILABLE:
-        return 'COLLISION_CHECKING_UNAVAILABLE'
-    elif val == MoveItErrorCodes.ROBOT_STATE_STALE:
-        return 'ROBOT_STATE_STALE'
-    elif val == MoveItErrorCodes.SENSOR_INFO_STALE:
-        return 'SENSOR_INFO_STALE'
-    elif val == MoveItErrorCodes.NO_IK_SOLUTION:
-        return 'NO_IK_SOLUTION'
-    else:
-        return 'UNKNOWN_ERROR_CODE'
+# custom functions
+import moveit_error_string
 
-
+# enum
+from .enum.Robot import RobotState  
+from .enum.Robot import RobotErrror 
 
 
 def all_close(goal, actual, tolerance):
@@ -107,7 +51,7 @@ class MoveRobot(object):
                         anonymous=True,
                         log_level=rospy.DEBUG)
         
-        
+        self.state = RobotState.INITIALIZING
         self.initialise_robot()
         self.initialise_enviroment()
         
@@ -117,7 +61,8 @@ class MoveRobot(object):
         
         # if inbound connection is of wrong topic type, an warning will be thrown
         rospy.Subscriber("endEffectorPose", PoseStamped, callback_lambda)
-        
+        self.pub = rospy.Publisher('robotState', RobotState, queue_size=5, latch=True)
+        self.pub.publish(self.state)
         
         print "kown constaints: ", self.group.get_known_constraints()
         
@@ -282,8 +227,12 @@ class MoveRobot(object):
     
 def main():
     try:
+        
+        
+
         moverobot = MoveRobot()
         rate = rospy.Rate(10)
+        
         while not rospy.core.is_shutdown():
             moverobot.command_robot()
             rate.sleep()
