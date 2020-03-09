@@ -3,7 +3,7 @@
 import sys
 import rospy
 import moveit_commander
-from std_msgs.msg import Bool
+from std_msgs.msg import String
 from geometry_msgs.msg import PoseStamped
 from geometry_msgs.msg import Pose
 from moveit_commander.conversions import pose_to_list
@@ -34,33 +34,42 @@ class MoveRobot(object):
     """MoveRobot"""
     def __init__(self):
         super(MoveRobot, self).__init__()
-        ## BEGIN_SUB_TUTORIAL setup
-        ##
-        ## First initialize a `rospy`_ node:
-        moveit_commander.roscpp_initialize(sys.argv)
+        
+        
+        self.event = None
         
         self.initialise_robot()
         
-        rospy.init_node('Move_Robot',
+        rospy.init_node("Move_Robot",
                         anonymous=True,
                         log_level=rospy.DEBUG)
         
-        callback_lambda = lambda msg: CBfunction(msg, self)
+        self.pose_cb_lambda = lambda msg: self.pose_cb(msg, self)
+        rospy.Subscriber("Pose_Transform/endEffectorPose", 
+                         PoseStamped, self.pose_cb_lambda)
         
-        # if inbound connection is of wrong topic type, an warning will be thrown
-        rospy.Subscriber("endEffectorPose", PoseStamped, callback_lambda)
+        self.e_in_cb_lambda = lambda msg: self.e_in_cb(msg, self)
+        rospy.Subscriber("~e_in", 
+                         String, self.e_in_cb_lambda)
         
-        self.pub = rospy.Publisher("moveRobotSuccess", Bool, queue_size=10, latch=True)
+        self.pub_e_out = rospy.Publisher("~e_out", 
+                                   String, queue_size=10, latch=True)
+         
         
-        
-        
-        def CBfunction(msg, self):
-            if self.robot_goal_pose is None:
-                self.robot_goal_pose = msg
-                rospy.logdebug("Received new message")
+    def pose_cb(msg, self):
+        if self.robot_goal_pose is None:
+            self.robot_goal_pose = msg
+            rospy.logdebug("Received new move robot pose message")
+            
+    def e_in_cb(msg, self):
+        if self.event is None:
+            self.event = "e_start"
+            rospy.logdebug("Received new move robot event message")
                 
             
     def initialise_robot(self):
+        
+        moveit_commander.roscpp_initialize(sys.argv)
         
         ## Instantiate a `RobotCommander`_ object. This object is the outer-level interface to
         ## the robot:
@@ -104,12 +113,16 @@ class MoveRobot(object):
     
     def command_robot(self):
         success = None
-        if self.robot_goal_pose is not None:
+        if self.robot_goal_pose is not None and self.event == "e_start":
+            self.event = None
             success = self.go_to_pose_goal()
+            msg = String()
             if success:
-                self.pub.publish(True)
+                msg.data = "e_success"
+                self.pub_e_out.publish(msg)
             else:
-                self.pub.publish(False)
+                msg.data = "e_failure"
+                self.pub_e_out.publish(msg)
                 rospy.logwarn("Goal Tolerance Violated")
     
 def main():

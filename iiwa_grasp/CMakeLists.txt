@@ -15,7 +15,3 @@ catkin_package()
 
 include_directories(include ${catkin_INCLUDE_DIRS})
 
-add_executable(command_robot_moveit src/command_robot_moveit.cpp)
-add_dependencies(command_robot_moveit iiwa_msgs_generate_messages_cpp)
-target_link_libraries(command_robot_moveit ${catkin_LIBRARIES})
-
