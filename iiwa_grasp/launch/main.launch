@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch> 
 
-	<include file="$(find iiwa_moveit)/launch/moveit_planning_execution.launch">
+	<include file="$(find iiwa_grasp)/launch/moveit_planning_execution.launch">
 		<arg name="sim" default="true" doc="If true, the robot will be simulated in Gazebo"/>
 	</include>
 
@@ -13,7 +13,7 @@
 	-->
 
 	<include file="$(find timed_roslaunch)/launch/timed_roslaunch.launch">
-		<arg name="time" value="1" />
+		<arg name="time" value="10" />
 		<arg name="pkg" value="iiwa_grasp" />
 		<arg name="file" value="sub.launch" />
 	</include>

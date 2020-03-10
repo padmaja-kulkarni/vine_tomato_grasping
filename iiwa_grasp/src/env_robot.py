@@ -182,11 +182,6 @@ class MoveGroupPythonIntefaceTutorial(object):
     ## END_SUB_TUTORIAL
 
   def add_box(self, timeout=4):
-    # Copy class variables to local variables to make the web tutorials more clear.
-    # In practice, you should use the class variables directly unless you have a good
-    # reason not to.
-    scene = self.scene
-
     ## BEGIN_SUB_TUTORIAL add_box
     ##
     ## Adding Objects to the Planning Scene
@@ -197,7 +192,7 @@ class MoveGroupPythonIntefaceTutorial(object):
     box_pose.pose.orientation.w = 1.0
     box_pose.pose.position.y = 1.0
     
-    scene.add_box(self.box_name, box_pose, size=(1, 1, 0.1))
+    self.scene.add_box(self.box_name, box_pose, size=(1, 1, 0.1))
     
     print "box frame: " ,box_pose.header.frame_id
 
