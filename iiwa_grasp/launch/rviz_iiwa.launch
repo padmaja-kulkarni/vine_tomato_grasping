@@ -1,23 +1,16 @@
 <?xml version="1.0"?>
 <launch>
-	<!-- Parameters to pass to the ROS node    -->
+	<!-- Parameters to pass to the ROS node     -->
 	<arg name="robot_name" default="iiwa"/>  
 	<arg name="model" default="iiwa7"/>	
 	
 	<arg name="hardware_interface" default="PositionJointInterface"/>
 	<arg name="rviz" default="true"/>
-	
-	<!-- 
-	<remap from="/$(arg hardware_interface)_trajectory_controller/follow_joint_trajectory" 
-           to="/$(arg robot_name)/$(arg hardware_interface)_trajectory_controller/follow_joint_trajectory" />
-	<remap from="robot_description" to="/$(arg robot_name)/robot_description" /> 
-	<remap from="/get_planning_scene" to="/$(arg robot_name)/get_planning_scene" /> 
 
-	<remap from="/collision_object" to="/$(arg robot_name)/collision_object" />
-	<remap from="/get_planning_scene" to="/$(arg robot_name)/get_planning_scene" />
-	<remap from="/tf" to="/$(arg robot_name)/tf" />
-	<remap from="/tf_static" to="/$(arg robot_name)/tf_static" />
-	 -->
+	<remap from="/$(arg robot_name)/collision_object" to="/collision_object" />
+	<remap from="/$(arg robot_name)/get_planning_scene" to="/get_planning_scene" />
+
+
 	<group ns="$(arg robot_name)"> 
 		<include file="$(find iiwa_moveit)/launch/move_group.launch">
 			<arg name="publish_monitored_planning_scene" value="true" />
@@ -25,8 +18,7 @@
             		<arg name="robot_name" value="$(arg robot_name)"/>
             		<arg name="model" value="$(arg model)" />
 		</include>
-	</group>
-	<group ns="$(arg robot_name)"> 
+
 		<include if="$(arg rviz)" file="$(find iiwa_moveit)/launch/moveit_rviz.launch">
 			<arg name="config" value="true"/>
 		</include>

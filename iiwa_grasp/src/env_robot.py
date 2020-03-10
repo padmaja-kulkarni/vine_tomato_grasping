@@ -71,18 +71,17 @@ class MoveGroupPythonIntefaceTutorial(object):
     ## BEGIN_SUB_TUTORIAL setup
     ##
     ## First initialize `moveit_commander`_ and a `rospy`_ node:
+    print "sys.argv: ", sys.argv
     moveit_commander.roscpp_initialize(sys.argv)
+    
     rospy.init_node('move_group_python_interface_tutorial',
                     anonymous=True)
 
     ## Instantiate a `RobotCommander`_ object. This object is the outer-level interface to
     ## the robot:
-    robot = moveit_commander.RobotCommander()
-
-    ## Instantiate a `PlanningSceneInterface`_ object.  This object is an interface
-    ## to the world surrounding the robot:
-    scene = moveit_commander.PlanningSceneInterface()
-
+    robot = moveit_commander.RobotCommander() # "/iiwa/robot_description", ns ="/iiwa"
+    
+    
     # We can get a list of all the groups in the robot:
     group_names = robot.get_group_names()
     print "============ Robot Groups:", robot.get_group_names()
@@ -93,10 +92,13 @@ class MoveGroupPythonIntefaceTutorial(object):
     ## you should change this value to the name of your robot arm planning group.
     ## This interface can be used to plan and execute motions on the Panda:
     group_name = rospy.get_param('move_group_name') # "panda_arm" # 
-    
-    
     print "============ Selected Group:", group_name
     group = moveit_commander.MoveGroupCommander(group_name)
+
+
+    ## Instantiate a `PlanningSceneInterface`_ object.  This object is an interface
+    ## to the world surrounding the robot:
+    scene = moveit_commander.PlanningSceneInterface()
 
     ## END_SUB_TUTORIAL
 
@@ -193,8 +195,9 @@ class MoveGroupPythonIntefaceTutorial(object):
     box_pose = geometry_msgs.msg.PoseStamped()
     box_pose.header.frame_id =  self.robot.get_planning_frame()
     box_pose.pose.orientation.w = 1.0
+    box_pose.pose.position.y = 1.0
     
-    scene.add_box(self.box_name, box_pose, size=(1, 1, 1))
+    scene.add_box(self.box_name, box_pose, size=(1, 1, 0.1))
     
     print "box frame: " ,box_pose.header.frame_id
 
