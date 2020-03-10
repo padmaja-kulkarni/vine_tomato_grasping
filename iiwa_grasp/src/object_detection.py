@@ -52,6 +52,7 @@ class ObjectDetection(object):
             msg_e = String()
             msg_e.data = "e_success"
             
+            self.event = None
             self.pub_pose.publish(msg_pose)
             self.pub_e_out.publish(msg_e)
             

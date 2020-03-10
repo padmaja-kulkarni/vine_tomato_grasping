@@ -16,7 +16,8 @@ class PipeLine(object):
         
         # Initialize Variables
         self.state = "IDLE"
-        self.goal_state = None
+        self.state_previous = "IDLE"
+        self.state_goal = None
         
         self.object_detected = None
         self.pose_transformed = None
@@ -37,7 +38,6 @@ class PipeLine(object):
                                       String, queue_size=10, latch=True)
         
         ## Initialize Subscribers
-        rospy.loginfo('========== INIT SUBSCRIBERS==============')
         
         self.pscb_lambda = lambda msg: self.pscb(msg)
         rospy.Subscriber("pipelineState", 
@@ -60,8 +60,8 @@ class PipeLine(object):
         ## Pipeline State Callback Function
         
     def pscb(self, msg):
-        if self.goal_state == None:
-            self.goal_state = msg.data
+        if self.state_goal == None:
+            self.state_goal = msg.data
             rospy.logdebug("Received new pipeline state message")
             
     ## Object Detection Callback Function
@@ -85,48 +85,60 @@ class PipeLine(object):
             self.robot_moved = msg.data
             rospy.logdebug("Received new robot moved message")
     
+    ### Log state update
+    def log_state_update(self):
+        rospy.loginfo("updated pipeline state, from %s to %s", 
+                      self.state_previous, self.state)
 
     ### Run Function
             
     def run(self):
         
         ## update current state
-        if (self.state == "IDLE") and (self.goal_state == "DETECT"):
+        if (self.state == "IDLE") and (self.state_goal == "DETECT"):
+            self.state_previous = self.state
             self.state = "DETECT"
-            self.goal_state = None
-            rospy.logdebug("updated pipeline state, now in DETECT")
-        
-        
-        ## command other nodes
-        
-        if self.state == "IDLE":
-            pass
-        
-        if self.state == "DETECT":
-            self.send_start_to_obj_detection()
+            self.state_goal = None
+            self.log_state_update()
+            rospy.loginfo("Updated state")
             
         if self.object_detected and self.state == "DETECT":
+            self.state_previous = self.state
             self.state = "TRANSFORM"
             self.object_detected = None
-            
-        if self.state == "TRANSFORM":
-            self.send_start_to_pose_transform()
+            self.log_state_update()
             
         if self.pose_transformed and self.state == "TRANSFORM":
+            self.state_previous = self.state
             self.state = "MOVE"
             self.pose_transformed = None
+            self.log_state_update()
+            
+        if self.robot_moved and self.state == "MOVE":
+            self.state_previous = self.state
+            self.state = "IDLE"
+            self.robot_moved = None
+            self.log_state_update()
+            
+        ## command other nodes
+        if self.state == "DETECT":
+            self.start_obj_detection()
+        
+        if self.state == "TRANSFORM":
+            self.send_start_to_pose_transform()
             
         if self.state == "MOVE":
             self.send_start_to_move_robot()
             
-        if self.robot_moved and self.state == "MOVE":
-            self.state = "IDLE"
-            self.robot_moved = None
-            
     ### Send Start Functions
             
-    def send_start_to_obj_detection(self):
+    def start_obj_detection(self):
         self.pub_obj_detection.publish("e_start")
+        
+        
+    def stop_obj_detection(self):
+        self.pub_obj_detection.publish("e_stop")
+        
         
     def send_start_to_pose_transform(self):
         self.pub_pose_transform.publish("e_start")
