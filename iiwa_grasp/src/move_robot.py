@@ -44,11 +44,11 @@ class MoveRobot(object):
                         anonymous=True,
                         log_level=rospy.DEBUG)
         
-        self.pose_cb_lambda = lambda msg: self.pose_cb(msg, self)
+        self.pose_cb_lambda = lambda msg: self.pose_cb(msg)
         rospy.Subscriber("Pose_Transform/endEffectorPose", 
                          PoseStamped, self.pose_cb_lambda)
         
-        self.e_in_cb_lambda = lambda msg: self.e_in_cb(msg, self)
+        self.e_in_cb_lambda = lambda msg: self.e_in_cb(msg)
         rospy.Subscriber("~e_in", 
                          String, self.e_in_cb_lambda)
         
@@ -56,12 +56,12 @@ class MoveRobot(object):
                                    String, queue_size=10, latch=True)
          
         
-    def pose_cb(msg, self):
+    def pose_cb(self, msg):
         if self.robot_goal_pose is None:
             self.robot_goal_pose = msg
             rospy.logdebug("Received new move robot pose message")
             
-    def e_in_cb(msg, self):
+    def e_in_cb(self, msg):
         if self.event is None:
             self.event = "e_start"
             rospy.logdebug("Received new move robot event message")

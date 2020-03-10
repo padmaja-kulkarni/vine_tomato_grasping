@@ -19,7 +19,7 @@ class ObjectDetection(object):
         rospy.init_node("Object_Detection",
                         anonymous=True, log_level=rospy.DEBUG)
         
-        self.e_in_cb_lambda = lambda msg: self.e_in_cb(msg, self)
+        self.e_in_cb_lambda = lambda msg: self.e_in_cb(msg)
         rospy.Subscriber("~e_in",
                          String, self.e_in_cb_lambda)
         
@@ -29,7 +29,7 @@ class ObjectDetection(object):
         self.pub_pose = rospy.Publisher("~objectPose",
                                         PoseStamped, queue_size=5, latch=True)
         
-    def e_in_cb(msg, self):
+    def e_in_cb(self, msg):
         if self.event is None:
             self.event = "e_start"
             rospy.logdebug("Received new move robot event message")
@@ -37,7 +37,7 @@ class ObjectDetection(object):
     def detect_object(self):
         if self.event == "e_start":
             self.event = None
-            msg_pose = PoseStamped
+            msg_pose = PoseStamped()
             msg_pose.header.frame_id = rospy.get_param('planning_frame')
             msg_pose.header.stamp = rospy.Time.now()
             
@@ -49,11 +49,11 @@ class ObjectDetection(object):
             msg_pose.pose.position.y = 0.262
             msg_pose.pose.position.z = 1.127
             
-            msg_e = String
+            msg_e = String()
             msg_e.data = "e_success"
             
             self.pub_pose.publish(msg_pose)
-            self.pub_e_out(msg_e)
+            self.pub_e_out.publish(msg_e)
             
             
 def main():
