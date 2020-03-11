@@ -100,7 +100,6 @@ class PipeLine(object):
             self.state = "DETECT"
             self.state_goal = None
             self.log_state_update()
-            rospy.loginfo("Updated state")
             
         if self.object_detected and self.state == "DETECT":
             self.state_previous = self.state

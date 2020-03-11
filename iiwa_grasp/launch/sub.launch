@@ -2,14 +2,15 @@
 <launch>
 	<!-- Parameters to pass to the ROS node -->
 	<arg name="move_group" default="manipulator"/>
-  
-	<group ns="iiwa">
+	<arg name="robot_name" default="iiwa"/>    
+	<arg name="move_group_name" default="manipulator"/>
+
+	<group ns="$(arg robot_name)">
 		<node pkg="iiwa_grasp" name="Pipe_Line"  type="pipe_line.py" output="screen"/>
 		<node pkg="iiwa_grasp" name="Object_Detection"  type="object_detection.py" output="screen"/>
   		<node pkg="iiwa_grasp" name="Pose_Transform"  type="pose_transform.py" output="screen"/>
 		<node pkg="iiwa_grasp" name="Move_Robot"  type="move_robot.py" output="screen"/>
-		<param name="planning_frame" value="/world"/>
-		<param name="move_group" value="$(arg move_group)"/>
+		<param name="planning_frame" value="/world"/>	
+		<param name="move_group_name" value="$(arg move_group_name)"/>
 	</group>
-  
 </launch>

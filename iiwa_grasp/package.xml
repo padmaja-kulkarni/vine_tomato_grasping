@@ -14,6 +14,16 @@
   <run_depend>moveit_ros_planning</run_depend>
   <run_depend>rospy</run_depend>
 
+
+  <run_depend>gazebo_ros</run_depend>
+
   <buildtool_depend>catkin</buildtool_depend>
+
+  <!-- required for loading gazebo models from this package-->
+  <export>
+    <gazebo_ros
+      gazebo_model_path="${prefix}/models"
+      />
+  </export>
   
 </package>
