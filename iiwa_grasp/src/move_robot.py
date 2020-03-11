@@ -33,6 +33,8 @@ class MoveRobot(object):
         self._compute_ik = rospy.ServiceProxy('compute_ik', GetPositionIK)
         self.event = None
         
+        # Subscribers
+        
         self.pose_cb_lambda = lambda msg: self.pose_cb(msg)
         rospy.Subscriber("Pose_Transform/endEffectorPose", 
                          PoseStamped, self.pose_cb_lambda)
@@ -40,6 +42,8 @@ class MoveRobot(object):
         self.e_in_cb_lambda = lambda msg: self.e_in_cb(msg)
         rospy.Subscriber("~e_in", 
                          String, self.e_in_cb_lambda)
+        
+        # Publishers
         
         self.pub_e_out = rospy.Publisher("~e_out", 
                                    String, queue_size=10, latch=True)
@@ -52,8 +56,8 @@ class MoveRobot(object):
             
     def e_in_cb(self, msg):
         if self.event is None:
-            self.event = "e_start"
-            rospy.logdebug("Received new move robot event message")
+            self.event = msg.data
+            rospy.logdebug("Received new move robot event in message: %s", self.event)
         
             
     def initialise_robot(self):
@@ -165,9 +169,7 @@ class MoveRobot(object):
         request.ik_request.timeout = timeout
         response = self._compute_ik(request)
         error_str = moveit_error_string(response.error_code.val)
-        print error_str
-        success = error_str == 'SUCCESS'
-        if not success:
+        if not (error_str == 'SUCCESS'):
             return False
         # joint_state = response.solution.joint_state
         # for name, position in zip(joint_state.name, joint_state.position):
@@ -193,7 +195,7 @@ class MoveRobot(object):
         ## end-effector:
         
         if self.compute_ik(self.robot_goal_pose):
-            rospy.loginfo("Goal pose is reacchable.")
+            rospy.loginfo("Goal pose is reachable.")
             
             self.group.set_pose_target(self.robot_goal_pose.pose)
             # self.group.set_start_state_to_current_state()
@@ -218,22 +220,62 @@ class MoveRobot(object):
         current_pose = self.group.get_current_pose()
         
         return all_close(self.robot_goal_pose, current_pose, 0.02)
+  
+    def go_to_home(self):
+        ## Planning to a joint Goal
+        group_variable_values = self.group.get_current_joint_values()
+        for i in range(0, len(group_variable_values)):
+            group_variable_values[i] = 0
+        
+        
+        ## We can plan a motion for this group to a desired pose for the
+        ## end-effector:
+        self.group.set_joint_value_target(group_variable_values)
+        # self.group.set_start_state_to_current_state()
+            
+        ## Now, we call the planner to compute the plan
+        plan = self.group.plan()
+            
+        # Now execute the plan
+        self.group.execute(plan, wait=True)
+            
+        
+        
+        # Calling `stop()` ensures that there is no residual movement
+        self.group.stop()
+        # It is always good to clear your targets after planning with poses.
+        self.group.clear_pose_targets()
+        # For testing:
+        current_joint = self.group.get_current_joint_values()
+        
+        return all_close(group_variable_values, current_joint, 0.02)
+        
+    
     
     
     def command_robot(self):
+        msg = String()
         success = None
-        if self.robot_goal_pose is not None and self.event == "e_start":
-            self.event = None
-            success = self.go_to_pose_goal()
-            msg = String()
-            if success:
+        
+        if (self.robot_goal_pose is not None and self.event == "e_start") or self.event == "e_home":
+            if self.event == "e_start":
+                succes = self.go_to_pose_goal()
+            elif self.event == "e_home":
+                succes = self.go_to_home()
+            
+            if succes:
                 msg.data = "e_success"
-                self.pub_e_out.publish(msg)
             else:
                 msg.data = "e_failure"
-                self.pub_e_out.publish(msg)
                 rospy.logwarn("Goal Tolerance Violated")
-    
+                
+            self.event = None
+            
+        else:
+            msg = String()
+            msg.data = "e_wait"
+
+        self.pub_e_out.publish(msg)
 def main():
     try:
         moverobot = MoveRobot()

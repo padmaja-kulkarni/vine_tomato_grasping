@@ -5,21 +5,21 @@
     <link name="link">
       <collision name="collision">
         <geometry>
-          <sphere>
-            <radius>0.04</radius>
-          </sphere>
+          <box>
+            <size>0.15 0.18 0.001</size>
+          </box>
         </geometry>
       </collision>
       <visual name="visual">
         <geometry>
-          <sphere>
-            <radius>0.04</radius>
-          </sphere>
+          <box>
+            <size>0.15 0.18 0.001</size>
+          </box>
         </geometry>
 	<material>
           <script>
-            <uri>file://media/materials/scripts/gazebo.material</uri>
-            <name>Gazebo/Red</name>
+            <uri>file://models/tomato/materials/scripts/custom.material</uri>
+            <name>Custom/Tomato</name>
           </script>
         </material>
       </visual>
