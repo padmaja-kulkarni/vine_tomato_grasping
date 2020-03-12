@@ -7,8 +7,9 @@ from std_msgs.msg import String
 from geometry_msgs.msg import PoseStamped
 from moveit_msgs.srv import GetPositionIK, GetPositionIKRequest
 
+from moveit_msgs.msg import MoveItErrorCodes
+
 # custom functions
-from func.moveit_error_string import moveit_error_string
 from func.all_close import all_close
 
 # enum
@@ -87,36 +88,29 @@ class MoveRobot(object):
         self.box_name = 'table'
         
     def wait_for_state_update(self, box_is_known=False, box_is_attached=False, timeout=4, box_name= ''):
-        # Copy class variables to local variables to make the web tutorials more clear.
-        # In practice, you should use the class variables directly unless you have a good
-        # reason not to.
-        scene = self.scene
-    
-        ## BEGIN_SUB_TUTORIAL wait_for_scene_update
-        ##
-        ## Ensuring Collision Updates Are Receieved
-        ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-        ## If the Python node dies before publishing a collision object update message, the message
-        ## could get lost and the box will not appear. To ensure that the updates are
-        ## made, we wait until we see the changes reflected in the
-        ## ``get_known_object_names()`` and ``get_known_object_names()`` lists.
-        ## For the purpose of this tutorial, we call this function after adding,
-        ## removing, attaching or detaching an object in the planning scene. We then wait
-        ## until the updates have been made or ``timeout`` seconds have passed
+        """ Wait until we see the changes reflected in the scene
+            
+            Args:
+                
+            Returns: True if the box was succesfully added, False otherwise.
+        """
         start = rospy.get_time()
         seconds = rospy.get_time()
         while (seconds - start < timeout) and not rospy.is_shutdown():
+            
             # Test if the box is in attached objects
-            attached_objects = scene.get_attached_objects()
+            attached_objects = self.scene.get_attached_objects()
             is_attached = len(attached_objects.keys()) > 0
 
             # Test if the box is in the scene.
             # Note that attaching the box will remove it from known_objects
-            is_known = box_name in scene.get_known_object_names()
+            known_objects = self.scene.get_known_object_names()
+            rospy.logdebug("Known objects: %s", known_objects)
+            
+            is_known = box_name in known_objects
 
             # Test if we are in the expected state
             if (box_is_attached == is_attached) and (box_is_known == is_known):
-                print "Known objects: ", scene.get_known_object_names()
                 return True
             
             # Sleep so that we give other threads time on the processor
@@ -124,32 +118,27 @@ class MoveRobot(object):
             seconds = rospy.get_time()
     
         # If we exited the while loop without returning then we timed out
-        print "Known objects: ", scene.get_known_object_names()
         return False
         ## END_SUB_TUTORIAL
 
     def add_box(self, timeout=4, box_name = ''):
-        ## BEGIN_SUB_TUTORIAL add_box
-        ##
-        ## Adding Objects to the Planning Scene
-        ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-        ## First, we will create a box in the planning scene at the location of the left finger:
+        """ create a box with a given name.
+        
+        Args:
+            
+        Returns: True if the box was succesfully added, False otherwise.
+        
+        """
         box_pose = PoseStamped()
         box_pose.header.frame_id =  self.robot.get_planning_frame()
         box_pose.pose.orientation.w = 1.0
         box_pose.pose.position.y = 1.0
         
+        # Add box
         self.scene.add_box(box_name, box_pose, size=(1, 1, 0.1))
         
-        print "box frame: " ,box_pose.header.frame_id
-        
-        ## END_SUB_TUTORIAL
-        # Copy local variables back to class variables. In practice, you should use the class
-        # variables directly unless you have a good reason not to.
+        # Check if box has been added
         return self.wait_for_state_update(box_is_known=True, timeout=timeout, box_name = box_name)
-        
-        
-        
     
     def compute_ik(self, pose_stamped, timeout=rospy.Duration(5)):
         """Computes inverse kinematics for the given pose.
@@ -168,9 +157,10 @@ class MoveRobot(object):
         request.ik_request.group_name = group_name
         request.ik_request.timeout = timeout
         response = self._compute_ik(request)
-        error_str = moveit_error_string(response.error_code.val)
-        if not (error_str == 'SUCCESS'):
+        
+        if not response.error_code.val == MoveItErrorCodes.SUCCESS:
             return False
+        # We do not need the actual solution
         # joint_state = response.solution.joint_state
         # for name, position in zip(joint_state.name, joint_state.position):
         #     if name in ArmJoints.names():
@@ -181,13 +171,30 @@ class MoveRobot(object):
     def initialise_enviroment(self):     
         rospy.sleep(5)
         rospy.logdebug("===INITIALIZING ENVIROMENT====")
-        if self.add_box(box_name = 'table'):
-            rospy.logdebug("Succesfully added table")
-        else:
-            rospy.logwarn("Unable to add table")
-
         
-        rospy.logdebug( "Known objects: %s", self.scene.get_known_object_names())
+        
+        known_objects_prev = None
+        while True:
+            known_objects = self.scene.get_known_object_names()
+            
+            if not known_objects == known_objects_prev:
+                known_objects_prev = known_objects
+                rospy.logdebug("Known objects: %s", known_objects)
+                
+                if ('table' in known_objects) and ('wall' in known_objects):
+                    break
+                else:
+                    rospy.logwarn("Table and wall object not present, refusing to continue before they are added")
+            rospy.sleep(0.1)
+        
+        
+#        if self.add_box(box_name = 'table'):
+#            rospy.logdebug("Succesfully added table")
+#        else:
+#            rospy.logwarn("Unable to add table")
+#
+#        rospy.logdebug( "Known objects: %s", self.scene.get_known_object_names())
+    
     def go_to_pose_goal(self):
         ## Planning to a Pose Goal
         
@@ -254,10 +261,12 @@ class MoveRobot(object):
     
     
     def command_robot(self):
-        msg = String()
-        success = None
+       
         
         if (self.robot_goal_pose is not None and self.event == "e_start") or self.event == "e_home":
+            msg = String()
+            success = None
+            
             if self.event == "e_start":
                 succes = self.go_to_pose_goal()
             elif self.event == "e_home":
@@ -270,12 +279,12 @@ class MoveRobot(object):
                 rospy.logwarn("Goal Tolerance Violated")
                 
             self.event = None
+            self.pub_e_out.publish(msg)
             
         else:
-            msg = String()
-            msg.data = "e_wait"
+            pass
 
-        self.pub_e_out.publish(msg)
+        
 def main():
     try:
         moverobot = MoveRobot()

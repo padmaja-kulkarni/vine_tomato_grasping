@@ -2,3 +2,5 @@
 *.CMakeLists.txt.kate-swp
 /script/
 *.pyc
+/results/
+/taeke/

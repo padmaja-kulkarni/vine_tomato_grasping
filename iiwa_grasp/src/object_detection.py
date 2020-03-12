@@ -15,8 +15,7 @@ from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import Image
 
 # custom func
-from func.image_processing import segmentation_otsu
-from func.image_processing import save_fig
+from detect_crop.ProcessImage import ProcessImage
 
 
 # import pathlib
@@ -30,8 +29,8 @@ class ObjectDetection(object):
         self.image = None
         self.bridge = CvBridge()
         
-        pathCurrent = "/home/taeke/catkin_ws/src/flexcraft_jelle/iiwa_grasp/src"#
-        self.pwdProcess = os.path.join(pathCurrent)
+        pathCurrent = os.path.dirname(__file__) # path to THIS file
+        self.pwdProcess = os.path.join(pathCurrent, '..', '..', 'results')
         
         rospy.init_node("Object_Detection",
                         anonymous=True, log_level=rospy.DEBUG)
@@ -63,7 +62,7 @@ class ObjectDetection(object):
         if self.image is None:
             rospy.logdebug("Received new image message")
             try:
-                self.image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
+                self.image = self.bridge.imgmsg_to_cv2(msg, "rgb8")
             except CvBridgeError as e:
                 print(e)
         
@@ -71,17 +70,17 @@ class ObjectDetection(object):
     def detect_object(self):
         if self.event == "e_start":
             
-            if self.image is not None:
+            if False: #self.image is not None:
+                pwd = os.path.dirname(__file__)
+                rospy.logdebug("====Initializing image processing object====")
                 
-                rospy.logdebug("===PROCESSING IMAGE====")
-                background, tomato, peduncle = segmentation_otsu(self.image, 255)
+                image = ProcessImage(self.image, tomatoName = 'gazebo_tomato', 
+                                     pwdProcess = pwd, 
+                                     saveIntermediate = True)
                 
-                rospy.logdebug("===SAVING IMAGE====")
-                save_fig(background, self.pwdProcess, '02_a', figureTitle = "Background")
-                save_fig(tomato, self.pwdProcess, '02_b', figureTitle = "Tomato")
-                save_fig(peduncle, self.pwdProcess, '02_c', figureTitle = "Peduncle")
-                
-                
+                rospy.logdebug("====Processing image====")
+                image.process_image()
+                rospy.logdebug("====Done====")
             
             
             self.event = None
