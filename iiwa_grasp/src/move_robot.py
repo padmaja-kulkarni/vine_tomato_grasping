@@ -53,12 +53,12 @@ class MoveRobot(object):
     def pose_cb(self, msg):
         if self.robot_goal_pose is None:
             self.robot_goal_pose = msg
-            rospy.logdebug("Received new move robot pose message")
+            rospy.logdebug("[MOVE ROBOT] Received new move robot pose message")
             
     def e_in_cb(self, msg):
         if self.event is None:
             self.event = msg.data
-            rospy.logdebug("Received new move robot event in message: %s", self.event)
+            rospy.logdebug("[MOVE ROBOT] Received new move robot event in message: %s", self.event)
         
             
     def initialise_robot(self):

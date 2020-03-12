@@ -91,26 +91,32 @@ class PipeLine(object):
     def log_state_update(self):
         rospy.loginfo("updated pipeline state, from %s to %s", 
                       self.state_previous, self.state)
+        rospy.logdebug("Robot moved: %s", self.robot_moved)
 
     ### Run Function
             
-    def run(self):
+    def update_state(self):
         
         ## update current state
         if (self.state == "IDLE") and (self.state_goal == "DETECT"):
             self.state_previous = self.state
             self.state = self.state_goal
             self.state_goal = None
+            self.robot_moved = None # BAD FIX
             self.log_state_update()
-            rospy.logdebug(self.robot_moved)
+            self.send_message()
+            
             
                 ## update current state
         if (self.state == "IDLE") and (self.state_goal == "HOME"):
             self.state_previous = self.state
             self.state = self.state_goal
             self.state_goal = None
+            self.robot_moved = None # BAD FIX
             self.log_state_update()
-            rospy.logdebug("Robot moved: %s", self.robot_moved)
+            
+            self.send_message()
+            
             
             
         if self.object_detected and self.state == "DETECT":
@@ -118,13 +124,16 @@ class PipeLine(object):
             self.state = "TRANSFORM"
             self.object_detected = None
             self.log_state_update()
-            rospy.logdebug(self.robot_moved)
+            
+            self.send_message()
             
         if self.pose_transformed and self.state == "TRANSFORM":
             self.state_previous = self.state
             self.state = "MOVE"
             self.pose_transformed = None
             self.log_state_update()
+            
+            self.send_message()
             rospy.logdebug(self.robot_moved)
             
         if self.robot_moved and (self.state == "MOVE" or self.state == "HOME"):
@@ -133,13 +142,16 @@ class PipeLine(object):
             self.robot_moved = None
             self.log_state_update()
             
-        ## command other nodes
+            self.send_message()
+            
+    def send_message(self):   
+    ## command other nodes
         if self.state == "DETECT":
             self.start_obj_detection()
         
         if self.state == "TRANSFORM":
             self.send_start_to_pose_transform()
-            
+                
         if self.state == "MOVE":
             self.send_start_to_move_robot()
             
@@ -169,7 +181,7 @@ def main():
         PL = PipeLine()
         rate = rospy.Rate(10)
         while not rospy.core.is_shutdown():
-            PL.run()
+            PL.update_state()
             rate.sleep()
             
     except rospy.ROSInterruptException:
