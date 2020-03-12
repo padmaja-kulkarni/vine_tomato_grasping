@@ -29,8 +29,10 @@ class MoveRobot(object):
         while rospy.get_time() < 0.1:
             pass
         
-        self.initialise_robot()
+        
         self.initialise_enviroment()
+        self.initialise_robot()
+        
         self._compute_ik = rospy.ServiceProxy('compute_ik', GetPositionIK)
         self.event = None
         
@@ -70,9 +72,6 @@ class MoveRobot(object):
         ## the robot:
         robot = moveit_commander.RobotCommander()
         
-        # interface to the world surrounding the robot.
-        scene = moveit_commander.PlanningSceneInterface()
-        
         ## Instantiate a `MoveGroupCommander`_ object.  This object is an interface
         ## to one group of joints.
         group_name = rospy.get_param('move_group_name')
@@ -83,9 +82,7 @@ class MoveRobot(object):
         self.robot = robot 
         self.group = group
         self.robot_goal_pose = None
-        self.scene = scene
         # self.state = RobotState.INITIALIZING
-        self.box_name = 'table'
         
     def wait_for_state_update(self, box_is_known=False, box_is_attached=False, timeout=4, box_name= ''):
         """ Wait until we see the changes reflected in the scene
@@ -168,11 +165,19 @@ class MoveRobot(object):
         return True
     
     
-    def initialise_enviroment(self):     
-        rospy.sleep(5)
+    def initialise_enviroment(self):  
+        """" Checks wether the RViz enviroment is correctly set
+        
+        
+        """
+        
         rospy.logdebug("===INITIALIZING ENVIROMENT====")
         
+        # interface to the world surrounding the robot.
+        self.scene = moveit_commander.PlanningSceneInterface()
+        rospy.sleep(5)
         
+        # Check wether table and wall objects are present
         known_objects_prev = None
         while True:
             known_objects = self.scene.get_known_object_names()
@@ -196,69 +201,57 @@ class MoveRobot(object):
 #        rospy.logdebug( "Known objects: %s", self.scene.get_known_object_names())
     
     def go_to_pose_goal(self):
-        ## Planning to a Pose Goal
+        """ plan and move to a pose goal
         
-        ## We can plan a motion for this group to a desired pose for the
-        ## end-effector:
         
+        """
+        
+        ## Only if inverse kinematics exist       
         if self.compute_ik(self.robot_goal_pose):
             rospy.loginfo("Goal pose is reachable.")
             
             self.group.set_pose_target(self.robot_goal_pose.pose)
-            # self.group.set_start_state_to_current_state()
-            
-            ## Now, we call the planner to compute the plan
             plan = self.group.plan()
-            
-            # Now execute the plan
             self.group.execute(plan, wait=True)
             
         else:
             rospy.logwarn("Goal pose is not reachable!")
             
         
-        
-        # Calling `stop()` ensures that there is no residual movement
+        # Ensures that there is no residual movement
         self.group.stop()
-        # It is always good to clear your targets after planning with poses.
+        
+        # clear targets after planning with poses.
         self.group.clear_pose_targets()
         self.robot_goal_pose = None
-        # For testing:
-        current_pose = self.group.get_current_pose()
         
-        return all_close(self.robot_goal_pose, current_pose, 0.02)
+        # verify goal pose is obtained
+        return all_close(self.robot_goal_pose, self.group.get_current_pose(), 0.02)
   
     def go_to_home(self):
+        """ Plan and move to home
+        
+        """
+        
+        
         ## Planning to a joint Goal
         group_variable_values = self.group.get_current_joint_values()
         for i in range(0, len(group_variable_values)):
             group_variable_values[i] = 0
         
-        
-        ## We can plan a motion for this group to a desired pose for the
-        ## end-effector:
+        # in this case ik always allow, no checking is required
         self.group.set_joint_value_target(group_variable_values)
-        # self.group.set_start_state_to_current_state()
-            
-        ## Now, we call the planner to compute the plan
         plan = self.group.plan()
-            
-        # Now execute the plan
         self.group.execute(plan, wait=True)
             
-        
-        
-        # Calling `stop()` ensures that there is no residual movement
+        # Ensures that there is no residual movement
         self.group.stop()
+        
         # It is always good to clear your targets after planning with poses.
         self.group.clear_pose_targets()
-        # For testing:
-        current_joint = self.group.get_current_joint_values()
-        
-        return all_close(group_variable_values, current_joint, 0.02)
-        
-    
-    
+            
+        return all_close(group_variable_values, self.group.get_current_joint_values(), 0.02)
+
     
     def command_robot(self):
        
