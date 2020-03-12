@@ -276,7 +276,7 @@ class ProcessImage(object):
         graspR = graspL + self.box[0:1]
         graspO = rot2or(graspR, self.DIM, -self.angle/180*np.pi)
         
-        self.graspO = graspO
+        self.graspO = np.around(graspO[0]).astype(int)
         
         if self.saveIntermediate:
             plot_circles(self.segmentsRGBL, graspL, [10], savePath = self.pwdProcess, saveName = '06')
