@@ -19,14 +19,11 @@ class PoseTransform(object):
         rospy.init_node("Object_Detection",
                         anonymous=True, log_level=rospy.DEBUG)
         
-        self.pose_cb_lambda = lambda msg: self.pose_cb(msg)
-        rospy.Subscriber("Object_Detection/objectPose", 
-                         PoseStamped, self.pose_cb_lambda)
+        # Initialize Subscribers
+        rospy.Subscriber("Object_Detection/objectPose", PoseStamped, self.pose_cb)
+        rospy.Subscriber("~e_in", String, self.e_in_cb)
         
-        self.e_in_cb_lambda = lambda msg: self.e_in_cb(msg)
-        rospy.Subscriber("~e_in", 
-                         String, self.e_in_cb_lambda)
-        
+        # Initialize Publishers
         self.pub_pose = rospy.Publisher('~endEffectorPose',
                                         PoseStamped, queue_size=5, latch=True)
         

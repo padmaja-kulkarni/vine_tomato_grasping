@@ -37,13 +37,8 @@ class ObjectDetection(object):
         
         # Subscribe
         
-        self.e_in_cb_lambda = lambda msg: self.e_in_cb(msg)
-        rospy.Subscriber("~e_in",
-                         String, self.e_in_cb_lambda)
-        
-        self.image_cb_lambda = lambda msg: self.image_cb(msg)
-        rospy.Subscriber("/realsense_plugin/camera/color/image_raw",
-                         Image, self.image_cb_lambda)
+        rospy.Subscriber("~e_in", String, self.e_in_cb)
+        rospy.Subscriber("/realsense_plugin/camera/color/image_raw", Image, self.image_cb)
         
         # Publish
         
@@ -63,6 +58,7 @@ class ObjectDetection(object):
             rospy.logdebug("Received new image message")
             try:
                 self.image = self.bridge.imgmsg_to_cv2(msg, "rgb8")
+                rospy.logdebug("Image dimensions: %s", self.image.shape)
             except CvBridgeError as e:
                 print(e)
         
@@ -70,17 +66,17 @@ class ObjectDetection(object):
     def detect_object(self):
         if self.event == "e_start":
             
-            if False: #self.image is not None:
-                pwd = os.path.dirname(__file__)
-                rospy.logdebug("====Initializing image processing object====")
-                
-                image = ProcessImage(self.image, tomatoName = 'gazebo_tomato', 
-                                     pwdProcess = pwd, 
-                                     saveIntermediate = True)
-                
-                rospy.logdebug("====Processing image====")
-                image.process_image()
-                rospy.logdebug("====Done====")
+            # if False: #self.image is not None:
+            pwd = os.path.dirname(__file__)
+            rospy.logdebug("====Initializing image processing object====")
+            
+            image = ProcessImage(self.image, tomatoName = 'gazebo_tomato', 
+                                 pwdProcess = pwd, 
+                                 saveIntermediate = True)
+            
+            rospy.logdebug("====Processing image====")
+            image.process_image()
+            rospy.logdebug("====Done====")
             
             
             self.event = None

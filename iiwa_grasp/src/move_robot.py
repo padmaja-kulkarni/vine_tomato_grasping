@@ -37,14 +37,8 @@ class MoveRobot(object):
         self.event = None
         
         # Subscribers
-        
-        self.pose_cb_lambda = lambda msg: self.pose_cb(msg)
-        rospy.Subscriber("Pose_Transform/endEffectorPose", 
-                         PoseStamped, self.pose_cb_lambda)
-        
-        self.e_in_cb_lambda = lambda msg: self.e_in_cb(msg)
-        rospy.Subscriber("~e_in", 
-                         String, self.e_in_cb_lambda)
+        rospy.Subscriber("Pose_Transform/endEffectorPose", PoseStamped, self.pose_cb)
+        rospy.Subscriber("~e_in", String, self.e_in_cb)
         
         # Publishers
         

@@ -38,22 +38,10 @@ class PipeLine(object):
                                       String, queue_size=10, latch=True)
         
         ## Initialize Subscribers
-        
-        self.pscb_lambda = lambda msg: self.pscb(msg)
-        rospy.Subscriber("pipelineState", 
-                         String, self.pscb_lambda)
-        
-        self.odcb_lambda = lambda msg: self.odcb(msg)
-        rospy.Subscriber("Object_Detection/e_out",
-                         String, self.odcb_lambda)
-        
-        self.ptcb_lambda = lambda msg: self.ptcb(msg)
-        rospy.Subscriber("Pose_Transform/e_out", 
-                         String, self.ptcb_lambda)
-        
-        self.mrcb_lambda = lambda msg: self.mrcb(msg)
-        rospy.Subscriber("Move_Robot/e_out", 
-                         String, self.mrcb_lambda)
+        rospy.Subscriber("pipelineState", String, self.pscb)
+        rospy.Subscriber("Object_Detection/e_out", String, self.odcb)
+        rospy.Subscriber("Pose_Transform/e_out", String, self.ptcb)
+        rospy.Subscriber("Move_Robot/e_out", String, self.mrcb)
      
         ### Callback Functions
         
