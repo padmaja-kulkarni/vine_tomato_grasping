@@ -2,13 +2,13 @@
 <sdf version="1.4">
   <!-- We use a custom world for the iiwa so that the camera angle is launched correctly. -->
   <!-- One can change this world to his needs or use another one. -->
-  
+
   <world name="default">
-    
+
     <include>
       <uri>model://ground_plane</uri>
     </include>
-    
+
     <!-- Global light source -->
     <include>
       <uri>model://sun</uri>
@@ -16,7 +16,7 @@
 
     <include>
         <uri>model://realsense_camera</uri>
-	<pose>0 0.6 1.2 0 1.57 -1.57</pose>
+	<pose>0 0.6 1.2 0 3.1415 0</pose>
 	<static>1</static>
     </include>
 
@@ -24,12 +24,12 @@
       <uri>model://table_short</uri>
       <name>table</name>
       <pose>0 0.5 0 0 0 0</pose>
-      <static>1</static>	
+      <static>1</static>
     </include>
 
     <include>
         <uri>model://tomato</uri>
-	<pose>0.2 0.6 0.26 0 0 0.3</pose>
+	<pose>0 0.4 0.26 0 0 0.3</pose>
     </include>
 
     <physics name="default_physics" default="0" type="ode">
@@ -45,7 +45,7 @@
         </solver>
       </ode>
     </physics>
-    
+
     <!-- Focus camera -->
     <gui fullscreen='0'>
       <camera name='user_camera'>
@@ -53,7 +53,7 @@
 	<view_controller>orbit</view_controller>
       </camera>
     </gui>
-    
+
   </world>
-  
+
 </sdf>

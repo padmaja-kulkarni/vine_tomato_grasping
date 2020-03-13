@@ -2,15 +2,18 @@
 <launch>
 	<!-- Parameters to pass to the ROS node -->
 	<arg name="move_group" default="manipulator"/>
-	<arg name="robot_name" default="iiwa"/>    
+	<arg name="robot_name" default="iiwa"/>
 	<arg name="move_group_name" default="manipulator"/>
 
 	<group ns="$(arg robot_name)">
 		<node pkg="iiwa_grasp" name="Pipe_Line"  type="pipe_line.py" output="screen"/>
 		<node pkg="iiwa_grasp" name="Object_Detection"  type="object_detection.py" output="screen"/>
-  		<node pkg="iiwa_grasp" name="Pose_Transform"  type="pose_transform.py" output="screen"/>
+		<node pkg="iiwa_grasp" name="Pose_Transform"  type="pose_transform.py" output="screen"/>
 		<node pkg="iiwa_grasp" name="Move_Robot"  type="move_robot.py" output="screen"/>
-		<param name="planning_frame" value="/world"/>	
+		<!-- <node pkg="iiwa_grasp" name="Camera_Tf_Broadcaster"  type="camera_tf_broadcaster.py" output="screen"/> -->
+		<node pkg="tf2_ros" type="static_transform_publisher" name="camera_tf_broadcaster" args="0 0.6 1.2 0 3.1415 0 world camera" />
+
+		<param name="planning_frame" value="/world"/>
 		<param name="move_group_name" value="$(arg move_group_name)"/>
 	</group>
 </launch>
