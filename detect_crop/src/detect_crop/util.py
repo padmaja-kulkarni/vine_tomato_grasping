@@ -366,7 +366,7 @@ def load_rgb(pwd, name, horizontal = True):
     
     return imRGB, DIM
 
-def plot_circles(imRGB, centers, radii, savePath = None, saveName = None, figureTitle = None, titleSize = 20, resolution = 300):
+def plot_circles(imRGB, centers, radii, savePath = None, saveName = None, figureTitle = "", titleSize = 20, resolution = 300):
     plt.rcParams["savefig.format"] = 'pdf' 
     plt.rcParams["savefig.bbox"] = 'tight' 
     plt.rcParams['axes.titlesize'] = titleSize

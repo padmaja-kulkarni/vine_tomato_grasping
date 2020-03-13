@@ -39,9 +39,10 @@ from util import plot_circles
 
 class ProcessImage(object):
     
-    def __init__(self, imRGB, tomatoName = 'tomato', saveIntermediate = False, pwdProcess = ''):
+    def __init__(self, imRGB, tomatoName = 'tomato', saveIntermediate = False, pwdProcess = '', saveFormat = 'png'):
         print "Storing visiual results in: ", pwdProcess
         
+        self.saveFormat = saveFormat
         
         self.DIM = imRGB.shape[:2]
         self.imRGB = imRGB
@@ -54,7 +55,10 @@ class ProcessImage(object):
         self.filterDiameterTom = 11
         self.filterDiameterPend = 5
 
-        save_fig(self.imRGB, self.pwdProcess, '01')
+
+        
+        if self.saveIntermediate:
+            save_fig(self.imRGB, self.pwdProcess, '01')
 
     def segment_img(self):
         #%%#################
@@ -67,14 +71,8 @@ class ProcessImage(object):
         self.peduncle = peduncle
         
         if self.saveIntermediate:
-            save_fig(self.background, self.pwdProcess, '02_a', figureTitle = "Background")
-            save_fig(self.tomato, self.pwdProcess, '02_b', figureTitle = "Tomato")
-            save_fig(self.peduncle, self.pwdProcess, '02_c', figureTitle = "Peduncle")
-            
-            segmentsRGB = stack_segments(self.imRGB, background, tomato, peduncle)
-            save_fig(segmentsRGB, self.pwdProcess, '02')
+            self.save_results('02')
         
-
     def filter_img(self):
         #%%###########
         ### Filter ###
@@ -94,16 +92,10 @@ class ProcessImage(object):
         
         self.background = backgroundFiltered
         self.tomato = tomatoFiltered
-        self.peduncle = peduncleFiltered        
+        self.peduncle = peduncleFiltered       
         
         if self.saveIntermediate:
-           save_fig(backgroundFiltered, self.pwdProcess, '03_a', figureTitle = "Background")
-           save_fig(tomatoFiltered, self.pwdProcess, '03_b', figureTitle = "Tomato")
-           save_fig(peduncleFiltered, self.pwdProcess, '03_c', figureTitle = "Peduncle")
-            
-           segmentsRGB = stack_segments(self.imRGB, backgroundFiltered, tomatoFiltered, peduncleFiltered)
-           save_fig(segmentsRGB, self.pwdProcess, '03')
-           self.segmentsRGB = segmentsRGB    
+            self.save_results('03')
            
     def rotate_cut_img(self):
         #%%###################
@@ -117,6 +109,8 @@ class ProcessImage(object):
         # rotate
         tomatoFilteredR= np.uint8(self.imMax*rotate(self.tomato, -angle, resize=True))
         peduncleFilteredR = np.uint8(self.imMax*rotate(self.peduncle, -angle, resize=True))
+        backgroundFilteredR = np.uint8(self.imMax*rotate(self.background, -angle, resize=True))
+        imRGBR  = np.uint8(self.imMax*rotate(self.imRGB, -angle, resize=True))
         
         # get bounding box
         box = cv2.boundingRect(tomatoFilteredR)
@@ -128,13 +122,19 @@ class ProcessImage(object):
         # cut
         tomatoFilteredL = tomatoFilteredR[y:y+h, x:x+w]
         peduncleFilteredL = peduncleFilteredR[y:y+h, x:x+w]
+        backgroundFilteredL = backgroundFilteredR[y:y+h, x:x+w]
+        imRGBL = imRGBR[y:y+h, x:x+w, :]
         
         #get origin
         originR = np.matrix((x, y))
         originO = rot2or(originR, self.DIM, -angle/180*np.pi)
         
+        self.background = backgroundFilteredL
         self.tomato = tomatoFilteredL
         self.peduncle = peduncleFilteredL    
+        self.imRGB = imRGBL
+        self.imRGBR = imRGBR
+        
         self.box = box
         self.w = w
         self.h = h
@@ -143,29 +143,10 @@ class ProcessImage(object):
         self.originO = originO
         
         if self.saveIntermediate:
-            backgroundFilteredR = np.uint8(self.imMax*rotate(self.background, -angle, resize=True))
-            
-            
-            segmentsRGBR = rotate(self.segmentsRGB, -angle, resize=True)
-            segmentsRGBL = segmentsRGBR[y:y+h, x:x+w, :]
-            
-            save_fig(tomatoFilteredL, self.pwdProcess, '04_a', figureTitle = "Tomato")
-            save_fig(peduncleFilteredL, self.pwdProcess, '04_b', figureTitle = "Peduncle")
-            
-            save_fig(segmentsRGBL, self.pwdProcess, '04_c')
-            
-            imRGBR  = np.uint8(self.imMax*rotate(self.imRGB, -angle, resize=True))
-            imRGBL = imRGBR[y:y+h, x:x+w, :]
-            save_fig(imRGBL, self.pwdProcess, '04_d', saveFormat = 'png')
-            
-            
-            self.segmentsRGBL = segmentsRGBL
-            # plt.figure(), plt.imshow(tomatoFiltered), plt.title("tomato original")
-            # plt.plot(originO[0], originO[1], 'bo')
+            self.save_results('04')
+            save_fig(self.imRGB, self.pwdProcess, '04_e', saveFormat = self.saveFormat)
         
-            # plt.figure(), plt.imshow(tomatoFilteredR), plt.title("tomato rotated")
-            # plt.plot(originR[0], originR[1], 'bo')
-
+        
     def detect_tomatoes(self):       
         #%%##################
         ## Detect tomatoes ##
@@ -195,7 +176,7 @@ class ProcessImage(object):
         self.radii = radii
         
         if self.saveIntermediate:
-             plot_circles(self.segmentsRGBL, centersL, radii, savePath = self.pwdProcess, saveName = '05_a')
+             plot_circles(self.imRGB, centersL, radii, savePath = self.pwdProcess, saveName = '05_a')
 
     def detect_peduncle(self):
         #%%##################
@@ -211,7 +192,7 @@ class ProcessImage(object):
         if self.saveIntermediate:
             # https://stackoverflow.com/a/56142875
             contours, hierarchy= cv2.findContours(penduncleMain, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
-            segmentPeduncle = self.segmentsRGBL.copy()
+            segmentPeduncle = self.imRGB.copy()
             cv2.drawContours(segmentPeduncle, contours, -1, (0,255,0), 3)
             save_fig(segmentPeduncle, self.pwdProcess, '05_b')
         #plt.figure(), plt.imshow(penduncleMain)
@@ -221,7 +202,7 @@ class ProcessImage(object):
         ## DETECT JUNCTION ##
         #####################
         
-        skeleton = skeletonize(self.peduncle/255)
+        skeleton = skeletonize(self.peduncle/self.imMax)
         pixel_graph0, coordinates0, degrees0 = skeleton_to_csgraph(skeleton)    
         
     
@@ -257,7 +238,7 @@ class ProcessImage(object):
         radiiJunction = np.repeat(5, locMat.shape[0])
         
         if self.saveIntermediate:
-            plot_circles(self.segmentsRGBL, locMat, radiiJunction, savePath = self.pwdProcess, saveName = '05_c')
+            plot_circles(self.imRGB, locMat, radiiJunction, savePath = self.pwdProcess, saveName = '05_c')
 
     def detect_grasp_location(self):
 
@@ -273,15 +254,29 @@ class ProcessImage(object):
         iMin = np.argmin(dist)
         
         graspL = loc[iMin, :]
-        graspR = graspL + self.box[0:1]
+        graspR = graspL + [self.box[0], self.box[1]]
         graspO = rot2or(graspR, self.DIM, -self.angle/180*np.pi)
         
-        self.graspO = np.around(graspO[0]).astype(int)
+        self.graspL = graspL
+        self.graspR = graspR
+        self.graspO = graspO
         
         if self.saveIntermediate:
-            plot_circles(self.segmentsRGBL, graspL, [10], savePath = self.pwdProcess, saveName = '06')
+            plot_circles(self.imRGB, graspL, [10], savePath = self.pwdProcess, saveName = '06')
 
-    def show_process(self):
+
+    def get_grasp_info(self):
+        
+        
+        graspPixel = np.around(self.graspO[0]).astype(int)
+        
+        row = self.DIM[0] - graspPixel[1]
+        col = graspPixel[0]
+        angle = self.angle/180*np.pi
+        
+        return row, col, angle
+        
+    def rescale(self):
         #%%############
         ### RESCALE ###
         ###############
@@ -297,8 +292,14 @@ class ProcessImage(object):
         penduncleMainOriginal = add_border(penduncleMainR, self.originO - originL, self.DIM);
     
         image =cv2.merge((tomatoOriginal, peduncleOriginal, penduncleMainOriginal))
-        # image = cv2.cvtColor(total, cv2.COLOR_LAB2RGB)
+        
+        self.tomato = tomatoOriginal
+        self.peduncle = peduncleOriginal
+        self.peduncleMian = penduncleMainOriginal
+        self.imRGB = image
     
+    
+    def visualive(self):
         #%%##############
         ### VISUALIZE ###
         #################          
@@ -331,13 +332,19 @@ class ProcessImage(object):
         
         fig.savefig(os.path.join(self.pwdResults, self.tomatoName), dpi = 300)
 
+    def save_results(self, step):
+        save_fig(self.background, self.pwdProcess, step + '_a', figureTitle = "Background", saveFormat = self.saveFormat)
+        save_fig(self.tomato, self.pwdProcess, step + '_b', figureTitle = "Tomato", saveFormat = self.saveFormat)
+        save_fig(self.peduncle, self.pwdProcess, step + '_c', figureTitle = "Peduncle", saveFormat = self.saveFormat)
+        
+        segmentsRGB = stack_segments(self.imRGB, self.background, self.tomato, self.peduncle)
+        save_fig(segmentsRGB, self.pwdProcess, step + '_d')
 
     def process_image(self):
         
         self.segment_img()
         self.filter_img()
         self.rotate_cut_img()
-        
         self.detect_tomatoes()
         self.detect_peduncle()
         # self.detect_junction()
@@ -351,14 +358,14 @@ def main():
     
     ## params ##
     # params
-    N = 11               # tomato file to load
+    N = 2               # tomato file to load
     nDigits = 3   
     saveIntermediate = False
     
     pathCurrent = os.path.dirname(__file__)
     dataSet = "tomato_rot" # "tomato_rot"
     
-    pwdTest = os.path.join("..", "..", "test")
+    pwdTest = os.path.join("..", "..", "..", "taeke")
     
     pwdData = os.path.join(pathCurrent, pwdTest, "data", dataSet)
     pwdDataProc = os.path.join(pathCurrent, pwdTest,"data_processed", dataSet)
@@ -382,7 +389,7 @@ def main():
     #%%#########
     ### Loop ###
     ############
-    for iTomato in range(10, N, 1):
+    for iTomato in range(1, N, 1):
     
         tomatoName = "tomato" + "_RGB_" + str(iTomato).zfill(nDigits) 
         fileName = tomatoName + ".png" # png
@@ -397,7 +404,16 @@ def main():
         image = ProcessImage(imRGB, tomatoName = tomatoName, pwdProcess = pwdProcess, saveIntermediate = saveIntermediate)
         image.process_image()
         
-        print image.graspO
+        
+        plot_circles(image.imRGB, image.graspL, [10], savePath = pwdProcess, saveName = '06')
+        plot_circles(image.imRGBR, image.graspR, [10], savePath = pwdProcess, saveName = '06')
+        plot_circles(imRGB, image.graspO, [10], savePath = pwdProcess, saveName = '06')
+        
+        row, col, angle = image.get_grasp_info()
+        
+        print row
+        print col
+        print angle
     
 if __name__ == '__main__':
     main()

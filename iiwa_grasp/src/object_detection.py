@@ -27,7 +27,7 @@ import pyrealsense2 as rs
 # import pathlib
 import os # os.sep
 
-def get_intrinsics(camera_info):
+def camera_info2intrinsics(camera_info):
 
     # init object
     intrin = rs.intrinsics()
@@ -133,18 +133,20 @@ class ObjectDetection(object):
                 rospy.logdebug("====Processing image====")
                 image.process_image()
                 rospy.logdebug("====Done====")
-                grasp_pixel = image.graspO
-                rospy.logdebug("Obtained location in pixel frame: %s ", grasp_pixel)
+                
+                row, col, angle = image.get_grasp_info()
+                
+                rospy.logdebug("Obtained location in pixel frame row: %s and col: %s, at angle %s", row, col, angle)
 
                 # Deproject
-                index = (grasp_pixel[1], grasp_pixel[0])
+                index = (row, col)
                 depth = self.depth_image[index]
                 rospy.logdebug("Corresponding depth: %s", self.depth_image[index])
                 # https://github.com/IntelRealSense/librealsense/wiki/Projection-in-RealSense-SDK-2.0
 
 
-                intrin = get_intrinsics(self.depth_info) # self.depth_info.get_intrinsics()
-                pixel = [float(grasp_pixel[0]), 1080 - float(grasp_pixel[1])]
+                intrin = camera_info2intrinsics(self.depth_info)
+                pixel = [float(col), float(row)]
                 depth = float(depth)
 
                 point = rs.rs2_deproject_pixel_to_point(intrin, pixel, depth)
