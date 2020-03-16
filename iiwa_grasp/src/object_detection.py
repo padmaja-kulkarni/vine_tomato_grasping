@@ -7,9 +7,7 @@ Created on Mon Mar  9 15:30:31 2020
 """
 
 import rospy
-import tf2_ros
 import tf
-import tf2_geometry_msgs
 
 from cv_bridge import CvBridge, CvBridgeError
 
@@ -74,12 +72,8 @@ class ObjectDetection(object):
         rospy.Subscriber("/realsense_plugin/camera/color/camera_info", CameraInfo, self.color_info_cb)
         rospy.Subscriber("/realsense_plugin/camera/depth/camera_info", CameraInfo, self.depth_info_cb)
 
-        # Listen
-        self.tfBuffer = tf2_ros.Buffer()
-        self.listener = tf2_ros.TransformListener(self.tfBuffer)
 
         # Publish
-
         self.pub_e_out = rospy.Publisher("~e_out",
                                          String, queue_size=10, latch=True)
 
@@ -155,35 +149,12 @@ class ObjectDetection(object):
 
                 pose_stamped =  point_to_pose_stamped(point)
 
-                pose_transformed = tf2_geometry_msgs.do_transform_pose(pose_stamped, self.trans)
-                print("pose_transformed",pose_transformed)
-
-                self.event = None
-                msg_pose = PoseStamped()
-                msg_pose.header.frame_id = rospy.get_param('planning_frame')
-                msg_pose.header.stamp = rospy.Time.now()
-
-                msg_pose.pose.orientation.x = -0.310
-                msg_pose.pose.orientation.y = 0.000
-                msg_pose.pose.orientation.z = 0.001
-                msg_pose.pose.orientation.w = 0.951
-                msg_pose.pose.position.x = -0.014
-                msg_pose.pose.position.y = 0.262
-                msg_pose.pose.position.z = 1.127
-
                 msg_e = String()
                 msg_e.data = "e_success"
 
                 self.event = None
-                self.pub_pose.publish(pose_transformed)
+                self.pub_pose.publish(pose_stamped)
                 self.pub_e_out.publish(msg_e)
-    def get_trans(self):
-        try:
-            self.trans = self.tfBuffer.lookup_transform('world','camera',  rospy.Time(0))
-            rospy.loginfo("received the folowing transfomration from camera to world: %s", self.trans)
-        except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
-            pass
-            # continue
 
 def point_to_pose_stamped(point):
 
@@ -199,17 +170,28 @@ def point_to_pose_stamped(point):
     pose_stamped.pose.position.x = point[0]/1000.0
     pose_stamped.pose.position.y = point[1]/1000.0
     pose_stamped.pose.position.z = point[2]/1000.0 - 0.05
-
+    
     return pose_stamped
+
+def get_test_pose():
+    
+    msg_pose = PoseStamped()
+    msg_pose.header.frame_id = rospy.get_param('planning_frame')
+    msg_pose.header.stamp = rospy.Time.now()
+    
+    msg_pose.pose.orientation.x = -0.310
+    msg_pose.pose.orientation.y = 0.000
+    msg_pose.pose.orientation.z = 0.001
+    msg_pose.pose.orientation.w = 0.951
+    msg_pose.pose.position.x = -0.014
+    msg_pose.pose.position.y = 0.262
+    msg_pose.pose.position.z = 1.127
+
 
 def main():
     try:
         OD = ObjectDetection()
         rate = rospy.Rate(10)
-
-        while OD.trans is None:
-            OD.get_trans()
-            rate.sleep()
 
         while not rospy.core.is_shutdown():
             OD.detect_object()
