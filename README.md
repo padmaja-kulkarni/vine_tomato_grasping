@@ -31,7 +31,7 @@ To:
 ```
 4. To make the Intel RealSense camera behave similar as the actual hardware we have to change the default resultution, open the file `/realsense_gazebo_plugin/models/realsense_camera/model.sdf`
 5. For all four sensros present change the `width` and `height` values from 640 and 480 to 1920 and 1080 correspondingly.
-
+6. For gazebo to be able to load the tomato texture go to `usr/share/gazebo-7/setup.sh` and add to the `GEZEBO_RESOURCE_PATH` variable the path to the `iiwa_grasp` package, in my case `~/catkin_ws/src/flexcraft_jelle/iiwa_grasp`
 You are ready to go
 
 ### Run
