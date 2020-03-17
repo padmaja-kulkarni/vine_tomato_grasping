@@ -1,7 +1,7 @@
 <package>
-  <name>iiwa_grasp</name>
+  <name>flex_grasp</name>
   <version>0.0.0</version>
-  <description>The iiwa_grasp package</description>
+  <description>The flex_grasp package</description>
   <author email="jdluijkx@gmail.com">Jelle Luijkx</author>
   <maintainer email="jdluijkx@gmail.com">Jelle Luijkx</maintainer>
 
@@ -19,11 +19,11 @@
 
   <buildtool_depend>catkin</buildtool_depend>
 
-  <!-- required for loading gazebo models from this package-->
   <export>
+    <!-- required for loading gazebo models from this package-->
     <gazebo_ros
       gazebo_model_path="${prefix}/models"
       />
   </export>
-  
+
 </package>

@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<robot name="iiwa7" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+
+  <!-- Import Rviz colors -->
+  <xacro:include filename="$(find iiwa_description)/urdf/materials.xacro" />
+  <!--Import the lbr iiwa macro -->
+  <xacro:include filename="$(find iiwa_description)/urdf/iiwa7.xacro"/>
+
+  <!-- import the camera -->
+  <xacro:include filename="$(find realsense2_description)/urdf/_d435.urdf.xacro" />
+
+  <xacro:arg name="hardware_interface" default="PositionJointInterface"/>
+  <xacro:arg name="robot_name" default="iiwa"/>
+  <xacro:arg name="origin_xyz" default="0 0 0"/>
+  <xacro:arg name="origin_rpy" default="0 0 0"/>
+
+  <xacro:arg name="rs_origin_xyz" default="0 0.6 1.2"/>
+  <xacro:arg name="rs_origin_rpy" default="3.1415 1.57 -1.57"/>
+
+  <!-- Fix to world just for testing -->
+  <link name="world"/>
+
+  <!--iiwa -->
+  <xacro:iiwa7 hardware_interface="$(arg hardware_interface)" robot_name="$(arg robot_name)" parent="world">
+    <origin xyz="$(arg origin_xyz)" rpy="$(arg origin_rpy)" />
+  </xacro:iiwa7>
+
+
+  <xacro:sensor_d435 parent="world">
+    <origin xyz="$(arg rs_origin_xyz)" rpy="$(arg rs_origin_rpy)" />
+  </xacro:sensor_d435>
+
+</robot>
+
+<!-- This does not belong here! -->
+<!--
+<robot name="realsense2_camera" xmlns:xacro="http://ros.org/wiki/xacro">
+
+</robot>
+ -->

@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>flex_gazebo</name>
+  <version>0.0.0</version>
+  <description>The flex_gazebo package</description>
+
+
+  <maintainer email="taeke@todo.todo">taeke</maintainer>
+
+  <license>TODO</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <!-- The export tag contains other, unspecified, tags -->
+
+
+</package>
