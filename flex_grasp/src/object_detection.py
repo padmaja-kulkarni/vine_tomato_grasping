@@ -127,9 +127,9 @@ class ObjectDetection(object):
                 rospy.logdebug("====Processing image====")
                 image.process_image()
                 rospy.logdebug("====Done====")
-                
+
                 row, col, angle = image.get_grasp_info()
-                
+
                 rospy.logdebug("Obtained location in pixel frame row: %s and col: %s, at angle %s", row, col, angle)
 
                 # Deproject
@@ -159,7 +159,7 @@ class ObjectDetection(object):
 def point_to_pose_stamped(point):
 
     pose_stamped = PoseStamped()
-    pose_stamped.header.frame_id = "camera"
+    pose_stamped.header.frame_id = "camera_color_optical_frame"
     pose_stamped.header.stamp = rospy.Time.now()
 
     quat = tf.transformations.quaternion_from_euler(0, 0, 0)
@@ -167,18 +167,18 @@ def point_to_pose_stamped(point):
     pose_stamped.pose.orientation.y = quat[1]
     pose_stamped.pose.orientation.z = quat[2]
     pose_stamped.pose.orientation.w = quat[3]
-    pose_stamped.pose.position.x = point[0]/1000.0
-    pose_stamped.pose.position.y = point[1]/1000.0
+    pose_stamped.pose.position.x = -point[0]/1000.0
+    pose_stamped.pose.position.y = -point[1]/1000.0
     pose_stamped.pose.position.z = point[2]/1000.0 - 0.05
-    
+
     return pose_stamped
 
 def get_test_pose():
-    
+
     msg_pose = PoseStamped()
     msg_pose.header.frame_id = rospy.get_param('planning_frame')
     msg_pose.header.stamp = rospy.Time.now()
-    
+
     msg_pose.pose.orientation.x = -0.310
     msg_pose.pose.orientation.y = 0.000
     msg_pose.pose.orientation.z = 0.001

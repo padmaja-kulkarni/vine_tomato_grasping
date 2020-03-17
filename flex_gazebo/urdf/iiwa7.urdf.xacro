@@ -17,6 +17,9 @@
 
   <xacro:arg name="rs_origin_xyz" default="0 0.6 1.2"/>
   <xacro:arg name="rs_origin_rpy" default="3.1415 1.57 -1.57"/>
+  <xacro:arg name="camera_name" default="camera"/>
+  <xacro:arg name="use_nominal_extrinsics" default="true"/>
+
 
   <!-- Fix to world just for testing -->
   <link name="world"/>
@@ -27,7 +30,7 @@
   </xacro:iiwa7>
 
 
-  <xacro:sensor_d435 parent="world">
+  <xacro:sensor_d435 parent="world" name="$(arg camera_name)" use_nominal_extrinsics="$(arg use_nominal_extrinsics)"> <!-- use_nominal_extrinsics="$(arg use_nominal_extrinsics)" -->
     <origin xyz="$(arg rs_origin_xyz)" rpy="$(arg rs_origin_rpy)" />
   </xacro:sensor_d435>
 
