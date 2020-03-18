@@ -19,38 +19,38 @@
 ```
 	git clone https://gitlab.tudelft.nl/pvkulkarni/flexcraft_jelle.git
 ```
-2. To launch the modified world, and not the default iiwa world open the the following file  `/iiwa_stack/iiwa_gazebo/launch/iiwa_world.launch`
+2. For some p[art we still rely on the iiwa launch files, therefore some minor chnages are required. Go to the file `/iiwa_stack/iiwa_moveit/launch/planning_context.launch`
 
-3. Change the following line:
+3. Change line 15 from:
 ```
-<arg name="world_name" value="$(find iiwa_gazebo)/worlds/iiwa.world"/>
+<include file="$(find iiwa_description)/launch/iiwa7_upload.launch">
 ```
 To:
 ```
-<arg name="world_name" value="$(find iiwa_grasp)/worlds/iiwa.world"/>
+<include file="$(find flex_gazebo)/launch/upload.launch">
 ```
 4. To make the Intel RealSense camera behave similar as the actual hardware we have to change the default resultution, open the file `/realsense_gazebo_plugin/models/realsense_camera/model.sdf`
-5. For all four sensros present change the `width` and `height` values from 640 and 480 to 1920 and 1080 correspondingly.
-6. For gazebo to be able to load the tomato texture go to `usr/share/gazebo-7/setup.sh` and add to the `GEZEBO_RESOURCE_PATH` variable the path to the `iiwa_grasp` package, in my case `~/catkin_ws/src/flexcraft_jelle/iiwa_grasp`
+5. For the depth and color sensor change the `width` and `height` values from 640 and 480 to 1920 and 1080 correspondingly.
+6. For gazebo to be able to load the tomato texture go to `usr/share/gazebo-7/setup.sh` and add to the `GEZEBO_RESOURCE_PATH` variable the path to the `flex_grasp` package, in my case `~/catkin_ws/src/flexcraft_jelle/flex_grasp`
 You are ready to go
 
 ### Run
 1. To run in simulation we first launch the enviroment
 ```
-roslaunch iiwa_moveit moveit_planning_execution.launch
+roslaunch flex_grasp enviroment.launch
 ```
 2. RViz en Gazebo should start, in RViz we still have to load the scene manually as follows
 
 	1. in the MotionPlanning too go to the tab Scene Objects
 	2. Select Inport From Text
-	3. Navigate to the folder /flexcraft_jelle/iiwa_grasp/worlds/ and select the file iiwa.scene
+	3. Navigate to the folder /flexcraft_jelle/flex_gazebo/worlds/ and select the file iiwa.scene
 	4. select Publish Scene
 
 3. Now run the controls
 ```
-roslaunch iiwa_grasp sub.launch
+roslaunch flex_grasp sub.launch
 ```
-If the following warning appears " Table and wall object not present, refusing to continue before they are added" the scene is not correctly loaded and/or published in RViz.
+If the following warning appears "Table and wall object not present, refusing to continue before they are added" the scene is not correctly loaded and/or published in RViz.
 
 ### Command
 To activate an action, a message needs to be published on the `/iiwa/pipelineState`
