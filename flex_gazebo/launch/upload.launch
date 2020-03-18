@@ -18,11 +18,8 @@
     robot_name:=$(arg robot_name)
     origin_xyz:=$(arg origin_xyz)
     origin_rpy:=$(arg origin_rpy)
-
     camera_name:=$(arg camera_name)
     use_nominal_extrinsics:=$(arg use_nominal_extrinsics)
-    camera_origin_xyz:=$(arg camera_origin_xyz)
-    camera_origin_rpy:=$(arg camera_origin_rpy)"
-    />
+    "/>
 
 </launch>
