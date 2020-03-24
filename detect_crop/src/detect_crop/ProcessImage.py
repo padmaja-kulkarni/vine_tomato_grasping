@@ -40,7 +40,7 @@ from util import plot_circles
 class ProcessImage(object):
     
     def __init__(self, imRGB, tomatoName = 'tomato', saveIntermediate = False, pwdProcess = '', saveFormat = 'png'):
-        print "Storing visiual results in: ", pwdProcess
+        print("Storing visiual results in: ", pwdProcess)
         
         self.saveFormat = saveFormat
         
@@ -105,6 +105,7 @@ class ProcessImage(object):
         regions = regionprops(label_img)
         if len(regions) > 1: warnings.warn("Multiple regions found!")
         angle = regions[0].orientation*180/np.pi
+        print('angle: ', angle)
         
         # rotate
         tomatoFilteredR= np.uint8(self.imMax*rotate(self.tomato, -angle, resize=True))
@@ -183,7 +184,8 @@ class ProcessImage(object):
         ## DETECT PEDUNCLE ##
         #####################
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (20, 2))
-        penduncleMain = cv2.morphologyEx(cv2.morphologyEx(self.peduncle, cv2.MORPH_OPEN, kernel),cv2.MORPH_CLOSE, kernel)
+        # penduncleMain = cv2.morphologyEx(cv2.morphologyEx(self.peduncle, cv2.MORPH_OPEN, kernel),cv2.MORPH_CLOSE, kernel)
+        penduncleMain = cv2.morphologyEx(self.peduncle, cv2.MORPH_OPEN, kernel)
         
         # only keep largest area
         penduncleMain = romove_blobs(penduncleMain, self.imMax)
@@ -195,9 +197,20 @@ class ProcessImage(object):
             segmentPeduncle = self.imRGB.copy()
             cv2.drawContours(segmentPeduncle, contours, -1, (0,255,0), 3)
             save_fig(segmentPeduncle, self.pwdProcess, '05_b')
-        #plt.figure(), plt.imshow(penduncleMain)
+        
+            penduncleMain = cv2.erode(self.peduncle,kernel,iterations = 1)
+            save_fig(penduncleMain, self.pwdProcess, '05_b1')
+        
+            penduncleMain = cv2.dilate(penduncleMain,kernel,iterations = 1)
+            save_fig(penduncleMain, self.pwdProcess, '05_b2')
 
     def detect_junction(self):
+        skeleton = skeletonize(self.peduncle/self.imMax)
+        if self.saveIntermediate:
+            save_fig(skeleton, self.pwdProcess, '05_c2')
+        
+        
+    def detect_junctione_rip(self):
         #%%##################
         ## DETECT JUNCTION ##
         #####################
@@ -333,12 +346,12 @@ class ProcessImage(object):
         fig.savefig(os.path.join(self.pwdResults, self.tomatoName), dpi = 300)
 
     def save_results(self, step):
-        save_fig(self.background, self.pwdProcess, step + '_a', figureTitle = "Background", saveFormat = self.saveFormat)
-        save_fig(self.tomato, self.pwdProcess, step + '_b', figureTitle = "Tomato", saveFormat = self.saveFormat)
-        save_fig(self.peduncle, self.pwdProcess, step + '_c', figureTitle = "Peduncle", saveFormat = self.saveFormat)
+        save_fig(self.background, self.pwdProcess, step + '_a', saveFormat = self.saveFormat) # figureTitle = "Background", 
+        save_fig(self.tomato, self.pwdProcess, step + '_b', saveFormat = self.saveFormat) # figureTitle = "Tomato",
+        save_fig(self.peduncle, self.pwdProcess, step + '_c',  saveFormat = self.saveFormat) # figureTitle = "Peduncle",
         
         segmentsRGB = stack_segments(self.imRGB, self.background, self.tomato, self.peduncle)
-        save_fig(segmentsRGB, self.pwdProcess, step + '_d')
+        save_fig(segmentsRGB, self.pwdProcess, step + '_d', saveFormat = self.saveFormat)
 
     def process_image(self):
         
@@ -358,14 +371,14 @@ def main():
     
     ## params ##
     # params
-    N = 2               # tomato file to load
+    N = 15               # tomato file to load
     nDigits = 3   
     saveIntermediate = False
     
     pathCurrent = os.path.dirname(__file__)
     dataSet = "tomato_rot" # "tomato_rot"
     
-    pwdTest = os.path.join("..", "..", "..", "taeke")
+    pwdTest = os.path.join("..") # "..", "..", ,  "taeke"
     
     pwdData = os.path.join(pathCurrent, pwdTest, "data", dataSet)
     pwdDataProc = os.path.join(pathCurrent, pwdTest,"data_processed", dataSet)
@@ -404,16 +417,17 @@ def main():
         image = ProcessImage(imRGB, tomatoName = tomatoName, pwdProcess = pwdProcess, saveIntermediate = saveIntermediate)
         image.process_image()
         
-        
-        plot_circles(image.imRGB, image.graspL, [10], savePath = pwdProcess, saveName = '06')
-        plot_circles(image.imRGBR, image.graspR, [10], savePath = pwdProcess, saveName = '06')
-        plot_circles(imRGB, image.graspO, [10], savePath = pwdProcess, saveName = '06')
+        plot_circles(image.imRGB, image.graspL, [10], savePath = pwdDataProc, 
+                     saveName = str(iTomato), fileFormat = 'png')
+        # plot_circles(image.imRGB, image.graspL, [10], savePath = pwdProcess, saveName = '06')
+        # plot_circles(image.imRGBR, image.graspR, [10], savePath = pwdProcess, saveName = '06')
+        # plot_circles(imRGB, image.graspO, [10], savePath = pwdProcess, saveName = '06')
         
         row, col, angle = image.get_grasp_info()
         
-        print row
-        print col
-        print angle
+        print(row)
+        print(col)
+        print(angle)
     
 if __name__ == '__main__':
     main()

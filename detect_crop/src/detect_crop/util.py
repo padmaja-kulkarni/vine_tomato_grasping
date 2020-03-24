@@ -340,12 +340,23 @@ def save_fig(img, pwd, name, resolution = 300, figureTitle = "", titleSize = 20,
         plt.rcParams["savefig.format"] = saveFormat
         plt.rcParams["savefig.bbox"] = 'tight' 
         plt.rcParams['axes.titlesize'] = titleSize
+        
     
         fig = plt.figure() 
         plt.imshow(img)
-        plt.title(figureTitle)
         plt.axis('off')
-        fig.savefig(os.path.join(pwd, name), dpi = resolution, pad_inches=0)
+        plt.title(figureTitle)
+        
+        # https://stackoverflow.com/a/27227718
+        plt.gca().set_axis_off()
+        plt.subplots_adjust(top = 1, bottom = 0, right = 1, left = 0, 
+            hspace = 0, wspace = 0)
+        plt.margins(0,0)
+        plt.gca().xaxis.set_major_locator(plt.NullLocator())
+        plt.gca().yaxis.set_major_locator(plt.NullLocator())
+        
+        
+        fig.savefig(os.path.join(pwd, name), dpi = resolution, bbox_inches='tight', pad_inches=0)
         
 def load_rgb(pwd, name, horizontal = True):
     
@@ -366,8 +377,11 @@ def load_rgb(pwd, name, horizontal = True):
     
     return imRGB, DIM
 
-def plot_circles(imRGB, centers, radii, savePath = None, saveName = None, figureTitle = "", titleSize = 20, resolution = 300):
-    plt.rcParams["savefig.format"] = 'pdf' 
+def plot_circles(imRGB, centers, radii, savePath = None, saveName = None, 
+                 figureTitle = "", titleSize = 20, resolution = 300, 
+                 fileFormat = 'pdf'):
+    
+    plt.rcParams["savefig.format"] = fileFormat 
     plt.rcParams["savefig.bbox"] = 'tight' 
     plt.rcParams['axes.titlesize'] = titleSize
     
