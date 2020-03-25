@@ -7,15 +7,26 @@
 
   <!--Import the lbr iiwa macro -->
   <xacro:include filename="$(find iiwa_description)/urdf/iiwa7.xacro"/>
+
+  <!-- import the camera -->
+  <xacro:include filename="$(find realsense2_description)/urdf/_d435.urdf.xacro" />
+
   <!-- import the tomato -->
   <xacro:include filename="$(find flex_gazebo)/urdf/tomato.xacro" />
 
+  <!-- iiwa params-->
   <xacro:arg name="hardware_interface" default="PositionJointInterface"/>
   <xacro:arg name="robot_name" default="iiwa"/>
   <xacro:arg name="origin_xyz" default="0 0 0"/>
   <xacro:arg name="origin_rpy" default="0 0 0"/>
 
+  <!-- camera params-->
+  <xacro:arg name="camera_name" default="camera"/>
+  <xacro:arg name="camera_origin_xyz" default="0 0.6 1.2"/>
+  <xacro:arg name="camera_origin_rpy" default="3.1415 1.57 -1.57"/>
+  <xacro:arg name="use_nominal_extrinsics" default="true"/>
 
+  <!-- tomato params-->
   <xacro:arg name="tomato_origin_xyz" default="-0.2 0.4 0.26"/>
   <xacro:arg name="tomato_origin_rpy" default="0 0 0.3"/>
 
@@ -28,6 +39,12 @@
     <origin xyz="$(arg origin_xyz)" rpy="$(arg origin_rpy)" />
   </xacro:iiwa7>
 
+  <!-- camera -->
+  <xacro:sensor_d435 parent="world" name="$(arg camera_name)" use_nominal_extrinsics="$(arg use_nominal_extrinsics)">
+    <origin xyz="$(arg camera_origin_xyz)" rpy="$(arg camera_origin_rpy)" />
+  </xacro:sensor_d435>
+
+  <!-- tomato -->
   <xacro:tomato_2d>
     <origin xyz="$(arg tomato_origin_xyz)" rpy="$(arg tomato_origin_rpy)" />
   </xacro:tomato_2d>
