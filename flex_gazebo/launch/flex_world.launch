@@ -30,8 +30,11 @@
     </include>
 
     <!-- Run a python script to send a service call to gazebo_ros to spawn a URDF robot -->
-    <node name="urdf_spawner" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen"
-          args="-urdf -model tomato_2d -param robot_description"/>
+    <node name="robot_urdf_spawner" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen"
+          args="-urdf -model iiwa -param robot_description"/>
+
+    <node name="world_urdf_spawner" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen"
+                args="-urdf -model tomato -param world_description"/>
 
     <!-- Load the URDF with the given hardware interface into the ROS Parameter Server -->
     <!--

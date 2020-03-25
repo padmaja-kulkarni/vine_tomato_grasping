@@ -11,9 +11,6 @@
   <!-- import the camera -->
   <xacro:include filename="$(find realsense2_description)/urdf/_d435.urdf.xacro" />
 
-  <!-- import the tomato -->
-  <xacro:include filename="$(find flex_gazebo)/urdf/tomato.xacro" />
-
   <!-- iiwa params-->
   <xacro:arg name="hardware_interface" default="PositionJointInterface"/>
   <xacro:arg name="robot_name" default="iiwa"/>
@@ -25,10 +22,6 @@
   <xacro:arg name="camera_origin_xyz" default="0 0.6 1.2"/>
   <xacro:arg name="camera_origin_rpy" default="3.1415 1.57 -1.57"/>
   <xacro:arg name="use_nominal_extrinsics" default="true"/>
-
-  <!-- tomato params-->
-  <xacro:arg name="tomato_origin_xyz" default="-0.2 0.4 0.26"/>
-  <xacro:arg name="tomato_origin_rpy" default="0 0 0.3"/>
 
 
   <!-- Fix to world just for testing -->
@@ -44,10 +37,7 @@
     <origin xyz="$(arg camera_origin_xyz)" rpy="$(arg camera_origin_rpy)" />
   </xacro:sensor_d435>
 
-  <!-- tomato -->
-  <xacro:tomato_2d>
-    <origin xyz="$(arg tomato_origin_xyz)" rpy="$(arg tomato_origin_rpy)" />
-  </xacro:tomato_2d>
+
 </robot>
 
 <!-- This does not belong here! -->

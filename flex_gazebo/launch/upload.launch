@@ -13,7 +13,8 @@
   <arg name="camera_origin_xyz" default="0 0.6 1.2"/>
   <arg name="camera_origin_rpy" default="3.1415 1.57 -1.57"/>
 
-  <param name="robot_description" command="$(find xacro)/xacro --inorder '$(find flex_gazebo)/urdf/iiwa7.urdf.xacro'
+  <!-- robot -->
+  <param name="robot_description" command="$(find xacro)/xacro --inorder '$(find flex_gazebo)/urdf/robot.urdf.xacro'
     hardware_interface:=$(arg hardware_interface)
     robot_name:=$(arg robot_name)
     origin_xyz:=$(arg origin_xyz)
@@ -21,5 +22,9 @@
     use_nominal_extrinsics:=$(arg use_nominal_extrinsics)
     camera_name:=$(arg camera_name)
     "/>
+
+  <!-- world -->
+  <param name="world_description" command="$(find xacro)/xacro --inorder '$(find flex_gazebo)/urdf/world.urdf.xacro'"/>
+
 
 </launch>
