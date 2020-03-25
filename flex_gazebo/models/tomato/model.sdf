@@ -18,7 +18,7 @@
         </geometry>
         <material>
           <script>
-            <uri>file://models/tomato/materials/scripts/custom.material</uri>
+            <uri>file://media/materials/scripts/custom.material</uri> <!-- file://models/tomato/materials/scripts/custom.material -->
             <name>Custom/Tomato</name>
           </script>
         </material>

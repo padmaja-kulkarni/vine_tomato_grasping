@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<launch>
+
+
+  <arg name="camera_name" default="camera"/>
+  <arg name="use_nominal_extrinsics" default="true"/>
+  <arg name="camera_origin_xyz" default="0 0.6 1.2"/>
+  <arg name="camera_origin_rpy" default="3.1415 1.57 -1.57"/>
+
+
+  <param name="robot_description" command="$(find xacro)/xacro --inorder '$(find flex_gazebo)/urdf/rs.urdf.xacro'
+    use_nominal_extrinsics:=$(arg use_nominal_extrinsics)
+    camera_name:=$(arg camera_name)
+    "/>
+
+</launch>

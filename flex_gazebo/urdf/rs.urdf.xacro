@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<robot name="iiwa7" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- import the camera -->
+  <xacro:include filename="$(find realsense2_description)/urdf/_d435.urdf.xacro" />
+  <!-- <xacro:include filename="$(find realsense_gazebo_plugin)/urdf/realsense-RS200.macro.xacro" /> -->
+
+
+  <xacro:arg name="camera_name" default="camera"/>
+  <xacro:arg name="camera_origin_xyz" default="0 0.6 1.2"/>
+  <xacro:arg name="camera_origin_rpy" default="3.1415 1.57 -1.57"/>
+  <xacro:arg name="use_nominal_extrinsics" default="true"/>
+
+
+  <!-- Fix to world just for testing -->
+  <link name="world"/>
+
+
+  <xacro:sensor_d435 parent="world" name="$(arg camera_name)" use_nominal_extrinsics="$(arg use_nominal_extrinsics)">
+    <origin xyz="$(arg camera_origin_xyz)" rpy="$(arg camera_origin_rpy)" />
+  </xacro:sensor_d435>
+
+  <!--
+  <xacro:realsense-rs200 parent="world" prefix="$(arg camera_name)">
+    <origin xyz="$(arg camera_origin_xyz)" rpy="$(arg camera_origin_rpy)" />
+  </xacro:realsense-rs200>
+  -->
+
+</robot>
