@@ -1,19 +1,17 @@
 <?xml version="1.0"?>
-<robot name="iiwa7" xmlns:xacro="http://www.ros.org/wiki/xacro">
+<robot name="world" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
   <!-- import the tomato -->
   <xacro:include filename="$(find flex_gazebo)/urdf/tomato.xacro" />
   <!-- <xacro:include filename="$(find realsense_gazebo_plugin)/urdf/realsense-RS200.macro.xacro" /> -->
 
-
   <!-- tomato params-->
   <xacro:arg name="tomato_origin_xyz" default="-0.2 0.4 0.26"/>
-  <xacro:arg name="tomato_origin_rpy" default="0 0 0.3"/>
+  <xacro:arg name="tomato_origin_rpy" default="0.0 0.0 $(arg tomato_angle)"/>
 
 
   <!-- Fix to world just for testing -->
   <link name="world"/>
-
 
   <!-- tomato -->
   <xacro:tomato_2d>
