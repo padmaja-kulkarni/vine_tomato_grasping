@@ -10,8 +10,15 @@
   <license>TODO</license>
 
   <buildtool_depend>catkin</buildtool_depend>
+  <depend>gazebo_ros</depend>
 
   <!-- The export tag contains other, unspecified, tags -->
-
+  <export>
+    <!-- required for loading gazebo models from this package-->
+    <gazebo_ros
+      gazebo_model_path="${prefix}/models"
+      gazebo_media_path="${prefix}"
+      />
+  </export>
 
 </package>

@@ -16,7 +16,7 @@
             <size>0.15 0.18 0.001</size>
           </box>
         </geometry>
-	<material>
+        <material>
           <script>
             <uri>file://models/tomato/materials/scripts/custom.material</uri>
             <name>Custom/Tomato</name>
