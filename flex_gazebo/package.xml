@@ -20,5 +20,6 @@
       gazebo_media_path="${prefix}"
       />
   </export>
+  <!-- :~/catkin_ws/src/flexcraft_jelle/flex_gazebo -->
 
 </package>
