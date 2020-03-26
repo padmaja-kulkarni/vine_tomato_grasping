@@ -1,0 +1,11 @@
+moveit_setup_assistant_config:
+  URDF:
+    package: flex_gazebo
+    relative_path: urdf/robot.urdf.xacro
+    xacro_args: "--inorder "
+  SRDF:
+    relative_path: config/iiwa7.srdf
+  CONFIG:
+    author_name: Jelle Luijkx
+    author_email: jdluijkx@gmail.com
+    generated_timestamp: 1585217265

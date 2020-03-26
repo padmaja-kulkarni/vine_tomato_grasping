@@ -11,6 +11,9 @@
   <!-- import the camera -->
   <xacro:include filename="$(find realsense2_description)/urdf/_d435.urdf.xacro" />
 
+  <!-- import the end-effector -->
+  <xacro:include filename="$(find flex_gazebo)/urdf/iiwa_tool.urdf.xacro" />
+
   <!-- iiwa params-->
   <xacro:arg name="hardware_interface" default="PositionJointInterface"/>
   <xacro:arg name="robot_name" default="iiwa"/>
@@ -22,7 +25,6 @@
   <xacro:arg name="camera_origin_xyz" default="0 0.6 1.2"/>
   <xacro:arg name="camera_origin_rpy" default="3.1415 1.57 -1.57"/>
   <xacro:arg name="use_nominal_extrinsics" default="true"/>
-
 
   <!-- Fix to world just for testing -->
   <link name="world"/>
@@ -37,6 +39,9 @@
     <origin xyz="$(arg camera_origin_xyz)" rpy="$(arg camera_origin_rpy)" />
   </xacro:sensor_d435>
 
+  <!-- end-effector -->
+  <xacro:endeffector>
+  </xacro:endeffector>
 
 </robot>
 
