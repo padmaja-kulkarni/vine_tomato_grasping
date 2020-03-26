@@ -283,7 +283,7 @@ class ProcessImage(object):
         
         graspPixel = np.around(self.graspO[0]).astype(int)
         
-        row = self.DIM[0] - graspPixel[1]
+        row = graspPixel[1]
         col = graspPixel[0]
         angle = self.angle/180*np.pi
         
@@ -371,7 +371,7 @@ def main():
     
     ## params ##
     # params
-    N = 15               # tomato file to load
+    N = 10               # tomato file to load
     nDigits = 3   
     saveIntermediate = False
     
@@ -402,7 +402,7 @@ def main():
     #%%#########
     ### Loop ###
     ############
-    for iTomato in range(1, N, 1):
+    for iTomato in range(N, N + 1, 1):
     
         tomatoName = "tomato" + "_RGB_" + str(iTomato).zfill(nDigits) 
         fileName = tomatoName + ".png" # png
@@ -417,17 +417,16 @@ def main():
         image = ProcessImage(imRGB, tomatoName = tomatoName, pwdProcess = pwdProcess, saveIntermediate = saveIntermediate)
         image.process_image()
         
-        plot_circles(image.imRGB, image.graspL, [10], savePath = pwdDataProc, 
-                     saveName = str(iTomato), fileFormat = 'png')
+        # plot_circles(image.imRGB, image.graspL, [10], savePath = pwdDataProc, saveName = str(iTomato), fileFormat = 'png')
         # plot_circles(image.imRGB, image.graspL, [10], savePath = pwdProcess, saveName = '06')
         # plot_circles(image.imRGBR, image.graspR, [10], savePath = pwdProcess, saveName = '06')
-        # plot_circles(imRGB, image.graspO, [10], savePath = pwdProcess, saveName = '06')
+        plot_circles(imRGB, image.graspO, [10], savePath = pwdProcess, saveName = '06')
         
         row, col, angle = image.get_grasp_info()
         
-        print(row)
-        print(col)
-        print(angle)
+        print('row: ', row)
+        print('col: ', col)
+        print('angle: ', angle)
     
 if __name__ == '__main__':
     main()
