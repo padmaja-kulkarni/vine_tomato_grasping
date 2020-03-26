@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!-- Import all Gazebo-customization elements, including Gazebo colors -->
+  <xacro:include filename="$(find flex_gazebo)/urdf/tomato/3d/tomato.gazebo.xacro" />
+
+  <xacro:macro name="tomato" params="tomato_name radius parent_link *origin">
+    <xacro:property name="distance" value="0.1" />
+
+    <joint name="tomato_joint${tomato_name}" type="floating">
+      <xacro:insert_block name="origin" />
+      <parent link="${parent_link}"/>
+      <child link="tomato${tomato_name}" />
+    </joint>
+
+    <link name="tomato${tomato_name}">
+      <collision>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <sphere radius = "${radius}" />
+        </geometry>
+      </collision>
+
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <sphere radius = "${radius}" />
+        </geometry>
+        <material name="Red"/>
+      </visual>
+
+      <inertial>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <mass value="10"/>
+        <inertia
+	         ixx="1.0" ixy="0.0" ixz="0.0"
+           iyy="1.0" iyz="0.0"
+           izz="1.0"/>
+       </inertial>
+     </link>
+
+     <xacro:tomato_gazebo tomato_name="${tomato_name}"/>
+  </xacro:macro>
+</robot>

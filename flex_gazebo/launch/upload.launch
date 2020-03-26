@@ -16,7 +16,7 @@
   <!-- world -->
   <!-- TODO: how to set the tomato angle based on the output of a python script? -->
   <param name="param_angle" command="$(find flex_gazebo)/scripts/generate_random_angle.py"/>
-  <arg name="tomato_angle" value="0"/>
+  <arg name="tomato_angle" value="1"/>
 
   <!-- robot -->
   <param name="robot_description" command="$(find xacro)/xacro --inorder '$(find flex_gazebo)/urdf/robot.urdf.xacro'
