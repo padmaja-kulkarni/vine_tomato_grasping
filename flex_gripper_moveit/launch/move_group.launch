@@ -4,12 +4,14 @@
   <arg name="hardware_interface" default="PositionJointInterface"/>
   <arg name="robot_name" default="iiwa"/>
   <arg name="model" default="iiwa7"/>
+  <arg name="sdh" default="false"/>
 
   <include file="$(find flex_gripper_moveit)/launch/planning_context.launch">
     <arg name="load_robot_description" value="true"/>
     <arg name="hardware_interface" value="$(arg hardware_interface)"/>
     <arg name="robot_name" value="$(arg robot_name)"/>
     <arg name="model" value="$(arg model)"/>
+    <arg name="sdh" value="$(arg sdh)"/>
   </include>
 
   <!-- GDB Debug Option -->

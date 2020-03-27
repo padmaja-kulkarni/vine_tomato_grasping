@@ -6,6 +6,7 @@
   <arg name="hardware_interface" default="PositionJointInterface"/>
   <arg name="robot_name" default="iiwa"/>
   <arg name="model" default="iiwa14"/>
+  <arg name="sdh" default="true"/>
 
   <!-- The name of the parameter under which the URDF is loaded -->
   <arg name="robot_description" default="robot_description"/>
@@ -15,6 +16,7 @@
     <include file="$(find flex_gazebo)/launch/upload.launch">
       <arg name="hardware_interface" value="$(arg hardware_interface)"/>
       <arg name="robot_name" value="$(arg robot_name)" />
+      <arg name="sdh" value="$(arg sdh)"/>
     </include>
   </group>
 
