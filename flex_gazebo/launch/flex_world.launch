@@ -12,6 +12,7 @@
     <arg name="hardware_interface" default="PositionJointInterface"/>
     <arg name="robot_name" default="iiwa" />
     <arg name="model" default="iiwa7"/>
+    <arg name="sdh" default="true"/>
 
     <!-- We resume the logic in empty_world.launch, changing only the name of the world to be launched -->
     <include file="$(find gazebo_ros)/launch/empty_world.launch">
@@ -27,6 +28,7 @@
     <include file="$(find flex_gazebo)/launch/upload.launch">
         <arg name="hardware_interface" value="$(arg hardware_interface)"/>
         <arg name="robot_name" value="$(arg robot_name)" />
+        <arg name="sdh" value="$(arg sdh)"/>
     </include>
 
     <!-- Run a python script to send a service call to gazebo_ros to spawn a URDF robot -->
