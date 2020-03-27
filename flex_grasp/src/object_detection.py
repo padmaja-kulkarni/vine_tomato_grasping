@@ -70,7 +70,7 @@ class ObjectDetection(object):
         rospy.Subscriber("/realsense_plugin/camera/color/image_raw", Image, self.color_image_cb)
         rospy.Subscriber("/realsense_plugin/camera/depth/image_raw", Image, self.depth_image_cb)
         rospy.Subscriber("/realsense_plugin/camera/color/camera_info", CameraInfo, self.color_info_cb)
-        rospy.Subscriber("/realsense_plugin/camera/depth/camera_info", CameraInfo, self.depth_info_cb)
+        rospy.Subscriber("/realsense_plugin/camera/color/camera_info", CameraInfo, self.depth_info_cb)
 
 
         # Publish
@@ -144,8 +144,7 @@ class ObjectDetection(object):
                 depth = float(depth)
 
                 point = rs.rs2_deproject_pixel_to_point(intrin, pixel, depth)
-                rospy.logdebug("Depth point: %s [mm]", point)
-                rospy.logdebug("Transformation in meters %s", self.trans)
+                rospy.logdebug("Depth point: %s [m]", point)
 
                 pose_stamped =  point_to_pose_stamped(point)
 
@@ -167,9 +166,9 @@ def point_to_pose_stamped(point):
     pose_stamped.pose.orientation.y = quat[1]
     pose_stamped.pose.orientation.z = quat[2]
     pose_stamped.pose.orientation.w = quat[3]
-    pose_stamped.pose.position.x = -point[0]/1000.0
-    pose_stamped.pose.position.y = -point[1]/1000.0
-    pose_stamped.pose.position.z = point[2]/1000.0 - 0.15
+    pose_stamped.pose.position.x = point[0]
+    pose_stamped.pose.position.y = point[1]
+    pose_stamped.pose.position.z = point[2] - 0.15
 
     return pose_stamped
 

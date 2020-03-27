@@ -58,7 +58,7 @@ class ProcessImage(object):
 
         
         if self.saveIntermediate:
-            save_fig(self.imRGB, self.pwdProcess, '01')
+            save_fig(self.imRGB, self.pwdProcess, '01', saveFormat = self.saveFormat)
 
     def segment_img(self):
         #%%#################
@@ -196,18 +196,18 @@ class ProcessImage(object):
             contours, hierarchy= cv2.findContours(penduncleMain, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
             segmentPeduncle = self.imRGB.copy()
             cv2.drawContours(segmentPeduncle, contours, -1, (0,255,0), 3)
-            save_fig(segmentPeduncle, self.pwdProcess, '05_b')
+            save_fig(segmentPeduncle, self.pwdProcess, '05_b', saveFormat= self.saveFormat)
         
             penduncleMain = cv2.erode(self.peduncle,kernel,iterations = 1)
-            save_fig(penduncleMain, self.pwdProcess, '05_b1')
+            save_fig(penduncleMain, self.pwdProcess, '05_b1', saveFormat = self.saveFormat)
         
             penduncleMain = cv2.dilate(penduncleMain,kernel,iterations = 1)
-            save_fig(penduncleMain, self.pwdProcess, '05_b2')
+            save_fig(penduncleMain, self.pwdProcess, '05_b2', saveFormat = self.saveFormat)
 
     def detect_junction(self):
         skeleton = skeletonize(self.peduncle/self.imMax)
         if self.saveIntermediate:
-            save_fig(skeleton, self.pwdProcess, '05_c2')
+            save_fig(skeleton, self.pwdProcess, '05_c2', saveFormat = self.saveFormat)
         
         
     def detect_junctione_rip(self):
@@ -283,7 +283,7 @@ class ProcessImage(object):
         
         graspPixel = np.around(self.graspO[0]).astype(int)
         
-        row = self.DIM[0] - graspPixel[1]
+        row = graspPixel[1]
         col = graspPixel[0]
         angle = self.angle/180*np.pi
         
@@ -371,12 +371,12 @@ def main():
     
     ## params ##
     # params
-    N = 15               # tomato file to load
+    N = 1               # tomato file to load
     nDigits = 3   
-    saveIntermediate = False
+    saveIntermediate = True
     
     pathCurrent = os.path.dirname(__file__)
-    dataSet = "tomato_rot" # "tomato_rot"
+    dataSet = "sim" # "tomato_rot"
     
     pwdTest = os.path.join("..") # "..", "..", ,  "taeke"
     
@@ -402,7 +402,7 @@ def main():
     #%%#########
     ### Loop ###
     ############
-    for iTomato in range(1, N, 1):
+    for iTomato in range(N, N + 1, 1):
     
         tomatoName = "tomato" + "_RGB_" + str(iTomato).zfill(nDigits) 
         fileName = tomatoName + ".png" # png
@@ -417,17 +417,16 @@ def main():
         image = ProcessImage(imRGB, tomatoName = tomatoName, pwdProcess = pwdProcess, saveIntermediate = saveIntermediate)
         image.process_image()
         
-        plot_circles(image.imRGB, image.graspL, [10], savePath = pwdDataProc, 
-                     saveName = str(iTomato), fileFormat = 'png')
+        # plot_circles(image.imRGB, image.graspL, [10], savePath = pwdDataProc, saveName = str(iTomato), fileFormat = 'png')
         # plot_circles(image.imRGB, image.graspL, [10], savePath = pwdProcess, saveName = '06')
         # plot_circles(image.imRGBR, image.graspR, [10], savePath = pwdProcess, saveName = '06')
-        # plot_circles(imRGB, image.graspO, [10], savePath = pwdProcess, saveName = '06')
+        plot_circles(imRGB, image.graspO, [10], savePath = pwdProcess, saveName = '06')
         
         row, col, angle = image.get_grasp_info()
         
-        print(row)
-        print(col)
-        print(angle)
+        print('row: ', row)
+        print('col: ', col)
+        print('angle: ', angle)
     
 if __name__ == '__main__':
     main()
