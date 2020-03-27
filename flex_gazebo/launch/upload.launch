@@ -7,13 +7,21 @@
   <arg name="origin_xyz" default="'0 0 0'"/> <!-- Note the syntax to pass a vector -->
   <arg name="origin_rpy" default="'0 0 0'"/>
 
-
+  <!-- camera -->
   <arg name="camera_name" default="camera"/>
   <arg name="use_nominal_extrinsics" default="true"/>
-  <arg name="camera_origin_xyz" default="0 0.6 1.2"/>
-  <arg name="camera_origin_rpy" default="3.1415 1.57 -1.57"/>
-  
-  <arg name="sdh" />
+  <arg name="camera_origin_xyz" default="'0 0.6 1.2'"/>
+  <arg name="camera_origin_rpy" default="'3.1415 1.57 -1.57'"/>
+
+
+  <arg name="sdh" default="true"/>
+
+  <!-- world -->
+  <!-- TODO: how to set the tomato angle based on the output of a python script? -->
+  <param name="param_angle" command="$(find flex_gazebo)/scripts/generate_random_angle.py"/>
+  <arg name="tomato_angle" value="1"/>
+
+
 
   <!-- robot -->
 
@@ -36,7 +44,9 @@
     "/>
 
   <!-- world -->
-  <param name="world_description" command="$(find xacro)/xacro --inorder '$(find flex_gazebo)/urdf/world.urdf.xacro'"/>
+  <param name="world_description" command="$(find xacro)/xacro --inorder '$(find flex_gazebo)/urdf/world.urdf.xacro'
+    tomato_angle:=$(arg tomato_angle)
+    "/>
 
 
 </launch>

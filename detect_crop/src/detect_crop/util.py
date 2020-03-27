@@ -336,7 +336,7 @@ def stack_segments(imRGB, background, tomato, peduncle):
     
     return res2
 
-def save_fig(img, pwd, name, resolution = 300, figureTitle = "", titleSize = 20, saveFormat = 'pdf'):
+def save_fig(img, pwd, name, resolution = 300, figureTitle = "", titleSize = 20, saveFormat = 'png'):
         plt.rcParams["savefig.format"] = saveFormat
         plt.rcParams["savefig.bbox"] = 'tight' 
         plt.rcParams['axes.titlesize'] = titleSize

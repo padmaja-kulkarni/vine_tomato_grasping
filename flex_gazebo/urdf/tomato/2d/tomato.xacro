@@ -1,10 +1,13 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
   <!-- Import all Gazebo-customization elements, including Gazebo colors -->
-  <xacro:include filename="$(find flex_gazebo)/urdf/tomato.gazebo.xacro" />
+  <xacro:include filename="$(find flex_gazebo)/urdf/tomato/2d/tomato.gazebo.xacro" />
 
   <xacro:macro name="tomato_2d" params="*origin">
-
+    <xacro:property name="height" value="0.01" />
+    <xacro:property name="width" value="0.18" />
+    <xacro:property name="length" value="0.15" />
+    <xacro:property name="size" value="${length} ${width} ${height}" />
 
     <joint name="tomato_joint" type="floating">
       <xacro:insert_block name="origin" />
@@ -17,21 +20,22 @@
       <collision>
         <origin xyz="0 0 0" rpy="0 0 0"/>
         <geometry>
-          <box size = "0.15 0.18 0.001" />
+          <box size = "${size}" />
         </geometry>
       </collision>
 
       <visual>
         <origin xyz="0 0 0" rpy="0 0 0"/>
         <geometry>
-          <box size = "0.15 0.18 0.001" />
+          <box size = "${size}" />
         </geometry>
         <material name="Blue"/>
       </visual>
 
       <inertial>
-        <origin xyz="0 0 0" rpy="0 0 0"/>
-        <mass value="1"/>
+        <origin xyz="${length/2} ${width/2} ${height/2}" rpy="0 0 0"/>
+        <parent link="world"/>
+        <mass value="10"/>
         <inertia
 	         ixx="1.0" ixy="0.0" ixz="0.0"
            iyy="1.0" iyz="0.0"
