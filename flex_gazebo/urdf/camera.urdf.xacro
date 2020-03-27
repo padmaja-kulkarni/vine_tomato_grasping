@@ -4,6 +4,9 @@
   <!-- import the camera -->
   <xacro:include filename="$(find realsense2_description)/urdf/_d435.urdf.xacro" />
 
+  <xacro:include filename="$(find flex_gazebo)/urdf/camera/camera.gazebo.xacro" />
+
+
   <!-- camera params-->
   <xacro:arg name="camera_name" default="camera"/>
   <xacro:arg name="camera_origin_xyz" default="0 0.6 1.2"/>
@@ -19,7 +22,7 @@
     <origin xyz="$(arg camera_origin_xyz)" rpy="$(arg camera_origin_rpy)" />
   </xacro:sensor_d435>
 
-
+  <xacro:my_camera name="$(arg camera_name)"/>
 </robot>
 
 <!-- This does not belong here! -->

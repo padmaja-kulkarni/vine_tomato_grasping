@@ -14,11 +14,13 @@
       <uri>model://sun</uri>
     </include>
 
+    <!--
     <include>
         <uri>model://realsense_camera</uri>
         <pose>0 0.6 1.2 3.1415 1.57 -1.57</pose>
         <static>1</static>
     </include>
+    ro-->
 
     <include>
       <uri>model://table_short</uri>

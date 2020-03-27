@@ -3,7 +3,6 @@
 
   <!-- import the tomato -->
   <xacro:include filename="$(find flex_gazebo)/urdf/tomato/3d/truss.xacro"/>
-  <!-- <xacro:include filename="$(find realsense_gazebo_plugin)/urdf/realsense-RS200.macro.xacro" /> -->
 
   <!-- tomato params-->
   <xacro:arg name="truss_origin_xyz" default="-0.2 0.4 0.26"/>
@@ -17,11 +16,5 @@
   <xacro:truss>
     <origin xyz="$(arg truss_origin_xyz)" rpy="$(arg truss_origin_rpy)" />
   </xacro:truss>
-
-  <!--
-  <xacro:realsense-rs200 parent="world" prefix="$(arg camera_name)">
-    <origin xyz="$(arg camera_origin_xyz)" rpy="$(arg camera_origin_rpy)" />
-  </xacro:realsense-rs200>
-  -->
 
 </robot>

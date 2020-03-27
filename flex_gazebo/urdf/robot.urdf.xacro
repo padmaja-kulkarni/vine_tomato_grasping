@@ -10,6 +10,7 @@
 
   <!-- import the camera -->
   <xacro:include filename="$(find realsense2_description)/urdf/_d435.urdf.xacro" />
+  <xacro:include filename="$(find flex_gazebo)/urdf/camera/camera.gazebo.xacro" />
 
   <!-- iiwa params-->
   <xacro:arg name="hardware_interface" default="PositionJointInterface"/>
@@ -37,7 +38,7 @@
     <origin xyz="$(arg camera_origin_xyz)" rpy="$(arg camera_origin_rpy)" />
   </xacro:sensor_d435>
 
-
+  <xacro:my_camera name="$(arg camera_name)"/>
 </robot>
 
 <!-- This does not belong here! -->

@@ -1,0 +1,33 @@
+<?xml version="1.0" ?>
+<sdf version="1.4">
+  <!-- We use a custom world for the iiwa so that the camera angle is launched correctly. -->
+  <!-- One can change this world to his needs or use another one. -->
+
+  <world name="default">
+
+    <include>
+      <uri>model://ground_plane</uri>
+    </include>
+
+    <!-- Global light source -->
+    <include>
+      <uri>model://sun</uri>
+    </include>
+
+    <!---
+    <include>
+        <uri>model://realsense_camera</uri>
+        <pose>0 0.6 1.2 3.1415 1.57 -1.57</pose>
+        <static>1</static>
+    </include>
+    -->
+
+    <include>
+      <uri>model://table_short</uri>
+      <name>table</name>
+      <pose>0 0.5 0 0 0 0</pose>
+      <static>1</static>
+    </include>
+  </world>
+
+</sdf>
