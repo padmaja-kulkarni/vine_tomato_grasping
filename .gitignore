@@ -4,3 +4,7 @@
 *.pyc
 /results/
 /taeke/
+
+/detect_crop/src/data
+/detect_crop/src/results
+/detect_crop/src/data_processed
