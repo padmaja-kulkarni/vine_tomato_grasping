@@ -1,6 +1,6 @@
 <package>
 
-  <name>flex_gripper_moveit</name>
+  <name>flex_pr2_moveit</name>
   <version>0.3.0</version>
   <description>
      An automatically generated package with all the configuration and launch files for using the iiwa7 with the MoveIt! Motion Planning Framework

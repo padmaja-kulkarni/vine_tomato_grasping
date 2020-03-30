@@ -13,7 +13,7 @@
     <!-- Model of the iiwa to use : iiwa7, iiwa14 -->
     <arg name="model" default="iiwa7"/>
     <arg name="rviz" default="true" />
-    <arg name="sdh" default="true" />
+    <arg name="ee" default="sdh" />
 
     <remap from="/$(arg hardware_interface)_trajectory_controller/follow_joint_trajectory"
            to="/$(arg robot_name)/$(arg hardware_interface)_trajectory_controller/follow_joint_trajectory" />
@@ -30,7 +30,7 @@
             <arg name="hardware_interface" value="$(arg hardware_interface)"/>
             <arg name="robot_name" value="$(arg robot_name)" />
             <arg name="model" value="$(arg model)"/>
-            <arg name="sdh" value="$(arg sdh)" />
+            <arg name="ee" value="$(arg ee)" />
         </include>
     </group>
 
@@ -53,14 +53,13 @@
     </group>
 
     <!-- Load move_group -->
-    <group if="$(arg sdh)" ns="$(arg robot_name)">
+    <group if="$(eval arg('ee') == 'sdh')" ns="$(arg robot_name)">
 
     	<include file="$(find flex_sdh_moveit)/launch/move_group.launch">
 		<arg name="publish_monitored_planning_scene" value="true" />
 		<arg name="hardware_interface" value="$(arg hardware_interface)"/>
 		<arg name="robot_name" value="$(arg robot_name)"/>
                 <arg name="model" value="$(arg model)" />
-                <arg name="sdh" value="$(arg sdh)" />
         </include>
 
 	<include if="$(arg rviz)" file="$(find flex_sdh_moveit)/launch/moveit_rviz.launch">
@@ -68,17 +67,16 @@
         </include>
     </group>
     
-    <group unless="$(arg sdh)" ns="$(arg robot_name)">
+    <group if="$(eval arg('ee') == 'pr2')" ns="$(arg robot_name)">
 
-    	<include file="$(find flex_gripper_moveit)/launch/move_group.launch">
+    	<include file="$(find flex_pr2_moveit)/launch/move_group.launch">
 		<arg name="publish_monitored_planning_scene" value="true" />
 		<arg name="hardware_interface" value="$(arg hardware_interface)"/>
 		<arg name="robot_name" value="$(arg robot_name)"/>
                 <arg name="model" value="$(arg model)" />
-                <arg name="sdh" value="$(arg sdh)" />
         </include>
 
-	<include if="$(arg rviz)" file="$(find flex_gripper_moveit)/launch/moveit_rviz.launch">
+	<include if="$(arg rviz)" file="$(find flex_pr2_moveit)/launch/moveit_rviz.launch">
             <arg name="config" value="true"/>
         </include>
     </group>

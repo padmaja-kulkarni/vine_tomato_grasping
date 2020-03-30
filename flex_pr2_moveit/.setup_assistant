@@ -8,4 +8,4 @@ moveit_setup_assistant_config:
   CONFIG:
     author_name: Jelle Luijkx
     author_email: jdluijkx@gmail.com
-    generated_timestamp: 1585217265
+    generated_timestamp: 1585575342

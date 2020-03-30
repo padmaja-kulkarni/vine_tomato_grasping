@@ -11,7 +11,11 @@
   <!-- import the camera -->
   <xacro:include filename="$(find realsense2_description)/urdf/_d435.urdf.xacro" />
   <xacro:include filename="$(find flex_gazebo)/urdf/camera/camera.gazebo.xacro" />
-
+  
+  <!-- end-effector -->
+  <xacro:arg name="ee" default="pr2"/>
+  <xacro:property name="ee" value="$(arg ee)"/>
+  
   <!-- iiwa params-->
   <xacro:arg name="hardware_interface" default="PositionJointInterface"/>
   <xacro:arg name="robot_name" default="iiwa"/>
@@ -39,7 +43,47 @@
 
 
   <xacro:my_camera name="$(arg camera_name)"/>
+  
 
+  <xacro:if value="${ee == 'sdh'}">
+    <xacro:include filename="$(find schunk_description)/urdf/sdh/sdh.urdf.xacro" />
+    
+    <xacro:arg name="endeffector_name" default="sdh"/>
+    <xacro:arg name="endeffector_origin_xyz" default="0 0 0"/>
+    <xacro:arg name="endeffector_origin_rpy" default="0 0 0"/>
+    
+    <xacro:schunk_sdh parent="iiwa_link_ee" name="$(arg endeffector_name)">
+      <origin xyz="$(arg endeffector_origin_xyz)" rpy="$(arg endeffector_origin_rpy)" />
+    </xacro:schunk_sdh>
+  </xacro:if>
+  
+  <xacro:if value="${ee == 'pr2'}" >
+    
+    <xacro:include filename="$(find flex_gazebo)/urdf/gripper.urdf.xacro" />
+    <!--
+    <xacro:include filename="$(find pr2_description)/urdf/materials.urdf.xacro" />
+    -->
+    <xacro:include filename="$(find pr2_description)/gazebo/gazebo.urdf.xacro" />
+    <xacro:include filename="$(find pr2_description)/urdf/common.xacro" />
+    
+    <xacro:arg name="endeffector_origin_xyz" default="0 0 -0.03576"/>
+    <xacro:arg name="endeffector_origin_rpy" default="0 -${M_PI/2} 0"/>
+    
+    <xacro:pr2_gripper_v0 reflect="-1.0" side="r" parent="iiwa_link_ee" 
+                          screw_reduction="${4.0/1000.0}"
+                          gear_ratio="${(729.0/25.0)*(22.0/16.0)}"
+                          theta0="${3.6029*M_PI/180.0}"
+                          phi0="${29.7089*M_PI/180.0}"
+                          t0="${-0.1914/1000.0}"
+                          L0="${37.5528/1000.0}"
+                          h="${0.0/1000.0}"
+                          a="${68.3698/1000.0}"
+                          b="${43.3849/1000.0}"
+                          r="${91.5/1000.0}">
+      <origin xyz="$(arg endeffector_origin_xyz)" rpy="$(arg endeffector_origin_rpy)" />
+    </xacro:pr2_gripper_v0>
+  </xacro:if>
+  
 </robot>
 
 <!-- This does not belong here! -->

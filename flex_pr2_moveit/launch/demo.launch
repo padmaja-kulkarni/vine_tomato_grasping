@@ -33,7 +33,7 @@
         <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="true" output="screen" />
         
         <!-- Load move_group -->
-        <include file="$(find flex_gripper_moveit)/launch/move_group.launch">
+        <include file="$(find flex_pr2_moveit)/launch/move_group.launch">
             <arg name="publish_monitored_planning_scene" value="true" />
             <arg name="fake_execution" value="true"/>
             <arg name="hardware_interface" value="$(arg hardware_interface)"/>
@@ -42,13 +42,13 @@
         </include>
         
         <!-- Run Rviz and load the default config to see the state of the move_group node -->
-        <include if="$(arg rviz)" file="$(find flex_gripper_moveit)/launch/moveit_rviz.launch">
+        <include if="$(arg rviz)" file="$(find flex_pr2_moveit)/launch/moveit_rviz.launch">
             <arg name="config" value="true"/>
             <arg name="debug" value="$(arg debug)"/>
         </include>
         
         <!-- If database loading was enabled, start mongodb as well -->
-        <include file="$(find flex_gripper_moveit)/launch/default_warehouse_db.launch" if="$(arg db)"/>
+        <include file="$(find flex_pr2_moveit)/launch/default_warehouse_db.launch" if="$(arg db)"/>
     </group>
     
     

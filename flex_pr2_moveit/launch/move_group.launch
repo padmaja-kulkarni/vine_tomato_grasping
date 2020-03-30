@@ -4,21 +4,19 @@
   <arg name="hardware_interface" default="PositionJointInterface"/>
   <arg name="robot_name" default="iiwa"/>
   <arg name="model" default="iiwa7"/>
-  <arg name="sdh" default="false"/>
 
-  <include file="$(find flex_gripper_moveit)/launch/planning_context.launch">
+  <include file="$(find flex_pr2_moveit)/launch/planning_context.launch">
     <arg name="load_robot_description" value="true"/>
     <arg name="hardware_interface" value="$(arg hardware_interface)"/>
     <arg name="robot_name" value="$(arg robot_name)"/>
     <arg name="model" value="$(arg model)"/>
-    <arg name="sdh" value="$(arg sdh)"/>
   </include>
 
   <!-- GDB Debug Option -->
   <arg name="debug" default="false" />
   <arg unless="$(arg debug)" name="launch_prefix" value="" />
   <arg     if="$(arg debug)" name="launch_prefix"
-	   value="gdb -x $(find flex_gripper_moveit)/launch/gdb_settings.gdb --ex run --args" />
+	   value="gdb -x $(find flex_pr2_moveit)/launch/gdb_settings.gdb --ex run --args" />
 
   <!-- Verbose Mode Option -->
   <arg name="info" default="$(arg debug)" />
@@ -33,7 +31,7 @@
   <arg name="publish_monitored_planning_scene" default="true"/>
 
   <!-- Planning Functionality -->
-  <include ns="move_group" file="$(find flex_gripper_moveit)/launch/planning_pipeline.launch.xml">
+  <include ns="move_group" file="$(find flex_pr2_moveit)/launch/planning_pipeline.launch.xml">
     <arg name="pipeline" value="ompl" />
   </include>
 
@@ -80,4 +78,3 @@
   </node>
 
 </launch>
-

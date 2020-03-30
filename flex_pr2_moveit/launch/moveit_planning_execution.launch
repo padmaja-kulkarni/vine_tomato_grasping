@@ -50,14 +50,14 @@
     
     <!-- Load move_group -->
     <group ns="$(arg robot_name)">
-        <include file="$(find flex_gripper_moveit)/launch/move_group.launch">
+        <include file="$(find flex_pr2_moveit)/launch/move_group.launch">
             <arg name="publish_monitored_planning_scene" value="true" />
             <arg name="hardware_interface" value="$(arg hardware_interface)"/>
             <arg name="robot_name" value="$(arg robot_name)"/>
             <arg name="model" value="$(arg model)" />
         </include>
         
-        <include if="$(arg rviz)" file="$(find flex_gripper_moveit)/launch/moveit_rviz.launch">
+        <include if="$(arg rviz)" file="$(find flex_pr2_moveit)/launch/moveit_rviz.launch">
             <arg name="config" value="true"/>
         </include>
     </group>
