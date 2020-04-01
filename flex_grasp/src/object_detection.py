@@ -146,7 +146,7 @@ class ObjectDetection(object):
                 point = rs.rs2_deproject_pixel_to_point(intrin, pixel, depth)
                 rospy.logdebug("Depth point: %s [m]", point)
 
-                pose_stamped =  point_to_pose_stamped(point)
+                pose_stamped =  point_to_pose_stamped(point, angle)
 
                 msg_e = String()
                 msg_e.data = "e_success"
@@ -155,13 +155,13 @@ class ObjectDetection(object):
                 self.pub_pose.publish(pose_stamped)
                 self.pub_e_out.publish(msg_e)
 
-def point_to_pose_stamped(point):
+def point_to_pose_stamped(point, angle):
 
     pose_stamped = PoseStamped()
     pose_stamped.header.frame_id = "camera_color_optical_frame"
     pose_stamped.header.stamp = rospy.Time.now()
 
-    quat = tf.transformations.quaternion_from_euler(0, 0, 0)
+    quat = tf.transformations.quaternion_from_euler(0, 0, -angle - 3.1415/2)
     pose_stamped.pose.orientation.x = quat[0]
     pose_stamped.pose.orientation.y = quat[1]
     pose_stamped.pose.orientation.z = quat[2]
