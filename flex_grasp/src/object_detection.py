@@ -21,7 +21,8 @@ from sensor_msgs.msg import Image
 from sensor_msgs.msg import CameraInfo
 
 from flex_grasp.msg import Tomato
-from flex_grasp.msg import TomatoArray
+from flex_grasp.msg import Truss
+from flex_grasp.msg import Peduncle
 
 # custom func
 from detect_crop.ProcessImage import ProcessImage
@@ -82,11 +83,8 @@ class ObjectDetection(object):
         self.pub_e_out = rospy.Publisher("~e_out",
                                          String, queue_size=10, latch=True)
 
-        self.pub_pose = rospy.Publisher("objectPose",
-                                        PoseStamped, queue_size=5, latch=True)
-
-        self.pub_tomato = rospy.Publisher("tomato",
-                                        TomatoArray, queue_size=5, latch=True)
+        self.pub_object_features = rospy.Publisher("object_features",
+                                        Truss, queue_size=5, latch=True)
 
     def e_in_cb(self, msg):
         if self.event is None:
@@ -126,60 +124,69 @@ class ObjectDetection(object):
 
             if (self.color_image is not None) and (self.depth_image is not None) and (self.depth_info is not None) and (self.color_info is not None):
                 pwd = os.path.dirname(__file__)
-                rospy.logdebug("====Initializing image processing object====")
+
 
                 image = ProcessImage(self.color_image, tomatoName = 'gazebo_tomato',
                                      pwdProcess = pwd,
                                      saveIntermediate = False)
-
-                rospy.logdebug("====Processing image====")
                 image.process_image()
-                rospy.logdebug("====Done====")
-
                 object_feature = image.get_object_features()
-                # print(object_feature)
+
+                #%%##################
+                ### Cage location ###
+                #####################
 
                 row = object_feature['grasp']['row']
                 col = object_feature['grasp']['col']
                 angle = object_feature['grasp']['angle']
-                rospy.logdebug("Obtained location in pixel frame row: %s and col: %s, at angle %s", row, col, angle)
 
                 intrin = camera_info2intrinsics(self.depth_info)
                 point = self.deproject(row, col, intrin)
-                pose_stamped =  point_to_pose_stamped(point, angle)
-                rospy.logdebug("Depth point: %s [m]", pose_stamped)
+                cage_pose =  point_to_pose_stamped(point, angle)
 
-                # tomatoes
-                col = object_feature['tomato']['col']
-                row = object_feature['tomato']['row']
-                radius = object_feature['tomato']['radii']
+                #%%#############
+                ### tomatoes ###
+                ################
                 tomatoes = []
 
                 rospy.logdebug("cols: %s [px]", col)
-                for i in range(0, len(col)):
+                for i in range(0, len(object_feature['tomato']['col'])):
 
-                    point = self.deproject(row[i], col[i], intrin)
+                    # Load from struct
+                    col = object_feature['tomato']['col'][i]
+                    row = object_feature['tomato']['row'][i]
+                    radius = object_feature['tomato']['radii'][i]
 
-                    depth = self.depth_image[(row[i], col[i])]
+                    point = self.deproject(row, col, intrin)
+
+                    depth = self.depth_image[(row, col)]
                     point1 = rs.rs2_deproject_pixel_to_point(intrin, [0,0], depth)
-                    point2 = rs.rs2_deproject_pixel_to_point(intrin, [0,radius[i]], depth)
+                    point2 = rs.rs2_deproject_pixel_to_point(intrin, [0,radius], depth)
                     radius_m = euclidean(point1, point2)
 
-
-
-                    rospy.logdebug("point %s: %s [m]", i, point)
                     tomatoes.append(point_to_tomato(point, radius_m))
 
-                rospy.logdebug("Depth tomatoes: %s [m]", tomatoes)
-                tomato_array = TomatoArray()
-                tomato_array.tomatoes = tomatoes
+                #%%#############
+                ### Peduncle ###
+                ################
+                peduncle = Peduncle()
+                peduncle.pose = cage_pose
+                peduncle.radius = 0.005
+                peduncle.length = 0.15
+
+                #%%##########
+                ### Truss ###
+                #############
+                truss = Truss()
+                truss.tomatoes = tomatoes
+                truss.cage_location = cage_pose
+                truss.peduncle = peduncle
 
                 msg_e = String()
                 msg_e.data = "e_success"
 
                 self.event = None
-                self.pub_pose.publish(pose_stamped)
-                self.pub_tomato.publish(tomato_array)
+                self.pub_object_features.publish(truss)
                 self.pub_e_out.publish(msg_e)
 
 
@@ -213,7 +220,7 @@ def point_to_pose_stamped(point, angle):
     pose_stamped.pose.orientation.w = quat[3]
     pose_stamped.pose.position.x = point[0]
     pose_stamped.pose.position.y = point[1]
-    pose_stamped.pose.position.z = point[2] - 0.15
+    pose_stamped.pose.position.z = point[2] # - 0.15
 
     return pose_stamped
 

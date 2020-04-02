@@ -17,7 +17,8 @@ find_package(catkin REQUIRED COMPONENTS
 add_message_files(
   FILES
   Tomato.msg
-  TomatoArray.msg
+  Truss.msg
+  Peduncle.msg
 )
 
 generate_messages(

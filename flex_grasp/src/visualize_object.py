@@ -13,7 +13,7 @@ import rospy
 # msg
 from geometry_msgs.msg import PoseStamped
 from flex_grasp.msg import Tomato
-from flex_grasp.msg import TomatoArray
+from flex_grasp.msg import Truss
 
 # visualivation
 import moveit_commander
@@ -31,7 +31,7 @@ class VisualizeObject(object):
         self.object_feature = None
         rospy.sleep(5)
 
-        rospy.Subscriber("tomato", TomatoArray, self.object_feature_cb)
+        rospy.Subscriber("object_features", Truss, self.object_feature_cb)
 
     def object_feature_cb(self, msg):
         if self.object_feature is None:
@@ -40,7 +40,17 @@ class VisualizeObject(object):
 
 
 
-    def add_sphere(self, timeout=4, box_name = ''):
+    def add_peduncle(self, timeout=4, name = 'peduncle'):
+        pose = PoseStamped()
+        pose = self.object_feature.peduncle.pose
+        length = self.object_feature.peduncle.length
+        radius = self.object_feature.peduncle.radius
+        size = (2*radius, length, 2*radius)
+
+        self.scene.add_box(name, pose, size)
+        return self.wait_for_state_update(box_is_known=True, timeout=timeout, box_name = name)
+
+    def add_tomatoes(self, timeout=4, name = 'tomato'):
         """ create a box with a given name.
 
         Args:
@@ -51,23 +61,19 @@ class VisualizeObject(object):
         box_pose = PoseStamped()
         i = 0
         succes = True
-        rospy.logdebug("Tomato 1: %s", self.object_feature.tomatoes[0])
-        rospy.logdebug("Tomato 2: %s", self.object_feature.tomatoes[1])
 
         for tomato in self.object_feature.tomatoes:
             box_pose.header.frame_id =  tomato.header.frame_id
             box_pose.pose.orientation.w = 1.0
             box_pose.pose.position = tomato.position
             radius = tomato.radius
-            current_sphere_name = box_name + "_" + str(i)
+            current_name = name + "_" + str(i)
 
-            rospy.logdebug("Adding tomato: %s", current_sphere_name)
-            # Add box
-            self.scene.add_sphere(current_sphere_name, box_pose, radius = radius)
+            self.scene.add_sphere(current_name, box_pose, radius = radius)
             i = i + 1
 
             # Check if box has been added
-            if not self.wait_for_state_update(box_is_known=True, timeout=timeout, box_name = current_sphere_name):
+            if not self.wait_for_state_update(box_is_known=True, timeout=timeout, box_name = current_name):
                 succes = False
 
 
@@ -107,11 +113,18 @@ class VisualizeObject(object):
         return False
 
 
-    def visualize(self):
-        if self.object_feature is not None:
-            if self.add_sphere(box_name = 'tomato'):
-                rospy.logdebug("added tomato")
-                self.object_feature = None
+    def visualize_truss(self):
+
+        # Add tomatoes
+        if not self.add_tomatoes():
+            rospy.logwarn("Failed to add tomatoes")
+
+
+        # Add peduncle
+        if not self.add_peduncle():
+            rospy.logwarn("Failed to add peduncle")
+
+        self.object_feature = None
 
 def main():
     try:
@@ -119,7 +132,8 @@ def main():
         rate = rospy.Rate(10)
 
         while not rospy.core.is_shutdown():
-            visualize_object.visualize()
+            if visualize_object.object_feature is not None:
+                visualize_object.visualize_truss()
             rate.sleep()
 
     except rospy.ROSInterruptException:
