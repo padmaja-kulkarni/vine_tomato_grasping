@@ -17,11 +17,11 @@
   <arg name="sdh" default="true"/>
 
   <!-- world -->
-  <!-- TODO: how to set the tomato angle based on the output of a python script? -->
-  <param name="param_angle" command="$(find flex_gazebo)/scripts/generate_random_angle.py"/>
-  <arg name="tomato_angle" value="1"/>
-
-
+  <!-- <param name="param_angle" command="$(find flex_gazebo)/scripts/generate_random_angle.py"/> -->
+  <arg name="object_origin_xyz" default="'0 0.4 0.26'"/>
+  <arg name="object_origin_rpy" default="'0 0 0'"/>
+  <arg name="object_name" default="truss"/>
+  <arg name="object_dimension" default="3d"/>
 
   <!-- robot -->
   <param if="$(arg sdh)" name="robot_description" command="$(find xacro)/xacro --inorder '$(find flex_gazebo)/urdf/robot_sdh.urdf.xacro'
@@ -44,7 +44,10 @@
 
   <!-- world -->
   <param name="world_description" command="$(find xacro)/xacro --inorder '$(find flex_gazebo)/urdf/world.urdf.xacro'
-    tomato_angle:=$(arg tomato_angle)
+    object_name:=$(arg object_name)
+    object_dimension:=$(arg object_dimension)
+    object_origin_xyz:=$(arg object_origin_xyz)
+    object_origin_rpy:=$(arg object_origin_rpy)
     "/>
 
 

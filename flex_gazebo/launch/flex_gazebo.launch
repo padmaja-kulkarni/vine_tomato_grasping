@@ -17,12 +17,25 @@
     <arg name="trajectory" default="true"/>
     <arg name="sdh" default="true"/>
 
+    <!-- Object params -->
+    <arg name="object_x" default="-0.2"/>
+    <arg name="object_y" default="0.4"/>
+    <arg name="object_angle" default="1"/>
+    <arg name="object_name" default="truss"/>
+    <arg name="object_dimension" default="3d"/>
+
     <!-- Loads the Gazebo world. -->
     <include file="$(find flex_gazebo)/launch/flex_world.launch">
         <arg name="hardware_interface" value="$(arg hardware_interface)" />
         <arg name="robot_name" value="$(arg robot_name)" />
         <arg name="model" value="$(arg model)" />
         <arg name="sdh" value="$(arg sdh)"/>
+
+        <arg name="object_x" value="$(arg object_x)"/>
+        <arg name="object_y" value="$(arg object_y)"/>
+        <arg name="object_angle" value="$(arg object_angle)"/>
+        <arg name="object_name" value="$(arg object_name)"/>
+        <arg name="object_dimension" value="$(arg object_dimension)"/>
     </include>
 
     <!-- Spawn controllers - it uses a JointTrajectoryController -->
