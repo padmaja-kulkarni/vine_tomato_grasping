@@ -3,8 +3,8 @@
 
 
   <!-- Import all Gazebo-customization elements, including Gazebo colors -->
-  <xacro:include filename="$(find flex_gazebo)/urdf/tomato/3d/tomato.xacro"/>
-  <xacro:include filename="$(find flex_gazebo)/urdf/tomato/3d/peduncle.xacro"/>
+  <xacro:include filename="$(find flex_gazebo)/urdf/truss/3d/tomato.xacro"/>
+  <xacro:include filename="$(find flex_gazebo)/urdf/truss/3d/peduncle.xacro"/>
 
   <xacro:macro name="truss" params="*origin">
     <xacro:property name="tomato_radius" value="0.05" />

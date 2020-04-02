@@ -66,12 +66,6 @@ class PoseTransform(object):
             pass
             # continue
 
-
-    def object_pose_to_end_effector_pose(self):
-        self.end_effector_pose = self.object_pose_transformed
-        self.end_effector_pose.pose.position.z = self.end_effector_pose.pose.position.z + 0.15
-
-
     def transform_pose(self):
         if self.event == "e_start":
             if self.object_features is None:
@@ -80,9 +74,9 @@ class PoseTransform(object):
                 msg_e = String()
                 msg_e.data = "e_success"
 
-                self.object_pose_transformed = tf2_geometry_msgs.do_transform_pose(self.object_features.cage_location, self.trans)
+                self.object_pose = tf2_geometry_msgs.do_transform_pose(self.object_features.cage_location, self.trans)
 
-                self.object_pose_to_end_effector_pose()
+                self.end_effector_pose = object_pose_to_end_effector_pose(self.object_pose)
 
                 self.pub_pose.publish(self.end_effector_pose)
                 self.pub_e_out.publish(msg_e)
@@ -90,6 +84,27 @@ class PoseTransform(object):
                 self.object_features = None
                 self.event = None
 
+def object_pose_to_end_effector_pose(object_pose):
+
+    end_effector_pose = PoseStamped()
+
+    # position
+    position = object_pose.pose.position
+    end_effector_pose.pose.position.x = position.x
+    end_effector_pose.pose.position.y = position.y
+    end_effector_pose.pose.position.z = position.z + 0.15
+
+    # orientation
+    orientation = object_pose.pose.orientation
+    rotation = (orientation.x, orientation.y, orientation.z, orientation.w)
+    euler = tf.transformations.euler_from_quaternion(rotation)
+    quat = tf.transformations.quaternion_from_euler(euler[0], euler[1], euler[2] - 3.1415/2) # move parralel to object
+    end_effector_pose.pose.orientation.x = quat[0]
+    end_effector_pose.pose.orientation.y = quat[1]
+    end_effector_pose.pose.orientation.z = quat[2]
+    end_effector_pose.pose.orientation.w = quat[3]
+
+    return end_effector_pose
 
 def main():
     try:

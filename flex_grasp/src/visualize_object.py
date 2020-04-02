@@ -45,7 +45,7 @@ class VisualizeObject(object):
         pose = self.object_feature.peduncle.pose
         length = self.object_feature.peduncle.length
         radius = self.object_feature.peduncle.radius
-        size = (2*radius, length, 2*radius)
+        size = (length, 2*radius, 2*radius)
 
         self.scene.add_box(name, pose, size)
         return self.wait_for_state_update(box_is_known=True, timeout=timeout, box_name = name)
