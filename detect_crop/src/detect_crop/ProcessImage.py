@@ -284,8 +284,8 @@ class ProcessImage(object):
         angle = self.angle/180*np.pi
 
         tomatoPixel = np.around(self.centersO).astype(int)
-        tomatoRow = tomatoPixel[:, 0]
-        tomatoCol = tomatoPixel[:, 1]
+        tomatoRow = tomatoPixel[:, 1]
+        tomatoCol = tomatoPixel[:, 0]
         radii = self.radii
 
         object_feature = {

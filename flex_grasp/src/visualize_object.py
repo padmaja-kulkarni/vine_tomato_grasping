@@ -11,6 +11,7 @@ import sys
 import rospy
 
 # msg
+from geometry_msgs.msg import PoseStamped
 from flex_grasp.msg import Tomato
 
 # visualivation
@@ -29,12 +30,12 @@ class VisualizeObject(object):
         self.object_feature = None
         rospy.sleep(5)
 
-        rospy.Subscriber("~/tomato/", Tomato, self.object_feature_cb)
+        rospy.Subscriber("tomato", Tomato, self.object_feature_cb)
 
     def object_feature_cb(self, msg):
         if self.object_feature is None:
-            self.object_feature = msg.data
-            rospy.logdebug("Received new object feature: %s", self.event)
+            self.object_feature = msg
+            rospy.logdebug("Received new object feature: %s", self.object_feature)
 
 
 
@@ -49,10 +50,11 @@ class VisualizeObject(object):
         box_pose = PoseStamped()
         box_pose.header.frame_id =  self.object_feature.header.frame_id
         box_pose.pose.orientation.w = 1.0
-        box_pose.pose.position = tomato.position
+        box_pose.pose.position = self.object_feature.position
+        radius = self.object_feature.radius
 
         # Add box
-        self.scene.add_box(box_name, box_pose, size=(1, 1, 0.1))
+        self.scene.add_sphere(box_name, box_pose, radius = radius)
 
         # Check if box has been added
         return self.wait_for_state_update(box_is_known=True, timeout=timeout, box_name = box_name)
@@ -96,6 +98,7 @@ class VisualizeObject(object):
         if self.object_feature is not None:
             if self.add_box(box_name = 'tomato'):
                 rospy.logdebug("added tomato")
+                self.object_feature = None
 
 def main():
     try:

@@ -9,6 +9,9 @@ Created on Mon Mar  9 15:30:31 2020
 import rospy
 import tf
 
+import math
+import numpy as np
+
 from cv_bridge import CvBridge, CvBridgeError
 
 # msg
@@ -78,10 +81,10 @@ class ObjectDetection(object):
         self.pub_e_out = rospy.Publisher("~e_out",
                                          String, queue_size=10, latch=True)
 
-        self.pub_pose = rospy.Publisher("~objectPose",
+        self.pub_pose = rospy.Publisher("objectPose",
                                         PoseStamped, queue_size=5, latch=True)
 
-        self.pub_tomato = rospy.Publisher("~tomato",
+        self.pub_tomato = rospy.Publisher("tomato",
                                         Tomato, queue_size=5, latch=True)
 
     def e_in_cb(self, msg):
@@ -148,12 +151,22 @@ class ObjectDetection(object):
                 # tomatoes
                 col = object_feature['tomato']['col'][0]
                 row = object_feature['tomato']['row'][0]
+                radius = object_feature['tomato']['radii'][0]
+
 
                 rospy.logdebug("row: %s [px]", row)
                 rospy.logdebug("col: %s [px]", col)
                 point = self.deproject(row, col, intrin)
+
+                depth = self.depth_image[(row, col)]
+                point1 = rs.rs2_deproject_pixel_to_point(intrin, [0,0], depth)
+                point2 = rs.rs2_deproject_pixel_to_point(intrin, [0,radius], depth)
+                radius_m = euclidean(point1, point2)
+
+
+
                 rospy.logdebug("point: %s [m]", point)
-                tomato =  point_to_tomato(point)
+                tomato =  point_to_tomato(point, radius_m)
                 rospy.logdebug("Depth tomato: %s [m]", tomato)
 
 
@@ -179,6 +192,10 @@ class ObjectDetection(object):
         point = rs.rs2_deproject_pixel_to_point(intrin, pixel, depth)
         return point
 
+
+def euclidean(v1, v2):
+    return sum((p-q)**2 for p, q in zip(v1, v2)) ** .5
+
 def point_to_pose_stamped(point, angle):
 
     pose_stamped = PoseStamped()
@@ -197,7 +214,7 @@ def point_to_pose_stamped(point, angle):
     return pose_stamped
 
 
-def point_to_tomato(point):
+def point_to_tomato(point, radius):
 
     tomato = Tomato()
     tomato.header.frame_id = "camera_color_optical_frame"
@@ -205,8 +222,9 @@ def point_to_tomato(point):
 
     tomato.position.x = point[0]
     tomato.position.y = point[1]
-    tomato.position.z = point[2]
+    tomato.position.z = point[2] - radius
 
+    tomato.radius = radius
     return tomato
 
 def get_test_pose():

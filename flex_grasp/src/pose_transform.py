@@ -24,7 +24,7 @@ class PoseTransform(object):
                         anonymous=True, log_level=rospy.DEBUG)
 
         # Initialize Subscribers
-        rospy.Subscriber("Object_Detection/objectPose", PoseStamped, self.pose_cb)
+        rospy.Subscriber("objectPose", PoseStamped, self.pose_cb)
         rospy.Subscriber("~e_in", String, self.e_in_cb)
 
         # Initialize Publishers
