@@ -14,6 +14,11 @@
 	    <remap from="/collision_object" to="/$(arg robot_name)/collision_object"/>
 		</node>
 
+		<node pkg="flex_grasp" name="Visualize_Object"  type="visualize_object.py" output="screen">
+			<remap from="/attached_collision_object" to="/$(arg robot_name)/attached_collision_object"/>
+	    <remap from="/collision_object" to="/$(arg robot_name)/collision_object"/>
+		</node>
+		
 		<param name="planning_frame" value="/world"/>
 		<param name="move_group_name" value="$(arg move_group_name)"/>
 	</group>

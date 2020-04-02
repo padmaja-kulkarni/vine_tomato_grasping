@@ -6,12 +6,27 @@ set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
-  moveit_core 
+  moveit_core
   moveit_ros_planning
   moveit_ros_planning_interface
+  std_msgs
+  geometry_msgs
+  message_generation
 )
 
-catkin_package()
+add_message_files(
+  FILES
+  Tomato.msg
+)
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+  geometry_msgs
+)
+
+catkin_package(
+  CATKIN_DEPENDS message_runtime
+)
 
 include_directories(include ${catkin_INCLUDE_DIRS})
-

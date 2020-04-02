@@ -17,6 +17,8 @@ from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import CameraInfo
 
+from flex_grasp.msg import Tomato
+
 # custom func
 from detect_crop.ProcessImage import ProcessImage
 
@@ -65,7 +67,6 @@ class ObjectDetection(object):
                         anonymous=True, log_level=rospy.DEBUG)
 
         # Subscribe
-
         rospy.Subscriber("~e_in", String, self.e_in_cb)
         rospy.Subscriber("/realsense_plugin/camera/color/image_raw", Image, self.color_image_cb)
         rospy.Subscriber("/realsense_plugin/camera/depth/image_raw", Image, self.depth_image_cb)
@@ -79,6 +80,9 @@ class ObjectDetection(object):
 
         self.pub_pose = rospy.Publisher("~objectPose",
                                         PoseStamped, queue_size=5, latch=True)
+
+        self.pub_tomato = rospy.Publisher("~tomato",
+                                        Tomato, queue_size=5, latch=True)
 
     def e_in_cb(self, msg):
         if self.event is None:
@@ -128,32 +132,52 @@ class ObjectDetection(object):
                 image.process_image()
                 rospy.logdebug("====Done====")
 
-                row, col, angle = image.get_grasp_info()
+                object_feature = image.get_object_features()
+                # print(object_feature)
 
+                row = object_feature['grasp']['row']
+                col = object_feature['grasp']['col']
+                angle = object_feature['grasp']['angle']
                 rospy.logdebug("Obtained location in pixel frame row: %s and col: %s, at angle %s", row, col, angle)
 
-                # Deproject
-                index = (row, col)
-                depth = self.depth_image[index]
-                rospy.logdebug("Corresponding depth: %s", self.depth_image[index])
-                # https://github.com/IntelRealSense/librealsense/wiki/Projection-in-RealSense-SDK-2.0
-
-
                 intrin = camera_info2intrinsics(self.depth_info)
-                pixel = [float(col), float(row)]
-                depth = float(depth)
-
-                point = rs.rs2_deproject_pixel_to_point(intrin, pixel, depth)
-                rospy.logdebug("Depth point: %s [m]", point)
-
+                point = self.deproject(row, col, intrin)
                 pose_stamped =  point_to_pose_stamped(point, angle)
+                rospy.logdebug("Depth point: %s [m]", pose_stamped)
+
+                # tomatoes
+                col = object_feature['tomato']['col'][0]
+                row = object_feature['tomato']['row'][0]
+
+                rospy.logdebug("row: %s [px]", row)
+                rospy.logdebug("col: %s [px]", col)
+                point = self.deproject(row, col, intrin)
+                rospy.logdebug("point: %s [m]", point)
+                tomato =  point_to_tomato(point)
+                rospy.logdebug("Depth tomato: %s [m]", tomato)
+
 
                 msg_e = String()
                 msg_e.data = "e_success"
 
                 self.event = None
                 self.pub_pose.publish(pose_stamped)
+                self.pub_tomato.publish(tomato)
                 self.pub_e_out.publish(msg_e)
+
+
+    def deproject(self, row, col, intrin):
+        # Deproject
+        index = (row, col)
+        depth = self.depth_image[index]
+        # rospy.logdebug("Corresponding depth: %s", self.depth_image[index])
+        # https://github.com/IntelRealSense/librealsense/wiki/Projection-in-RealSense-SDK-2.0
+
+        pixel = [float(col), float(row)]
+        depth = float(depth)
+
+        point = rs.rs2_deproject_pixel_to_point(intrin, pixel, depth)
+        return point
 
 def point_to_pose_stamped(point, angle):
 
@@ -171,6 +195,19 @@ def point_to_pose_stamped(point, angle):
     pose_stamped.pose.position.z = point[2] - 0.15
 
     return pose_stamped
+
+
+def point_to_tomato(point):
+
+    tomato = Tomato()
+    tomato.header.frame_id = "camera_color_optical_frame"
+    tomato.header.stamp = rospy.Time.now()
+
+    tomato.position.x = point[0]
+    tomato.position.y = point[1]
+    tomato.position.z = point[2]
+
+    return tomato
 
 def get_test_pose():
 
