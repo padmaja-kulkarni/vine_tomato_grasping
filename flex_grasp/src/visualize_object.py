@@ -13,6 +13,7 @@ import rospy
 # msg
 from geometry_msgs.msg import PoseStamped
 from flex_grasp.msg import Tomato
+from flex_grasp.msg import TomatoArray
 
 # visualivation
 import moveit_commander
@@ -30,7 +31,7 @@ class VisualizeObject(object):
         self.object_feature = None
         rospy.sleep(5)
 
-        rospy.Subscriber("tomato", Tomato, self.object_feature_cb)
+        rospy.Subscriber("tomato", TomatoArray, self.object_feature_cb)
 
     def object_feature_cb(self, msg):
         if self.object_feature is None:
@@ -39,7 +40,7 @@ class VisualizeObject(object):
 
 
 
-    def add_box(self, timeout=4, box_name = ''):
+    def add_sphere(self, timeout=4, box_name = ''):
         """ create a box with a given name.
 
         Args:
@@ -48,17 +49,29 @@ class VisualizeObject(object):
 
         """
         box_pose = PoseStamped()
-        box_pose.header.frame_id =  self.object_feature.header.frame_id
-        box_pose.pose.orientation.w = 1.0
-        box_pose.pose.position = self.object_feature.position
-        radius = self.object_feature.radius
+        i = 0
+        succes = True
+        rospy.logdebug("Tomato 1: %s", self.object_feature.tomatoes[0])
+        rospy.logdebug("Tomato 2: %s", self.object_feature.tomatoes[1])
 
-        # Add box
-        self.scene.add_sphere(box_name, box_pose, radius = radius)
+        for tomato in self.object_feature.tomatoes:
+            box_pose.header.frame_id =  tomato.header.frame_id
+            box_pose.pose.orientation.w = 1.0
+            box_pose.pose.position = tomato.position
+            radius = tomato.radius
+            current_sphere_name = box_name + "_" + str(i)
 
-        # Check if box has been added
-        return self.wait_for_state_update(box_is_known=True, timeout=timeout, box_name = box_name)
+            rospy.logdebug("Adding tomato: %s", current_sphere_name)
+            # Add box
+            self.scene.add_sphere(current_sphere_name, box_pose, radius = radius)
+            i = i + 1
 
+            # Check if box has been added
+            if not self.wait_for_state_update(box_is_known=True, timeout=timeout, box_name = current_sphere_name):
+                succes = False
+
+
+        return succes
 
     def wait_for_state_update(self, box_is_known=False, box_is_attached=False, timeout=4, box_name= ''):
         """ Wait until we see the changes reflected in the scene
@@ -96,7 +109,7 @@ class VisualizeObject(object):
 
     def visualize(self):
         if self.object_feature is not None:
-            if self.add_box(box_name = 'tomato'):
+            if self.add_sphere(box_name = 'tomato'):
                 rospy.logdebug("added tomato")
                 self.object_feature = None
 

@@ -21,6 +21,7 @@ from sensor_msgs.msg import Image
 from sensor_msgs.msg import CameraInfo
 
 from flex_grasp.msg import Tomato
+from flex_grasp.msg import TomatoArray
 
 # custom func
 from detect_crop.ProcessImage import ProcessImage
@@ -85,7 +86,7 @@ class ObjectDetection(object):
                                         PoseStamped, queue_size=5, latch=True)
 
         self.pub_tomato = rospy.Publisher("tomato",
-                                        Tomato, queue_size=5, latch=True)
+                                        TomatoArray, queue_size=5, latch=True)
 
     def e_in_cb(self, msg):
         if self.event is None:
@@ -149,33 +150,36 @@ class ObjectDetection(object):
                 rospy.logdebug("Depth point: %s [m]", pose_stamped)
 
                 # tomatoes
-                col = object_feature['tomato']['col'][0]
-                row = object_feature['tomato']['row'][0]
-                radius = object_feature['tomato']['radii'][0]
+                col = object_feature['tomato']['col']
+                row = object_feature['tomato']['row']
+                radius = object_feature['tomato']['radii']
+                tomatoes = []
+
+                rospy.logdebug("cols: %s [px]", col)
+                for i in range(0, len(col)):
+
+                    point = self.deproject(row[i], col[i], intrin)
+
+                    depth = self.depth_image[(row[i], col[i])]
+                    point1 = rs.rs2_deproject_pixel_to_point(intrin, [0,0], depth)
+                    point2 = rs.rs2_deproject_pixel_to_point(intrin, [0,radius[i]], depth)
+                    radius_m = euclidean(point1, point2)
 
 
-                rospy.logdebug("row: %s [px]", row)
-                rospy.logdebug("col: %s [px]", col)
-                point = self.deproject(row, col, intrin)
 
-                depth = self.depth_image[(row, col)]
-                point1 = rs.rs2_deproject_pixel_to_point(intrin, [0,0], depth)
-                point2 = rs.rs2_deproject_pixel_to_point(intrin, [0,radius], depth)
-                radius_m = euclidean(point1, point2)
+                    rospy.logdebug("point %s: %s [m]", i, point)
+                    tomatoes.append(point_to_tomato(point, radius_m))
 
-
-
-                rospy.logdebug("point: %s [m]", point)
-                tomato =  point_to_tomato(point, radius_m)
-                rospy.logdebug("Depth tomato: %s [m]", tomato)
-
+                rospy.logdebug("Depth tomatoes: %s [m]", tomatoes)
+                tomato_array = TomatoArray()
+                tomato_array.tomatoes = tomatoes
 
                 msg_e = String()
                 msg_e.data = "e_success"
 
                 self.event = None
                 self.pub_pose.publish(pose_stamped)
-                self.pub_tomato.publish(tomato)
+                self.pub_tomato.publish(tomato_array)
                 self.pub_e_out.publish(msg_e)
 
 
@@ -222,7 +226,7 @@ def point_to_tomato(point, radius):
 
     tomato.position.x = point[0]
     tomato.position.y = point[1]
-    tomato.position.z = point[2] - radius
+    tomato.position.z = point[2] + radius
 
     tomato.radius = radius
     return tomato
