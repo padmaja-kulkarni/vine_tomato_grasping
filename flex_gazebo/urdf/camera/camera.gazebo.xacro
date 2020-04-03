@@ -35,7 +35,7 @@
          <cameraName>realsense_plugin/camera/color</cameraName>
          <imageTopicName>image_raw</imageTopicName>
          <cameraInfoTopicName>camera_info</cameraInfoTopicName>
-         <frameName>camera_link_optical</frameName>
+         <frameName>camera_color_optical_frame</frameName>
          <hackBaseline>0.0</hackBaseline>
          <distortionK1>0.0</distortionK1>
          <distortionK2>0.0</distortionK2>
@@ -85,7 +85,7 @@
           <depthImageTopicName>image_raw</depthImageTopicName>
           <depthImageInfoTopicName>camera_info</depthImageInfoTopicName>
           <pointCloudTopicName>points</pointCloudTopicName>
-          <frameName>camera_link_optical</frameName>
+          <frameName>camera_depth_optical_frame</frameName>
           <pointCloudCutoff>0.5</pointCloudCutoff>
           <pointCloudCutoffMax>3.0</pointCloudCutoffMax>
           <distortionK1>0.0</distortionK1>
