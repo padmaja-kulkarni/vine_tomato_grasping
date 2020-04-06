@@ -16,6 +16,8 @@
     <arg name="model" default="iiwa14"/>
     <arg name="trajectory" default="true"/>
     <arg name="sdh" default="true"/>
+    <arg name="camera_sim" default="true"/>
+    <arg name="camera_name" default="rs_d435"/>
 
     <!-- Object params -->
     <arg name="object_x" default="-0.2"/>
@@ -30,6 +32,8 @@
         <arg name="robot_name" value="$(arg robot_name)" />
         <arg name="model" value="$(arg model)" />
         <arg name="sdh" value="$(arg sdh)"/>
+        <arg name="camera_sim" value="$(arg camera_sim)"/>
+        <arg name="camera_name" value="$(arg camera_name)"/>
 
         <arg name="object_x" value="$(arg object_x)"/>
         <arg name="object_y" value="$(arg object_y)"/>

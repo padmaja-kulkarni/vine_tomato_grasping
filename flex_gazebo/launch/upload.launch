@@ -9,12 +9,13 @@
 
   <!-- camera -->
   <arg name="camera_name" default="camera"/>
-  <arg name="use_nominal_extrinsics" default="true"/>
+  <arg name="use_nominal_extrinsics" default="false"/>
   <arg name="camera_origin_xyz" default="'0 0.6 1.2'"/>
   <arg name="camera_origin_rpy" default="'3.1415 1.57 -1.57'"/>
 
 
   <arg name="sdh" default="true"/>
+  <arg name="camera_sim" default="true"/>
 
   <!-- world -->
   <!-- <param name="param_angle" command="$(find flex_gazebo)/scripts/generate_random_angle.py"/> -->
@@ -31,6 +32,7 @@
     origin_rpy:=$(arg origin_rpy)
     use_nominal_extrinsics:=$(arg use_nominal_extrinsics)
     camera_name:=$(arg camera_name)
+    camera_sim:=$(arg camera_sim)
     "/>
 
   <param unless="$(arg sdh)" name="robot_description" command="$(find xacro)/xacro --inorder '$(find flex_gazebo)/urdf/robot.urdf.xacro'
@@ -40,6 +42,7 @@
     origin_rpy:=$(arg origin_rpy)
     use_nominal_extrinsics:=$(arg use_nominal_extrinsics)
     camera_name:=$(arg camera_name)
+    camera_sim:=$(arg camera_sim)
     "/>
 
   <!-- world -->

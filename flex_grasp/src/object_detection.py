@@ -73,10 +73,10 @@ class ObjectDetection(object):
 
         # Subscribe
         rospy.Subscriber("~e_in", String, self.e_in_cb)
-        rospy.Subscriber("/realsense_plugin/camera/color/image_raw", Image, self.color_image_cb)
-        rospy.Subscriber("/realsense_plugin/camera/depth/image_raw", Image, self.depth_image_cb)
-        rospy.Subscriber("/realsense_plugin/camera/color/camera_info", CameraInfo, self.color_info_cb)
-        rospy.Subscriber("/realsense_plugin/camera/color/camera_info", CameraInfo, self.depth_info_cb)
+        rospy.Subscriber("/camera/color/image_raw", Image, self.color_image_cb)
+        rospy.Subscriber("/camera/depth/image_rect_raw", Image, self.depth_image_cb)
+        rospy.Subscriber("/camera/color/camera_info", CameraInfo, self.color_info_cb)
+        rospy.Subscriber("/camera/color/camera_info", CameraInfo, self.depth_info_cb)
 
 
         # Publish
@@ -103,7 +103,7 @@ class ObjectDetection(object):
         if (self.depth_image is None) and (self.event == "e_start"):
             rospy.logdebug("Received depth image message")
             try:
-                self.depth_image = self.bridge.imgmsg_to_cv2(msg, "passthrough")
+                self.depth_image = self.bridge.imgmsg_to_cv2(msg, "passthrough") #/1000.0
             except CvBridgeError as e:
                 print(e)
 
@@ -129,6 +129,9 @@ class ObjectDetection(object):
                 image = ProcessImage(self.color_image, tomatoName = 'gazebo_tomato',
                                      pwdProcess = pwd,
                                      saveIntermediate = False)
+
+                rospy.logdebug("Image dimensions: %s", image.DIM)
+
                 image.process_image()
                 object_feature = image.get_object_features()
 

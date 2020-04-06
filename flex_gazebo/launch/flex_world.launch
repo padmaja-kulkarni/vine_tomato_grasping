@@ -13,6 +13,8 @@
     <arg name="robot_name" default="iiwa" />
     <arg name="model" default="iiwa7"/>
     <arg name="sdh" default="true"/>
+    <arg name="camera_sim" default="true"/>
+    <arg name="camera_name" default="rs_d435"/>
 
     <!-- Object params -->
     <arg name="object_x" default="-0.2"/>
@@ -36,6 +38,9 @@
         <arg name="hardware_interface" value="$(arg hardware_interface)"/>
         <arg name="robot_name" value="$(arg robot_name)" />
         <arg name="sdh" value="$(arg sdh)"/>
+        <arg name="camera_sim" value="$(arg camera_sim)"/>
+        <arg name="camera_name" value="$(arg camera_name)"/>
+
         <arg name="object_origin_xyz" value="'$(arg object_x) $(arg object_y) 0.26'"/>
         <arg name="object_origin_rpy" value="'0 0 $(arg object_angle)'"/>
         <arg name="object_name" value="$(arg object_name)"/>
@@ -50,13 +55,4 @@
     <node name="world_urdf_spawner" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen"
                 args="-urdf -model tomato -param world_description"/>
 
-    <!-- Load the URDF with the given hardware interface into the ROS Parameter Server -->
-    <!--
-    <include file="$(find flex_gazebo)/launch/upload_rs.launch"/>
-     -->
-    <!-- Run a python script to send a service call to gazebo_ros to spawn a URDF robot -->
-    <!--
-    <node name="urdf_spawner_rs" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen"
-          args="-urdf -model camera -param robot_description"/>
-     -->
 </launch>

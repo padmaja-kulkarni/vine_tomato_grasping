@@ -21,7 +21,8 @@
   <xacro:arg name="origin_rpy" default="0 0 0"/>
 
   <!-- camera params-->
-  <xacro:arg name="camera_name" default="camera"/>
+  <xacro:arg name="camera_name" default="rs_d435"/>
+  <xacro:arg name="camera_sim" default="true"/>
   <xacro:arg name="camera_origin_xyz" default="0 0.6 1.2"/>
   <xacro:arg name="camera_origin_rpy" default="3.1415 1.57 -1.57"/>
   <xacro:arg name="use_nominal_extrinsics" default="true"/>
@@ -43,9 +44,12 @@
   <xacro:sensor_d435 parent="world" name="$(arg camera_name)" use_nominal_extrinsics="$(arg use_nominal_extrinsics)">
     <origin xyz="$(arg camera_origin_xyz)" rpy="$(arg camera_origin_rpy)" />
   </xacro:sensor_d435>
-  
-  <xacro:my_camera name="$(arg camera_name)"/>
 
+  <xacro:my_camera name="$(arg camera_name)"/>
+  <!--<xacro:if value="$(arg camera_sim)">
+
+  </xacro:if>
+-->
   <!-- end-effector -->
   <xacro:schunk_sdh parent="iiwa_link_ee" name="$(arg endeffector_name)">
       <origin xyz="$(arg endeffector_origin_xyz)" rpy="$(arg endeffector_origin_rpy)" />
