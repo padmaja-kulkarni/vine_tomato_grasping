@@ -8,3 +8,12 @@ controller_list:
       - iiwa_joint_5
       - iiwa_joint_6
       - iiwa_joint_7
+  - name: fake_hand_controller
+    joints:
+      - sdh_finger_22_joint
+      - sdh_finger_23_joint
+      - sdh_knuckle_joint
+      - sdh_finger_12_joint
+      - sdh_finger_13_joint
+      - sdh_thumb_2_joint
+      - sdh_thumb_3_joint

@@ -37,12 +37,16 @@ class PipeLine(object):
         self.pub_move_robot = rospy.Publisher("Move_Robot/e_in", 
                                       String, queue_size=10, latch=True)
         
+        self.pub_pick_place = rospy.Publisher("Pick_Place/e_in", 
+                                      String, queue_size=10, latch=True)
+        
         ## Initialize Subscribers
         rospy.Subscriber("pipelineState", String, self.pscb)
         rospy.Subscriber("Object_Detection/e_out", String, self.odcb)
         rospy.Subscriber("Pose_Transform/e_out", String, self.ptcb)
         rospy.Subscriber("Move_Robot/e_out", String, self.mrcb)
-     
+        rospy.Subscriber("Pick_Place/e_out", String, self.mrcb)
+        
         ### Callback Functions
         
         ## Pipeline State Callback Function
@@ -65,6 +69,12 @@ class PipeLine(object):
         if self.pose_transformed == None:
             self.pose_transformed = msg.data
             rospy.logdebug("Received new pose transformed event message: %s", self.pose_transformed)
+        
+    def ppcb(self, msg):
+        if self.robot_moved == None:
+            rospy.logdebug("Received new pick and place event out message: %s ", msg.data)
+            if msg.data == "e_success":
+                self.robot_moved = True
     
     ## Move Robot Callback Function
     
@@ -105,8 +115,6 @@ class PipeLine(object):
             
             self.send_message()
             
-            
-            
         if self.object_detected and self.state == "DETECT":
             self.state_previous = self.state
             self.state = "TRANSFORM"
@@ -117,14 +125,14 @@ class PipeLine(object):
             
         if self.pose_transformed and self.state == "TRANSFORM":
             self.state_previous = self.state
-            self.state = "MOVE"
+            self.state = "PICKPLACE"
             self.pose_transformed = None
             self.log_state_update()
             
             self.send_message()
             rospy.logdebug(self.robot_moved)
             
-        if self.robot_moved and (self.state == "MOVE" or self.state == "HOME"):
+        if self.robot_moved and (self.state == "PICKPLACE" or self.state == "HOME"):
             self.state_previous = self.state
             self.state = "IDLE"
             self.robot_moved = None
@@ -142,6 +150,9 @@ class PipeLine(object):
                 
         if self.state == "MOVE":
             self.send_start_to_move_robot()
+        
+        if self.state == "PICKPLACE":
+            self.send_start_to_pick_place()
             
         if self.state == "HOME":
             self.send_home_to_move_robot()
@@ -159,6 +170,9 @@ class PipeLine(object):
         
     def send_start_to_move_robot(self):
         self.pub_move_robot.publish("e_start")
+    
+    def send_start_to_pick_place(self):
+        self.pub_pick_place.publish("e_start")
         
     def send_home_to_move_robot(self):
         self.pub_move_robot.publish("e_home")

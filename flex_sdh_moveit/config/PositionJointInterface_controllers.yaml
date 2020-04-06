@@ -30,7 +30,26 @@ joint_state_controller:
   type: joint_state_controller/JointStateController
   publish_rate: 50
 controller_list:
-  - name: hand_controller
+  - name: PositionJointInterface_trajectory_controller
+    action_ns: follow_joint_trajectory
+    type: FollowJointTrajectory
+    default: true
+    joints: 
+      - iiwa_joint_1
+      - iiwa_joint_2
+      - iiwa_joint_3
+      - iiwa_joint_4
+      - iiwa_joint_5
+      - iiwa_joint_6
+      - iiwa_joint_7
+      - sdh_finger_22_joint
+      - sdh_finger_23_joint
+      - sdh_knuckle_joint
+      - sdh_finger_12_joint
+      - sdh_finger_13_joint
+      - sdh_thumb_2_joint
+      - sdh_thumb_3_joint
+    - name: hand_controller
     action_ns: follow_joint_trajectory
     default: True
     type: FollowJointTrajectory
@@ -42,3 +61,7 @@ controller_list:
       - sdh_finger_13_joint
       - sdh_thumb_2_joint
       - sdh_thumb_3_joint
+
+
+
+

@@ -13,7 +13,7 @@
   <xacro:include filename="$(find flex_gazebo)/urdf/camera/camera.gazebo.xacro" />
   
   <!-- end-effector -->
-  <xacro:arg name="ee" default="pr2"/>
+  <xacro:arg name="ee" default="sdh"/>
   <xacro:property name="ee" value="$(arg ee)"/>
   
   <!-- iiwa params-->
@@ -59,7 +59,7 @@
   
   <xacro:if value="${ee == 'pr2'}" >
     
-    <xacro:include filename="$(find flex_gazebo)/urdf/gripper.urdf.xacro" />
+    <xacro:include filename="$(find flex_gazebo)/urdf/pr2/gripper.urdf.xacro" />
     <!--
     <xacro:include filename="$(find pr2_description)/urdf/materials.urdf.xacro" />
     -->

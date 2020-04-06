@@ -9,6 +9,7 @@
 		<node pkg="flex_grasp" name="Pipe_Line"  type="pipe_line.py" output="screen"/>
 		<node pkg="flex_grasp" name="Object_Detection"  type="object_detection.py" output="screen"/>
 		<node pkg="flex_grasp" name="Pose_Transform"  type="pose_transform.py" output="screen"/>
+                <node pkg="flex_grasp" name="Pick_Place"  type="pick_place.py" output="screen"/>
 		<node pkg="flex_grasp" name="Move_Robot"  type="move_robot.py" output="screen"/>
 
 		<param name="planning_frame" value="/world"/>
