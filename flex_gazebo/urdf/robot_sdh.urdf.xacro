@@ -11,7 +11,7 @@
   <!-- import the camera -->
   <xacro:include filename="$(find realsense2_description)/urdf/_d435.urdf.xacro" />
   <xacro:include filename="$(find flex_gazebo)/urdf/camera/camera.gazebo.xacro" />
-
+  deve
   <!-- import the end-effector -->
   <xacro:include filename="$(find schunk_description)/urdf/sdh/sdh.urdf.xacro" />
   <!-- iiwa params-->
@@ -45,11 +45,10 @@
     <origin xyz="$(arg camera_origin_xyz)" rpy="$(arg camera_origin_rpy)" />
   </xacro:sensor_d435>
 
-  <xacro:my_camera name="$(arg camera_name)"/>
-  <!--<xacro:if value="$(arg camera_sim)">
-
+  <xacro:if value="$(arg camera_sim)">
+    <xacro:my_camera name="$(arg camera_name)"/>
   </xacro:if>
--->
+
   <!-- end-effector -->
   <xacro:schunk_sdh parent="iiwa_link_ee" name="$(arg endeffector_name)">
       <origin xyz="$(arg endeffector_origin_xyz)" rpy="$(arg endeffector_origin_rpy)" />

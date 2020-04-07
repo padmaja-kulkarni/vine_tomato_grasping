@@ -103,7 +103,7 @@ class ObjectDetection(object):
         if (self.depth_image is None) and (self.event == "e_start"):
             rospy.logdebug("Received depth image message")
             try:
-                self.depth_image = self.bridge.imgmsg_to_cv2(msg, "passthrough") #/1000.0
+                self.depth_image = self.bridge.imgmsg_to_cv2(msg, "passthrough") /1000.0
             except CvBridgeError as e:
                 print(e)
 
@@ -128,7 +128,7 @@ class ObjectDetection(object):
 
                 image = ProcessImage(self.color_image, tomatoName = 'gazebo_tomato',
                                      pwdProcess = pwd,
-                                     saveIntermediate = False)
+                                     saveIntermediate = True)
 
                 rospy.logdebug("Image dimensions: %s", image.DIM)
 

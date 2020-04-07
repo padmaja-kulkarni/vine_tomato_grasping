@@ -9,13 +9,13 @@
 
   <!-- camera -->
   <arg name="camera_name" default="camera"/>
-  <arg name="use_nominal_extrinsics" default="false"/>
+  <arg name="use_nominal_extrinsics" default="true"/>
   <arg name="camera_origin_xyz" default="'0 0.6 1.2'"/>
   <arg name="camera_origin_rpy" default="'3.1415 1.57 -1.57'"/>
 
 
   <arg name="sdh" default="true"/>
-  <arg name="camera_sim" default="true"/>
+  <arg name="camera_sim" default="false"/>
 
   <!-- world -->
   <!-- <param name="param_angle" command="$(find flex_gazebo)/scripts/generate_random_angle.py"/> -->
