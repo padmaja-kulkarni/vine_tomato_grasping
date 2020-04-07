@@ -1,96 +1,98 @@
 <?xml version="1.0"?>
 <launch>
-    <!-- The planning and execution components of MoveIt! configured to run -->
-    <!-- using the ROS-Industrial interface. -->
+  <!-- The planning and execution components of MoveIt! configured to run -->
+  <!-- using the ROS-Industrial interface. -->
 
-    <!-- | 		PARAMETERS  		| -->
-    <!-- the "sim" argument controls whether we connect to a Simulated or Real robot. -->
-    <arg name="sim" default="true" doc="If true, the robot will be simulated in Gazebo" />
-    <!-- hardware_interface to use : PositionJointInterface, EffortJointInterface, VelocityJointInterface. -->
-    <arg name="hardware_interface" default="PositionJointInterface"/>
-    <!-- The is gonna have its nodes/topics under a namespace with the same name. -->
-    <arg name="robot_name" default="iiwa"/>
-    <!-- Model of the iiwa to use : iiwa7, iiwa14 -->
-    <arg name="model" default="iiwa7"/>
-    <arg name="rviz" default="true" />
-    <arg name="sdh" default="true" />
+  <!-- | 		PARAMETERS  		| -->
+  <!-- the "sim" argument controls whether we connect to a Simulated or Real robot. -->
+  <arg name="sim" default="true" doc="If true, the robot will be simulated in Gazebo" />
+  <!-- hardware_interface to use : PositionJointInterface, EffortJointInterface, VelocityJointInterface. -->
+  <arg name="hardware_interface" default="PositionJointInterface"/>
+  <!-- The is gonna have its nodes/topics under a namespace with the same name. -->
+  <arg name="robot_name" default="iiwa"/>
+  <!-- Model of the iiwa to use : iiwa7, iiwa14 -->
+  <arg name="robot_model" default="iiwa7"/>
+  <arg name="rviz" default="true" />
+  <arg name="sdh" default="true" />
 
-    <!-- Object params -->
-    <arg name="object_x" default="-0.2"/>
-    <arg name="object_y" default="0.4"/>
-    <arg name="object_angle" default="1"/>
-    <arg name="object_name" default="truss"/>
-    <arg name="object_dimension" default="3d"/>
-
-
-    <remap from="/$(arg hardware_interface)_trajectory_controller/follow_joint_trajectory"
-           to="/$(arg robot_name)/$(arg hardware_interface)_trajectory_controller/follow_joint_trajectory" />
-    <remap from="robot_description" to="/$(arg robot_name)/robot_description" />
-    <remap from="/get_planning_scene" to="/$(arg robot_name)/get_planning_scene" />
+  <!-- Object params -->
+  <arg name="object_x" default="-0.2"/>
+  <arg name="object_y" default="0.4"/>
+  <arg name="object_angle" default="1"/>
+  <arg name="object_name" default="truss"/>
+  <arg name="object_dimension" default="3d"/>
 
 
+  <remap from="/$(arg hardware_interface)_trajectory_controller/follow_joint_trajectory"
+         to="/$(arg robot_name)/$(arg hardware_interface)_trajectory_controller/follow_joint_trajectory" />
+  <remap from="/get_planning_scene" to="/$(arg robot_name)/get_planning_scene" />
 
-    <!-- Run the robot within a Gazebo simulation. -->
-    <group if="$(arg sim)">
 
-        <!-- Load Gazebo with given values -->
-        <include file="$(find flex_gazebo)/launch/flex_gazebo.launch">
-            <arg name="hardware_interface" value="$(arg hardware_interface)"/>
-            <arg name="robot_name" value="$(arg robot_name)" />
-            <arg name="model" value="$(arg model)"/>
-            <arg name="sdh" value="$(arg sdh)"/>
-            <arg name="object_x" value="$(arg object_x)"/>
-            <arg name="object_y" value="$(arg object_y)"/>
-            <arg name="object_angle" value="$(arg object_angle)"/>
-            <arg name="object_name" value="$(arg object_name)"/>
-            <arg name="object_dimension" value="$(arg object_dimension)"/>
-        </include>
-    </group>
 
-    <!-- Working with the real robot.  -->
-    <group ns="$(arg robot_name)" unless="$(arg sim)">
+  <!-- Run the robot within a Gazebo simulation. -->
+  <group if="$(arg sim)">
 
-        <!-- Load controllers accordingly to parameters -->
-        <include file="$(find iiwa_control)/launch/iiwa_control.launch">
-            <arg name="hardware_interface" value="$(arg hardware_interface)" />
-            <arg name="controllers" value="joint_state_controller $(arg hardware_interface)_trajectory_controller" />
-            <arg name="robot_name" value="$(arg robot_name)" />
-            <arg name="model" value="$(arg model)" />
-        </include>
+      <!-- Load Gazebo with given values -->
+      <include file="$(find flex_gazebo)/launch/flex_gazebo.launch">
+          <arg name="hardware_interface" value="$(arg hardware_interface)"/>
+          <arg name="robot_name" value="$(arg robot_name)" />
+          <arg name="robot_model" value="$(arg robot_model)"/>
+          <arg name="sdh" value="$(arg sdh)"/>
+          <arg name="object_x" value="$(arg object_x)"/>
+          <arg name="object_y" value="$(arg object_y)"/>
+          <arg name="object_angle" value="$(arg object_angle)"/>
+          <arg name="object_name" value="$(arg object_name)"/>
+          <arg name="object_dimension" value="$(arg object_dimension)"/>
+      </include>
+  </group>
 
-        <!-- Robot interface -->
-        <include file="$(find iiwa_hw)/launch/iiwa_hw.launch" >
-            <arg name="hardware_interface" value="$(arg hardware_interface)" />
-        </include>
+  <!-- Working with the real robot.  -->
+  <group ns="$(arg robot_name)" unless="$(arg sim)">
 
-    </group>
+      <!-- Load controllers accordingly to parameters -->
+      <include file="$(find iiwa_control)/launch/iiwa_control.launch">
+          <arg name="hardware_interface" value="$(arg hardware_interface)" />
+          <arg name="controllers" value="joint_state_controller $(arg hardware_interface)_trajectory_controller" />
+          <arg name="robot_name" value="$(arg robot_name)" />
+          <arg name="model" value="$(arg robot_model)" />
+      </include>
 
-    <!-- Load move_group -->
-    <group if="$(arg sdh)" ns="$(arg robot_name)">
+      <!-- Robot interface -->
+      <include file="$(find iiwa_hw)/launch/iiwa_hw.launch" >
+          <arg name="hardware_interface" value="$(arg hardware_interface)" />
+      </include>
 
-    	<include file="$(find flex_sdh_moveit)/launch/move_group.launch">
-		<arg name="publish_monitored_planning_scene" value="true" />
-		<arg name="hardware_interface" value="$(arg hardware_interface)"/>
-		<arg name="robot_name" value="$(arg robot_name)"/>
-                <arg name="model" value="$(arg model)" />
-        </include>
+  </group>
 
-	<include if="$(arg rviz)" file="$(find flex_sdh_moveit)/launch/moveit_rviz.launch">
-            <arg name="config" value="true"/>
-        </include>
-    </group>
+  <!-- Load move_group -->
+  <group if="$(arg sdh)" ns="$(arg robot_name)">
 
-    <group unless="$(arg sdh)" ns="$(arg robot_name)">
+    <include file="$(find flex_sdh_moveit)/launch/move_group.launch">
+      <arg name="publish_monitored_planning_scene" value="true" />
+      <arg name="hardware_interface" value="$(arg hardware_interface)"/>
+      <arg name="robot_name" value="$(arg robot_name)"/>
+      <arg name="model" value="$(arg robot_model)" />
+    </include>
 
-    	<include file="$(find flex_gripper_moveit)/launch/move_group.launch">
-		<arg name="publish_monitored_planning_scene" value="true" />
-		<arg name="hardware_interface" value="$(arg hardware_interface)"/>
-		<arg name="robot_name" value="$(arg robot_name)"/>
-                <arg name="model" value="$(arg model)" />
-        </include>
+    <include if="$(arg rviz)" file="$(find flex_sdh_moveit)/launch/moveit_rviz.launch">
+      <arg name="config" value="true"/>
+    </include>
+  </group>
 
-	<include if="$(arg rviz)" file="$(find flex_gripper_moveit)/launch/moveit_rviz.launch">
-            <arg name="config" value="true"/>
-        </include>
-    </group>
+  <group unless="$(arg sdh)" ns="$(arg robot_name)">
+
+  	<include file="$(find flex_gripper_moveit)/launch/move_group.launch">
+      <arg name="publish_monitored_planning_scene" value="true" />
+      <arg name="hardware_interface" value="$(arg hardware_interface)"/>
+      <arg name="robot_name" value="$(arg robot_name)"/>
+      <arg name="model" value="$(arg robot_model)" />
+    </include>
+
+    <!--
+    <include file="$(find interbotix_moveit)/launch/moveit_rviz.launch" ns="$(arg robot_name)">
+    -->
+    <include if="$(arg rviz)" file="$(find flex_gripper_moveit)/launch/moveit_rviz.launch">
+      <arg name="config" value="true"/>
+    </include>
+  </group>
 </launch>
