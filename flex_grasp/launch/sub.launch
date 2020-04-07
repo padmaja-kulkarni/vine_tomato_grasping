@@ -9,8 +9,21 @@
 		<node pkg="flex_grasp" name="Pipe_Line"  type="pipe_line.py" output="screen"/>
 		<node pkg="flex_grasp" name="Object_Detection"  type="object_detection.py" output="screen"/>
 		<node pkg="flex_grasp" name="Pose_Transform"  type="pose_transform.py" output="screen"/>
-                <node pkg="flex_grasp" name="Pick_Place"  type="pick_place.py" output="screen"/>
-		<node pkg="flex_grasp" name="Move_Robot"  type="move_robot.py" output="screen"/>
+                
+                <node pkg="flex_grasp" name="Pick_Place"  type="pick_place.py" output="screen">
+                        <remap from="/attached_collision_object" to="/$(arg robot_name)/attached_collision_object"/>
+                        <remap from="/collision_object" to="/$(arg robot_name)/collision_object"/>
+                </node>
+
+		<node pkg="flex_grasp" name="Move_Robot"  type="move_robot.py" output="screen">
+                        <remap from="/attached_collision_object" to="/$(arg robot_name)/attached_collision_object"/>
+                        <remap from="/collision_object" to="/$(arg robot_name)/collision_object"/>
+		</node>
+
+		<node pkg="flex_grasp" name="Visualize_Object"  type="visualize_object.py" output="screen">
+			<remap from="/attached_collision_object" to="/$(arg robot_name)/attached_collision_object"/>
+			<remap from="/collision_object" to="/$(arg robot_name)/collision_object"/>
+		</node>
 
 		<param name="planning_frame" value="/world"/>
 		<param name="move_group_name" value="$(arg move_group_name)"/>

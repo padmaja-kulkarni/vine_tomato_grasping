@@ -9,6 +9,9 @@ Created on Mon Mar  9 15:30:31 2020
 import rospy
 import tf
 
+import math
+import numpy as np
+
 from cv_bridge import CvBridge, CvBridgeError
 
 # msg
@@ -16,6 +19,10 @@ from std_msgs.msg import String
 from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import CameraInfo
+
+from flex_grasp.msg import Tomato
+from flex_grasp.msg import Truss
+from flex_grasp.msg import Peduncle
 
 # custom func
 from detect_crop.ProcessImage import ProcessImage
@@ -65,7 +72,6 @@ class ObjectDetection(object):
                         anonymous=True, log_level=rospy.DEBUG)
 
         # Subscribe
-
         rospy.Subscriber("~e_in", String, self.e_in_cb)
         rospy.Subscriber("/realsense_plugin/camera/color/image_raw", Image, self.color_image_cb)
         rospy.Subscriber("/realsense_plugin/camera/depth/image_raw", Image, self.depth_image_cb)
@@ -77,8 +83,8 @@ class ObjectDetection(object):
         self.pub_e_out = rospy.Publisher("~e_out",
                                          String, queue_size=10, latch=True)
 
-        self.pub_pose = rospy.Publisher("~objectPose",
-                                        PoseStamped, queue_size=5, latch=True)
+        self.pub_object_features = rospy.Publisher("object_features",
+                                        Truss, queue_size=5, latch=True)
 
     def e_in_cb(self, msg):
         if self.event is None:
@@ -118,59 +124,119 @@ class ObjectDetection(object):
 
             if (self.color_image is not None) and (self.depth_image is not None) and (self.depth_info is not None) and (self.color_info is not None):
                 pwd = os.path.dirname(__file__)
-                rospy.logdebug("====Initializing image processing object====")
+
 
                 image = ProcessImage(self.color_image, tomatoName = 'gazebo_tomato',
                                      pwdProcess = pwd,
                                      saveIntermediate = False)
-
-                rospy.logdebug("====Processing image====")
                 image.process_image()
-                rospy.logdebug("====Done====")
+                object_feature = image.get_object_features()
 
-                row, col, angle = image.get_grasp_info()
+                #%%##################
+                ### Cage location ###
+                #####################
 
-                rospy.logdebug("Obtained location in pixel frame row: %s and col: %s, at angle %s", row, col, angle)
-
-                # Deproject
-                index = (row, col)
-                depth = self.depth_image[index]
-                rospy.logdebug("Corresponding depth: %s", self.depth_image[index])
-                # https://github.com/IntelRealSense/librealsense/wiki/Projection-in-RealSense-SDK-2.0
-
+                row = object_feature['grasp']['row']
+                col = object_feature['grasp']['col']
+                angle = object_feature['grasp']['angle']
 
                 intrin = camera_info2intrinsics(self.depth_info)
-                pixel = [float(col), float(row)]
-                depth = float(depth)
+                point = self.deproject(row, col, intrin)
+                cage_pose =  point_to_pose_stamped(point, angle)
 
-                point = rs.rs2_deproject_pixel_to_point(intrin, pixel, depth)
-                rospy.logdebug("Depth point: %s [m]", point)
+                #%%#############
+                ### tomatoes ###
+                ################
+                tomatoes = []
 
-                pose_stamped =  point_to_pose_stamped(point)
+                rospy.logdebug("cols: %s [px]", col)
+                for i in range(0, len(object_feature['tomato']['col'])):
+
+                    # Load from struct
+                    col = object_feature['tomato']['col'][i]
+                    row = object_feature['tomato']['row'][i]
+                    radius = object_feature['tomato']['radii'][i]
+
+                    point = self.deproject(row, col, intrin)
+
+                    depth = self.depth_image[(row, col)]
+                    point1 = rs.rs2_deproject_pixel_to_point(intrin, [0,0], depth)
+                    point2 = rs.rs2_deproject_pixel_to_point(intrin, [0,radius], depth)
+                    radius_m = euclidean(point1, point2)
+
+                    tomatoes.append(point_to_tomato(point, radius_m))
+
+                #%%#############
+                ### Peduncle ###
+                ################
+                peduncle = Peduncle()
+                peduncle.pose = cage_pose
+                peduncle.radius = 0.005
+                peduncle.length = 0.15
+
+                #%%##########
+                ### Truss ###
+                #############
+                truss = Truss()
+                truss.tomatoes = tomatoes
+                truss.cage_location = cage_pose
+                truss.peduncle = peduncle
 
                 msg_e = String()
                 msg_e.data = "e_success"
 
                 self.event = None
-                self.pub_pose.publish(pose_stamped)
+                self.pub_object_features.publish(truss)
                 self.pub_e_out.publish(msg_e)
 
-def point_to_pose_stamped(point):
+
+    def deproject(self, row, col, intrin):
+        # Deproject
+        index = (row, col)
+        depth = self.depth_image[index]
+        # rospy.logdebug("Corresponding depth: %s", self.depth_image[index])
+        # https://github.com/IntelRealSense/librealsense/wiki/Projection-in-RealSense-SDK-2.0
+
+        pixel = [float(col), float(row)]
+        depth = float(depth)
+
+        point = rs.rs2_deproject_pixel_to_point(intrin, pixel, depth)
+        return point
+
+
+def euclidean(v1, v2):
+    return sum((p-q)**2 for p, q in zip(v1, v2)) ** .5
+
+def point_to_pose_stamped(point, angle):
 
     pose_stamped = PoseStamped()
     pose_stamped.header.frame_id = "camera_color_optical_frame"
     pose_stamped.header.stamp = rospy.Time.now()
 
-    quat = tf.transformations.quaternion_from_euler(0, 0, 0)
+    quat = tf.transformations.quaternion_from_euler(0, 0, -angle)
     pose_stamped.pose.orientation.x = quat[0]
     pose_stamped.pose.orientation.y = quat[1]
     pose_stamped.pose.orientation.z = quat[2]
     pose_stamped.pose.orientation.w = quat[3]
     pose_stamped.pose.position.x = point[0]
     pose_stamped.pose.position.y = point[1]
-    pose_stamped.pose.position.z = point[2] - 0.15
+    pose_stamped.pose.position.z = point[2] # - 0.15
 
     return pose_stamped
+
+
+def point_to_tomato(point, radius):
+
+    tomato = Tomato()
+    tomato.header.frame_id = "camera_color_optical_frame"
+    tomato.header.stamp = rospy.Time.now()
+
+    tomato.position.x = point[0]
+    tomato.position.y = point[1]
+    tomato.position.z = point[2] + radius
+
+    tomato.radius = radius
+    return tomato
 
 def get_test_pose():
 

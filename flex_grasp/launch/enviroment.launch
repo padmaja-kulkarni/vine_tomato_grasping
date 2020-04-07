@@ -15,13 +15,21 @@
     <arg name="rviz" default="true" />
     <arg name="ee" default="sdh" />
 
+    <!-- Object params -->
+    <arg name="object_x" default="-0.2"/>
+    <arg name="object_y" default="0.4"/>
+    <arg name="object_angle" default="1"/>
+    <arg name="object_name" default="truss"/>
+    <arg name="object_dimension" default="3d"/>
+
+
     <remap from="/$(arg hardware_interface)_trajectory_controller/follow_joint_trajectory"
            to="/$(arg robot_name)/$(arg hardware_interface)_trajectory_controller/follow_joint_trajectory" />
     <remap from="robot_description" to="/$(arg robot_name)/robot_description" />
     <remap from="/get_planning_scene" to="/$(arg robot_name)/get_planning_scene" />
 
 
-    
+
     <!-- Run the robot within a Gazebo simulation. -->
     <group if="$(arg sim)">
 
@@ -31,6 +39,11 @@
             <arg name="robot_name" value="$(arg robot_name)" />
             <arg name="model" value="$(arg model)"/>
             <arg name="ee" value="$(arg ee)" />
+            <arg name="object_x" value="$(arg object_x)"/>
+            <arg name="object_y" value="$(arg object_y)"/>
+            <arg name="object_angle" value="$(arg object_angle)"/>
+            <arg name="object_name" value="$(arg object_name)"/>
+            <arg name="object_dimension" value="$(arg object_dimension)"/>
         </include>
     </group>
 
@@ -68,7 +81,6 @@
     </group>
     
     <group if="$(eval arg('ee') == 'pr2')" ns="$(arg robot_name)">
-
     	<include file="$(find flex_pr2_moveit)/launch/move_group.launch">
 		<arg name="publish_monitored_planning_scene" value="true" />
 		<arg name="hardware_interface" value="$(arg hardware_interface)"/>

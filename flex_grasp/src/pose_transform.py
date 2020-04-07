@@ -7,8 +7,10 @@ Created on Mon Mar  9 15:49:29 2020
 """
 
 import rospy
+
 from std_msgs.msg import String
 from geometry_msgs.msg import PoseStamped
+from flex_grasp.msg import Truss
 
 import tf2_ros
 import tf
@@ -18,13 +20,13 @@ class PoseTransform(object):
     """PoseTransform"""
     def __init__(self):
         self.event = None
-        self.object_pose = None
+        self.object_features = None
 
         rospy.init_node("Object_Detection",
                         anonymous=True, log_level=rospy.DEBUG)
 
         # Initialize Subscribers
-        rospy.Subscriber("Object_Detection/objectPose", PoseStamped, self.pose_cb)
+        rospy.Subscriber("object_features", Truss, self.object_features_cb)
         rospy.Subscriber("~e_in", String, self.e_in_cb)
 
         # Initialize Publishers
@@ -47,10 +49,10 @@ class PoseTransform(object):
             rospy.sleep(0.1)
 
 
-    def pose_cb(self, msg):
-        if self.object_pose is None:
-            self.object_pose = msg
-            rospy.logdebug("Received new move robot pose message")
+    def object_features_cb(self, msg):
+        if self.object_features is None:
+            self.object_features = msg
+            rospy.logdebug("Received new object features message")
 
     def e_in_cb(self, msg):
         if self.event is None:
@@ -60,36 +62,57 @@ class PoseTransform(object):
     def get_trans(self):
         try:
             self.trans = self.tfBuffer.lookup_transform('world','camera_color_optical_frame',  rospy.Time(0))
-            rospy.loginfo("received the folowing transfomration from camera to world: %s", self.trans)
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
             pass
             # continue
 
-
     def transform_pose(self):
         if self.event == "e_start":
-            if self.object_pose is None:
+            if self.object_features is None:
                 rospy.logwarn("Cannot transform pose, since it is still empty!")
             else:
                 msg_e = String()
                 msg_e.data = "e_success"
 
-                self.object_pose_transformed = tf2_geometry_msgs.do_transform_pose(self.object_pose, self.trans)
+                self.object_pose = tf2_geometry_msgs.do_transform_pose(self.object_features.cage_location, self.trans)
 
-                self.pub_pose.publish(self.object_pose_transformed)
+                self.end_effector_pose = object_pose_to_end_effector_pose(self.object_pose)
+
+                self.pub_pose.publish(self.end_effector_pose)
                 self.pub_e_out.publish(msg_e)
 
-                self.object_pose = None
+                self.object_features = None
                 self.event = None
 
+def object_pose_to_end_effector_pose(object_pose):
+
+    end_effector_pose = PoseStamped()
+
+    # position
+    position = object_pose.pose.position
+    end_effector_pose.pose.position.x = position.x
+    end_effector_pose.pose.position.y = position.y
+    end_effector_pose.pose.position.z = position.z + 0.15
+
+    # orientation
+    orientation = object_pose.pose.orientation
+    rotation = (orientation.x, orientation.y, orientation.z, orientation.w)
+    euler = tf.transformations.euler_from_quaternion(rotation)
+    quat = tf.transformations.quaternion_from_euler(euler[0], euler[1], euler[2] - 3.1415/2) # move parralel to object
+    end_effector_pose.pose.orientation.x = quat[0]
+    end_effector_pose.pose.orientation.y = quat[1]
+    end_effector_pose.pose.orientation.z = quat[2]
+    end_effector_pose.pose.orientation.w = quat[3]
+
+    return end_effector_pose
 
 def main():
     try:
-        PT = PoseTransform()
+        pose_transform = PoseTransform()
         rate = rospy.Rate(10)
 
         while not rospy.core.is_shutdown():
-            PT.transform_pose()
+            pose_transform.transform_pose()
             rate.sleep()
 
     except rospy.ROSInterruptException:

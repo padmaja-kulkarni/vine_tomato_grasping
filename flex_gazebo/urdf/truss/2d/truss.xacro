@@ -1,10 +1,10 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
   <!-- Import all Gazebo-customization elements, including Gazebo colors -->
-  <xacro:include filename="$(find flex_gazebo)/urdf/tomato/2d/tomato.gazebo.xacro" />
+  <xacro:include filename="$(find flex_gazebo)/urdf/truss/2d/tomato.gazebo.xacro" />
 
-  <xacro:macro name="tomato_2d" params="*origin">
-    <xacro:property name="height" value="0.01" />
+  <xacro:macro name="truss" params="*origin">
+    <xacro:property name="height" value="0.10" />
     <xacro:property name="width" value="0.18" />
     <xacro:property name="length" value="0.15" />
     <xacro:property name="size" value="${length} ${width} ${height}" />
