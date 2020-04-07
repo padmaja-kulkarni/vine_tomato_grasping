@@ -25,12 +25,12 @@
   <xacro:arg name="camera_sim" default="true"/>
   <xacro:arg name="camera_origin_xyz" default="0 0.6 1.2"/>
   <xacro:arg name="camera_origin_rpy" default="3.1415 1.57 -1.57"/>
-  <xacro:arg name="use_nominal_extrinsics" default="true"/>
 
     <!-- end-effector params-->
   <xacro:arg name="endeffector_name" default="sdh"/>
   <xacro:arg name="endeffector_origin_xyz" default="0 0 0"/>
   <xacro:arg name="endeffector_origin_rpy" default="0 0 0"/>
+  <xacro:arg name="use_nominal_extrinsics" default="$(arg camera_sim)"/>
 
   <!-- Fix to world just for testing -->
   <link name="world"/>

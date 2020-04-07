@@ -9,7 +9,6 @@
 
   <!-- camera -->
   <arg name="camera_name" default="camera"/>
-  <arg name="use_nominal_extrinsics" default="true"/>
   <arg name="camera_origin_xyz" default="'0 0.6 1.2'"/>
   <arg name="camera_origin_rpy" default="'3.1415 1.57 -1.57'"/>
 
@@ -30,7 +29,6 @@
     robot_name:=$(arg robot_name)
     origin_xyz:=$(arg origin_xyz)
     origin_rpy:=$(arg origin_rpy)
-    use_nominal_extrinsics:=$(arg use_nominal_extrinsics)
     camera_name:=$(arg camera_name)
     camera_sim:=$(arg camera_sim)
     "/>
@@ -40,7 +38,6 @@
     robot_name:=$(arg robot_name)
     origin_xyz:=$(arg origin_xyz)
     origin_rpy:=$(arg origin_rpy)
-    use_nominal_extrinsics:=$(arg use_nominal_extrinsics)
     camera_name:=$(arg camera_name)
     camera_sim:=$(arg camera_sim)
     "/>
