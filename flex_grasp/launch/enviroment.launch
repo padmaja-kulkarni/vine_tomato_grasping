@@ -14,7 +14,7 @@
 
     <!-- The is gonna have its nodes/topics under a namespace with the same name. -->
     <arg name="robot_name" default="iiwa"/>
-    <arg name="camera_name" default="rs_d435"/>
+    <arg name="camera_name" default="camera"/>
 
     <!-- Model of the iiwa to use : iiwa7, iiwa14 -->
     <arg name="model" default="iiwa7"/>
