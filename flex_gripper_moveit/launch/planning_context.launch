@@ -2,10 +2,13 @@
 <launch>
   <!-- By default we do not overwrite the URDF. Change the following to true to change the default behavior -->
   <arg name="load_robot_description" default="false"/>
-  
+
   <arg name="hardware_interface" default="PositionJointInterface"/>
   <arg name="robot_name" default="iiwa"/>
   <arg name="model" default="iiwa14"/>
+
+  <arg name="camera_name" default="camera"/>
+  <arg name="camera_sim" default="true"/>
 
   <!-- The name of the parameter under which the URDF is loaded -->
   <arg name="robot_description" default="robot_description"/>
@@ -15,12 +18,14 @@
     <include file="$(find flex_gazebo)/launch/upload.launch">
       <arg name="hardware_interface" value="$(arg hardware_interface)"/>
       <arg name="robot_name" value="$(arg robot_name)" />
+      <arg name="camera_name" value="$(arg camera_name)"/>
+      <arg name="camera_sim" value="$(arg camera_sim)"/>
     </include>
   </group>
 
   <!-- The semantic description that corresponds to the URDF -->
   <param name="$(arg robot_description)_semantic" textfile="$(find flex_gripper_moveit)/config/$(arg model).srdf" />
-  
+
   <!-- Load updated joint limits (override information from URDF) -->
   <group ns="$(arg robot_description)_planning">
     <rosparam command="load" file="$(find flex_gripper_moveit)/config/joint_limits.yaml"/>
@@ -30,5 +35,5 @@
   <group ns="$(arg robot_description)_kinematics">
     <rosparam command="load" file="$(find flex_gripper_moveit)/config/kinematics.yaml"/>
   </group>
-  
+
 </launch>

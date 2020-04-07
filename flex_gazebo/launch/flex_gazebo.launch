@@ -13,9 +13,11 @@
 
     <arg name="hardware_interface" default="PositionJointInterface" />
     <arg name="robot_name" default="iiwa" />
-    <arg name="robot_model" default="iiwa14"/>
+    <arg name="model" default="iiwa14"/>
     <arg name="trajectory" default="true"/>
     <arg name="sdh" default="true"/>
+    <arg name="camera_sim" default="true"/>
+    <arg name="camera_name" default="rs_d435"/>
 
     <!-- Object params -->
     <arg name="object_x" default="-0.2"/>
@@ -28,8 +30,10 @@
     <include file="$(find flex_gazebo)/launch/flex_world.launch">
         <arg name="hardware_interface" value="$(arg hardware_interface)" />
         <arg name="robot_name" value="$(arg robot_name)" />
-        <arg name="robot_model" value="$(arg robot_model)" />
+        <arg name="model" value="$(arg model)" />
         <arg name="sdh" value="$(arg sdh)"/>
+        <arg name="camera_sim" value="$(arg camera_sim)"/>
+        <arg name="camera_name" value="$(arg camera_name)"/>
 
         <arg name="object_x" value="$(arg object_x)"/>
         <arg name="object_y" value="$(arg object_y)"/>
@@ -45,7 +49,7 @@
             <arg name="hardware_interface" value="$(arg hardware_interface)" />
             <arg name="controllers" value="joint_state_controller $(arg hardware_interface)_trajectory_controller" />
             <arg name="robot_name" value="$(arg robot_name)" />
-            <arg name="model" value="$(arg robot_model)" />
+            <arg name="model" value="$(arg model)" />
         </include>
 
     </group>
@@ -64,7 +68,7 @@
                  $(arg hardware_interface)_J6_controller
                  $(arg hardware_interface)_J7_controller"/>
             <arg name="robot_name" value="$(arg robot_name)" />
-            <arg name="model" value="$(arg robot_model)" />
+            <arg name="model" value="$(arg model)" />
         </include>
 
     </group>

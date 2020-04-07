@@ -27,8 +27,9 @@ from detect_crop.util import rgb2hsi
 from detect_crop.util import romove_blobs_2
 from detect_crop.util import segmentation_parametric
 from detect_crop.util import segmentation_cluster
+from detect_crop.util import save_fig
 
-from image_processing import visualize_cluster
+from detect_crop.util import stack_segments
 
 def rgb_3d_scatter(RGB):
     # https://realpython.com/python-opencv-color-spaces/
@@ -117,8 +118,8 @@ def hsv_2d_scatter(HSV, RGB):
     
 #%% init
 pathCurrent = os.path.dirname(__file__)
-dataSet = "tomato_rot"
-fileName = "tomato_RGB_001.jpeg"
+dataSet = "tomato_real"
+fileName = "tomato_RGB_001.png"
 
 pwdData = os.path.join(pathCurrent, "data", dataSet)
 pwdResults = os.path.join(pathCurrent, "results", "color_space")
@@ -134,7 +135,7 @@ col = int(w/1.5)
 # imBGR = imBGR[row:row + h, col:col + w]
 
 plt.rcParams["image.cmap"] = 'plasma'
-plt.rcParams["savefig.format"] = 'pdf' 
+plt.rcParams["savefig.format"] = 'png' 
 plt.rcParams["savefig.bbox"] = 'tight' 
 plt.rcParams['axes.titlesize'] = 20
 
@@ -221,7 +222,6 @@ plt.savefig(os.path.join(pwdResults, 'legend'))
 background, tomato, peduncle = segmentation_cluster(imRGB, 255)
 
 
-
 #%% VISUALIZE
 scale = 0.1
 
@@ -236,7 +236,7 @@ HSV_mini = cv2.resize(imHSV, dim, interpolation = cv2.INTER_AREA)
 
 # hsv_3d_scatter(HSV_mini, RGB_mini)
 
-hsv_2d_scatter(HSV_mini, RGB_mini)
+# hsv_2d_scatter(HSV_mini, RGB_mini)
 
 
 #%%
@@ -257,4 +257,5 @@ plt.figure()
 plt.axis('off')
 plt.imshow(imRGB) 
 
-visualize_cluster(imRGB, background, tomato, peduncle)
+segmentsRGB = stack_segments(imRGB, background, tomato, peduncle)
+save_fig(segmentsRGB, pwdResults, 'segments', saveFormat = 'png')
