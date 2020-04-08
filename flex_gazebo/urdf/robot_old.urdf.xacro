@@ -11,9 +11,10 @@
   <!-- import the camera -->
   <xacro:include filename="$(find realsense2_description)/urdf/_d435.urdf.xacro" />
   <xacro:include filename="$(find flex_gazebo)/urdf/camera/camera.gazebo.xacro" />
-  deve
+
   <!-- import the end-effector -->
-  <xacro:include filename="$(find schunk_description)/urdf/sdh/sdh.urdf.xacro" />
+  <xacro:include filename="$(find flex_gazebo)/urdf/iiwa_tool.urdf.xacro" />
+
   <!-- iiwa params-->
   <xacro:arg name="hardware_interface" default="PositionJointInterface"/>
   <xacro:arg name="robot_name" default="iiwa"/>
@@ -21,16 +22,10 @@
   <xacro:arg name="origin_rpy" default="0 0 0"/>
 
   <!-- camera params-->
-  <xacro:arg name="camera_name" default="rs_d435"/>
-  <xacro:arg name="camera_sim" default="true"/>
+  <xacro:arg name="camera_name" default="camera"/>
   <xacro:arg name="camera_origin_xyz" default="0 0.6 1.2"/>
   <xacro:arg name="camera_origin_rpy" default="3.1415 1.57 -1.57"/>
-
-    <!-- end-effector params-->
-  <xacro:arg name="endeffector_name" default="sdh"/>
-  <xacro:arg name="endeffector_origin_xyz" default="0 0 0"/>
-  <xacro:arg name="endeffector_origin_rpy" default="0 0 0"/>
-  <xacro:arg name="use_nominal_extrinsics" default="$(arg camera_sim)"/>
+  <xacro:arg name="use_nominal_extrinsics" default="true"/>
 
   <!-- Fix to world just for testing -->
   <link name="world"/>
@@ -45,14 +40,12 @@
     <origin xyz="$(arg camera_origin_xyz)" rpy="$(arg camera_origin_rpy)" />
   </xacro:sensor_d435>
 
-  <xacro:if value="$(arg camera_sim)">
-    <xacro:my_camera name="$(arg camera_name)"/>
-  </xacro:if>
+  <xacro:my_camera name="$(arg camera_name)"/>
 
   <!-- end-effector -->
-  <xacro:schunk_sdh parent="iiwa_link_ee" name="$(arg endeffector_name)">
-      <origin xyz="$(arg endeffector_origin_xyz)" rpy="$(arg endeffector_origin_rpy)" />
-  </xacro:schunk_sdh>
+  <xacro:endeffector>
+  </xacro:endeffector>
+
 
 </robot>
 

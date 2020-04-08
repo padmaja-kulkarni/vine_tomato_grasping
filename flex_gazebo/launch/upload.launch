@@ -2,10 +2,11 @@
 <launch>
 
    <!-- This lauch file just loads the URDF with the given hardware interface and robot name into the ROS Parameter Server -->
-  <arg name="hardware_interface" default="PositionJointInterface"/>
+  <arg name="robot_model" default="iiwa7"/>
   <arg name="robot_name" default="iiwa"/>
-  <arg name="origin_xyz" default="'0 0 0'"/> <!-- Note the syntax to pass a vector -->
-  <arg name="origin_rpy" default="'0 0 0'"/>
+  <arg name="hardware_interface" default="PositionJointInterface"/>
+  <arg name="robot_origin_xyz" default="'0 0 0'"/> <!-- Note the syntax to pass a vector -->
+  <arg name="robot_origin_rpy" default="'0 0 0'"/>
 
   <!-- camera -->
   <arg name="camera_name" default="camera"/>
@@ -13,7 +14,9 @@
   <arg name="camera_origin_rpy" default="'3.1415 1.57 -1.57'"/>
 
 
-  <arg name="sdh" default="true"/>
+  <arg name="use_sdh" default="false"/>
+  <arg name="use_iiwa" default="false"/>
+  <arg name="use_interbotix" default="false"/>
   <arg name="camera_sim" default="false"/>
 
   <!-- world -->
@@ -23,24 +26,27 @@
   <arg name="object_name" default="truss"/>
   <arg name="object_dimension" default="3d"/>
 
+
+  <!-- interbotix -->
+  <arg name="use_world_frame"               default="true"/>
+  <arg name="use_default_gripper_bar"       default="true"/>
+  <arg name="use_default_gripper_fingers"   default="true"/>
+  <arg name="external_urdf_loc"             default=""/>
+  <arg name="load_gazebo_configs"           default="false"/>
+
   <!-- robot -->
-  <param if="$(arg sdh)" name="robot_description" command="$(find xacro)/xacro --inorder '$(find flex_gazebo)/urdf/robot_sdh.urdf.xacro'
+  <param name="robot_description" command="$(find xacro)/xacro --inorder '$(find flex_gazebo)/urdf/robot.urdf.xacro'
     hardware_interface:=$(arg hardware_interface)
+    robot_model:=$(arg robot_model)
     robot_name:=$(arg robot_name)
-    origin_xyz:=$(arg origin_xyz)
-    origin_rpy:=$(arg origin_rpy)
     camera_name:=$(arg camera_name)
     camera_sim:=$(arg camera_sim)
+    use_sdh:=$(arg use_sdh)
+    use_iiwa:=$(arg use_iiwa)
+    use_interbotix:=$(arg use_interbotix)
     "/>
 
-  <param unless="$(arg sdh)" name="robot_description" command="$(find xacro)/xacro --inorder '$(find flex_gazebo)/urdf/robot.urdf.xacro'
-    hardware_interface:=$(arg hardware_interface)
-    robot_name:=$(arg robot_name)
-    origin_xyz:=$(arg origin_xyz)
-    origin_rpy:=$(arg origin_rpy)
-    camera_name:=$(arg camera_name)
-    camera_sim:=$(arg camera_sim)
-    "/>
+
 
   <!-- world -->
   <param name="world_description" command="$(find xacro)/xacro --inorder '$(find flex_gazebo)/urdf/world.urdf.xacro'

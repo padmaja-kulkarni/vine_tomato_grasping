@@ -4,17 +4,23 @@
     <!-- Loads thee iiwa.world environment in Gazebo. -->
 
     <!-- These are the arguments you can pass this launch file, for example paused:=true -->
-    <arg name="paused" default="false"/>
+    <arg name="paused" default="true"/>
     <arg name="use_sim_time" default="true"/>
     <arg name="gui" default="true"/>
     <arg name="headless" default="false"/>
     <arg name="debug" default="false"/>
     <arg name="hardware_interface" default="PositionJointInterface"/>
     <arg name="robot_name" default="iiwa" />
-    <arg name="model" default="iiwa7"/>
-    <arg name="sdh" default="true"/>
+    <arg name="robot_model" default="iiwa7"/>
+
     <arg name="camera_sim" default="true"/>
-    <arg name="camera_name" default="rs_d435"/>
+
+    <arg name="use_sdh" default="false"/>
+    <arg name="use_iiwa" default="false"/>
+    <arg name="use_interbotix" default="false"/>
+
+    <arg name="camera_name" default="camera"/>
+    <arg name="camera_model" default="rs_d435"/>
 
     <!-- Object params -->
     <arg name="object_x" default="-0.2"/>
@@ -35,24 +41,39 @@
 
     <!-- Load the URDF with the given hardware interface into the ROS Parameter Server -->
     <include file="$(find flex_gazebo)/launch/upload.launch">
-        <arg name="hardware_interface" value="$(arg hardware_interface)"/>
-        <arg name="robot_name" value="$(arg robot_name)" />
-        <arg name="sdh" value="$(arg sdh)"/>
-        <arg name="camera_sim" value="$(arg camera_sim)"/>
-        <arg name="camera_name" value="$(arg camera_name)"/>
+        <arg name="robot_name"          value="$(arg robot_name)" />
+        <arg name="robot_model"         value="$(arg robot_model)" />
+        <arg name="hardware_interface"  value="$(arg hardware_interface)"/>
+        <arg name="camera_sim"          value="$(arg camera_sim)"/>
+        <arg name="camera_name"         value="$(arg camera_name)"/>
 
-        <arg name="object_origin_xyz" value="'$(arg object_x) $(arg object_y) 0.26'"/>
-        <arg name="object_origin_rpy" value="'0 0 $(arg object_angle)'"/>
-        <arg name="object_name" value="$(arg object_name)"/>
-        <arg name="object_dimension" value="$(arg object_dimension)"/>
+        <arg name="use_sdh"             value="$(arg use_sdh)"/>
+        <arg name="use_iiwa"            default="$(arg use_iiwa)"/>
+        <arg name="use_interbotix"      default="$(arg use_interbotix)"/>
+
+        <arg name="object_origin_xyz"   value="'$(arg object_x) $(arg object_y) 0.26'"/>
+        <arg name="object_origin_rpy"   value="'0 0 $(arg object_angle)'"/>
+        <arg name="object_name"         value="$(arg object_name)"/>
+        <arg name="object_dimension"    value="$(arg object_dimension)"/>
 
     </include>
 
     <!-- Run a python script to send a service call to gazebo_ros to spawn a URDF robot -->
-    <node name="robot_urdf_spawner" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen"
-          args="-urdf -model iiwa -param robot_description"/>
 
-    <node name="world_urdf_spawner" pkg="gazebo_ros" type="spawn_model" respawn="false" output="screen"
-                args="-urdf -model tomato -param world_description"/>
+    <node
+      name="robot_urdf_spawner"
+      pkg="gazebo_ros"
+      type="spawn_model"
+      respawn="false"
+      output="screen"
+      args="-urdf -model $(arg robot_model) -param robot_description"/>
+
+    <node
+      name="world_urdf_spawner"
+      pkg="gazebo_ros"
+      type="spawn_model"
+      respawn="false"
+      output="screen"
+      args="-urdf -model tomato -param world_description"/>
 
 </launch>

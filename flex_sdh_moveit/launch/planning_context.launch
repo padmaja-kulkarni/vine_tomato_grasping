@@ -10,6 +10,10 @@
   <arg name="camera_name" default="camera"/>
   <arg name="camera_sim" default="true"/>
 
+  <arg name="use_sdh" default="false"/>
+  <arg name="use_iiwa" default="false"/>
+  <arg name="use_interbotix" default="false"/>
+
   <!-- The name of the parameter under which the URDF is loaded -->
   <arg name="robot_description" default="robot_description"/>
 
@@ -20,6 +24,10 @@
       <arg name="robot_name" value="$(arg robot_name)" />
       <arg name="camera_name" value="$(arg camera_name)"/>
       <arg name="camera_sim" value="$(arg camera_sim)"/>
+
+      <arg name="use_sdh" value="$(arg use_sdh)"/>
+      <arg name="use_iiwa" default="$(arg use_iiwa)"/>
+      <arg name="use_interbotix" default="$(arg use_interbotix)"/>
     </include>
   </group>
 

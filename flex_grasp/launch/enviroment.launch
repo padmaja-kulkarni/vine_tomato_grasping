@@ -7,19 +7,20 @@
     <!-- the "sim" argument controls whether we connect to a Simulated or Real robot. -->
     <arg name="sim" default="true" doc="If true, the robot will be simulated in Gazebo" />
     <arg name="camera_sim" default="true" doc="If true, the camera will be simulated in Gazebo" />
-    <arg name="sdh" default="true" />
+    <arg name="use_sdh" default="true"/>
+    <arg name="use_iiwa" default="true"/>
+    <arg name="use_interbotix" default="false"/>
 
     <!-- hardware_interface to use : PositionJointInterface, EffortJointInterface, VelocityJointInterface. -->
     <arg name="hardware_interface" default="PositionJointInterface"/>
 
-    <!-- The is gonna have its nodes/topics under a namespace with the same name. -->
-    <arg name="robot_name" default="iiwa"/>
-    <arg name="camera_name" default="camera"/>
-
     <!-- Model of the iiwa to use : iiwa7, iiwa14 -->
-    <arg name="model" default="iiwa7"/>
+    <arg name="robot_model" default="iiwa7"/>
     <arg name="rviz" default="true" />
 
+    <!-- The is gonna have its nodes/topics under a namespace with the same name. -->
+    <arg name="robot_name" default="iiwa"/> <!-- $(arg robot_model) -->
+    <arg name="camera_name" default="camera"/>
 
     <!-- Object params -->
     <arg name="object_x" default="-0.2"/>
@@ -33,7 +34,7 @@
 
     <remap from="/$(arg hardware_interface)_trajectory_controller/follow_joint_trajectory"
            to="/$(arg robot_name)/$(arg hardware_interface)_trajectory_controller/follow_joint_trajectory" />
-    <remap from="robot_description" to="/$(arg robot_name)/robot_description" />
+    <!-- <remap from="robot_description" to="/$(arg robot_name)/robot_description" /> -->
     <remap from="/get_planning_scene" to="/$(arg robot_name)/get_planning_scene" />
 
 
@@ -58,8 +59,12 @@
         <include file="$(find flex_gazebo)/launch/flex_gazebo.launch">
             <arg name="hardware_interface" value="$(arg hardware_interface)"/>
             <arg name="robot_name" value="$(arg robot_name)" />
-            <arg name="model" value="$(arg model)"/>
-            <arg name="sdh" value="$(arg sdh)"/>
+            <arg name="robot_model" value="$(arg robot_model)"/>
+
+            <arg name="use_sdh" value="$(arg use_sdh)"/>
+            <arg name="use_iiwa" default="$(arg use_iiwa)"/>
+            <arg name="use_interbotix" default="$(arg use_interbotix)"/>
+
             <arg name="camera_sim" value="$(arg camera_sim)"/>
             <arg name="camera_name" value="$(arg camera_name)"/>
 
@@ -79,7 +84,7 @@
             <arg name="hardware_interface" value="$(arg hardware_interface)" />
             <arg name="controllers" value="joint_state_controller $(arg hardware_interface)_trajectory_controller" />
             <arg name="robot_name" value="$(arg robot_name)" />
-            <arg name="model" value="$(arg model)" />
+            <arg name="model" value="$(arg robot_model)" />
         </include>
 
         <!-- Robot interface -->
@@ -90,34 +95,40 @@
     </group>
 
     <!-- Load move_group -->
-    <group if="$(arg sdh)" ns="$(arg robot_name)">
+    <group if="$(arg use_iiwa)" ns="$(arg robot_name)">
 
-      <include file="$(find flex_sdh_moveit)/launch/move_group.launch">
-        <arg name="publish_monitored_planning_scene" value="true" />
-        <arg name="hardware_interface" value="$(arg hardware_interface)"/>
-	      <arg name="robot_name" value="$(arg robot_name)"/>
-        <arg name="model" value="$(arg model)" />
+      <group unless="$(arg use_sdh)">
+        <include file="$(find flex_sdh_moveit)/launch/move_group.launch">
+          <arg name="publish_monitored_planning_scene" value="true" />
+          <arg name="hardware_interface" value="$(arg hardware_interface)"/>
+  	      <arg name="robot_name" value="$(arg robot_name)"/>
+          <arg name="model" value="$(arg robot_model)" />
 
-        <arg name="camera_name" value="$(arg camera_name)"/>
-        <arg name="camera_sim" value="$(arg camera_sim)"/>
-      </include>
+          <arg name="camera_name" value="$(arg camera_name)"/>
+          <arg name="camera_sim" value="$(arg camera_sim)"/>
 
-	<include if="$(arg rviz)" file="$(find flex_sdh_moveit)/launch/moveit_rviz.launch">
-            <arg name="config" value="true"/>
-        </include>
-    </group>
-
-    <group unless="$(arg sdh)" ns="$(arg robot_name)">
-
-    	<include file="$(find flex_gripper_moveit)/launch/move_group.launch">
-		<arg name="publish_monitored_planning_scene" value="true" />
-		<arg name="hardware_interface" value="$(arg hardware_interface)"/>
-		<arg name="robot_name" value="$(arg robot_name)"/>
-                <arg name="model" value="$(arg model)" />
+          <arg name="use_sdh" value="$(arg use_sdh)"/>
+          <arg name="use_iiwa" default="$(arg use_iiwa)"/>
+          <arg name="use_interbotix" default="$(arg use_interbotix)"/>
         </include>
 
-	<include if="$(arg rviz)" file="$(find flex_gripper_moveit)/launch/moveit_rviz.launch">
-            <arg name="config" value="true"/>
+        <include if="$(arg rviz)" file="$(find flex_sdh_moveit)/launch/moveit_rviz.launch">
+          <arg name="config" value="true"/>
         </include>
+      </group>
+
+      <group unless="$(arg use_sdh)">
+
+        <include file="$(find flex_gripper_moveit)/launch/move_group.launch">
+          <arg name="publish_monitored_planning_scene" value="true" />
+          <arg name="hardware_interface" value="$(arg hardware_interface)"/>
+          <arg name="robot_name" value="$(arg robot_name)"/>
+          <arg name="model" value="$(arg robot_model)" />
+        </include>
+
+        <include if="$(arg rviz)" file="$(find flex_gripper_moveit)/launch/moveit_rviz.launch">
+          <arg name="config" value="true"/>
+        </include>
+      </group>
     </group>
 </launch>
