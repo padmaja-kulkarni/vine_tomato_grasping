@@ -97,7 +97,8 @@
     <!-- Load move_group -->
     <group if="$(arg use_iiwa)" ns="$(arg robot_name)">
 
-      <group unless="$(arg use_sdh)">
+      <group if="$(arg use_sdh)">
+        <!-- iiwa with SDH-->
         <include file="$(find flex_sdh_moveit)/launch/move_group.launch">
           <arg name="publish_monitored_planning_scene" value="true" />
           <arg name="hardware_interface" value="$(arg hardware_interface)"/>
@@ -118,7 +119,7 @@
       </group>
 
       <group unless="$(arg use_sdh)">
-
+        <!-- iiwa without SDH-->
         <include file="$(find flex_gripper_moveit)/launch/move_group.launch">
           <arg name="publish_monitored_planning_scene" value="true" />
           <arg name="hardware_interface" value="$(arg hardware_interface)"/>
