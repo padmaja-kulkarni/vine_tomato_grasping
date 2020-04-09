@@ -57,7 +57,7 @@
       <!-- import the end-effector -->
       <xacro:include filename="$(find schunk_description)/urdf/sdh/sdh.urdf.xacro" />
 
-      <xacro:schunk_sdh parent="iiwa_link_ee" name="$(arg endeffector_name)">
+      <xacro:schunk_sdh parent="$(arg robot_name)_link_ee" name="$(arg endeffector_name)">
         <origin xyz="$(arg endeffector_origin_xyz)" rpy="$(arg endeffector_origin_rpy)" />
       </xacro:schunk_sdh>
     </xacro:if>
