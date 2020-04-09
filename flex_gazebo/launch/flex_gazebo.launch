@@ -30,6 +30,8 @@
     <arg name="object_name" default="truss"/>
     <arg name="object_dimension" default="3d"/>
 
+    <env name="GAZEBO_RESOURCE_PATH" value="$(find interbotix_gazebo)"/>
+
     <!-- Loads the Gazebo world. -->
     <include file="$(find flex_gazebo)/launch/flex_world.launch">
         <arg name="hardware_interface" value="$(arg hardware_interface)" />

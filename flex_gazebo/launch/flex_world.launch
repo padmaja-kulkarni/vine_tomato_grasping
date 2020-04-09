@@ -4,7 +4,7 @@
     <!-- Loads thee iiwa.world environment in Gazebo. -->
 
     <!-- These are the arguments you can pass this launch file, for example paused:=true -->
-    <arg name="paused" default="false"/>
+    <arg name="paused" default="true"/>
     <arg name="use_sim_time" default="true"/>
     <arg name="gui" default="true"/>
     <arg name="headless" default="false"/>
@@ -38,6 +38,7 @@
         <arg name="use_sim_time" value="$(arg use_sim_time)"/>
         <arg name="headless" value="$(arg headless)"/>
     </include>
+
 
     <!-- Load the URDF with the given hardware interface into the ROS Parameter Server -->
     <include file="$(find flex_gazebo)/launch/upload.launch">
@@ -77,5 +78,18 @@
       output="screen"
       ns="$(arg robot_name)"
       args="-urdf -model tomato -param world_description"/>
+
+    <!--
+    <group if="$(arg use_interbotix)">
+      <node
+        name="robot_state_publisher"
+        pkg="robot_state_publisher"
+        type="robot_state_publisher"
+        ns="$(arg robot_name)">
+      </node>
+    </group>
+  -->
+
+
 
 </launch>

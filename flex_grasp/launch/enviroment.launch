@@ -21,7 +21,7 @@
     <arg name="rviz" default="true" />
 
     <!-- The is gonna have its nodes/topics under a namespace with the same name. -->
-    <arg name="robot_name" default="iiwa"/> <!-- $(arg robot_model) -->
+    <arg name="robot_name" default="$(arg robot_model)"/> <!-- $(arg robot_model) -->
     <arg name="camera_name" default="camera"/>
 
     <!-- Object params -->

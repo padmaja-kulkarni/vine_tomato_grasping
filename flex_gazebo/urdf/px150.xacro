@@ -2,12 +2,12 @@
 <robot name="px150" xmlns:xacro="http://ros.org/wiki/xacro">
   <xacro:macro name="px150">
 
-  <xacro:arg name="robot_name" default = ""/>
+  <xacro:arg name="robot_name" default = "px150"/>
   <xacro:arg name="use_world_frame" default="false"/>
   <xacro:arg name="use_default_gripper_bar" default="true"/>
   <xacro:arg name="use_default_gripper_fingers" default="true"/>
   <xacro:arg name="external_urdf_loc" default=""/>
-  <xacro:arg name="load_gazebo_configs" default="false"/>
+  <xacro:arg name="load_gazebo_configs" default="true"/>
 
 
 
