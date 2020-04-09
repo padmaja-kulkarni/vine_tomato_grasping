@@ -135,7 +135,7 @@
       </group>
     </group>
 
-    <group if="false" ns="$(arg robot_name)"> <!-- $(arg use_interbotix) -->
+    <group if="$(arg use_interbotix)" ns="$(arg robot_name)"> <!-- $(arg use_interbotix) -->
       <include file="$(find flex_interbotix_moveit)/launch/move_group.launch">
         <arg name="robot_name"                       value="$(arg robot_name)"/>
         <arg name="robot_model"                      value="$(arg robot_model)"/>
@@ -154,6 +154,7 @@
       </include>
 
       <include if="$(arg rviz)" file="$(find flex_interbotix_moveit)/launch/moveit_rviz.launch">
+        <arg name="rviz_frame"                       value="world"/>
         <arg name="config"                           value="true"/>
       </include>
     </group>
