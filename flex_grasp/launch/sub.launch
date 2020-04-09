@@ -1,7 +1,6 @@
 <?xml version="1.0"?>
 <launch>
 	<!-- Parameters to pass to the ROS node -->
-	<arg name="move_group" default="manipulator"/>
 	<arg name="robot_name" default="iiwa"/>
 	<arg name="move_group_name" default="manipulator"/>
 
