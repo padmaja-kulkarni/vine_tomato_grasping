@@ -21,7 +21,7 @@
   <xacro:arg name="iiwa_origin_xyz" default="0.0 0.0 0.0"/>
   <xacro:arg name="iiwa_origin_rpy" default="0.0 0.0 0.0"/>
 
-  <xacro:arg name="interbotix_origin_xyz" default="0.0 0.0 0.26"/>
+  <xacro:arg name="interbotix_origin_xyz" default="0.0 0.1 0.23"/>
   <xacro:arg name="interbotix_origin_rpy" default="0.0 0.0 ${3.1415 / 2}"/>
 
     <!-- end-effector params-->

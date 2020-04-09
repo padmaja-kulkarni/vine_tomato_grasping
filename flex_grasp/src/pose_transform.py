@@ -30,7 +30,7 @@ class PoseTransform(object):
         rospy.Subscriber("~e_in", String, self.e_in_cb)
 
         # Initialize Publishers
-        self.pub_pose = rospy.Publisher('~endEffectorPose',
+        self.pub_pose = rospy.Publisher('endEffectorPose',
                                         PoseStamped, queue_size=5, latch=True)
 
         self.pub_e_out = rospy.Publisher("~e_out",
@@ -88,11 +88,13 @@ def object_pose_to_end_effector_pose(object_pose):
 
     end_effector_pose = PoseStamped()
 
+    end_effector_pose.header = object_pose.header
+
     # position
     position = object_pose.pose.position
     end_effector_pose.pose.position.x = position.x
     end_effector_pose.pose.position.y = position.y
-    end_effector_pose.pose.position.z = position.z + 0.15
+    end_effector_pose.pose.position.z = position.z + 0.05
 
     # orientation
     orientation = object_pose.pose.orientation

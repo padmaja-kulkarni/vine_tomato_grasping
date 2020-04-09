@@ -25,9 +25,9 @@
     <arg name="camera_name" default="camera"/>
 
     <!-- Object params -->
-    <arg name="object_x" default="-0.2"/>
-    <arg name="object_y" default="0.4"/>
-    <arg name="object_angle" default="1"/>
+    <arg name="object_x" default="0"/>
+    <arg name="object_y" default="0.35"/>
+    <arg name="object_angle" default="0"/>
     <arg name="object_name" default="truss"/>
     <arg name="object_dimension" default="3d"/>
 

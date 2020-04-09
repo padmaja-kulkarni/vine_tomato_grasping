@@ -37,7 +37,7 @@ class MoveRobot(object):
         self.event = None
 
         # Subscribers
-        rospy.Subscriber("Pose_Transform/endEffectorPose", PoseStamped, self.pose_cb)
+        rospy.Subscriber("endEffectorPose", PoseStamped, self.pose_cb)
         rospy.Subscriber("~e_in", String, self.e_in_cb)
 
         # Publishers
