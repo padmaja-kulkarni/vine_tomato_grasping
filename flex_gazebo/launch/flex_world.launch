@@ -75,6 +75,7 @@
       type="spawn_model"
       respawn="false"
       output="screen"
+      ns="$(arg robot_name)"
       args="-urdf -model tomato -param world_description"/>
 
 </launch>

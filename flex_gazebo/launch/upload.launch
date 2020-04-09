@@ -49,7 +49,7 @@
 
 
   <!-- world -->
-  <param name="world_description" command="$(find xacro)/xacro --inorder '$(find flex_gazebo)/urdf/world.urdf.xacro'
+  <param name="$(arg robot_name)/world_description" command="$(find xacro)/xacro --inorder '$(find flex_gazebo)/urdf/world.urdf.xacro'
     object_name:=$(arg object_name)
     object_dimension:=$(arg object_dimension)
     object_origin_xyz:=$(arg object_origin_xyz)
