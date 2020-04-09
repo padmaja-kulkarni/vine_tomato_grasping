@@ -11,6 +11,8 @@
     <arg name="use_iiwa" default="true"/>
     <arg name="use_interbotix" default="false"/>
 
+    <arg name="rviz_frame"                         default="world"/>
+
     <!-- hardware_interface to use : PositionJointInterface, EffortJointInterface, VelocityJointInterface. -->
     <arg name="hardware_interface" default="PositionJointInterface"/>
 
@@ -103,7 +105,7 @@
           <arg name="publish_monitored_planning_scene" value="true" />
           <arg name="hardware_interface" value="$(arg hardware_interface)"/>
   	      <arg name="robot_name" value="$(arg robot_name)"/>
-          <arg name="model" value="$(arg robot_model)" />
+          <arg name="robot_model" value="$(arg robot_model)" />
 
           <arg name="camera_name" value="$(arg camera_name)"/>
           <arg name="camera_sim" value="$(arg camera_sim)"/>
@@ -131,5 +133,28 @@
           <arg name="config" value="true"/>
         </include>
       </group>
+    </group>
+
+    <group if="false" ns="$(arg robot_name)"> <!-- $(arg use_interbotix) -->
+      <include file="$(find flex_interbotix_moveit)/launch/move_group.launch">
+        <arg name="robot_name"                       value="$(arg robot_name)"/>
+        <arg name="robot_model"                      value="$(arg robot_model)"/>
+        <arg name="publish_monitored_planning_scene" value="true" />
+
+        <arg name="camera_name" value="$(arg camera_name)"/>
+        <arg name="camera_sim" value="$(arg camera_sim)"/>
+
+        <arg name="use_sdh" value="$(arg use_sdh)"/>
+        <arg name="use_iiwa" default="$(arg use_iiwa)"/>
+        <arg name="use_interbotix" default="$(arg use_interbotix)"/>
+
+        <arg name="external_srdf_loc"                value=""/>
+        <arg name="dof"                              value="5"/>
+        <arg name="fake_execution"                   value="false"/>
+      </include>
+
+      <include if="$(arg rviz)" file="$(find flex_interbotix_moveit)/launch/moveit_rviz.launch">
+        <arg name="config"                           value="true"/>
+      </include>
     </group>
 </launch>

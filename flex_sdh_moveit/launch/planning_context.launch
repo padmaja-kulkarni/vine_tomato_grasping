@@ -5,7 +5,7 @@
 
   <arg name="hardware_interface" default="PositionJointInterface"/>
   <arg name="robot_name" default="iiwa"/>
-  <arg name="model" default="iiwa14"/>
+  <arg name="robot_model" default="iiwa14"/>
 
   <arg name="camera_name" default="camera"/>
   <arg name="camera_sim" default="true"/>
@@ -32,7 +32,7 @@
   </group>
 
   <!-- The semantic description that corresponds to the URDF -->
-  <param name="$(arg robot_description)_semantic" textfile="$(find flex_sdh_moveit)/config/$(arg model).srdf" />
+  <param name="$(arg robot_description)_semantic" textfile="$(find flex_sdh_moveit)/config/$(arg robot_model).srdf" />
 
   <!-- Load updated joint limits (override information from URDF) -->
   <group ns="$(arg robot_description)_planning">

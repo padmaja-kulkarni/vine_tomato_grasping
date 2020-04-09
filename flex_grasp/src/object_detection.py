@@ -73,10 +73,10 @@ class ObjectDetection(object):
 
         # Subscribe
         rospy.Subscriber("~e_in", String, self.e_in_cb)
-        rospy.Subscriber("/camera/color/image_raw", Image, self.color_image_cb)
-        rospy.Subscriber("/camera/depth/image_rect_raw", Image, self.depth_image_cb)
-        rospy.Subscriber("/camera/color/camera_info", CameraInfo, self.color_info_cb)
-        rospy.Subscriber("/camera/color/camera_info", CameraInfo, self.depth_info_cb)
+        rospy.Subscriber("camera/color/image_raw", Image, self.color_image_cb)
+        rospy.Subscriber("camera/depth/image_rect_raw", Image, self.depth_image_cb)
+        rospy.Subscriber("camera/color/camera_info", CameraInfo, self.color_info_cb)
+        rospy.Subscriber("camera/color/camera_info", CameraInfo, self.depth_info_cb)
 
 
         # Publish

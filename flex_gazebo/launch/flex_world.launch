@@ -66,6 +66,7 @@
       type="spawn_model"
       respawn="false"
       output="screen"
+      ns="$(arg robot_name)"
       args="-urdf -model $(arg robot_model) -param robot_description"/>
 
     <node
