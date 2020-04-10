@@ -94,13 +94,14 @@ def object_pose_to_end_effector_pose(object_pose):
     position = object_pose.pose.position
     end_effector_pose.pose.position.x = position.x
     end_effector_pose.pose.position.y = position.y
-    end_effector_pose.pose.position.z = position.z + 0.05
+    end_effector_pose.pose.position.z = position.z + 0.1
 
     # orientation
     orientation = object_pose.pose.orientation
     rotation = (orientation.x, orientation.y, orientation.z, orientation.w)
     euler = tf.transformations.euler_from_quaternion(rotation)
-    quat = tf.transformations.quaternion_from_euler(euler[0], euler[1], euler[2] - 3.1415/2) # move parralel to object
+    # quat = tf.transformations.quaternion_from_euler(euler[0], euler[1], euler[2] - 3.1415/2) # move parralel to object
+    quat = tf.transformations.quaternion_from_euler(euler[0]- 3.1415, euler[1] + 3.1415/2, euler[2])
     end_effector_pose.pose.orientation.x = quat[0]
     end_effector_pose.pose.orientation.y = quat[1]
     end_effector_pose.pose.orientation.z = quat[2]

@@ -71,7 +71,8 @@ class MoveRobot(object):
         group_name = rospy.get_param('move_group_name')
         group = moveit_commander.MoveGroupCommander(group_name)
 
-        # rospy.sleep(10)required?
+        eef_link = group.get_end_effector_link()
+        rospy.logdebug("============ End effector link: %s", eef_link)
 
         self.robot = robot
         self.group = group
