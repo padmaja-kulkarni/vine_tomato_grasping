@@ -36,6 +36,14 @@ class PoseTransform(object):
         self.pub_e_out = rospy.Publisher("~e_out",
                                          String, queue_size=10, latch=True)
 
+        self.use_iiwa = rospy.get_param('use_iiwa')
+        self.use_interbotix = rospy.get_param('use_interbotix')
+        self.use_sdh = rospy.get_param('use_sdh')
+
+        if self.use_iiwa:
+            rospy.loginfo("Using iiwa")
+        if self.use_interbotix:
+            rospy.loginfo("Using interbotix")
 
         # Listen
         self.tfBuffer = tf2_ros.Buffer()
@@ -76,7 +84,7 @@ class PoseTransform(object):
 
                 self.object_pose = tf2_geometry_msgs.do_transform_pose(self.object_features.cage_location, self.trans)
 
-                self.end_effector_pose = object_pose_to_end_effector_pose(self.object_pose)
+                self.end_effector_pose = self.object_pose_to_end_effector_pose(self.object_pose)
 
                 self.pub_pose.publish(self.end_effector_pose)
                 self.pub_e_out.publish(msg_e)
@@ -84,30 +92,37 @@ class PoseTransform(object):
                 self.object_features = None
                 self.event = None
 
-def object_pose_to_end_effector_pose(object_pose):
+    def object_pose_to_end_effector_pose(self, object_pose):
 
-    end_effector_pose = PoseStamped()
+        end_effector_pose = PoseStamped()
 
-    end_effector_pose.header = object_pose.header
+        end_effector_pose.header = object_pose.header
 
-    # position
-    position = object_pose.pose.position
-    end_effector_pose.pose.position.x = position.x
-    end_effector_pose.pose.position.y = position.y
-    end_effector_pose.pose.position.z = position.z + 0.1
+        # position
+        position = object_pose.pose.position
+        end_effector_pose.pose.position.x = position.x
+        end_effector_pose.pose.position.y = position.y
+        if self.use_iiwa:
+            end_effector_pose.pose.position.z = position.z + 0.15
+        elif self.use_interbotix:
+            end_effector_pose.pose.position.z = position.z + 0.10
 
-    # orientation
-    orientation = object_pose.pose.orientation
-    rotation = (orientation.x, orientation.y, orientation.z, orientation.w)
-    euler = tf.transformations.euler_from_quaternion(rotation)
-    # quat = tf.transformations.quaternion_from_euler(euler[0], euler[1], euler[2] - 3.1415/2) # move parralel to object
-    quat = tf.transformations.quaternion_from_euler(euler[0]- 3.1415, euler[1] + 3.1415/2, euler[2])
-    end_effector_pose.pose.orientation.x = quat[0]
-    end_effector_pose.pose.orientation.y = quat[1]
-    end_effector_pose.pose.orientation.z = quat[2]
-    end_effector_pose.pose.orientation.w = quat[3]
+        # orientation
+        orientation = object_pose.pose.orientation
+        rotation = (orientation.x, orientation.y, orientation.z, orientation.w)
+        euler = tf.transformations.euler_from_quaternion(rotation)
 
-    return end_effector_pose
+        if self.use_iiwa:
+            quat = tf.transformations.quaternion_from_euler(euler[0], euler[1], euler[2] - 3.1415/2) # move parralel to object
+        elif self.use_interbotix:
+            quat = tf.transformations.quaternion_from_euler(euler[0]- 3.1415, euler[1] + 3.1415/2, euler[2])
+
+        end_effector_pose.pose.orientation.x = quat[0]
+        end_effector_pose.pose.orientation.y = quat[1]
+        end_effector_pose.pose.orientation.z = quat[2]
+        end_effector_pose.pose.orientation.w = quat[3]
+
+        return end_effector_pose
 
 def main():
     try:

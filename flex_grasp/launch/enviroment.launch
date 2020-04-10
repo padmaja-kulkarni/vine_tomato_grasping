@@ -39,6 +39,9 @@
     <!-- <remap from="robot_description" to="/$(arg robot_name)/robot_description" /> -->
     <!-- <remap from="/get_planning_scene" to="/$(arg robot_name)/get_planning_scene" /> -->
 
+    <rosparam param="$(arg robot_name)/use_iiwa" subst_value="True">$(arg use_iiwa)</rosparam>
+    <rosparam param="$(arg robot_name)/use_sdh" subst_value="True">$(arg use_sdh)</rosparam>
+    <rosparam param="$(arg robot_name)/use_interbotix" subst_value="True">$(arg use_interbotix)</rosparam>
 
     <group unless="$(arg camera_sim)">
       <include file="$(find realsense2_camera)/launch/rs_camera.launch">
