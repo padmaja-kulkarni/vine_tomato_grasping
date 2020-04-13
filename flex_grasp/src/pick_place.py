@@ -243,7 +243,7 @@ class Pick_Place(object):
 
         # Setting post-grasp retreat
         grasps.post_grasp_retreat.direction.header.frame_id = "world"
-        grasps.post_grasp_retreat.direction.vector.z = -1.0
+        grasps.post_grasp_retreat.direction.vector.z = 1.0
         grasps.post_grasp_retreat.min_distance = 0.005
         grasps.post_grasp_retreat.desired_distance = 0.25
 
