@@ -14,7 +14,7 @@
   <arg name="camera_origin_rpy" default="'3.1415 1.57 -1.57'"/>
 
   <!-- end_effector -->
-  <arg name="ee" default="pr2"/>
+  <arg name="ee" default="sdh"/>
 
   <!-- world -->
   <!-- <param name="param_angle" command="$(find flex_gazebo)/scripts/generate_random_angle.py"/> -->
