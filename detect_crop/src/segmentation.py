@@ -8,7 +8,6 @@ Created on Tue Feb 18 08:52:33 2020
 
 
 ## imports ##
-import pathlib
 import os # os.sep
 import cv2
 import numpy as np
@@ -16,13 +15,14 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 # custom functions
-from image_processing import save_fig
-from image_processing import stack_segments
-from image_processing import segmentation_otsu_test
+from detect_crop.util import save_fig
+from detect_crop.util import stack_segments
+from detect_crop.util import segmentation_otsu_test
+
 #%% init
-pathCurrent = pathlib.Path().absolute()
-dataSet = "tomato_rot"
-fileName = "tomato_RGB_002.png"
+pathCurrent = os.path.dirname(__file__)
+dataSet = "tomato_real"
+fileName = "tomato_RGB_001.png"
 imMax = 255
 
 pwdData = os.path.join(pathCurrent, "data", dataSet)
@@ -35,7 +35,7 @@ imBGR = cv2.imread(imPath)
 # Cropping, only works for this specific image!
 h = int(H/2)
 w = int(W/2)
-row = H - h
+row = int(H/4)
 col = int(w/1.5)
 imBGR = imBGR[row:row + h, col:col + w]
 
@@ -55,9 +55,9 @@ imYCrCb = cv2.cvtColor(imRGB, cv2.COLOR_RGB2YCrCb)
 #########################
 
 # RGB
-background, tomato, peduncle = segmentation_otsu_test(imRGB[:,:,1], imHSV[:,:,0], imMax)
-segmentsRGB = stack_segments(imRGB, background, tomato, np.zeros(tomato.shape, dtype = np.uint8))
-save_fig(segmentsRGB, pwdResults, '1RGB', figureTitle = 'Green (RGB)')
+# background, tomato, peduncle = segmentation_otsu_test(imRGB[:,:,1], imHSV[:,:,0], imMax)
+# segmentsRGB = stack_segments(imRGB, background, tomato, np.zeros(tomato.shape, dtype = np.uint8))
+# save_fig(segmentsRGB, pwdResults, '1RGB', figureTitle = 'Green (RGB)')
 
 # HSV
 background, tomato, peduncle = segmentation_otsu_test(imHSV[:,:,1], imHSV[:,:,0], imMax)
@@ -65,31 +65,31 @@ segmentsRGB = stack_segments(imRGB, background, tomato, np.zeros(tomato.shape, d
 save_fig(segmentsRGB, pwdResults, '1HSV', figureTitle = 'Saturation (HSV)')
 
 # LAB
-background, tomato, peduncle = segmentation_otsu_test(imLAB[:,:,1], imHSV[:,:,0], imMax)
-segmentsRGB = stack_segments(imRGB, background, tomato, np.zeros(tomato.shape, dtype = np.uint8))
-save_fig(segmentsRGB, pwdResults, '1LAB', figureTitle = 'A (LAB)')
+# background, tomato, peduncle = segmentation_otsu_test(imLAB[:,:,1], imHSV[:,:,0], imMax)
+# segmentsRGB = stack_segments(imRGB, background, tomato, np.zeros(tomato.shape, dtype = np.uint8))
+# save_fig(segmentsRGB, pwdResults, '1LAB', figureTitle = 'A (LAB)')
 
 
 #%%#####################
 ### tomato, peduncle ###
 ########################
 # # HSV
-background, tomato, peduncle = segmentation_otsu_test(imHSV[:,:,1], imRGB[:,:,0], imMax)
-segmentsRGB = stack_segments(imRGB, background, tomato, peduncle)
-save_fig(segmentsRGB, pwdResults, '2RGB', figureTitle = 'R (RGB)')
+# background, tomato, peduncle = segmentation_otsu_test(imHSV[:,:,1], imRGB[:,:,0], imMax)
+# segmentsRGB = stack_segments(imRGB, background, tomato, peduncle)
+# save_fig(segmentsRGB, pwdResults, '2RGB', figureTitle = 'R (RGB)')
 
 
 # HUE
-background, tomato, peduncle = segmentation_otsu_test(imHSV[:,:,1], imHSV[:,:,0], imMax)
-segmentsRGB = stack_segments(imRGB, background, tomato, peduncle)
-save_fig(segmentsRGB, pwdResults, '2HSV', figureTitle = 'Hue (HSV)')
+# background, tomato, peduncle = segmentation_otsu_test(imHSV[:,:,1], imHSV[:,:,0], imMax)
+# segmentsRGB = stack_segments(imRGB, background, tomato, peduncle)
+# save_fig(segmentsRGB, pwdResults, '2HSV', figureTitle = 'Hue (HSV)')
 
-background, tomato, peduncle = segmentation_otsu_test(imHSV[:,:,1], imLAB[:,:,1], imMax)
-segmentsRGB = stack_segments(imRGB, background, tomato, peduncle)
-save_fig(segmentsRGB, pwdResults, '2LAB', figureTitle = 'A (LAB)')
+# background, tomato, peduncle = segmentation_otsu_test(imHSV[:,:,1], imLAB[:,:,1], imMax)
+# segmentsRGB = stack_segments(imRGB, background, tomato, peduncle)
+# save_fig(segmentsRGB, pwdResults, '2LAB', figureTitle = 'A (LAB)')
 
 
 
-background, tomato, peduncle = segmentation_otsu_test(imHSV[:,:,1], imYCrCb[:,:,1], imMax)
-segmentsRGB = stack_segments(imRGB, background, tomato, peduncle)
-save_fig(segmentsRGB, pwdResults, '2YCrCb', figureTitle = 'Cr (YCbCr)')
+# background, tomato, peduncle = segmentation_otsu_test(imHSV[:,:,1], imYCrCb[:,:,1], imMax)
+# segmentsRGB = stack_segments(imRGB, background, tomato, peduncle)
+# save_fig(segmentsRGB, pwdResults, '2YCrCb', figureTitle = 'Cr (YCbCr)')

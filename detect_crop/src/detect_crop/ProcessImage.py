@@ -44,6 +44,14 @@ class ProcessImage(object):
 
         self.saveFormat = saveFormat
 
+        DIM = imRGB.shape[:2]
+        width_desired = 1920.0
+        scale = int(width_desired/DIM[1])
+        width = DIM[1] * scale
+        height = DIM[0] * scale
+
+        imRGB = cv2.resize(imRGB, (width, height), interpolation = cv2.INTER_AREA)
+        self.scale = scale
         self.DIM = imRGB.shape[:2]
         self.imRGB = imRGB
         self.saveIntermediate = saveIntermediate
@@ -84,7 +92,7 @@ class ProcessImage(object):
 
         # peduncle
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (self.filterDiameterPend, self.filterDiameterPend))
-        peduncleFiltered = cv2.morphologyEx(cv2.morphologyEx(self.peduncle, cv2.MORPH_OPEN, kernel),cv2.MORPH_CLOSE, kernel)
+        peduncleFiltered = cv2.morphologyEx(cv2.morphologyEx(self.peduncle, cv2.MORPH_CLOSE, kernel),cv2.MORPH_OPEN, kernel)
         peduncleFiltered = romove_blobs(peduncleFiltered, self.imMax)
 
         # background
@@ -152,10 +160,10 @@ class ProcessImage(object):
         #%%##################
         ## Detect tomatoes ##
         #####################
-        tomatoFilteredLBlurred = cv2.GaussianBlur(self.tomato, (5, 5), 0)
+        tomatoFilteredLBlurred = cv2.GaussianBlur(self.tomato, (1, 1), 0)
         minR = self.w/8 # 6
-        maxR = self.w/5
-        minDist = self.w/5
+        maxR = self.w/4
+        minDist = self.w/6
 
         circles = cv2.HoughCircles(tomatoFilteredLBlurred, cv2.HOUGH_GRADIENT, 5, minDist,
                                    param1=50,param2=100, minRadius=minR, maxRadius=maxR)
@@ -278,15 +286,15 @@ class ProcessImage(object):
             plot_circles(self.imRGB, graspL, [10], savePath = self.pwdProcess, saveName = '06')
 
     def get_object_features(self):
-        graspPixel = np.around(self.graspO[0]).astype(int)
+        graspPixel = np.around(self.graspO[0]/self.scale).astype(int)
         row = graspPixel[1]
         col =  graspPixel[0]
         angle = self.angle/180*np.pi
 
-        tomatoPixel = np.around(self.centersO).astype(int)
+        tomatoPixel = np.around(self.centersO/self.scale).astype(int)
         tomatoRow = tomatoPixel[:, 1]
         tomatoCol = tomatoPixel[:, 0]
-        radii = self.radii
+        radii = self.radii/self.scale
 
         object_feature = {
             "grasp": {"row": row, "col": col, "angle": angle},
@@ -392,7 +400,7 @@ def main():
     saveIntermediate = True
 
     pathCurrent = os.path.dirname(__file__)
-    dataSet = "sim" # "tomato_rot"
+    dataSet = "tomato_rot" # "tomato_rot"
 
     pwdTest = os.path.join("..") # "..", "..", ,  "taeke"
 

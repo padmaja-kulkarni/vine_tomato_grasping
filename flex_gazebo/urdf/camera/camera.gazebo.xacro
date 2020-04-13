@@ -5,7 +5,7 @@
   <xacro:macro name="my_camera" params="name">
 
     <!-- Link1 -->
-    <gazebo reference="${name}_color_frame">
+    <gazebo reference="${name}_color_frame"> <!--  -->
       <sensor name="color" type="camera">
         <!-- <pose frame="">0 -0.046 0.004 0 0 0</pose> -->
         <camera name="__default__">
@@ -32,7 +32,7 @@
         <plugin name="camera_controller" filename="libgazebo_ros_camera.so">
          <alwaysOn>true</alwaysOn>
          <updateRate>0.0</updateRate>
-         <cameraName>realsense_plugin/camera/color</cameraName>
+         <cameraName>camera/color</cameraName>
          <imageTopicName>image_raw</imageTopicName>
          <cameraInfoTopicName>camera_info</cameraInfoTopicName>
          <frameName>camera_color_optical_frame</frameName>
@@ -79,10 +79,10 @@
           <baseline>0.2</baseline>
           <alwaysOn>true</alwaysOn>
           <updateRate>1.0</updateRate>
-          <cameraName>realsense_plugin/camera/depth</cameraName>
+          <cameraName>camera/depth</cameraName>
           <imageTopicName>ignore/image_raw</imageTopicName>
           <cameraInfoTopicName>ignore/camera_info</cameraInfoTopicName>
-          <depthImageTopicName>image_raw</depthImageTopicName>
+          <depthImageTopicName>image_rect_raw</depthImageTopicName>
           <depthImageInfoTopicName>camera_info</depthImageInfoTopicName>
           <pointCloudTopicName>points</pointCloudTopicName>
           <frameName>camera_depth_optical_frame</frameName>

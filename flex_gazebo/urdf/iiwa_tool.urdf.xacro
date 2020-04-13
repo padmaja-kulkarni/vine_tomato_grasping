@@ -1,0 +1,125 @@
+<?xml version="1.0"?>
+
+<!-- Here we define the robot, we named it "iiwa7_tool" -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="iiwa7">
+
+  <xacro:macro name="endeffector">
+  
+    <!-- End-effector params -->
+    <xacro:property name="tool_mass" value="0.200" />
+    <xacro:property name="tool_joint_offset" value="0.00 0.00 0.00" />
+    <xacro:property name="tool_link_offset" value="0.2 0.00 0" />
+
+    <!--  Here we define a dummy joint between the tip of the iiwa7 and the base of the tool. 
+    There is no offset between the two, that means the tool is attached at the robot flange. -->
+    <joint name="tool_joint" type="fixed">
+        <parent link="iiwa_link_ee" />
+        <child link = "gripper_pole" />
+        <origin xyz="${tool_joint_offset}" rpy="0 -${PI/2.0} 0" />  
+    </joint>
+
+    <link name="gripper_pole">
+        <visual>
+        <geometry>
+            <cylinder length="0.05" radius="0.01"/>
+        </geometry>
+        <origin rpy="0 ${PI/2.0} 0 " xyz="0.025 0 0"/>
+        </visual>
+        <collision>
+        <geometry>
+            <cylinder length="0.05" radius="0.01"/>
+        </geometry>
+        <origin rpy="0 ${PI/2.0} 0 " xyz="0.025 0 0"/>
+        </collision>
+    </link>
+
+    <joint name="left_gripper_joint" type="fixed">
+        <origin rpy="0 0 0" xyz="0.05 0.01 0"/>
+        <parent link="gripper_pole"/>
+        <child link="left_gripper"/>
+    </joint>
+
+    <link name="left_gripper">
+        <visual>
+        <origin rpy="0.0 0 0" xyz="0 0 0"/>
+        <geometry>
+            <mesh filename="package://urdf_tutorial/meshes/l_finger.dae"/>
+        </geometry>
+        </visual>
+        <collision>
+        <origin rpy="0.0 0 0" xyz="0 0 0"/>
+        <geometry>
+            <mesh filename="package://urdf_tutorial/meshes/l_finger.dae"/>
+        </geometry>
+        </collision>
+    </link>
+
+    <joint name="left_tip_joint" type="fixed">
+        <parent link="left_gripper"/>
+        <child link="left_tip"/>
+    </joint>
+
+    <link name="left_tip">
+        <visual>
+        <origin rpy="0.0 0 0" xyz="0.09137 0.00495 0"/>
+        <geometry>
+            <mesh filename="package://urdf_tutorial/meshes/l_finger_tip.dae"/>
+        </geometry>
+        </visual>
+    </link>
+
+    <joint name="right_gripper_joint" type="fixed">
+        <origin rpy="0 0 0" xyz="0.05 -0.01 0"/>
+        <parent link="gripper_pole"/>
+        <child link="right_gripper"/>
+    </joint>
+
+    <link name="right_gripper">
+        <visual>
+        <origin rpy="-3.1415 0 0" xyz="0 0 0"/>
+        <geometry>
+            <mesh filename="package://urdf_tutorial/meshes/l_finger.dae"/>
+        </geometry>
+        </visual>
+        <collision>
+        <origin rpy="-3.1415 0 0" xyz="0 0 0"/>
+        <geometry>
+            <mesh filename="package://urdf_tutorial/meshes/l_finger.dae"/>
+        </geometry>
+        </collision>
+    </link>
+
+    <joint name="right_tip_joint" type="fixed">
+        <parent link="right_gripper"/>
+        <child link="right_tip"/>
+    </joint>
+
+    <link name="right_tip">
+        <visual>
+        <origin rpy="-3.1415 0 0" xyz="0.09137 0.00495 0"/>
+        <geometry>
+            <mesh filename="package://urdf_tutorial/meshes/l_finger_tip.dae"/>
+        </geometry>
+        </visual>
+        <collision>
+        <origin rpy="-3.1415 0 0" xyz="0.09137 0.00495 0"/>
+        <geometry>
+            <mesh filename="package://urdf_tutorial/meshes/l_finger_tip.dae"/>
+        </geometry>
+        </collision>
+    </link>
+    
+    <!--  Here we define another dummy joint. It is placed at the end of the tool, so we can then attach a frame at its TCP for control -->
+    <joint name="tool_tip_joint" type="fixed">
+        <parent link="gripper_pole" />
+        <child link = "tool_link_ee" />
+        <origin xyz="${tool_link_offset}" rpy="0 ${PI/2.0} 0" />   
+    </joint>
+    
+    <!--  The TCP frame is here defined -->
+    <link name="tool_link_ee"/>
+
+  </xacro:macro>
+</robot>
+  
+

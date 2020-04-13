@@ -2,11 +2,19 @@
 <launch>
   <!-- By default we do not overwrite the URDF. Change the following to true to change the default behavior -->
   <arg name="load_robot_description" default="false"/>
-  
+
   <arg name="hardware_interface" default="PositionJointInterface"/>
   <arg name="robot_name" default="iiwa"/>
-  <arg name="model" default="iiwa7"/>
+
   <arg name="ee" default="sdh" />
+  <arg name="robot_model" default="iiwa14"/>
+
+  <arg name="camera_name" default="camera"/>
+  <arg name="camera_sim" default="true"/>
+
+  <arg name="use_sdh" default="false"/>
+  <arg name="use_iiwa" default="false"/>
+  <arg name="use_interbotix" default="false"/>
 
   <!-- The name of the parameter under which the URDF is loaded -->
   <arg name="robot_description" default="robot_description"/>
@@ -17,12 +25,18 @@
       <arg name="hardware_interface" value="$(arg hardware_interface)"/>
       <arg name="robot_name" value="$(arg robot_name)" />
       <arg name="ee" value="$(arg ee)" />
+      <arg name="camera_name" value="$(arg camera_name)"/>
+      <arg name="camera_sim" value="$(arg camera_sim)"/>
+
+      <arg name="use_sdh" value="$(arg use_sdh)"/>
+      <arg name="use_iiwa" default="$(arg use_iiwa)"/>
+      <arg name="use_interbotix" default="$(arg use_interbotix)"/>
     </include>
   </group>
 
   <!-- The semantic description that corresponds to the URDF -->
-  <param name="$(arg robot_description)_semantic" textfile="$(find flex_sdh_moveit)/config/$(arg model).srdf" />
-  
+  <param name="$(arg robot_description)_semantic" textfile="$(find flex_sdh_moveit)/config/$(arg robot_model).srdf" />
+
   <!-- Load updated joint limits (override information from URDF) -->
   <group ns="$(arg robot_description)_planning">
     <rosparam command="load" file="$(find flex_sdh_moveit)/config/joint_limits.yaml"/>
@@ -32,5 +46,5 @@
   <group ns="$(arg robot_description)_kinematics">
     <rosparam command="load" file="$(find flex_sdh_moveit)/config/kinematics.yaml"/>
   </group>
-  
+
 </launch>
