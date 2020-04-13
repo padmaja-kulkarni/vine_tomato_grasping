@@ -40,11 +40,6 @@ class PoseTransform(object):
         self.use_interbotix = rospy.get_param('use_interbotix')
         self.use_sdh = rospy.get_param('use_sdh')
 
-        if self.use_iiwa:
-            rospy.loginfo("Using iiwa")
-        if self.use_interbotix:
-            rospy.loginfo("Using interbotix")
-
         # Listen
         self.tfBuffer = tf2_ros.Buffer()
         self.listener = tf2_ros.TransformListener(self.tfBuffer)
@@ -103,9 +98,9 @@ class PoseTransform(object):
         end_effector_pose.pose.position.x = position.x
         end_effector_pose.pose.position.y = position.y
         if self.use_iiwa:
-            end_effector_pose.pose.position.z = position.z + 0.15
+            end_effector_pose.pose.position.z = position.z# + 0.15
         elif self.use_interbotix:
-            end_effector_pose.pose.position.z = position.z + 0.10
+            end_effector_pose.pose.position.z = position.z +  0.15
 
         # orientation
         orientation = object_pose.pose.orientation

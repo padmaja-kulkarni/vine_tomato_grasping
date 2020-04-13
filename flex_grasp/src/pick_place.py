@@ -42,6 +42,22 @@ class Pick_Place(object):
         self.initialise_enviroment()
         self.initialise_robot()
 
+        self.use_iiwa = rospy.get_param('use_iiwa')
+        self.use_interbotix = rospy.get_param('use_interbotix')
+        self.use_sdh = rospy.get_param('use_sdh')
+
+        if self.use_sdh:
+            rospy.logdebug('Using SDH') # closed open
+            self.joint_names = ["sdh_finger_11_joint", "sdh_knuckle_joint",
+                                   "sdh_finger_12_joint", "sdh_finger_13_joint",
+                                   "sdh_finger_21_joint", "sdh_finger_22_joint",
+                                   "sdh_finger_23_joint", "sdh_thumb_2_joint",
+                                   "sdh_thumb_3_joint"]
+        elif self.use_interbotix: # Closed Open Home
+            rospy.logdebug('Using Interbotix')
+            self.joint_names = ["left_finger", "right_finger"]
+
+
         self._compute_ik = rospy.ServiceProxy('compute_ik', GetPositionIK)
         self.event = None
 
@@ -77,15 +93,17 @@ class Pick_Place(object):
 
         ## Instantiate a `MoveGroupCommander`_ object.  This object is an interface
         ## to one group of joints.
-        group_name = rospy.get_param('move_group_name')
-        group = moveit_commander.MoveGroupCommander(group_name)
+        manipulator_group_name = rospy.get_param('manipulator_group_name')
+        ee_group_name = rospy.get_param('ee_group_name')
+
+        manipulator_group = moveit_commander.MoveGroupCommander(manipulator_group_name)
 
         # rospy.sleep(10)required?
-
+        self.manipulator_group_name = manipulator_group_name
+        self.ee_group_name = ee_group_name
         self.robot = robot
-        self.group = group
+        self.group = manipulator_group
         self.robot_goal_pose = None
-        # self.state = RobotState.INITIALIZING
 
     def wait_for_state_update(self, box_is_known=False, box_is_attached=False, timeout=4, box_name= ''):
         """ Wait until we see the changes reflected in the scene
@@ -153,8 +171,7 @@ class Pick_Place(object):
         request = GetPositionIKRequest()
         request.ik_request.pose_stamped = pose_stamped
 
-        group_name = rospy.get_param('move_group_name')
-        request.ik_request.group_name = group_name
+        request.ik_request.group_name = self.manipulator_group_name
         request.ik_request.timeout = timeout
         response = self._compute_ik(request)
 
@@ -209,6 +226,8 @@ class Pick_Place(object):
 
         rospy.logdebug("==STARTING PICK PROCEDURE===")
 
+        # p = PickPlaceInterface("arm", "gripper")
+
         grasps = Grasp()
 
         grasps.grasp_pose.header.frame_id = "world"
@@ -218,13 +237,13 @@ class Pick_Place(object):
 
         # Setting pre-grasp approach
         grasps.pre_grasp_approach.direction.header.frame_id = "world"
-        grasps.pre_grasp_approach.direction.vector.z = 1.0
+        grasps.pre_grasp_approach.direction.vector.z = -1.0
         grasps.pre_grasp_approach.min_distance = 0.005
         grasps.pre_grasp_approach.desired_distance = 0.25
 
         # Setting post-grasp retreat
         grasps.post_grasp_retreat.direction.header.frame_id = "world"
-        grasps.post_grasp_retreat.direction.vector.z = 1.0
+        grasps.post_grasp_retreat.direction.vector.z = -1.0
         grasps.post_grasp_retreat.min_distance = 0.005
         grasps.post_grasp_retreat.desired_distance = 0.25
 
@@ -240,29 +259,23 @@ class Pick_Place(object):
 
         rospy.logdebug("==PERFORM GRASP===")
         self.group.pick("tomato", grasps)
+        return True
 
     def openGripper(self, posture):
-        posture.joint_names = ["sdh_finger_11_joint", "sdh_knuckle_joint",
-                               "sdh_finger_12_joint", "sdh_finger_13_joint",
-                               "sdh_finger_21_joint", "sdh_finger_22_joint",
-                               "sdh_finger_23_joint", "sdh_thumb_2_joint",
-                               "sdh_thumb_3_joint"]
+        posture.joint_names = self.joint_names
 
         jtp = JointTrajectoryPoint()
-        jtp.positions = [0, -m.pi/2, 0, 0, -m.pi/2, 0, m.pi/2, 0]
+        # jtp.positions = [0, -m.pi/2, 0, 0, -m.pi/2, 0, m.pi/2, 0]
+        jtp.positions = [0.037, -0.037]
         jtp.time_from_start = rospy.Duration(0.5)
 
         posture.points = [jtp]
 
     def closedGripper(self, posture):
-        posture.joint_names = ["sdh_finger_11_joint", "sdh_knuckle_joint",
-                               "sdh_finger_12_joint", "sdh_finger_13_joint",
-                               "sdh_finger_21_joint", "sdh_finger_22_joint",
-                               "sdh_finger_23_joint", "sdh_thumb_2_joint",
-                               "sdh_thumb_3_joint"]
+        posture.joint_names = self.joint_names
 
         jtp = JointTrajectoryPoint()
-        jtp.positions = [0, 0, 0, 0, 0, 0, 0, 0]
+        jtp.positions = [0.015, -0.015]
         jtp.time_from_start = rospy.Duration(0.5)
 
         posture.points = [jtp]
@@ -322,7 +335,8 @@ class Pick_Place(object):
             success = None
 
             if self.event == "e_start":
-                succes = self.go_to_pose_goal()
+                # succes = self.go_to_pose_goal()
+                succes = self.pick()
             elif self.event == "e_home":
                 succes = self.go_to_home()
 
