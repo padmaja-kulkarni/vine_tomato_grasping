@@ -236,8 +236,6 @@ class Pick_Place(object):
       
         self.group.set_support_surface_name("table")
         
-        self.group.
-        
         rospy.logdebug("==PERFORM GRASP===")
         self.group.pick("tomato", grasps)
         
