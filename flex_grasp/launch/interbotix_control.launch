@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="robot_name"                    default="px150"/>
+  <arg name="move_group_manipulator_name"   default="interbotix_arm"/>
+  <arg name="move_group_end_effector_name"  default="interbotix_gripper"/>
+
+  <include file="$(find flex_grasp)/launch/control.launch">
+    <arg name="robot_name"              value="$(arg robot_name)"/>
+    <arg name="move_group_name"         value="$(arg move_group_manipulator_name)"/>
+  </include>
+
+</launch>

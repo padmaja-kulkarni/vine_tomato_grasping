@@ -37,7 +37,7 @@ class MoveRobot(object):
         self.event = None
 
         # Subscribers
-        rospy.Subscriber("Pose_Transform/endEffectorPose", PoseStamped, self.pose_cb)
+        rospy.Subscriber("endEffectorPose", PoseStamped, self.pose_cb)
         rospy.Subscriber("~e_in", String, self.e_in_cb)
 
         # Publishers
@@ -71,13 +71,14 @@ class MoveRobot(object):
         group_name = rospy.get_param('move_group_name')
         group = moveit_commander.MoveGroupCommander(group_name)
 
-        # rospy.sleep(10)required?
+        eef_link = group.get_end_effector_link()
+        rospy.logdebug("============ End effector link: %s", eef_link)
 
         self.robot = robot
         self.group = group
         self.robot_goal_pose = None
         # self.state = RobotState.INITIALIZING
-            
+
     def compute_ik(self, pose_stamped, timeout=rospy.Duration(5)):
         """Computes inverse kinematics for the given pose.
 
@@ -173,15 +174,8 @@ class MoveRobot(object):
         """ Plan and move to home
 
         """
+        self.group.set_named_target('Upright')
 
-
-        ## Planning to a joint Goal
-        group_variable_values = self.group.get_current_joint_values()
-        for i in range(0, len(group_variable_values)):
-            group_variable_values[i] = 0
-
-        # in this case ik always allow, no checking is required
-        self.group.set_joint_value_target(group_variable_values)
         plan = self.group.plan()
         self.group.execute(plan, wait=True)
 
@@ -191,7 +185,7 @@ class MoveRobot(object):
         # It is always good to clear your targets after planning with poses.
         self.group.clear_pose_targets()
 
-        return all_close(group_variable_values, self.group.get_current_joint_values(), 0.02)
+        return all_close(self.group.get_joint_value_target(), self.group.get_current_joint_values(), 0.02)
 
 
     def command_robot(self):

@@ -1,0 +1,62 @@
+<?xml version="1.0"?>
+<launch>
+
+  <arg name="robot_sim" default="true"/>
+  <arg name="camera_sim" default="true"/>
+
+  <arg name="use_sdh" default="true"/>
+  <arg name="use_iiwa" default="true"/>
+  <arg name="use_interbotix" default="false"/>
+
+  <!-- hardware_interface to use : PositionJointInterface, EffortJointInterface, VelocityJointInterface. -->
+  <arg name="hardware_interface" default="PositionJointInterface"/>
+
+  <!-- Model of the iiwa to use : iiwa7, iiwa14 -->
+  <arg name="robot_model" default="iiwa7"/>
+  <arg name="rviz" default="true" />
+
+  <!-- The is gonna have its nodes/topics under a namespace with the same name. -->
+  <arg name="robot_name" default="iiwa"/> <!-- $(arg robot_model) -->
+  <arg name="camera_name" default="camera"/>
+  <arg name="move_group_name" default="manipulator"/>
+
+  <!-- Object params -->
+  <arg name="object_x" default="0"/>
+  <arg name="object_y" default="0.45"/>
+  <arg name="object_angle" default="0.5"/>
+  <arg name="object_name" default="truss"/>
+  <arg name="object_dimension" default="3d"/>
+
+  <arg name="image_width" default="848"/>
+  <arg name="image_height" default="480"/>
+
+  <include file="$(find flex_grasp)/launch/enviroment.launch">
+    <arg name="robot_sim"               value="$(arg robot_sim)"/>
+    <arg name="camera_sim"              value="$(arg camera_sim)"/>
+
+    <arg name="use_interbotix"          value="$(arg use_interbotix)"/>
+    <arg name="use_sdh"                 value="$(arg use_sdh)"/>
+    <arg name="use_iiwa"                value="$(arg use_iiwa)"/>
+
+    <arg name="robot_model"             value="$(arg robot_model)"/>
+    <arg name="robot_name"              value="$(arg robot_name)"/>
+    <arg name="camera_name"             value="$(arg camera_name)"/>
+
+    <arg name="object_x"                default="0"/>
+    <arg name="object_y"                default="0.45"/>
+    <arg name="object_angle"            default="0.5"/>
+    <arg name="object_name"             default="truss"/>
+    <arg name="object_dimension"        default="3d"/>
+
+    <arg name="image_width"             default="848"/>
+    <arg name="image_height"            default="480"/>
+
+    <arg name="hardware_interface"      value="$(arg hardware_interface)"/>
+  </include>
+
+  <include file="$(find flex_grasp)/launch/control.launch">
+    <arg name="robot_name"              value="$(arg robot_name)"/>
+    <arg name="move_group_name"         value="$(arg move_group_name)"/>
+  </include>
+
+</launch>
