@@ -1,0 +1,41 @@
+<launch>
+
+  <arg name="robot_name"                  default="px150"/>
+  <arg name="arm_operating_mode"          default="position"/>
+  <arg name="arm_profile_velocity"        default="131"/>
+  <arg name="arm_profile_acceleration"    default="15"/>
+  <arg name="use_pid_cntlrs"              default="false"/>
+  <arg name="use_gazebo"                  default="true"/>
+  <arg name="use_actual"                  default="false"/>
+  <arg name="use_fake"                    default="false"/>
+  <arg name="dof"                         default="5"/>
+
+  <node name="pipeline"
+    pkg="flex_test"
+    type="pipeline.py"
+    respawn="false"
+    output="screen"
+    ns="$(arg robot_name)"
+  />
+
+  <node name="Pose_Transform"
+    pkg="flex_test"
+    type="pose_transform.py"
+    respawn="false"
+    output="screen"
+    ns="$(arg robot_name)"
+  />
+
+  <node name="Pick_Place"
+    pkg="flex_grasp"
+    type="pick_place.py"
+    respawn="false"
+    output="screen"
+    ns="$(arg robot_name)">
+    <param name="robot_name" value="$(arg robot_name)"/>
+    <param name="dof" value="$(arg dof)"/>
+    <remap from="/attached_collision_object" to="/$(arg robot_name)/attached_collision_object"/>
+    <remap from="/collision_object" to="/$(arg robot_name)/collision_object"/>
+  </node>
+
+</launch>

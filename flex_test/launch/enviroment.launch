@@ -1,0 +1,34 @@
+<launch>
+
+  <arg name="robot_name"                  default="px150"/>
+  <arg name="arm_operating_mode"          default="position"/>
+  <arg name="arm_profile_velocity"        default="131"/>
+  <arg name="arm_profile_acceleration"    default="15"/>
+  <arg name="use_pid_cntlrs"              default="false"/>
+  <arg name="use_gazebo"                  default="true"/>
+  <arg name="use_actual"                  default="false"/>
+  <arg name="use_fake"                    default="false"/>
+  <arg name="dof"                         default="5"/>
+
+  <group ns="$(arg robot_name)">
+    <param name="use_iiwa" value="false"/>
+    <param name="use_sdh" value="false"/>
+    <param name="use_interbotix" value="true"/>
+
+    <param name="manipulator_group_name" value="interbotix_arm"/>
+    <param name="ee_group_name" value="interbotix_gripper"/>
+  </group>
+
+  <include file="$(find interbotix_moveit)/launch/interbotix_moveit.launch">
+    <arg name="robot_name"                value="$(arg robot_name)"/>
+    <arg name="arm_operating_mode"        value="$(arg arm_operating_mode)"/>
+    <arg name="arm_profile_velocity"      value="$(arg arm_profile_velocity)"/>
+    <arg name="arm_profile_acceleration"  value="$(arg arm_profile_acceleration)"/>
+    <arg name="use_pid_cntlrs"            value="$(arg use_pid_cntlrs)"/>
+    <arg name="use_gazebo"                value="$(arg use_gazebo)"/>
+    <arg name="use_actual"                value="$(arg use_actual)"/>
+    <arg name="use_fake"                  value="$(arg use_fake)"/>
+    <arg name="dof"                       value="$(arg dof)"/>
+  </include>
+
+</launch>

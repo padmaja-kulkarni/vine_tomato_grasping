@@ -13,7 +13,7 @@ import math as m
 from std_msgs.msg import String
 from geometry_msgs.msg import PoseStamped, Quaternion
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
-from moveit_msgs.msg import MoveItErrorCodes, PlaceLocation, Grasp
+from moveit_msgs.msg import MoveItErrorCodes, PlaceLocation, Grasp, GripperTranslation
 
 from moveit_msgs.srv import GetPositionIK, GetPositionIKRequest
 
@@ -39,8 +39,9 @@ class Pick_Place(object):
         while rospy.get_time() < 0.1:
             pass
 
-        self.initialise_enviroment()
         self.initialise_robot()
+        self.initialise_enviroment()
+
 
         self.use_iiwa = rospy.get_param('use_iiwa')
         self.use_interbotix = rospy.get_param('use_interbotix')
@@ -56,6 +57,9 @@ class Pick_Place(object):
         elif self.use_interbotix: # Closed Open Home
             rospy.logdebug('Using Interbotix')
             self.joint_names = ["left_finger", "right_finger"]
+            self.GRIPPER_OPEN = [0.037, -0.037]
+            self.GRIPPER_CLOSED = [0.015, -0.015]
+            self.GRIPPER_EFFORT = [1.0]
 
 
         self._compute_ik = rospy.ServiceProxy('compute_ik', GetPositionIK)
@@ -97,6 +101,17 @@ class Pick_Place(object):
         ee_group_name = rospy.get_param('ee_group_name')
 
         manipulator_group = moveit_commander.MoveGroupCommander(manipulator_group_name)
+        ee_group = moveit_commander.MoveGroupCommander(ee_group_name)
+
+        eef_link = manipulator_group.get_end_effector_link()
+
+        # Allow replanning to increase the odds of a solution
+        manipulator_group.allow_replanning(True)
+
+        # Allow 5 seconds per planning attempt
+        manipulator_group.set_planning_time(5)
+
+        self.max_pick_attempts = 5
 
         # rospy.sleep(10)required?
         self.manipulator_group_name = manipulator_group_name
@@ -104,6 +119,65 @@ class Pick_Place(object):
         self.robot = robot
         self.group = manipulator_group
         self.robot_goal_pose = None
+        self.eef_link = eef_link
+
+    def initialise_enviroment(self):
+        """" Checks wether the RViz enviroment is correctly set
+
+
+        """
+
+        rospy.logdebug("===INITIALIZING ENVIROMENT====")
+
+        # interface to the world surrounding the robot.
+        self.scene = moveit_commander.PlanningSceneInterface()
+        rospy.sleep(1)
+
+        self.target_object_name = 'peduncle'
+        self.scene.remove_attached_object(self.eef_link, self.target_object_name)
+
+        rospy.sleep(1)
+
+        known_objects_prev = None
+        while True:
+            known_objects = self.scene.get_known_object_names()
+
+            if not known_objects == known_objects_prev:
+                known_objects_prev = known_objects
+                rospy.logdebug("Known objects: %s", known_objects)
+
+                if ('table' in known_objects) and ('wall' in known_objects):
+                    break
+                else:
+                    rospy.logwarn("Table and wall object not present, refusing to continue before they are added")
+            rospy.sleep(0.1)
+
+        # if self.add_box(box_name = self.target_object_name):
+        #    rospy.logdebug("Succesfully added %s", self.target_object_name)
+        # else:
+        #    rospy.logwarn("Unable to add %s", self.target_object_name)
+
+        rospy.logdebug( "Known objects: %s", self.scene.get_known_object_names())
+
+    def add_box(self, timeout=4, box_name = ''):
+        """ create a box with a given name.
+
+        Args:
+
+        Returns: True if the box was succesfully added, False otherwise.
+
+        """
+        box_pose = PoseStamped()
+        box_pose.header.frame_id =  "world"
+        box_pose.pose.orientation.w = 1.0
+        box_pose.pose.position.x = 0.15
+        box_pose.pose.position.z = 0.02
+
+        # Add box
+        self.scene.add_box(box_name, box_pose, size=(0.02, 0.2, 0.02))
+
+        # Check if box has been added
+        return self.wait_for_state_update(box_is_known=True, timeout=timeout, box_name = box_name)
 
     def wait_for_state_update(self, box_is_known=False, box_is_attached=False, timeout=4, box_name= ''):
         """ Wait until we see the changes reflected in the scene
@@ -139,25 +213,6 @@ class Pick_Place(object):
         return False
         ## END_SUB_TUTORIAL
 
-    def add_box(self, timeout=4, box_name = ''):
-        """ create a box with a given name.
-
-        Args:
-
-        Returns: True if the box was succesfully added, False otherwise.
-
-        """
-        box_pose = PoseStamped()
-        box_pose.header.frame_id =  self.robot.get_planning_frame()
-        box_pose.pose.orientation.w = 1.0
-        box_pose.pose.position.y = 1.0
-
-        # Add box
-        self.scene.add_box(box_name, box_pose, size=(1, 1, 0.1))
-
-        # Check if box has been added
-        return self.wait_for_state_update(box_is_known=True, timeout=timeout, box_name = box_name)
-
     def compute_ik(self, pose_stamped, timeout=rospy.Duration(5)):
         """Computes inverse kinematics for the given pose.
 
@@ -177,48 +232,8 @@ class Pick_Place(object):
 
         if not response.error_code.val == MoveItErrorCodes.SUCCESS:
             return False
-        # We do not need the actual solution
-        # joint_state = response.solution.joint_state
-        # for name, position in zip(joint_state.name, joint_state.position):
-        #     if name in ArmJoints.names():
-        #         rospy.loginfo('{}: {}'.format(name, position))
-        return True
-
-
-    def initialise_enviroment(self):
-        """" Checks wether the RViz enviroment is correctly set
-
-
-        """
-
-        rospy.logdebug("===INITIALIZING ENVIROMENT====")
-
-        # interface to the world surrounding the robot.
-        self.scene = moveit_commander.PlanningSceneInterface()
-        rospy.sleep(0.1)
-
-        # Check wether table and wall objects are present
-        known_objects_prev = None
-        while True:
-            known_objects = self.scene.get_known_object_names()
-
-            if not known_objects == known_objects_prev:
-                known_objects_prev = known_objects
-                rospy.logdebug("Known objects: %s", known_objects)
-
-                if ('table' in known_objects) and ('wall' in known_objects):
-                    break
-                else:
-                    rospy.logwarn("Table and wall object not present, refusing to continue before they are added")
-            rospy.sleep(0.1)
-
-
-#        if self.add_box(box_name = 'table'):
-#            rospy.logdebug("Succesfully added table")
-#        else:
-#            rospy.logwarn("Unable to add table")
-#
-#        rospy.logdebug( "Known objects: %s", self.scene.get_known_object_names())
+        else:
+            return True
 
     def pick(self):
         """ Pick an object
@@ -226,59 +241,83 @@ class Pick_Place(object):
 
         rospy.logdebug("==STARTING PICK PROCEDURE===")
 
-        # p = PickPlaceInterface("arm", "gripper")
-
+        # Initialize grasp
         grasps = Grasp()
 
-        grasps.grasp_pose.header.frame_id = "world"
+        # Pre grasp posture
+        grasps.pre_grasp_posture = self.make_gripper_posture(self.GRIPPER_OPEN)
 
-        grasps.grasp_pose.pose = self.robot_goal_pose.pose
+        # Grasp posture
+        grasps.grasp_posture = self.make_gripper_posture(self.GRIPPER_CLOSED)
 
+        # Set the approach and retreat parameters as desired
+        grasps.pre_grasp_approach = self.make_gripper_translation(0.01, 0.1, [0, 0, -1.0])
+        grasps.post_grasp_retreat = self.make_gripper_translation(0.1, 0.15, [0, 0, 1.0])
 
-        # Setting pre-grasp approach
-        grasps.pre_grasp_approach.direction.header.frame_id = "world"
-        grasps.pre_grasp_approach.direction.vector.z = -1.0
-        grasps.pre_grasp_approach.min_distance = 0.005
-        grasps.pre_grasp_approach.desired_distance = 0.25
+        # grasp pose
+        grasps.grasp_pose = self.robot_goal_pose
 
-        # Setting post-grasp retreat
-        grasps.post_grasp_retreat.direction.header.frame_id = "world"
-        grasps.post_grasp_retreat.direction.vector.z = 1.0
-        grasps.post_grasp_retreat.min_distance = 0.005
-        grasps.post_grasp_retreat.desired_distance = 0.25
-
-        rospy.logdebug("==SETTING PREGRASP POSTURE===")
-        self.openGripper(grasps.pre_grasp_posture)
-
-        rospy.logdebug("==SETTING GRASP POSTURE===")
-        self.closedGripper(grasps.grasp_posture)
+        # touchable obejcts
+        grasps.allowed_touch_objects = ['table', 'wall', 'tomato_0', 'tomato_1', 'peduncle']
 
         self.group.set_support_surface_name("table")
 
-        # self.group.
-
         rospy.logdebug("==PERFORM GRASP===")
-        self.group.pick("tomato", grasps)
-        return True
+        result = None
+        n_attempts = 0
 
-    def openGripper(self, posture):
-        posture.joint_names = self.joint_names
+        while result != MoveItErrorCodes.SUCCESS and n_attempts < self.max_pick_attempts:
+            n_attempts += 1
+            rospy.loginfo("Pick attempt: " +  str(n_attempts))
+            result = self.group.pick(self.target_object_name, grasps)
+            rospy.sleep(0.2)
 
-        jtp = JointTrajectoryPoint()
-        # jtp.positions = [0, -m.pi/2, 0, 0, -m.pi/2, 0, m.pi/2, 0]
-        jtp.positions = [0.037, -0.037]
-        jtp.time_from_start = rospy.Duration(0.5)
+        if result == MoveItErrorCodes.SUCCESS:
+            return True
+        else:
+            return False
 
-        posture.points = [jtp]
+    def make_gripper_posture(self, joint_positions):
+        # Initialize the joint trajectory for the gripper joints
+        t = JointTrajectory()
 
-    def closedGripper(self, posture):
-        posture.joint_names = self.joint_names
+        # Set the joint names to the gripper joint names
+        t.joint_names = self.joint_names
 
-        jtp = JointTrajectoryPoint()
-        jtp.positions = [0.015, -0.015]
-        jtp.time_from_start = rospy.Duration(0.5)
+        # Initialize a joint trajectory point to represent the goal
+        tp = JointTrajectoryPoint()
 
-        posture.points = [jtp]
+        # Assign the trajectory joint positions to the input positions
+        tp.positions = joint_positions
+
+        # Set the gripper effort
+        tp.effort = self.GRIPPER_EFFORT
+
+        tp.time_from_start = rospy.Duration(1.0)
+
+        # Append the goal point to the trajectory points
+        t.points.append(tp)
+
+        # Return the joint trajectory
+        return t
+
+    def make_gripper_translation(self, min_dist, desired, vector):
+        # Initialize the gripper translation object
+        g = GripperTranslation()
+
+        # Set the direction vector components to the input
+        g.direction.vector.x = vector[0]
+        g.direction.vector.y = vector[1]
+        g.direction.vector.z = vector[2]
+
+        # The vector is relative to the gripper frame
+        g.direction.header.frame_id = "world"
+
+        # Assign the min and desired distances from the input
+        g.min_distance = min_dist
+        g.desired_distance = desired
+
+        return g
 
 
     def go_to_pose_goal(self):
@@ -286,6 +325,7 @@ class Pick_Place(object):
 
 
         """
+        rospy.logdebug("==STARTING GO TO POSE GOAL PROCEDURE===")
 
         ## Only if inverse kinematics exist
         if self.compute_ik(self.robot_goal_pose):
@@ -330,13 +370,14 @@ class Pick_Place(object):
     def command_robot(self):
 
 
-        if (self.robot_goal_pose is not None and self.event == "e_start") or self.event == "e_home":
+        if (self.robot_goal_pose is not None and ((self.event == "e_start") or (self.event == "e_pick_place") or (self.event == "e_move"))) or self.event == "e_home":
             msg = String()
             success = None
 
-            if self.event == "e_start":
-                # succes = self.go_to_pose_goal()
+            if (self.event == "e_start") or (self.event == "e_pick_place"):
                 succes = self.pick()
+            elif self.event == "e_move":
+                succes = self.go_to_pose_goal()
             elif self.event == "e_home":
                 succes = self.go_to_home()
 
