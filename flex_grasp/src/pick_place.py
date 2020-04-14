@@ -111,7 +111,7 @@ class Pick_Place(object):
         # Allow 5 seconds per planning attempt
         manipulator_group.set_planning_time(5)
 
-        self.max_pick_attempts = 5
+        self.max_pick_attempts = 1000
 
         # rospy.sleep(10)required?
         self.manipulator_group_name = manipulator_group_name
@@ -149,7 +149,8 @@ class Pick_Place(object):
                 if ('table' in known_objects) and ('wall' in known_objects):
                     break
                 else:
-                    rospy.logwarn("Table and wall object not present, refusing to continue before they are added")
+                    rospy.logwarn("[Pick Place] Table and wall object not present...")
+                    break
             rospy.sleep(0.1)
 
         # if self.add_box(box_name = self.target_object_name):
@@ -370,7 +371,7 @@ class Pick_Place(object):
     def command_robot(self):
 
 
-        if (self.robot_goal_pose is not None and ((self.event == "e_start") or (self.event == "e_pick_place") or (self.event == "e_move"))) or self.event == "e_home":
+        if (self.robot_goal_pose is not None and ((self.event == "e_pick_place") or (self.event == "e_move"))) or self.event == "e_home":
             msg = String()
             success = None
 

@@ -34,55 +34,41 @@ class PipeLine(object):
         self.pub_pose_transform = rospy.Publisher("Pose_Transform/e_in",
                                       String, queue_size=10, latch=True)
 
-        self.pub_move_robot = rospy.Publisher("Pick_Place/e_in", 
-                                      String, queue_size=10, latch=True)
-
         self.pub_pick_place = rospy.Publisher("Pick_Place/e_in",
                                       String, queue_size=10, latch=True)
 
         ## Initialize Subscribers
-        rospy.Subscriber("pipelineState", String, self.pscb)
-        rospy.Subscriber("Object_Detection/e_out", String, self.odcb)
-        rospy.Subscriber("Pose_Transform/e_out", String, self.ptcb)
-        rospy.Subscriber("Move_Robot/e_out", String, self.mrcb)
-        rospy.Subscriber("Pick_Place/e_out", String, self.mrcb)
+        rospy.Subscriber("pipelineState", String, self.pipeline_state_call_back)
+        rospy.Subscriber("Object_Detection/e_out", String, self.object_detection_call_back)
+        rospy.Subscriber("Pose_Transform/e_out", String, self.pose_transform_call_back)
+        rospy.Subscriber("Pick_Place/e_out", String, self.pick_place_call_back)
 
-        ### Callback Functions
-
-        ## Pipeline State Callback Function
-
-    def pscb(self, msg):
+    ### Callback Functions
+    ## Pipeline State Callback Function
+    def pipeline_state_call_back(self, msg):
         if self.state_goal == None:
             self.state_goal = msg.data
             rospy.logdebug("Received new pipeline goal state event message: %s", self.state_goal)
 
     ## Object Detection Callback Function
-
-    def odcb(self, msg):
+    def object_detection_call_back(self, msg):
         if self.object_detected == None:
             self.object_detected = msg.data
             rospy.logdebug("Received new object detected event message %s", self.object_detected)
 
     ## Pose Transform Callback Function
-
-    def ptcb(self, msg):
+    def pose_transform_call_back(self, msg):
         if self.pose_transformed == None:
             self.pose_transformed = msg.data
             rospy.logdebug("Received new pose transformed event message: %s", self.pose_transformed)
 
-    def ppcb(self, msg):
+    def pick_place_call_back(self, msg):
         if self.robot_moved == None:
             rospy.logdebug("Received new pick and place event out message: %s ", msg.data)
             if msg.data == "e_success":
                 self.robot_moved = True
-
-    ## Move Robot Callback Function
-
-    def mrcb(self, msg):
-        if self.robot_moved == None:
-            rospy.logdebug("Received new move robot event out message: %s ", msg.data)
-            if msg.data == "e_success":
-                self.robot_moved = True
+            elif msg.data == "e_failure":
+                self.robot_moved = False
 
 
     ### Log state update
@@ -96,23 +82,17 @@ class PipeLine(object):
     def update_state(self):
 
         ## update current state
-        if (self.state == "IDLE") and (self.state_goal == "DETECT"):
+        if (self.state == "IDLE") and ((self.state_goal == "MOVE") or (self.state_goal == "PICKPLACE")):
             self.state_previous = self.state
-            self.state = self.state_goal
-            self.state_goal = None
-            self.robot_moved = None # BAD FIX
+            self.state = "DETECT"
             self.log_state_update()
             self.send_message()
 
-
-                ## update current state
         if (self.state == "IDLE") and (self.state_goal == "HOME"):
             self.state_previous = self.state
             self.state = self.state_goal
             self.state_goal = None
-            self.robot_moved = None # BAD FIX
             self.log_state_update()
-
             self.send_message()
 
         if self.object_detected and self.state == "DETECT":
@@ -120,24 +100,29 @@ class PipeLine(object):
             self.state = "TRANSFORM"
             self.object_detected = None
             self.log_state_update()
-
             self.send_message()
 
         if self.pose_transformed and self.state == "TRANSFORM":
             self.state_previous = self.state
-            self.state = "PICKPLACE"
+            self.state = self.state_goal
+            self.state_goal = None
             self.pose_transformed = None
             self.log_state_update()
-
             self.send_message()
-            rospy.logdebug(self.robot_moved)
 
-        if self.robot_moved and (self.state == "PICKPLACE" or self.state == "HOME"):
+        if self.robot_moved and (self.state == "PICKPLACE" or self.state == "HOME" or self.state == "MOVE"):
             self.state_previous = self.state
             self.state = "IDLE"
             self.robot_moved = None
             self.log_state_update()
+            self.send_message()
 
+        if (self.robot_moved == False) and (self.state == "PICKPLACE" or self.state == "HOME" or self.state == "MOVE"):
+            rospy.logwarn("Robot did not move!")
+            self.state_previous = self.state
+            self.state = "IDLE"
+            self.robot_moved = None
+            self.log_state_update()
             self.send_message()
 
     def send_message(self):
@@ -149,16 +134,15 @@ class PipeLine(object):
             self.send_start_to_pose_transform()
 
         if self.state == "MOVE":
-            self.send_start_to_move_robot()
+            self.send_move_to_pick_place()
 
         if self.state == "PICKPLACE":
-            self.send_start_to_pick_place()
+            self.send_pick_place_to_pick_place()
 
         if self.state == "HOME":
-            self.send_home_to_move_robot()
+            self.send_home_to_pick_place()
 
     ### Send Start Functions
-
     def start_obj_detection(self):
         self.pub_obj_detection.publish("e_start")
 
@@ -168,14 +152,14 @@ class PipeLine(object):
     def send_start_to_pose_transform(self):
         self.pub_pose_transform.publish("e_start")
 
-    def send_start_to_move_robot(self):
-        self.pub_move_robot.publish("e_start")
+    def send_move_to_pick_place(self):
+        self.pub_pick_place.publish("e_move")
 
-    def send_start_to_pick_place(self):
-        self.pub_pick_place.publish("e_start")
+    def send_pick_place_to_pick_place(self):
+        self.pub_pick_place.publish("e_pick_place")
 
-    def send_home_to_move_robot(self):
-        self.pub_move_robot.publish("e_home")
+    def send_home_to_pick_place(self):
+        self.pub_pick_place.publish("e_home")
 
 
 def main():

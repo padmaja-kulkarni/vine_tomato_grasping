@@ -63,10 +63,11 @@ class PoseTransform(object):
             rospy.logdebug("Received new move robot event message")
 
     def get_trans(self):
-        try:
-            self.trans = self.tfBuffer.lookup_transform('world','camera_color_optical_frame',  rospy.Time(0))
-        except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
-            pass
+        if not (self.object_features is None):
+            try:
+                self.trans = self.tfBuffer.lookup_transform('world',self.object_features.cage_location.header.frame_id,  rospy.Time(0))
+            except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
+                pass
             # continue
 
     def transform_pose(self):
