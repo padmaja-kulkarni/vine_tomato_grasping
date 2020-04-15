@@ -16,14 +16,14 @@
     <link name="peduncle">
       <collision>
         <!-- origin is in the center of the cylinder-->
-        <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+        <origin xyz="0 0 0" rpy="0 ${pi/2} 0"/>
         <geometry>
           <cylinder radius="${peduncle_radius}" length="${peduncle_length}"/>
         </geometry>
       </collision>
 
       <visual>
-        <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+        <origin xyz="0 0 0" rpy="0 ${pi/2} 0"/>
         <geometry>
           <cylinder radius="${peduncle_radius}" length="${peduncle_length}"/>
         </geometry>

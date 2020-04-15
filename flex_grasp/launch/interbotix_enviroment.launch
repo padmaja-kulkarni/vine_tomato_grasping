@@ -19,7 +19,7 @@
   <!-- Object params -->
   <arg name="object_x"                      default="0"/>
   <arg name="object_y"                      default="0.45"/>
-  <arg name="object_angle"                  default="0.5"/>
+  <arg name="object_angle"                  default="1"/>
   <arg name="object_name"                   default="truss"/>
   <arg name="object_dimension"              default="3d"/>
 

@@ -4,7 +4,7 @@
 	<arg name="robot_name" 							default="iiwa"/>
 	<arg name="manipulator_group_name" 	default="manipulator"/>
   <arg name="ee_group_name"           default="gripper"/>
-	<arg name="object_detection_debug"	default="true"/>
+	<arg name="object_detection_debug"	default="false"/>
 
 	<group ns="$(arg robot_name)">
 		<node name="Pipe_Line"

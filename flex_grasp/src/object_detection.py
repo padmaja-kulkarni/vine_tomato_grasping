@@ -146,7 +146,8 @@ class ObjectDetection(object):
 
                 row = object_feature['grasp']['row']
                 col = object_feature['grasp']['col']
-                angle = object_feature['grasp']['angle']
+                angle = -object_feature['grasp']['angle'] # minus since camera frame is upside down...
+
 
                 intrin = camera_info2intrinsics(self.depth_info)
                 point = self.deproject(row, col, intrin)
@@ -191,12 +192,15 @@ class ObjectDetection(object):
             ### Cage location ###
             #####################
             table_height = 0.23
+            frame = "world"
             object_x = rospy.get_param("object_x")
             object_y = rospy.get_param("object_y")
             object_angle = rospy.get_param("object_angle")
             point = [object_x, object_y, 0.05 + table_height]
             angle = object_angle #3.1415/2.0
-            frame = "world"
+
+            rospy.logdebug("[Object Detection] Object angle: %s", angle)
+
             cage_pose =  point_to_pose_stamped(point, angle, frame)
 
             #%%#############
@@ -266,7 +270,7 @@ def point_to_pose_stamped(point, angle, frame):
     pose_stamped.header.frame_id = frame
     pose_stamped.header.stamp = rospy.Time.now()
 
-    quat = tf.transformations.quaternion_from_euler(0, 0, -angle)
+    quat = tf.transformations.quaternion_from_euler(0, 0, angle)
     pose_stamped.pose.orientation.x = quat[0]
     pose_stamped.pose.orientation.y = quat[1]
     pose_stamped.pose.orientation.z = quat[2]
