@@ -153,66 +153,8 @@ class Pick_Place(object):
                     break
             rospy.sleep(0.1)
 
-        # if self.add_box(box_name = self.target_object_name):
-        #    rospy.logdebug("Succesfully added %s", self.target_object_name)
-        # else:
-        #    rospy.logwarn("Unable to add %s", self.target_object_name)
-
         rospy.logdebug( "Known objects: %s", self.scene.get_known_object_names())
 
-    def add_box(self, timeout=4, box_name = ''):
-        """ create a box with a given name.
-
-        Args:
-
-        Returns: True if the box was succesfully added, False otherwise.
-
-        """
-        box_pose = PoseStamped()
-        box_pose.header.frame_id =  "world"
-        box_pose.pose.orientation.w = 1.0
-        box_pose.pose.position.x = 0.15
-        box_pose.pose.position.z = 0.02
-
-        # Add box
-        self.scene.add_box(box_name, box_pose, size=(0.02, 0.2, 0.02))
-
-        # Check if box has been added
-        return self.wait_for_state_update(box_is_known=True, timeout=timeout, box_name = box_name)
-
-    def wait_for_state_update(self, box_is_known=False, box_is_attached=False, timeout=4, box_name= ''):
-        """ Wait until we see the changes reflected in the scene
-
-            Args:
-
-            Returns: True if the box was succesfully added, False otherwise.
-        """
-        start = rospy.get_time()
-        seconds = rospy.get_time()
-        while (seconds - start < timeout) and not rospy.is_shutdown():
-
-            # Test if the box is in attached objects
-            attached_objects = self.scene.get_attached_objects()
-            is_attached = len(attached_objects.keys()) > 0
-
-            # Test if the box is in the scene.
-            # Note that attaching the box will remove it from known_objects
-            known_objects = self.scene.get_known_object_names()
-            rospy.logdebug("Known objects: %s", known_objects)
-
-            is_known = box_name in known_objects
-
-            # Test if we are in the expected state
-            if (box_is_attached == is_attached) and (box_is_known == is_known):
-                return True
-
-            # Sleep so that we give other threads time on the processor
-            rospy.sleep(0.1)
-            seconds = rospy.get_time()
-
-        # If we exited the while loop without returning then we timed out
-        return False
-        ## END_SUB_TUTORIAL
 
     def compute_ik(self, pose_stamped, timeout=rospy.Duration(5)):
         """Computes inverse kinematics for the given pose.
