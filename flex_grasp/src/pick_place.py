@@ -111,7 +111,7 @@ class Pick_Place(object):
         # Allow 5 seconds per planning attempt
         manipulator_group.set_planning_time(5)
 
-        self.max_pick_attempts = 1000
+        self.max_pick_attempts = 10
 
         # rospy.sleep(10)required?
         self.manipulator_group_name = manipulator_group_name

@@ -3,7 +3,7 @@
   <xacro:include filename="$(find flex_gazebo)/urdf/truss/3d/peduncle.gazebo.xacro" />
 
   <xacro:macro name="peduncle" params="peduncle_length peduncle_radius parent_link">
-    <xacro:property name = "rho" value="1000"/> <!-- [kg/m^3]-->
+    <xacro:property name = "rho" value="1"/> <!-- [kg/m^3]-->
     <xacro:property name = "volume" value="${pi*peduncle_length*peduncle_radius**2}"/> <!-- [m^3]-->
     <xacro:property name = "mass" value="${rho * volume}"/> <!-- [kg]-->
 

@@ -4,7 +4,7 @@
   <xacro:include filename="$(find flex_gazebo)/urdf/truss/3d/tomato.gazebo.xacro" />
 
   <xacro:macro name="tomato" params="tomato_name radius parent_link *origin">
-    <xacro:property name = "rho" value="1000"/> <!-- [kg/m^3]-->
+    <xacro:property name = "rho" value="1"/> <!-- [kg/m^3]-->
     <xacro:property name = "V" value="${4/3*pi*radius**3}"/> <!-- [m^3]-->
     <xacro:property name = "mass" value="${rho * V}"/> <!-- [kg]-->
 
