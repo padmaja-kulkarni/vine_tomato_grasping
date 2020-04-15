@@ -16,7 +16,7 @@ from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from moveit_msgs.msg import MoveItErrorCodes, PlaceLocation, Grasp, GripperTranslation
 
 from moveit_msgs.srv import GetPositionIK, GetPositionIKRequest
-
+from std_msgs.msg       import Float64
 
 
 # custom functions
@@ -60,13 +60,15 @@ class Pick_Place(object):
             self.GRIPPER_OPEN = [0.037, -0.037]
             self.GRIPPER_CLOSED = [0.015, -0.015]
             self.GRIPPER_EFFORT = [1.0]
+            self.GRIPPER_GRASP = None
 
 
         self._compute_ik = rospy.ServiceProxy('compute_ik', GetPositionIK)
         self.event = None
 
         # Subscribers
-        rospy.Subscriber("endEffectorPose", PoseStamped, self.pose_cb)
+        rospy.Subscriber("endEffectorPose", PoseStamped, self.ee_pose_cb)
+        rospy.Subscriber("endEffectorDistance", Float64, self.ee_distance_cb)
         rospy.Subscriber("~e_in", String, self.e_in_cb)
 
         # Publishers
@@ -74,8 +76,13 @@ class Pick_Place(object):
         self.pub_e_out = rospy.Publisher("~e_out",
                                    String, queue_size=10, latch=True)
 
+    def ee_distance_cb(self, msg):
+        if self.GRIPPER_GRASP is None:
+            dist = msg.data
+            self.GRIPPER_GRASP = add_list(self.GRIPPER_CLOSED, [dist/2, -dist/2])
+            rospy.logdebug("[PICK PLACE] Received newend effector distance message")
 
-    def pose_cb(self, msg):
+    def ee_pose_cb(self, msg):
         if self.robot_goal_pose is None:
             self.robot_goal_pose = msg
             rospy.logdebug("[PICK PLACE] Received new move robot pose message")
@@ -191,7 +198,8 @@ class Pick_Place(object):
         grasps.pre_grasp_posture = self.make_gripper_posture(self.GRIPPER_OPEN)
 
         # Grasp posture
-        grasps.grasp_posture = self.make_gripper_posture(self.GRIPPER_CLOSED)
+        rospy.logdebug("Grasping gripper posture: %s", self.GRIPPER_GRASP)
+        grasps.grasp_posture = self.make_gripper_posture(self.GRIPPER_GRASP)
 
         # Set the approach and retreat parameters as desired
         grasps.pre_grasp_approach = self.make_gripper_translation(0.01, 0.1, [0, 0, -1.0])
@@ -210,10 +218,17 @@ class Pick_Place(object):
         n_attempts = 0
 
         while result != MoveItErrorCodes.SUCCESS and n_attempts < self.max_pick_attempts:
+
+            # the object cannot be attached before attempting an grasp
+            self.scene.remove_attached_object(self.eef_link, self.target_object_name)
+
             n_attempts += 1
             rospy.loginfo("Pick attempt: " +  str(n_attempts))
             result = self.group.pick(self.target_object_name, grasps)
             rospy.sleep(0.2)
+
+        self.robot_goal_pose = None
+        self.GRIPPER_GRASP = None
 
         if result == MoveItErrorCodes.SUCCESS:
             return True
@@ -313,7 +328,7 @@ class Pick_Place(object):
     def command_robot(self):
 
 
-        if (self.robot_goal_pose is not None and ((self.event == "e_pick_place") or (self.event == "e_move"))) or self.event == "e_home":
+        if ((self.robot_goal_pose is not None and (((self.event == "e_pick_place") and (self.GRIPPER_GRASP is not None)) or (self.event == "e_move"))) or self.event == "e_home"):
             msg = String()
             success = None
 
@@ -336,6 +351,8 @@ class Pick_Place(object):
         else:
             pass
 
+def add_list(list1, list2):
+    return [sum(x) for x in zip(list1, list2)]
 
 def main():
     try:

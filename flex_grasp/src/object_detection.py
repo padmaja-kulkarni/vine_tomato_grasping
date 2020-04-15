@@ -180,7 +180,7 @@ class ObjectDetection(object):
                 ################
                 peduncle = Peduncle()
                 peduncle.pose = cage_pose
-                peduncle.radius = 0.005
+                peduncle.radius = 0.01
                 peduncle.length = 0.15
 
                 self.create_truss(tomatoes, cage_pose, peduncle)

@@ -11,6 +11,7 @@ import rospy
 from std_msgs.msg import String
 from geometry_msgs.msg import PoseStamped
 from flex_grasp.msg import Truss
+from std_msgs.msg       import Float64
 
 import tf2_ros
 import tf
@@ -30,8 +31,11 @@ class PoseTransform(object):
         rospy.Subscriber("~e_in", String, self.e_in_cb)
 
         # Initialize Publishers
-        self.pub_pose = rospy.Publisher('endEffectorPose',
+        self.pub_ee_pose = rospy.Publisher('endEffectorPose',
                                         PoseStamped, queue_size=5, latch=True)
+
+        self.pub_ee_distance = rospy.Publisher('endEffectorDistance',
+                                    Float64, queue_size=5, latch=True)
 
         self.pub_e_out = rospy.Publisher("~e_out",
                                          String, queue_size=10, latch=True)
@@ -79,10 +83,12 @@ class PoseTransform(object):
                 msg_e.data = "e_success"
 
                 self.object_pose = tf2_geometry_msgs.do_transform_pose(self.object_features.cage_location, self.trans)
+                self.end_effector_distance = 0.3*2*self.object_features.peduncle.radius
 
                 self.end_effector_pose = self.object_pose_to_end_effector_pose(self.object_pose)
 
-                self.pub_pose.publish(self.end_effector_pose)
+                self.pub_ee_pose.publish(self.end_effector_pose)
+                self.pub_ee_distance.publish(self.end_effector_distance)
                 self.pub_e_out.publish(msg_e)
 
                 self.object_features = None
