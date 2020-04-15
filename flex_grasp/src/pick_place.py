@@ -118,9 +118,15 @@ class Pick_Place(object):
         # Allow 5 seconds per planning attempt
         manipulator_group.set_planning_time(5)
 
+        # Allow some leeway in position (meters) and orientation (radians)
+        manipulator_group.set_goal_position_tolerance(0.05)
+        manipulator_group.set_goal_orientation_tolerance(0.1)
+
+        ee_group.set_goal_position_tolerance(0.05)
+        ee_group.set_goal_orientation_tolerance(0.1)
+
         self.max_pick_attempts = 10
 
-        # rospy.sleep(10)required?
         self.manipulator_group_name = manipulator_group_name
         self.ee_group_name = ee_group_name
         self.robot = robot
@@ -195,11 +201,11 @@ class Pick_Place(object):
         grasps = Grasp()
 
         # Pre grasp posture
-        grasps.pre_grasp_posture = self.make_gripper_posture(self.GRIPPER_OPEN)
+        grasps.pre_grasp_posture = self.make_gripper_posture(self.GRIPPER_OPEN, 0.5)
 
         # Grasp posture
         rospy.logdebug("Grasping gripper posture: %s", self.GRIPPER_GRASP)
-        grasps.grasp_posture = self.make_gripper_posture(self.GRIPPER_GRASP)
+        grasps.grasp_posture = self.make_gripper_posture(self.GRIPPER_GRASP, 1.0)
 
         # Set the approach and retreat parameters as desired
         grasps.pre_grasp_approach = self.make_gripper_translation(0.01, 0.1, [0, 0, -1.0])
@@ -213,7 +219,7 @@ class Pick_Place(object):
 
         self.group.set_support_surface_name("table")
 
-        rospy.logdebug("==PERFORM GRASP===")
+        # Pick
         result = None
         n_attempts = 0
 
@@ -225,6 +231,7 @@ class Pick_Place(object):
             n_attempts += 1
             rospy.loginfo("Pick attempt: " +  str(n_attempts))
             result = self.group.pick(self.target_object_name, grasps)
+            # rospy.logdebug("Resulting MoveItErrorCode: %s", result)
             rospy.sleep(0.2)
 
         self.robot_goal_pose = None
@@ -235,7 +242,7 @@ class Pick_Place(object):
         else:
             return False
 
-    def make_gripper_posture(self, joint_positions):
+    def make_gripper_posture(self, joint_positions,time):
         # Initialize the joint trajectory for the gripper joints
         t = JointTrajectory()
 
@@ -251,7 +258,7 @@ class Pick_Place(object):
         # Set the gripper effort
         tp.effort = self.GRIPPER_EFFORT
 
-        tp.time_from_start = rospy.Duration(1.0)
+        tp.time_from_start = rospy.Duration(time)
 
         # Append the goal point to the trajectory points
         t.points.append(tp)
