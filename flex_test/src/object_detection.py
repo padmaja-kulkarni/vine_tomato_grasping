@@ -7,6 +7,7 @@ Created on Tue Apr 14 21:07:08 2020
 """
 import rospy
 import tf
+import math
 
 from flex_grasp.msg import Tomato
 from flex_grasp.msg import Truss
@@ -45,28 +46,36 @@ class ObjectDetection(object):
             #%%##################
             ### Cage location ###
             #####################
-            point = [0.15, 0, 0]
-            angle = 3.1415/2.0
+            point = [0.15, 0, 0.05]
+            angle = 1 #3.1415/2.0
             frame = "world"
             cage_pose =  point_to_pose_stamped(point, angle, frame)
 
             #%%#############
-            ### tomatoes ###
-            ################
-
-            tomatoes = []
-            #tomatoes.append(Tomato())
-            # for i in range(0,2):
-            #     tomatoes.append(point_to_tomato(point, radius_m))
-
-
-            #%%#############
             ### Peduncle ###
             ################
+            L = 0.15
             peduncle = Peduncle()
             peduncle.pose = cage_pose
             peduncle.radius = 0.005
-            peduncle.length = 0.15
+            peduncle.length = L
+
+
+            #%%#############
+            ### tomatoes ###
+            ################
+            radii = [0.05, 0.05]
+            t1x = point[0] + (L/2 + radii[0])*math.cos(angle)
+            t1y = point[1] - (L/2 + radii[0])*math.sin(angle)
+            t2x = point[0] - (L/2 + radii[1])*math.cos(angle)
+            t2y = point[1] + (L/2 + radii[1])*math.sin(angle)
+            point1 = [t1x, t1y, 0]
+            point2 = [t2x, t2y, 0]
+            points = [point1, point2]
+
+            tomatoes = []
+            for point, radius in zip(points, radii):
+                tomatoes.append(point_to_tomato(point, radius, frame))
 
             #%%##########
             ### Truss ###

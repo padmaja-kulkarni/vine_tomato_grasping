@@ -19,11 +19,13 @@
   />
 
   <node name="Object_Detection"
-    pkg="flex_test"
+    pkg="flex_grasp"
     type="object_detection.py"
     respawn="false"
     output="screen"
-    ns="$(arg robot_name)"/>
+    ns="$(arg robot_name)">
+      <param name ="debug" value="true"/>
+    </node>
 
   <node name="Pose_Transform"
     pkg="flex_grasp"

@@ -36,6 +36,10 @@
     <remap from="/$(arg hardware_interface)_trajectory_controller/follow_joint_trajectory"
            to="/$(arg robot_name)/$(arg hardware_interface)_trajectory_controller/follow_joint_trajectory" />
 
+    <rosparam param="$(arg robot_name)/object_x" subst_value="True">$(arg object_x)</rosparam>
+    <rosparam param="$(arg robot_name)/object_y" subst_value="True">$(arg object_y)</rosparam>
+    <rosparam param="$(arg robot_name)/object_angle" subst_value="True">$(arg object_angle)</rosparam>
+
     <rosparam param="$(arg robot_name)/use_iiwa" subst_value="True">$(arg use_iiwa)</rosparam>
     <rosparam param="$(arg robot_name)/use_sdh" subst_value="True">$(arg use_sdh)</rosparam>
     <rosparam param="$(arg robot_name)/use_interbotix" subst_value="True">$(arg use_interbotix)</rosparam>

@@ -71,12 +71,18 @@ class ObjectDetection(object):
         rospy.init_node("Object_Detection",
                         anonymous=True, log_level=rospy.DEBUG)
 
+        self.DEBUG = rospy.get_param("~debug")
+        if self.DEBUG:
+            rospy.logdebug("Launching object detection in debug mode.")
+
         # Subscribe
         rospy.Subscriber("~e_in", String, self.e_in_cb)
-        rospy.Subscriber("camera/color/image_raw", Image, self.color_image_cb)
-        rospy.Subscriber("camera/depth/image_rect_raw", Image, self.depth_image_cb)
-        rospy.Subscriber("camera/color/camera_info", CameraInfo, self.color_info_cb)
-        rospy.Subscriber("camera/color/camera_info", CameraInfo, self.depth_info_cb)
+
+        if not self.DEBUG:
+            rospy.Subscriber("camera/color/image_raw", Image, self.color_image_cb)
+            rospy.Subscriber("camera/depth/image_rect_raw", Image, self.depth_image_cb)
+            rospy.Subscriber("camera/color/camera_info", CameraInfo, self.color_info_cb)
+            rospy.Subscriber("camera/color/camera_info", CameraInfo, self.depth_info_cb)
 
 
         # Publish
@@ -107,8 +113,6 @@ class ObjectDetection(object):
             except CvBridgeError as e:
                 print(e)
 
-
-
     def color_info_cb(self, msg):
         if (self.color_info is None) and (self.event == "e_start"):
             rospy.logdebug("Received color info message")
@@ -134,6 +138,7 @@ class ObjectDetection(object):
 
                 image.process_image()
                 object_feature = image.get_object_features()
+                frame = "camera_color_optical_frame"
 
                 #%%##################
                 ### Cage location ###
@@ -145,7 +150,7 @@ class ObjectDetection(object):
 
                 intrin = camera_info2intrinsics(self.depth_info)
                 point = self.deproject(row, col, intrin)
-                cage_pose =  point_to_pose_stamped(point, angle)
+                cage_pose =  point_to_pose_stamped(point, angle, frame)
 
                 #%%#############
                 ### tomatoes ###
@@ -167,7 +172,7 @@ class ObjectDetection(object):
                     point2 = rs.rs2_deproject_pixel_to_point(intrin, [0,radius], depth)
                     radius_m = euclidean(point1, point2)
 
-                    tomatoes.append(point_to_tomato(point, radius_m))
+                    # tomatoes.append(point_to_tomato(point, radius_m, frame))
 
                 #%%#############
                 ### Peduncle ###
@@ -177,21 +182,66 @@ class ObjectDetection(object):
                 peduncle.radius = 0.005
                 peduncle.length = 0.15
 
-                #%%##########
-                ### Truss ###
-                #############
-                truss = Truss()
-                truss.tomatoes = tomatoes
-                truss.cage_location = cage_pose
-                truss.peduncle = peduncle
+                self.create_truss(tomatoes, cage_pose, peduncle)
 
-                msg_e = String()
-                msg_e.data = "e_success"
+    def generate_object(self):
+        if self.event == "e_start":
 
-                self.event = None
-                self.pub_object_features.publish(truss)
-                self.pub_e_out.publish(msg_e)
+            #%%##################
+            ### Cage location ###
+            #####################
+            table_height = 0.23
+            object_x = rospy.get_param("object_x")
+            object_y = rospy.get_param("object_y")
+            object_angle = rospy.get_param("object_angle")
+            point = [object_x, object_y, 0.05 + table_height]
+            angle = object_angle #3.1415/2.0
+            frame = "world"
+            cage_pose =  point_to_pose_stamped(point, angle, frame)
 
+            #%%#############
+            ### Peduncle ###
+            ################
+            L = 0.15
+            peduncle = Peduncle()
+            peduncle.pose = cage_pose
+            peduncle.radius = 0.005
+            peduncle.length = L
+
+            #%%#############
+            ### tomatoes ###
+            ################
+            radii = [0.05, 0.05]
+            t1x = point[0] + (L/2 + radii[0])*math.cos(angle)
+            t1y = point[1] - (L/2 + radii[0])*math.sin(angle)
+            t2x = point[0] - (L/2 + radii[1])*math.cos(angle)
+            t2y = point[1] + (L/2 + radii[1])*math.sin(angle)
+            point1 = [t1x, t1y, table_height]
+            point2 = [t2x, t2y, table_height]
+            points = [point1, point2]
+
+            tomatoes = []
+            for point, radius in zip(points, radii):
+                # tomatoes.append(point_to_tomato(point, radius, frame))
+                pass
+
+            self.create_truss(tomatoes, cage_pose, peduncle)
+
+    def create_truss(self, tomatoes, cage_pose, peduncle):
+        #%%##########
+        ### Truss ###
+        #############
+        truss = Truss()
+        truss.tomatoes = tomatoes
+        truss.cage_location = cage_pose
+        truss.peduncle = peduncle
+
+        msg_e = String()
+        msg_e.data = "e_success"
+
+        self.event = None
+        self.pub_object_features.publish(truss)
+        self.pub_e_out.publish(msg_e)
 
     def deproject(self, row, col, intrin):
         # Deproject
@@ -210,10 +260,10 @@ class ObjectDetection(object):
 def euclidean(v1, v2):
     return sum((p-q)**2 for p, q in zip(v1, v2)) ** .5
 
-def point_to_pose_stamped(point, angle):
+def point_to_pose_stamped(point, angle, frame):
 
     pose_stamped = PoseStamped()
-    pose_stamped.header.frame_id = "camera_color_optical_frame"
+    pose_stamped.header.frame_id = frame
     pose_stamped.header.stamp = rospy.Time.now()
 
     quat = tf.transformations.quaternion_from_euler(0, 0, -angle)
@@ -228,10 +278,10 @@ def point_to_pose_stamped(point, angle):
     return pose_stamped
 
 
-def point_to_tomato(point, radius):
+def point_to_tomato(point, radius, frame):
 
     tomato = Tomato()
-    tomato.header.frame_id = "camera_color_optical_frame"
+    tomato.header.frame_id = frame
     tomato.header.stamp = rospy.Time.now()
 
     tomato.position.x = point[0]
@@ -241,28 +291,17 @@ def point_to_tomato(point, radius):
     tomato.radius = radius
     return tomato
 
-def get_test_pose():
-
-    msg_pose = PoseStamped()
-    msg_pose.header.frame_id = rospy.get_param('planning_frame')
-    msg_pose.header.stamp = rospy.Time.now()
-
-    msg_pose.pose.orientation.x = -0.310
-    msg_pose.pose.orientation.y = 0.000
-    msg_pose.pose.orientation.z = 0.001
-    msg_pose.pose.orientation.w = 0.951
-    msg_pose.pose.position.x = -0.014
-    msg_pose.pose.position.y = 0.262
-    msg_pose.pose.position.z = 1.127
-
 
 def main():
     try:
-        OD = ObjectDetection()
+        object_detection = ObjectDetection()
         rate = rospy.Rate(10)
 
         while not rospy.core.is_shutdown():
-            OD.detect_object()
+            if not object_detection.DEBUG:
+                object_detection.detect_object()
+            else:
+                object_detection.generate_object()
             rate.sleep()
 
     except rospy.ROSInterruptException:
