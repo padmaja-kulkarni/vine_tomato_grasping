@@ -105,7 +105,7 @@ class PoseTransform(object):
         end_effector_pose.pose.position.x = position.x
         end_effector_pose.pose.position.y = position.y
         if self.use_iiwa:
-            end_effector_pose.pose.position.z = position.z# + 0.15
+            end_effector_pose.pose.position.z = position.z + 0.25
         elif self.use_interbotix:
             end_effector_pose.pose.position.z = position.z + 0.04
 

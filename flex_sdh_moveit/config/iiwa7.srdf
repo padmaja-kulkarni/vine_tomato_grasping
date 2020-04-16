@@ -35,7 +35,7 @@
         <joint name="iiwa_joint_6" value="0" />
         <joint name="iiwa_joint_7" value="0" />
     </group_state>
-    <group_state name="closed" group="hand">
+    <group_state name="Closed" group="hand">
         <joint name="sdh_finger_12_joint" value="0" />
         <joint name="sdh_finger_13_joint" value="0" />
         <joint name="sdh_finger_21_joint" value="0" />
@@ -45,7 +45,7 @@
         <joint name="sdh_thumb_2_joint" value="0" />
         <joint name="sdh_thumb_3_joint" value="0" />
     </group_state>
-    <group_state name="open" group="hand">
+    <group_state name="Open" group="hand">
         <joint name="sdh_finger_12_joint" value="-1.5707" />
         <joint name="sdh_finger_13_joint" value="0" />
         <joint name="sdh_finger_21_joint" value="0" />

@@ -43,24 +43,7 @@ class Pick_Place(object):
         self.initialise_enviroment()
 
 
-        self.use_iiwa = rospy.get_param('use_iiwa')
-        self.use_interbotix = rospy.get_param('use_interbotix')
-        self.use_sdh = rospy.get_param('use_sdh')
-
-        if self.use_sdh:
-            rospy.logdebug('Using SDH') # closed open
-            self.joint_names = ["sdh_finger_11_joint", "sdh_knuckle_joint",
-                                   "sdh_finger_12_joint", "sdh_finger_13_joint",
-                                   "sdh_finger_21_joint", "sdh_finger_22_joint",
-                                   "sdh_finger_23_joint", "sdh_thumb_2_joint",
-                                   "sdh_thumb_3_joint"]
-        elif self.use_interbotix: # Closed Open Home
-            rospy.logdebug('Using Interbotix')
-            self.joint_names = ["left_finger", "right_finger"]
-            self.GRIPPER_OPEN = [0.037, -0.037]
-            self.GRIPPER_CLOSED = [0.015, -0.015]
-            self.GRIPPER_EFFORT = [1.0]
-            self.GRIPPER_GRASP = None
+        self.GRIPPER_EFFORT = [1.0]
 
 
         self._compute_ik = rospy.ServiceProxy('compute_ik', GetPositionIK)
@@ -77,10 +60,11 @@ class Pick_Place(object):
                                    String, queue_size=10, latch=True)
 
     def ee_distance_cb(self, msg):
-        if self.GRIPPER_GRASP is None:
-            dist = msg.data
-            self.GRIPPER_GRASP = add_list(self.GRIPPER_CLOSED, [dist/2, -dist/2])
-            rospy.logdebug("[PICK PLACE] Received newend effector distance message")
+        dist = msg.data
+        # if self.GRIPPER_GRASP is None:
+        #     dist = msg.data
+            # self.GRIPPER_GRASP = add_list(self.EE_CLOSED, [dist/2, -dist/2])
+            # rospy.logdebug("[PICK PLACE] Received newend effector distance message")
 
     def ee_pose_cb(self, msg):
         if self.robot_goal_pose is None:
@@ -112,6 +96,18 @@ class Pick_Place(object):
 
         eef_link = manipulator_group.get_end_effector_link()
 
+        manipulator_joint_names = manipulator_group.get_joints()
+        # ee_joint_names = ee_group.get_joints()
+        ee_joint_names = ee_group.get_named_target_values("Closed").keys() # the ee_group contains joints we cannot actually control?
+
+        EE_CLOSED = ee_group.get_named_target_values("Closed").values()
+        EE_OPEN = ee_group.get_named_target_values("Open").values()
+        ee_group.clear_pose_target
+
+        rospy.logdebug("Joint names: %s", ee_joint_names)
+        rospy.logdebug("EE_CLOSED: %s", EE_CLOSED)
+        rospy.logdebug("EE_OPEN: %s", EE_OPEN)
+
         # Allow replanning to increase the odds of a solution
         manipulator_group.allow_replanning(True)
 
@@ -133,6 +129,9 @@ class Pick_Place(object):
         self.group = manipulator_group
         self.robot_goal_pose = None
         self.eef_link = eef_link
+        self.ee_joint_names = ee_joint_names
+        self.EE_OPEN = EE_OPEN
+        self.EE_CLOSED = EE_CLOSED
 
     def initialise_enviroment(self):
         """" Checks wether the RViz enviroment is correctly set
@@ -201,11 +200,11 @@ class Pick_Place(object):
         grasps = Grasp()
 
         # Pre grasp posture
-        grasps.pre_grasp_posture = self.make_gripper_posture(self.GRIPPER_OPEN, 0.5)
+        grasps.pre_grasp_posture = self.make_gripper_posture(self.EE_OPEN, 0.5)
 
         # Grasp posture
-        rospy.logdebug("Grasping gripper posture: %s", self.GRIPPER_GRASP)
-        grasps.grasp_posture = self.make_gripper_posture(self.GRIPPER_GRASP, 1.0)
+        rospy.logdebug("Grasping gripper posture: %s", self.EE_CLOSED)
+        grasps.grasp_posture = self.make_gripper_posture(self.EE_CLOSED, 1.0)
 
         # Set the approach and retreat parameters as desired
         grasps.pre_grasp_approach = self.make_gripper_translation(0.01, 0.1, [0, 0, -1.0])
@@ -235,7 +234,6 @@ class Pick_Place(object):
             rospy.sleep(0.2)
 
         self.robot_goal_pose = None
-        self.GRIPPER_GRASP = None
 
         if result == MoveItErrorCodes.SUCCESS:
             return True
@@ -247,7 +245,7 @@ class Pick_Place(object):
         t = JointTrajectory()
 
         # Set the joint names to the gripper joint names
-        t.joint_names = self.joint_names
+        t.joint_names = self.ee_joint_names
 
         # Initialize a joint trajectory point to represent the goal
         tp = JointTrajectoryPoint()
@@ -335,7 +333,7 @@ class Pick_Place(object):
     def command_robot(self):
 
 
-        if ((self.robot_goal_pose is not None and (((self.event == "e_pick_place") and (self.GRIPPER_GRASP is not None)) or (self.event == "e_move"))) or self.event == "e_home"):
+        if ((self.robot_goal_pose is not None and ((self.event == "e_pick_place") or (self.event == "e_move"))) or self.event == "e_home"):
             msg = String()
             success = None
 
