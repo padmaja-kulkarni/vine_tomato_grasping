@@ -43,8 +43,7 @@ class Pick_Place(object):
         self.initialise_enviroment()
 
 
-        self.GRIPPER_EFFORT = [1.0]
-
+        self.GRIPPER_EFFORT = [100.0]
 
         self._compute_ik = rospy.ServiceProxy('compute_ik', GetPositionIK)
         self.event = None
@@ -55,7 +54,6 @@ class Pick_Place(object):
         rospy.Subscriber("~e_in", String, self.e_in_cb)
 
         # Publishers
-
         self.pub_e_out = rospy.Publisher("~e_out",
                                    String, queue_size=10, latch=True)
 
@@ -200,14 +198,13 @@ class Pick_Place(object):
         grasps = Grasp()
 
         # Pre grasp posture
-        grasps.pre_grasp_posture = self.make_gripper_posture(self.EE_OPEN, 0.5)
+        grasps.pre_grasp_posture = self.make_gripper_posture(self.EE_OPEN)
 
         # Grasp posture
-        rospy.logdebug("Grasping gripper posture: %s", self.EE_CLOSED)
-        grasps.grasp_posture = self.make_gripper_posture(self.EE_CLOSED, 1.0)
+        grasps.grasp_posture = self.make_gripper_posture(self.EE_CLOSED)
 
         # Set the approach and retreat parameters as desired
-        grasps.pre_grasp_approach = self.make_gripper_translation(0.01, 0.1, [0, 0, -1.0])
+        grasps.pre_grasp_approach = self.make_gripper_translation(0.05, 0.1, [0, 0, -1.0])
         grasps.post_grasp_retreat = self.make_gripper_translation(0.1, 0.15, [0, 0, 1.0])
 
         # grasp pose
@@ -240,7 +237,7 @@ class Pick_Place(object):
         else:
             return False
 
-    def make_gripper_posture(self, joint_positions,time):
+    def make_gripper_posture(self, joint_positions):
         # Initialize the joint trajectory for the gripper joints
         t = JointTrajectory()
 
@@ -256,7 +253,7 @@ class Pick_Place(object):
         # Set the gripper effort
         tp.effort = self.GRIPPER_EFFORT
 
-        tp.time_from_start = rospy.Duration(time)
+        tp.time_from_start = rospy.Duration(0.1)
 
         # Append the goal point to the trajectory points
         t.points.append(tp)
