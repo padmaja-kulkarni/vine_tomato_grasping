@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<launch>
+
+  <arg name="robot_name" default="iiwa"/>
+  <arg name="manipulator_group_name"  default="manipulator"/>
+  <arg name="ee_group_name"           default="hand"/>
+  <arg name="object_detection_debug"  default="false"/>
+
+  <include file="$(find flex_grasp)/launch/control.launch">
+    <arg name="robot_name"              value="$(arg robot_name)"/>
+    <arg name="manipulator_group_name"  value="$(arg manipulator_group_name)"/>
+    <arg name="ee_group_name"           value="$(arg ee_group_name)"/>
+    <arg name="object_detection_debug"  value="$(arg object_detection_debug)"/>
+  </include>
+
+</launch>
