@@ -1,17 +1,4 @@
 controller_list:
-  - name: arm_controller # PositionJointInterface_trajectory_controller
-    action_ns: follow_joint_trajectory
-    type: FollowJointTrajectory
-    joints:
-      - iiwa_joint_1
-      - iiwa_joint_2
-      - iiwa_joint_3
-      - iiwa_joint_4
-      - iiwa_joint_5
-      - iiwa_joint_6
-      - iiwa_joint_7
-
-
   - name: gripper_controller # PositionJointInterface_trajectory_controller
     action_ns: follow_joint_trajectory
     type: FollowJointTrajectory
@@ -23,3 +10,17 @@ controller_list:
       - sdh_finger_13_joint
       - sdh_thumb_2_joint
       - sdh_thumb_3_joint
+  - name: PositionJointInterface_trajectory_controller
+    action_ns: follow_joint_trajectory
+    type: FollowJointTrajectory
+    default: true
+    joints:
+      - iiwa_joint_1
+      - iiwa_joint_2
+      - iiwa_joint_3
+      - iiwa_joint_4
+      - iiwa_joint_5
+      - iiwa_joint_6
+      - iiwa_joint_7
+
+      
