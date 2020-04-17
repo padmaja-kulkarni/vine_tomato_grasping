@@ -147,13 +147,12 @@ class ObjectDetection(object):
                 row = object_feature['grasp']['row']
                 col = object_feature['grasp']['col']
                 angle = -object_feature['grasp']['angle'] # minus since camera frame is upside down...
-
+                rpy = [0, 0, angle]
 
                 intrin = camera_info2intrinsics(self.depth_info)
-                point = self.deproject(row, col, intrin)
-                cage_pose =  point_to_pose_stamped(point, angle, frame)
-                rospy.logdebug("Cage pose height: %s", point[2])
-                
+                xyz = self.deproject(row, col, intrin)
+                cage_pose =  point_to_pose_stamped(xyz, rpy, frame)
+
                 #%%#############
                 ### tomatoes ###
                 ################
@@ -196,13 +195,11 @@ class ObjectDetection(object):
             frame = "world"
             object_x = rospy.get_param("object_x")
             object_y = rospy.get_param("object_y")
-            object_angle = rospy.get_param("object_angle")
-            point = [object_x, object_y, 0.05 + table_height]
-            angle = object_angle #3.1415/2.0
+            angle = rospy.get_param("object_angle")
+            xyz = [object_x, object_y, 0.05 + table_height]
+            rpy = [3.1415, 0, angle] #3.1415/2.0
 
-            rospy.logdebug("[Object Detection] Object angle: %s", angle)
-
-            cage_pose =  point_to_pose_stamped(point, angle, frame)
+            cage_pose =  point_to_pose_stamped(xyz, rpy, frame)
 
             #%%#############
             ### Peduncle ###
@@ -217,10 +214,10 @@ class ObjectDetection(object):
             ### tomatoes ###
             ################
             radii = [0.05, 0.05]
-            t1x = point[0] + (L/2 + radii[0])*math.cos(angle)
-            t1y = point[1] - (L/2 + radii[0])*math.sin(angle)
-            t2x = point[0] - (L/2 + radii[1])*math.cos(angle)
-            t2y = point[1] + (L/2 + radii[1])*math.sin(angle)
+            t1x = xyz[0] + (L/2 + radii[0])*math.cos(angle)
+            t1y = xyz[1] - (L/2 + radii[0])*math.sin(angle)
+            t2x = xyz[0] - (L/2 + radii[1])*math.cos(angle)
+            t2y = xyz[1] + (L/2 + radii[1])*math.sin(angle)
             point1 = [t1x, t1y, table_height]
             point2 = [t2x, t2y, table_height]
             points = [point1, point2]
@@ -265,20 +262,20 @@ class ObjectDetection(object):
 def euclidean(v1, v2):
     return sum((p-q)**2 for p, q in zip(v1, v2)) ** .5
 
-def point_to_pose_stamped(point, angle, frame):
+def point_to_pose_stamped(xyz, rpy, frame):
 
     pose_stamped = PoseStamped()
     pose_stamped.header.frame_id = frame
     pose_stamped.header.stamp = rospy.Time.now()
 
-    quat = tf.transformations.quaternion_from_euler(0, 0, angle)
+    quat = tf.transformations.quaternion_from_euler(rpy[0], rpy[1], rpy[2])
     pose_stamped.pose.orientation.x = quat[0]
     pose_stamped.pose.orientation.y = quat[1]
     pose_stamped.pose.orientation.z = quat[2]
     pose_stamped.pose.orientation.w = quat[3]
-    pose_stamped.pose.position.x = point[0]
-    pose_stamped.pose.position.y = point[1]
-    pose_stamped.pose.position.z = point[2]
+    pose_stamped.pose.position.x = xyz[0]
+    pose_stamped.pose.position.y = xyz[1]
+    pose_stamped.pose.position.z = xyz[2]
 
     return pose_stamped
 
