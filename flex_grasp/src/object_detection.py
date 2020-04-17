@@ -152,7 +152,8 @@ class ObjectDetection(object):
                 intrin = camera_info2intrinsics(self.depth_info)
                 point = self.deproject(row, col, intrin)
                 cage_pose =  point_to_pose_stamped(point, angle, frame)
-
+                rospy.logdebug("Cage pose height: %s", point[2])
+                
                 #%%#############
                 ### tomatoes ###
                 ################
@@ -277,7 +278,7 @@ def point_to_pose_stamped(point, angle, frame):
     pose_stamped.pose.orientation.w = quat[3]
     pose_stamped.pose.position.x = point[0]
     pose_stamped.pose.position.y = point[1]
-    pose_stamped.pose.position.z = point[2] # - 0.15
+    pose_stamped.pose.position.z = point[2]
 
     return pose_stamped
 

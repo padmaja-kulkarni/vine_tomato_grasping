@@ -18,13 +18,8 @@ from moveit_msgs.msg import MoveItErrorCodes, PlaceLocation, Grasp, GripperTrans
 from moveit_msgs.srv import GetPositionIK, GetPositionIKRequest
 from std_msgs.msg       import Float64
 
-
 # custom functions
 from func.all_close import all_close
-
-# enum
-# from RobotState import RobotState
-
 
 class Pick_Place(object):
     """Pick_Place"""
@@ -198,10 +193,12 @@ class Pick_Place(object):
         grasps = Grasp()
 
         # Pre grasp posture
-        grasps.pre_grasp_posture = self.make_gripper_posture(self.EE_OPEN)
+        time_list = [0.5]
+        grasps.pre_grasp_posture = self.make_gripper_posture(self.EE_OPEN, time_list)
 
         # Grasp posture
-        grasps.grasp_posture = self.make_gripper_posture(self.EE_CLOSED)
+        time_list = [7]
+        grasps.grasp_posture = self.make_gripper_posture(self.EE_CLOSED, time_list)
 
         # Set the approach and retreat parameters as desired
         grasps.pre_grasp_approach = self.make_gripper_translation(0.05, 0.1, [0, 0, -1.0])
@@ -237,26 +234,30 @@ class Pick_Place(object):
         else:
             return False
 
-    def make_gripper_posture(self, joint_positions):
+    def make_gripper_posture(self, joint_positions, time_list):
         # Initialize the joint trajectory for the gripper joints
         t = JointTrajectory()
 
         # Set the joint names to the gripper joint names
         t.joint_names = self.ee_joint_names
 
-        # Initialize a joint trajectory point to represent the goal
-        tp = JointTrajectoryPoint()
+        for time in time_list:
 
-        # Assign the trajectory joint positions to the input positions
-        tp.positions = joint_positions
+            rospy.logdebug("Duration: %s", time)
 
-        # Set the gripper effort
-        tp.effort = self.GRIPPER_EFFORT
+            # Initialize a joint trajectory point to represent the goal
+            tp = JointTrajectoryPoint()
 
-        tp.time_from_start = rospy.Duration(0.1)
+            # Assign the trajectory joint positions to the input positions
+            tp.positions = joint_positions
 
-        # Append the goal point to the trajectory points
-        t.points.append(tp)
+            # Set the gripper effort
+            tp.effort = self.GRIPPER_EFFORT
+
+            tp.time_from_start = rospy.Duration(time)
+
+            # Append the goal point to the trajectory points
+            t.points.append(tp)
 
         # Return the joint trajectory
         return t
