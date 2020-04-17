@@ -41,7 +41,10 @@ class Pick_Place(object):
         self.GRIPPER_EFFORT = [100.0]
 
         self._compute_ik = rospy.ServiceProxy('compute_ik', GetPositionIK)
-        self.event = None
+
+        self.state = "idle"
+        self.prev_state = None
+        self.goal_state = None
 
         # Subscribers
         rospy.Subscriber("endEffectorPose", PoseStamped, self.ee_pose_cb)
@@ -54,20 +57,21 @@ class Pick_Place(object):
 
     def ee_distance_cb(self, msg):
         dist = msg.data
-        # if self.GRIPPER_GRASP is None:
-        #     dist = msg.data
-            # self.GRIPPER_GRASP = add_list(self.EE_CLOSED, [dist/2, -dist/2])
-            # rospy.logdebug("[PICK PLACE] Received newend effector distance message")
+        if self.EE_GRASP is None:
+            dist = msg.data
+            self.EE_GRASP = add_list(self.EE_CLOSED, [dist/2, -dist/2])
+            rospy.logdebug("[PICK PLACE] Received a new end effector distance message")
+            rospy.logdebug("[PICK PLACE] New end effector grasp pose: %s", self.EE_GRASP)
 
     def ee_pose_cb(self, msg):
-        if self.robot_goal_pose is None:
-            self.robot_goal_pose = msg
+        if self.cage_pose is None:
+            self.cage_pose = msg
             rospy.logdebug("[PICK PLACE] Received new move robot pose message")
 
     def e_in_cb(self, msg):
-        if self.event is None:
-            self.event = msg.data
-            rospy.logdebug("[PICK PLACE] Received new move robot event in message: %s", self.event)
+        if self.goal_state is None:
+            self.goal_state = msg.data
+            rospy.logdebug("[PICK PLACE] Received new move robot event in message: %s", self.goal_state)
 
 
     def initialise_robot(self):
@@ -81,50 +85,51 @@ class Pick_Place(object):
 
         ## Instantiate a `MoveGroupCommander`_ object.  This object is an interface
         ## to one group of joints.
-        manipulator_group_name = rospy.get_param('manipulator_group_name')
+        man_group_name = rospy.get_param('manipulator_group_name')
         ee_group_name = rospy.get_param('ee_group_name')
 
-        manipulator_group = moveit_commander.MoveGroupCommander(manipulator_group_name)
+        man_group = moveit_commander.MoveGroupCommander(man_group_name)
         ee_group = moveit_commander.MoveGroupCommander(ee_group_name)
 
-        eef_link = manipulator_group.get_end_effector_link()
+        ee_link = man_group.get_end_effector_link()
 
-        manipulator_joint_names = manipulator_group.get_joints()
+        manipulator_joint_names = man_group.get_joints()
         # ee_joint_names = ee_group.get_joints()
         ee_joint_names = ee_group.get_named_target_values("Closed").keys() # the ee_group contains joints we cannot actually control?
 
         EE_CLOSED = ee_group.get_named_target_values("Closed").values()
         EE_OPEN = ee_group.get_named_target_values("Open").values()
+        EE_GRASP = None
         ee_group.clear_pose_target
 
-        rospy.logdebug("Joint names: %s", ee_joint_names)
-        rospy.logdebug("EE_CLOSED: %s", EE_CLOSED)
-        rospy.logdebug("EE_OPEN: %s", EE_OPEN)
-
         # Allow replanning to increase the odds of a solution
-        manipulator_group.allow_replanning(True)
+        man_group.allow_replanning(True)
 
         # Allow 5 seconds per planning attempt
-        manipulator_group.set_planning_time(5)
+        man_group.set_planning_time(5)
 
         # Allow some leeway in position (meters) and orientation (radians)
-        manipulator_group.set_goal_position_tolerance(0.05)
-        manipulator_group.set_goal_orientation_tolerance(0.1)
+        man_group.set_goal_position_tolerance(0.05)
+        man_group.set_goal_orientation_tolerance(0.1)
 
         ee_group.set_goal_position_tolerance(0.05)
         ee_group.set_goal_orientation_tolerance(0.1)
 
         self.max_pick_attempts = 10
 
-        self.manipulator_group_name = manipulator_group_name
+        self.man_group_name = man_group_name
         self.ee_group_name = ee_group_name
         self.robot = robot
-        self.group = manipulator_group
-        self.robot_goal_pose = None
-        self.eef_link = eef_link
+
+        self.man_group = man_group
+        self.ee_group = ee_group
+
+        self.cage_pose = None
+        self.ee_link = ee_link
         self.ee_joint_names = ee_joint_names
         self.EE_OPEN = EE_OPEN
         self.EE_CLOSED = EE_CLOSED
+        self.EE_GRASP = EE_GRASP
 
     def initialise_enviroment(self):
         """" Checks wether the RViz enviroment is correctly set
@@ -139,9 +144,6 @@ class Pick_Place(object):
         rospy.sleep(1)
 
         self.target_object_name = 'peduncle'
-        self.scene.remove_attached_object(self.eef_link, self.target_object_name)
-
-        rospy.sleep(1)
 
         known_objects_prev = None
         while True:
@@ -174,7 +176,7 @@ class Pick_Place(object):
         request = GetPositionIKRequest()
         request.ik_request.pose_stamped = pose_stamped
 
-        request.ik_request.group_name = self.manipulator_group_name
+        request.ik_request.group_name = self.man_group_name
         request.ik_request.timeout = timeout
         response = self._compute_ik(request)
 
@@ -193,24 +195,24 @@ class Pick_Place(object):
         grasps = Grasp()
 
         # Pre grasp posture
-        time_list = [0.5]
+        time_list = [0.1]
         grasps.pre_grasp_posture = self.make_gripper_posture(self.EE_OPEN, time_list)
 
         # Grasp posture
-        time_list = [7]
-        grasps.grasp_posture = self.make_gripper_posture(self.EE_CLOSED, time_list)
+        time_list = [0.1]
+        grasps.grasp_posture = self.make_gripper_posture(self.EE_GRASP, time_list)
 
         # Set the approach and retreat parameters as desired
         grasps.pre_grasp_approach = self.make_gripper_translation(0.05, 0.1, [0, 0, -1.0])
         grasps.post_grasp_retreat = self.make_gripper_translation(0.1, 0.15, [0, 0, 1.0])
 
         # grasp pose
-        grasps.grasp_pose = self.robot_goal_pose
+        grasps.grasp_pose = self.cage_pose
 
         # touchable obejcts
         grasps.allowed_touch_objects = ['table', 'wall', 'tomato_0', 'tomato_1', 'peduncle']
 
-        self.group.set_support_surface_name("table")
+        self.man_group.set_support_surface_name("table")
 
         # Pick
         result = None
@@ -218,16 +220,13 @@ class Pick_Place(object):
 
         while result != MoveItErrorCodes.SUCCESS and n_attempts < self.max_pick_attempts:
 
-            # the object cannot be attached before attempting an grasp
-            self.scene.remove_attached_object(self.eef_link, self.target_object_name)
-
             n_attempts += 1
             rospy.loginfo("Pick attempt: " +  str(n_attempts))
-            result = self.group.pick(self.target_object_name, grasps)
-            # rospy.logdebug("Resulting MoveItErrorCode: %s", result)
+            result = self.man_group.pick(self.target_object_name, grasps)
+
             rospy.sleep(0.2)
 
-        self.robot_goal_pose = None
+        self.cage_pose = None
 
         if result == MoveItErrorCodes.SUCCESS:
             return True
@@ -280,6 +279,13 @@ class Pick_Place(object):
 
         return g
 
+    def remove_attached_target_object(self):
+        attached_objects = self.scene.get_attached_objects(object_ids=[self.target_object_name])
+
+        if self.target_object_name in attached_objects.keys():
+            if attached_objects[self.target_object_name].link_name == self.ee_link:
+                rospy.logdebug("Removing atached objects from ee_link")
+                self.scene.remove_attached_object(self.ee_link, self.target_object_name)
 
     def go_to_pose_goal(self):
         """ plan and move to a pose goal
@@ -289,70 +295,140 @@ class Pick_Place(object):
         rospy.logdebug("==STARTING GO TO POSE GOAL PROCEDURE===")
 
         ## Only if inverse kinematics exist
-        if self.compute_ik(self.robot_goal_pose):
+        if self.compute_ik(self.cage_pose):
             rospy.loginfo("Goal pose is reachable.")
 
-            self.group.set_pose_target(self.robot_goal_pose.pose)
-            plan = self.group.plan()
-            self.group.execute(plan, wait=True)
+            self.man_group.set_pose_target(self.cage_pose.pose)
+            plan = self.man_group.plan()
+            self.man_group.execute(plan, wait=True)
 
         else:
             rospy.logwarn("Goal pose is not reachable!")
 
 
         # Ensures that there is no residual movement
-        self.group.stop()
+        self.man_group.stop()
 
         # clear targets after planning with poses.
-        self.group.clear_pose_targets()
-        self.robot_goal_pose = None
+        self.man_group.clear_pose_targets()
+        self.cage_pose = None
 
         # verify goal pose is obtained
-        return all_close(self.robot_goal_pose, self.group.get_current_pose(), 0.02)
+        return all_close(self.cage_pose, self.man_group.get_current_pose(), 0.02)
 
-    def go_to_home(self):
-        """ Plan and move to home
+    def open_ee(self):
+        self.move_ee("Open")
+        self.remove_attached_target_object()
+        return True
 
-        """
-        self.group.set_named_target('Upright')
+    def close_ee(self):
+        self.move_ee("Closed")
+        return True
 
-        plan = self.group.plan()
-        self.group.execute(plan, wait=True)
+    def home_man(self):
+        return self.move_to_joint_target(self.man_group, 'Upright')
 
-        # Ensures that there is no residual movement
-        self.group.stop()
+    def move_ee(self, named_target):
+        return self.move_to_joint_target(self.ee_group, named_target)
 
-        # It is always good to clear your targets after planning with poses.
-        self.group.clear_pose_targets()
+    def move_to_joint_target(self, group, named_target):
+        group.set_named_target(named_target)
 
-        return all_close(self.group.get_joint_value_target(), self.group.get_current_joint_values(), 0.02)
+        plan = group.plan()
+        group.execute(plan, wait=True)
+        group.stop()
 
+        success = all_close(group.get_joint_value_target(), group.get_current_joint_values(), 0.02)
+        group.clear_pose_targets()
+        return success
 
     def command_robot(self):
 
+        # Update state state
+        if (self.state != "wait") and self.cage_pose == None and self.EE_GRASP == None:
+            self.prev_state = self.state
+            self.state = "wait"
+            self.take_action()
 
-        if ((self.robot_goal_pose is not None and ((self.event == "e_pick_place") or (self.event == "e_move"))) or self.event == "e_home"):
-            msg = String()
-            success = None
+        if self.state == "wait"  and self.cage_pose != None and self.EE_GRASP != None:
+            self.prev_state = self.state
+            self.state = "idle"
+            self.take_action()
 
-            if (self.event == "e_start") or (self.event == "e_pick_place"):
-                succes = self.pick()
-            elif self.event == "e_move":
-                succes = self.go_to_pose_goal()
-            elif self.event == "e_home":
-                succes = self.go_to_home()
+        if (self.state == "idle") and (self.goal_state == "e_pick_place"):
+            self.prev_state = self.state
+            self.state = self.goal_state
+            self.take_action()
 
-            if succes:
-                msg.data = "e_success"
-            else:
-                msg.data = "e_failure"
-                rospy.logwarn("Goal Tolerance Violated")
+        elif (self.state == "idle") and (self.goal_state == "e_move"):
+            self.prev_state = self.state
+            self.state = self.goal_state
+            self.take_action()
 
-            self.event = None
-            self.pub_e_out.publish(msg)
+        elif ((self.state == "wait") or (self.state == "idle")) and self.goal_state == "e_home":
+            self.prev_state = self.state
+            self.state = self.goal_state
+            self.take_action()
 
-        else:
+        elif ((self.state == "wait") or (self.state == "idle")) and self.goal_state == "e_open":
+            self.prev_state = self.state
+            self.state = self.goal_state
+            self.take_action()
+
+        elif ((self.state == "wait") or (self.state == "idle")) and self.goal_state == "e_close":
+            self.prev_state = self.state
+            self.state = self.goal_state
+            self.take_action()
+
+
+    def take_action(self):
+        msg = String()
+        success = None
+
+        # Take action based on state
+        if self.state == "wait":
             pass
+
+        if self.state == "idle":
+            pass
+
+        elif self.state == "e_pick_place":
+            success = self.pick()
+            self.state = "wait"
+
+        elif self.state == "e_move":
+            success = self.go_to_pose_goal()
+            self.state = "wait"
+
+        elif self.state == "e_home":
+            success = self.home_man()
+            self.state = "idle"
+
+        elif self.state == "e_open":
+            success = self.open_ee()
+            self.state = "idle"
+
+        elif self.state == "e_close":
+            success = self.close_ee()
+            self.state = "idle"
+
+
+        # publish success
+        if success is not None:
+            if success == True:
+                msg.data = "e_success"
+                self.goal_state = None
+            elif success == False:
+                msg.data = "e_failure"
+                rospy.logwarn("Robot command failed")
+                self.goal_state = None
+
+
+            self.pub_e_out.publish(msg)
+        else:
+            # no robot command has been executed
+            pass
+
 
 def add_list(list1, list2):
     return [sum(x) for x in zip(list1, list2)]

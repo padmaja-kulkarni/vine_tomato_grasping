@@ -48,23 +48,23 @@ class PipeLine(object):
     def pipeline_state_call_back(self, msg):
         if self.state_goal == None:
             self.state_goal = msg.data
-            rospy.logdebug("Received new pipeline goal state event message: %s", self.state_goal)
+            rospy.logdebug("[PIPELINE] Received new pipeline goal state event message: %s", self.state_goal)
 
     ## Object Detection Callback Function
     def object_detection_call_back(self, msg):
         if self.object_detected == None:
             self.object_detected = msg.data
-            rospy.logdebug("Received new object detected event message %s", self.object_detected)
+            rospy.logdebug("[PIPELINE] Received new object detected event message %s", self.object_detected)
 
     ## Pose Transform Callback Function
     def pose_transform_call_back(self, msg):
         if self.pose_transformed == None:
             self.pose_transformed = msg.data
-            rospy.logdebug("Received new pose transformed event message: %s", self.pose_transformed)
+            rospy.logdebug("[PIPELINE] Received new pose transformed event message: %s", self.pose_transformed)
 
     def pick_place_call_back(self, msg):
         if self.robot_moved == None:
-            rospy.logdebug("Received new pick and place event out message: %s ", msg.data)
+            rospy.logdebug("[PIPELINE] Received new pick and place event out message: %s ", msg.data)
             if msg.data == "e_success":
                 self.robot_moved = True
             elif msg.data == "e_failure":
@@ -85,6 +85,20 @@ class PipeLine(object):
         if (self.state == "IDLE") and ((self.state_goal == "MOVE") or (self.state_goal == "PICKPLACE")):
             self.state_previous = self.state
             self.state = "DETECT"
+            self.log_state_update()
+            self.send_message()
+
+        if (self.state == "IDLE") and (self.state_goal == "OPEN"):
+            self.state_previous = self.state
+            self.state = self.state_goal
+            self.state_goal = None
+            self.log_state_update()
+            self.send_message()
+
+        if (self.state == "IDLE") and (self.state_goal == "CLOSE"):
+            self.state_previous = self.state
+            self.state = self.state_goal
+            self.state_goal = None
             self.log_state_update()
             self.send_message()
 
@@ -110,14 +124,14 @@ class PipeLine(object):
             self.log_state_update()
             self.send_message()
 
-        if self.robot_moved and (self.state == "PICKPLACE" or self.state == "HOME" or self.state == "MOVE"):
+        if self.robot_moved and (self.state == "PICKPLACE" or self.state == "HOME" or self.state == "MOVE" or self.state == "OPEN"  or self.state == "CLOSE"):
             self.state_previous = self.state
             self.state = "IDLE"
             self.robot_moved = None
             self.log_state_update()
             self.send_message()
 
-        if (self.robot_moved == False) and (self.state == "PICKPLACE" or self.state == "HOME" or self.state == "MOVE"):
+        if (self.robot_moved == False) and (self.state == "PICKPLACE" or self.state == "HOME" or self.state == "MOVE"  or self.state == "OPEN"  or self.state == "CLOSE"):
             rospy.logwarn("Robot did not move!")
             self.state_previous = self.state
             self.state = "IDLE"
@@ -135,6 +149,12 @@ class PipeLine(object):
 
         if self.state == "MOVE":
             self.send_move_to_pick_place()
+
+        if self.state == "OPEN":
+            self.send_open_to_pick_place()
+
+        if self.state == "CLOSE":
+            self.send_close_to_pick_place()
 
         if self.state == "PICKPLACE":
             self.send_pick_place_to_pick_place()
@@ -160,6 +180,12 @@ class PipeLine(object):
 
     def send_home_to_pick_place(self):
         self.pub_pick_place.publish("e_home")
+
+    def send_open_to_pick_place(self):
+        self.pub_pick_place.publish("e_open")
+
+    def send_close_to_pick_place(self):
+        self.pub_pick_place.publish("e_close")
 
 
 def main():
