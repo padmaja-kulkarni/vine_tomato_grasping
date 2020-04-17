@@ -15,6 +15,9 @@ from geometry_msgs.msg import PoseStamped, Quaternion
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from moveit_msgs.msg import MoveItErrorCodes, PlaceLocation, Grasp, GripperTranslation
 
+from tf.transformations import euler_from_quaternion, quaternion_from_euler
+
+
 from moveit_msgs.srv import GetPositionIK, GetPositionIKRequest
 from std_msgs.msg       import Float64
 
@@ -46,8 +49,12 @@ class Pick_Place(object):
         self.prev_state = None
         self.goal_state = None
 
+        self.cage_pose = None
+        self.place_pose = None
+
         # Subscribers
-        rospy.Subscriber("endEffectorPose", PoseStamped, self.ee_pose_cb)
+        rospy.Subscriber("cagePose", PoseStamped, self.cage_pose_cb)
+        rospy.Subscriber("placePose", PoseStamped, self.place_pose_cb)
         rospy.Subscriber("endEffectorDistance", Float64, self.ee_distance_cb)
         rospy.Subscriber("~e_in", String, self.e_in_cb)
 
@@ -63,10 +70,15 @@ class Pick_Place(object):
             rospy.logdebug("[PICK PLACE] Received a new end effector distance message")
             rospy.logdebug("[PICK PLACE] New end effector grasp pose: %s", self.EE_GRASP)
 
-    def ee_pose_cb(self, msg):
+    def cage_pose_cb(self, msg):
         if self.cage_pose is None:
             self.cage_pose = msg
-            rospy.logdebug("[PICK PLACE] Received new move robot pose message")
+            rospy.logdebug("[PICK PLACE] Received new caging pose massage")
+
+    def place_pose_cb(self, msg):
+        if self.place_pose is None:
+            self.place_pose = msg
+            rospy.logdebug("[PICK PLACE] Received new placing pose message")
 
     def e_in_cb(self, msg):
         if self.goal_state is None:
@@ -116,6 +128,7 @@ class Pick_Place(object):
         ee_group.set_goal_orientation_tolerance(0.1)
 
         self.max_pick_attempts = 10
+        self.max_place_attempts = 10
 
         self.man_group_name = man_group_name
         self.ee_group_name = ee_group_name
@@ -124,7 +137,6 @@ class Pick_Place(object):
         self.man_group = man_group
         self.ee_group = ee_group
 
-        self.cage_pose = None
         self.ee_link = ee_link
         self.ee_joint_names = ee_joint_names
         self.EE_OPEN = EE_OPEN
@@ -133,7 +145,6 @@ class Pick_Place(object):
 
     def initialise_enviroment(self):
         """" Checks wether the RViz enviroment is correctly set
-
 
         """
 
@@ -195,16 +206,16 @@ class Pick_Place(object):
         grasps = Grasp()
 
         # Pre grasp posture
-        time_list = [0.1]
+        time_list = [0.5]
         grasps.pre_grasp_posture = self.make_gripper_posture(self.EE_OPEN, time_list)
 
         # Grasp posture
-        time_list = [0.1]
+        time_list = [1.5]
         grasps.grasp_posture = self.make_gripper_posture(self.EE_GRASP, time_list)
 
         # Set the approach and retreat parameters as desired
         grasps.pre_grasp_approach = self.make_gripper_translation(0.05, 0.1, [0, 0, -1.0])
-        grasps.post_grasp_retreat = self.make_gripper_translation(0.1, 0.15, [0, 0, 1.0])
+        grasps.post_grasp_retreat = self.make_gripper_translation(0.05, 0.1, [0, 0, 1.0])
 
         # grasp pose
         grasps.grasp_pose = self.cage_pose
@@ -226,12 +237,25 @@ class Pick_Place(object):
 
             rospy.sleep(0.2)
 
-        self.cage_pose = None
+        return result == MoveItErrorCodes.SUCCESS
 
-        if result == MoveItErrorCodes.SUCCESS:
-            return True
-        else:
-            return False
+    def place(self):
+
+        # place
+        result = None
+        n_attempts = 0
+
+        # Repeat until we succeed or run out of attempts
+        while result != MoveItErrorCodes.SUCCESS and n_attempts < self.max_place_attempts:
+            n_attempts += 1
+            rospy.loginfo("Place attempt: " +  str(n_attempts))
+
+            result = self.man_group.place(self.target_object_name) # self.place_pose
+            rospy.sleep(0.2)
+
+        return result == MoveItErrorCodes.SUCCESS
+
+    rospy.logdebug("==STARTING PLACE PROCEDURE===")
 
     def make_gripper_posture(self, joint_positions, time_list):
         # Initialize the joint trajectory for the gripper joints
@@ -241,8 +265,6 @@ class Pick_Place(object):
         t.joint_names = self.ee_joint_names
 
         for time in time_list:
-
-            rospy.logdebug("Duration: %s", time)
 
             # Initialize a joint trajectory point to represent the goal
             tp = JointTrajectoryPoint()
@@ -286,6 +308,8 @@ class Pick_Place(object):
             if attached_objects[self.target_object_name].link_name == self.ee_link:
                 rospy.logdebug("Removing atached objects from ee_link")
                 self.scene.remove_attached_object(self.ee_link, self.target_object_name)
+                rospy.sleep(0.1)
+                self.scene.remove_world_object(self.target_object_name)
 
     def go_to_pose_goal(self):
         """ plan and move to a pose goal
@@ -394,6 +418,8 @@ class Pick_Place(object):
 
         elif self.state == "e_pick_place":
             success = self.pick()
+            if success:
+                success = self.place()
             self.state = "wait"
 
         elif self.state == "e_move":

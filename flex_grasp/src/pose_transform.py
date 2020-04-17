@@ -31,7 +31,10 @@ class PoseTransform(object):
         rospy.Subscriber("~e_in", String, self.e_in_cb)
 
         # Initialize Publishers
-        self.pub_ee_pose = rospy.Publisher('endEffectorPose',
+        self.pub_cage_pose = rospy.Publisher('cagePose',
+                                        PoseStamped, queue_size=5, latch=True)
+
+        self.pub_place_pose = rospy.Publisher('placePose',
                                         PoseStamped, queue_size=5, latch=True)
 
         self.pub_ee_distance = rospy.Publisher('endEffectorDistance',
@@ -83,49 +86,75 @@ class PoseTransform(object):
                 msg_e.data = "e_success"
 
                 self.object_pose = tf2_geometry_msgs.do_transform_pose(self.object_features.cage_location, self.trans)
-                self.end_effector_distance = 0.3*2*self.object_features.peduncle.radius
+                self.end_effector_distance = 0.4*2*self.object_features.peduncle.radius
 
-                self.end_effector_pose = self.object_pose_to_end_effector_pose(self.object_pose)
+                self.cage_pose = self.object_pose_to_cage_pose(self.object_pose)
+                self.place_pose = self.object_pose_to_place_pose(self.object_pose)
 
-                self.pub_ee_pose.publish(self.end_effector_pose)
+                self.pub_cage_pose.publish(self.cage_pose)
+                self.pub_place_pose.publish(self.place_pose)
+
                 self.pub_ee_distance.publish(self.end_effector_distance)
                 self.pub_e_out.publish(msg_e)
 
                 self.object_features = None
                 self.event = None
 
-    def object_pose_to_end_effector_pose(self, object_pose):
+    def object_pose_to_cage_pose(self, object_pose):
 
-        end_effector_pose = PoseStamped()
-
-        end_effector_pose.header = object_pose.header
+        cage_pose = PoseStamped()
+        cage_pose.header = object_pose.header
 
         # position
         position = object_pose.pose.position
-        end_effector_pose.pose.position.x = position.x
-        end_effector_pose.pose.position.y = position.y
+        cage_pose.pose.position.x = position.x
+        cage_pose.pose.position.y = position.y
         if self.use_iiwa:
-            end_effector_pose.pose.position.z = position.z + 0.25
+            cage_pose.pose.position.z = position.z + 0.25
         elif self.use_interbotix:
-            end_effector_pose.pose.position.z = position.z + 0.04
+            cage_pose.pose.position.z = position.z + 0.05
 
         # orientation
         orientation = object_pose.pose.orientation
-        rotation = (orientation.x, orientation.y, orientation.z, orientation.w)
-        euler = tf.transformations.euler_from_quaternion(rotation)
+        orientation = (orientation.x, orientation.y, orientation.z, orientation.w)
+        euler = tf.transformations.euler_from_quaternion(orientation)
 
         if self.use_iiwa:
             quat = tf.transformations.quaternion_from_euler(euler[0], euler[1], euler[2] - 3.1415/2) # move parralel to object
         elif self.use_interbotix:
             quat = tf.transformations.quaternion_from_euler(euler[0]- 3.1415, euler[1] + 3.1415/2, euler[2])
 
-        end_effector_pose.pose.orientation.x = quat[0]
-        end_effector_pose.pose.orientation.y = quat[1]
-        end_effector_pose.pose.orientation.z = quat[2]
-        end_effector_pose.pose.orientation.w = quat[3]
+        cage_pose.pose.orientation.x = quat[0]
+        cage_pose.pose.orientation.y = quat[1]
+        cage_pose.pose.orientation.z = quat[2]
+        cage_pose.pose.orientation.w = quat[3]
 
-        return end_effector_pose
+        return cage_pose
 
+    def object_pose_to_place_pose(self, object_pose):
+        # place_pose = PoseStamped()
+        # place_pose.header = object_pose.header
+        #
+        # # position
+        # place_pose.pose.position = object_pose.pose.position
+        #
+        # # orientation
+        # orientation = object_pose.pose.orientation
+        # orientation = (orientation.x, orientation.y, orientation.z, orientation.w)
+        # euler = tf.transformations.euler_from_quaternion(orientation)
+        #
+        # if self.use_iiwa:
+        #     quat = tf.transformations.quaternion_from_euler(euler[0], euler[1], euler[2] - 3.1415/2) # move parralel to object
+        # elif self.use_interbotix:
+        #     quat = tf.transformations.quaternion_from_euler(euler[0]- 3.1415, euler[1] + 3.1415/2, euler[2])
+        #
+        # place_pose.pose.orientation.x = quat[0]
+        # place_pose.pose.orientation.y = quat[1]
+        # place_pose.pose.orientation.z = quat[2]
+        # place_pose.pose.orientation.w = quat[3]
+
+        return self.cage_pose
+        
 def main():
     try:
         pose_transform = PoseTransform()
