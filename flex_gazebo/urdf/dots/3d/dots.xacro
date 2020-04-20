@@ -7,48 +7,49 @@
 
   <xacro:macro name="truss" params="*origin">
     <xacro:property name="dot_radius" value="0.03" />
-    <xacro:property name="L" value="0.08" />
-
+    <xacro:property name="L" value="0.1" />
 
     <joint name="truss_joint" type="floating">
       <xacro:insert_block name="origin" />
       <parent link="world"/>
-      <child link="tomato0" />
+      <child link="center" />
     </joint>
 
-    <xacro:tomato tomato_name="0" radius="${dot_radius}" parent_link="world">
+    <link name="center"/>
+
+    <xacro:tomato tomato_name="0" radius="${dot_radius}" parent_link="center">
           <origin xyz="0 0 0" rpy="0 0 0" />
     </xacro:tomato>
 
-    <xacro:tomato tomato_name="1" radius="${dot_radius}" parent_link="tomato0">
+    <xacro:tomato tomato_name="1" radius="${dot_radius}" parent_link="center">
           <origin xyz="${-L} ${L} 0" rpy="0 0 0" />
     </xacro:tomato>
 
-    <xacro:tomato tomato_name="2" radius="${dot_radius}" parent_link="tomato0">
+    <xacro:tomato tomato_name="2" radius="${dot_radius}" parent_link="center">
           <origin xyz="${-L} 0 0" rpy="0 0 0" />
     </xacro:tomato>
 
-    <xacro:tomato tomato_name="3" radius="${dot_radius}" parent_link="tomato0">
+    <xacro:tomato tomato_name="3" radius="${dot_radius}" parent_link="center">
           <origin xyz="${-L} ${-L} 0" rpy="0 0 0" />
     </xacro:tomato>
 
-    <xacro:tomato tomato_name="4" radius="${dot_radius}" parent_link="tomato0">
+    <xacro:tomato tomato_name="4" radius="${dot_radius}" parent_link="center">
           <origin xyz="0 ${-L} 0" rpy="0 0 0" />
     </xacro:tomato>
 
-    <xacro:tomato tomato_name="5" radius="${dot_radius}" parent_link="tomato0">
+    <xacro:tomato tomato_name="5" radius="${dot_radius}" parent_link="center">
           <origin xyz="${L} ${-L} 0" rpy="0 0 0" />
     </xacro:tomato>
 
-    <xacro:tomato tomato_name="6" radius="${dot_radius}" parent_link="tomato0">
+    <xacro:tomato tomato_name="6" radius="${dot_radius}" parent_link="center">
           <origin xyz="${L} 0 0" rpy="0 0 0" />
     </xacro:tomato>
 
-    <xacro:tomato tomato_name="7" radius="${dot_radius}" parent_link="tomato0">
+    <xacro:tomato tomato_name="7" radius="${dot_radius}" parent_link="center">
           <origin xyz="${L} ${L} 0" rpy="0 0 0" />
     </xacro:tomato>
 
-    <xacro:tomato tomato_name="8" radius="${dot_radius}" parent_link="tomato0">
+    <xacro:tomato tomato_name="8" radius="${dot_radius}" parent_link="center">
           <origin xyz="0 ${L} 0" rpy="0 0 0" />
     </xacro:tomato>
 
