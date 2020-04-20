@@ -16,7 +16,7 @@ from std_msgs.msg       import Float64
 from func.conversions import pose_to_lists
 from func.utils import add_lists
 from moveit_commander.conversions import list_to_pose
-
+from math import pi
 
 import tf2_ros
 import tf
@@ -61,11 +61,15 @@ class PoseTransform(object):
         if self.use_iiwa:
             self.grasp_position_transform = [0, 0, 0.25] # [m]
             self.pre_grasp_position_transform = [0, 0, 0.3] # [m]
-            self.orientation_transform = [0, 0, - 3.1415/2]
+            self.orientation_transform = [0, 0, -pi/2]
         if self.use_interbotix:
-            self.grasp_position_transform = [0, 0, 0.04] # [m]
+            self.grasp_position_transform =     [0, 0, 0.04] # [m]
             self.pre_grasp_position_transform = [0, 0, 0.10] # [m]
-            self.orientation_transform = [- 3.1415, 3.1415/2, 0]
+            self.orientation_transform = [-pi, pi/2, 0]
+
+
+        self.place_orientation_transform = [0.0, 0.0, 1.0]
+        self.place_position_transform = [0.05, 0.0, 0.0]
 
         # Listen
         self.tfBuffer = tf2_ros.Buffer()
@@ -110,8 +114,8 @@ class PoseTransform(object):
 
                 pre_grasp_pose = self.object_pose_to_grasp_pose(self.pre_grasp_position_transform)
                 grasp_pose = self.object_pose_to_grasp_pose(self.grasp_position_transform)
-                pre_place_pose = self.object_pose_to_place_pose(self.pre_grasp_position_transform)
-                place_pose = self.object_pose_to_place_pose(self.grasp_position_transform)
+                pre_place_pose = self.object_pose_to_place_pose(pre_grasp_pose)
+                place_pose = self.object_pose_to_place_pose(grasp_pose)
 
                 self.pub_pre_grasp_pose.publish(pre_grasp_pose)
                 self.pub_grasp_pose.publish(grasp_pose)
@@ -139,29 +143,20 @@ class PoseTransform(object):
 
         return grasp_pose
 
-    def object_pose_to_place_pose(self, height):
+    def object_pose_to_place_pose(self, grasp_pose):
 
-        return self.object_pose_to_grasp_pose(height)
-        # place_pose = PoseStamped()
-        # place_pose.header = object_pose.header
-        #
-        # # position
-        # place_pose.pose.position = object_pose.pose.position
-        #
-        # # orientation
-        # orientation = object_pose.pose.orientation
-        # orientation = (orientation.x, orientation.y, orientation.z, orientation.w)
-        # euler = tf.transformations.euler_from_quaternion(orientation)
-        #
-        # if self.use_iiwa:
-        #     quat = tf.transformations.quaternion_from_euler(euler[0], euler[1], euler[2] - 3.1415/2) # move parralel to object
-        # elif self.use_interbotix:
-        #     quat = tf.transformations.quaternion_from_euler(euler[0]- 3.1415, euler[1] + 3.1415/2, euler[2])
-        #
-        # place_pose.pose.orientation.x = quat[0]
-        # place_pose.pose.orientation.y = quat[1]
-        # place_pose.pose.orientation.z = quat[2]
-        # place_pose.pose.orientation.w = quat[3]
+        place_pose = PoseStamped()
+        place_pose.header = grasp_pose.header
+
+        # position
+        grasp_position, grasp_orientation = pose_to_lists(grasp_pose.pose, 'euler')
+        place_position = add_lists(grasp_position, self.place_position_transform)
+        place_orientation = add_lists(grasp_orientation, self.place_orientation_transform)
+
+        place_pose.pose = list_to_pose(place_position + place_orientation)
+
+        return place_pose
+        # return self.object_pose_to_grasp_pose(height)
 
 def main():
     try:
