@@ -75,7 +75,6 @@ class PipeLine(object):
     def log_state_update(self):
         rospy.loginfo("updated pipeline state, from %s to %s",
                       self.state_previous, self.state)
-        rospy.logdebug("Robot moved: %s", self.robot_moved)
 
     ### Run Function
 
@@ -176,7 +175,7 @@ class PipeLine(object):
         self.pub_pick_place.publish("e_move")
 
     def send_pick_place_to_pick_place(self):
-        self.pub_pick_place.publish("e_pick_place")
+        self.pub_pick_place.publish("pick_place")
 
     def send_home_to_pick_place(self):
         self.pub_pick_place.publish("e_home")

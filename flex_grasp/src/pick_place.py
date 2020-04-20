@@ -23,6 +23,8 @@ from std_msgs.msg       import Float64
 
 # custom functions
 from func.all_close import all_close
+from func.orientation_to_list import orientation_to_list
+
 
 class Pick_Place(object):
     """Pick_Place"""
@@ -49,11 +51,15 @@ class Pick_Place(object):
         self.prev_state = None
         self.goal_state = None
 
-        self.cage_pose = None
+        self.pre_grasp_pose = None
+        self.grasp_pose = None
+        self.pre_place_pose = None
         self.place_pose = None
 
         # Subscribers
-        rospy.Subscriber("cagePose", PoseStamped, self.cage_pose_cb)
+        rospy.Subscriber("preGraspPose", PoseStamped, self.pre_grasp_pose_cb)
+        rospy.Subscriber("graspPose", PoseStamped, self.grasp_pose_cb)
+        rospy.Subscriber("prePlacePose", PoseStamped, self.pre_place_pose_cb)
         rospy.Subscriber("placePose", PoseStamped, self.place_pose_cb)
         rospy.Subscriber("endEffectorDistance", Float64, self.ee_distance_cb)
         rospy.Subscriber("~e_in", String, self.e_in_cb)
@@ -70,10 +76,20 @@ class Pick_Place(object):
             rospy.logdebug("[PICK PLACE] Received a new end effector distance message")
             rospy.logdebug("[PICK PLACE] New end effector grasp pose: %s", self.EE_GRASP)
 
-    def cage_pose_cb(self, msg):
-        if self.cage_pose is None:
-            self.cage_pose = msg
-            rospy.logdebug("[PICK PLACE] Received new caging pose massage")
+    def grasp_pose_cb(self, msg):
+        if self.grasp_pose is None:
+            self.grasp_pose = msg
+            rospy.logdebug("[PICK PLACE] Received new grasp pose massage")
+
+    def pre_grasp_pose_cb(self, msg):
+        if self.pre_grasp_pose is None:
+            self.pre_grasp_pose = msg
+            rospy.logdebug("[PICK PLACE] Received new pre grasp pose massage")
+
+    def pre_place_pose_cb(self, msg):
+        if self.pre_place_pose is None:
+            self.pre_place_pose = msg
+            rospy.logdebug("[PICK PLACE] Received new pre place pose message")
 
     def place_pose_cb(self, msg):
         if self.place_pose is None:
@@ -121,11 +137,11 @@ class Pick_Place(object):
         man_group.set_planning_time(5)
 
         # Allow some leeway in position (meters) and orientation (radians)
-        man_group.set_goal_position_tolerance(0.05)
-        man_group.set_goal_orientation_tolerance(0.1)
+        # man_group.set_goal_position_tolerance(0.05)
+        # man_group.set_goal_orientation_tolerance(0.1)
 
-        ee_group.set_goal_position_tolerance(0.05)
-        ee_group.set_goal_orientation_tolerance(0.1)
+        # ee_group.set_goal_position_tolerance(0.05)
+        # ee_group.set_goal_orientation_tolerance(0.1)
 
         self.max_pick_attempts = 10
         self.max_place_attempts = 10
@@ -218,7 +234,7 @@ class Pick_Place(object):
         grasps.post_grasp_retreat = self.make_gripper_translation(0.05, 0.1, [0, 0, 1.0])
 
         # grasp pose
-        grasps.grasp_pose = self.cage_pose
+        grasps.grasp_pose = self.grasp_pose
 
         # touchable obejcts
         grasps.allowed_touch_objects = ['table', 'wall', 'tomato_0', 'tomato_1', 'peduncle']
@@ -311,42 +327,63 @@ class Pick_Place(object):
                 rospy.sleep(0.1)
                 self.scene.remove_world_object(self.target_object_name)
 
-    def go_to_pose_goal(self):
+    def attach_object(self):
+        grasping_group = self.ee_group_name
+        touch_links = self.robot.get_link_names(group=grasping_group)
+        self.scene.attach_box(self.ee_link, self.target_object_name, touch_links=touch_links)
+        rospy.sleep(0.1)
+        return True
+
+    def go_to_grasp_pose(self):
+        success = self.go_to_pose(self.grasp_pose)
+        # self.grasp_pose = None
+        return success
+
+    def go_to_pre_grasp_pose(self):
+        success = self.go_to_pose(self.pre_grasp_pose)
+        # self.pre_grasp_pose = None
+        return success
+
+    def go_to_pre_place_pose(self):
+        success = self.go_to_pose(self.pre_place_pose)
+        return success
+
+    def go_to_place_pose(self):
+        success = self.go_to_pose(self.place_pose)
+        return success
+
+    def go_to_pose(self, goal_pose):
         """ plan and move to a pose goal
 
 
         """
-        rospy.logdebug("==STARTING GO TO POSE GOAL PROCEDURE===")
+        rospy.logdebug("==STARTING GO TO POSE PROCEDURE===")
 
         ## Only if inverse kinematics exist
-        if self.compute_ik(self.cage_pose):
+        if self.compute_ik(goal_pose):
             rospy.loginfo("Goal pose is reachable.")
 
-            self.man_group.set_pose_target(self.cage_pose.pose)
+            self.man_group.set_pose_target(goal_pose.pose)
             plan = self.man_group.plan()
             self.man_group.execute(plan, wait=True)
 
         else:
             rospy.logwarn("Goal pose is not reachable!")
 
-
-        # Ensures that there is no residual movement
+        # Ensures that there is no residual movement and clear the target
         self.man_group.stop()
-
-        # clear targets after planning with poses.
         self.man_group.clear_pose_targets()
-        self.cage_pose = None
 
-        # verify goal pose is obtained
-        return all_close(self.cage_pose, self.man_group.get_current_pose(), 0.02)
+        curr_pose = self.man_group.get_current_pose()
+        return all_close(goal_pose, curr_pose, 0.02)
 
     def open_ee(self):
-        self.move_ee("Open")
+        success = self.move_ee("Open")
         self.remove_attached_target_object()
         return True
 
     def close_ee(self):
-        self.move_ee("Closed")
+        success = self.move_ee("Closed")
         return True
 
     def home_man(self):
@@ -362,73 +399,115 @@ class Pick_Place(object):
         group.execute(plan, wait=True)
         group.stop()
 
+        # rospy.loginfo("Target joint values: %s", group.get_joint_value_target())
+        # rospy.loginfo("Actual joint values: %s", group.get_current_joint_values())
+
         success = all_close(group.get_joint_value_target(), group.get_current_joint_values(), 0.02)
         group.clear_pose_targets()
         return success
 
+    def received_all_data(self):
+        success = (self.EE_GRASP != None) and (self.grasp_pose != None) and (self.pre_grasp_pose != None) and (self.pre_place_pose != None) and (self.place_pose != None)
+        return success
+
+    ### Log state update
+    def log_state_update(self):
+        rospy.loginfo("[PICK PLACE] updated pipeline state, from %s to %s",
+                      self.prev_state, self.state)
+
     def command_robot(self):
 
         # Update state state
-        if (self.state != "wait") and self.cage_pose == None and self.EE_GRASP == None:
+        if (self.state != "init") and not self.received_all_data():
             self.prev_state = self.state
-            self.state = "wait"
+            self.state = "init"
             self.take_action()
 
-        if self.state == "wait"  and self.cage_pose != None and self.EE_GRASP != None:
+        if self.state == "init" and self.received_all_data():
             self.prev_state = self.state
             self.state = "idle"
             self.take_action()
 
-        if (self.state == "idle") and (self.goal_state == "e_pick_place"):
+        if (self.state == "idle") and (self.goal_state == "pick_place"):
+            self.prev_state = self.state
+            self.state = "pick" # self.goal_state
+            self.take_action()
+
+        if (self.state == "pick") and (self.goal_state == "pick_place"):
+            self.prev_state = self.state
+            self.state = "place" # self.goal_state
+            self.take_action()
+
+        elif ((self.state == "init") or (self.state == "idle")) and self.goal_state == "e_home":
             self.prev_state = self.state
             self.state = self.goal_state
             self.take_action()
 
-        elif (self.state == "idle") and (self.goal_state == "e_move"):
+        elif ((self.state == "init") or (self.state == "idle")) and self.goal_state == "e_open":
             self.prev_state = self.state
             self.state = self.goal_state
             self.take_action()
 
-        elif ((self.state == "wait") or (self.state == "idle")) and self.goal_state == "e_home":
-            self.prev_state = self.state
-            self.state = self.goal_state
-            self.take_action()
-
-        elif ((self.state == "wait") or (self.state == "idle")) and self.goal_state == "e_open":
-            self.prev_state = self.state
-            self.state = self.goal_state
-            self.take_action()
-
-        elif ((self.state == "wait") or (self.state == "idle")) and self.goal_state == "e_close":
+        elif ((self.state == "init") or (self.state == "idle")) and self.goal_state == "e_close":
             self.prev_state = self.state
             self.state = self.goal_state
             self.take_action()
 
 
     def take_action(self):
+        self.log_state_update()
         msg = String()
         success = None
 
         # Take action based on state
-        if self.state == "wait":
+        if self.state == "init":
             pass
 
-        if self.state == "idle":
+        elif self.state == "idle":
             pass
 
-        elif self.state == "e_pick_place":
+        elif self.state == "pick":
+
+            success = self.go_to_pre_grasp_pose()
+
+            if success:
+                success = self.open_ee()
+
+            if success:
+                success = self.go_to_grasp_pose()
+
+            if success:
+                success = self.attach_object()
+
+            if success:
+                success = self.close_ee()
+
+            if success:
+                success = self.go_to_pre_grasp_pose()
+
+        #elif self.state == "place":
+            if success:
+                success = self.go_to_pre_place_pose()
+
+            if success:
+                success = self.go_to_place_pose()
+
+            if success:
+                success = self.open_ee()
+
+        elif self.state == "pick_place":
             success = self.pick()
             if success:
                 success = self.place()
-            self.state = "wait"
+            self.state = "init"
 
         elif self.state == "e_move":
-            success = self.go_to_pose_goal()
-            self.state = "wait"
+            success = self.go_to_pre_grap_pose()
+            self.state = "init"
 
         elif self.state == "e_home":
             success = self.home_man()
-            self.state = "idle"
+            self.state = "init"
 
         elif self.state == "e_open":
             success = self.open_ee()
@@ -463,7 +542,6 @@ def main():
     try:
         pp = Pick_Place()
         rate = rospy.Rate(10)
-
         while not rospy.core.is_shutdown():
             pp.command_robot()
             rate.sleep()

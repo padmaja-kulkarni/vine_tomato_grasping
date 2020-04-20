@@ -31,7 +31,13 @@ class PoseTransform(object):
         rospy.Subscriber("~e_in", String, self.e_in_cb)
 
         # Initialize Publishers
-        self.pub_cage_pose = rospy.Publisher('cagePose',
+        self.pub_pre_grasp_pose = rospy.Publisher('preGraspPose',
+                                        PoseStamped, queue_size=5, latch=True)
+
+        self.pub_grasp_pose = rospy.Publisher('graspPose',
+                                        PoseStamped, queue_size=5, latch=True)
+
+        self.pub_pre_place_pose = rospy.Publisher('prePlacePose',
                                         PoseStamped, queue_size=5, latch=True)
 
         self.pub_place_pose = rospy.Publisher('placePose',
@@ -46,6 +52,13 @@ class PoseTransform(object):
         self.use_iiwa = rospy.get_param('use_iiwa')
         self.use_interbotix = rospy.get_param('use_interbotix')
         self.use_sdh = rospy.get_param('use_sdh')
+
+        if self.use_iiwa:
+            self.grasp_height = 0.25 # [m]
+            self.pre_grasp_height = 0.3 # [m]
+        if self.use_interbotix:
+            self.grasp_height = 0.04 # [m]
+            self.pre_grasp_height = 0.10 # [m]
 
         # Listen
         self.tfBuffer = tf2_ros.Buffer()
@@ -86,33 +99,35 @@ class PoseTransform(object):
                 msg_e.data = "e_success"
 
                 self.object_pose = tf2_geometry_msgs.do_transform_pose(self.object_features.cage_location, self.trans)
-                self.end_effector_distance = 0.3*2*self.object_features.peduncle.radius
+                end_effector_distance = 0.3*2*self.object_features.peduncle.radius
 
-                self.cage_pose = self.object_pose_to_cage_pose(self.object_pose)
-                self.place_pose = self.object_pose_to_place_pose(self.object_pose)
+                pre_grasp_pose = self.object_pose_to_grasp_pose(self.pre_grasp_height)
+                grasp_pose = self.object_pose_to_grasp_pose(self.grasp_height)
+                pre_place_pose = self.object_pose_to_place_pose(self.pre_grasp_height)
+                place_pose = self.object_pose_to_place_pose(self.grasp_height)
 
-                self.pub_cage_pose.publish(self.cage_pose)
-                self.pub_place_pose.publish(self.place_pose)
+                self.pub_pre_grasp_pose.publish(pre_grasp_pose)
+                self.pub_grasp_pose.publish(grasp_pose)
+                self.pub_pre_place_pose.publish(pre_place_pose)
+                self.pub_place_pose.publish(place_pose)
 
-                self.pub_ee_distance.publish(self.end_effector_distance)
+                self.pub_ee_distance.publish(end_effector_distance)
                 self.pub_e_out.publish(msg_e)
 
                 self.object_features = None
                 self.event = None
 
-    def object_pose_to_cage_pose(self, object_pose):
+    def object_pose_to_grasp_pose(self, height):
 
-        cage_pose = PoseStamped()
-        cage_pose.header = object_pose.header
+        object_pose = self.object_pose
+        grasp_pose = PoseStamped()
+        grasp_pose.header = object_pose.header
 
         # position
         position = object_pose.pose.position
-        cage_pose.pose.position.x = position.x
-        cage_pose.pose.position.y = position.y
-        if self.use_iiwa:
-            cage_pose.pose.position.z = position.z + 0.25
-        elif self.use_interbotix:
-            cage_pose.pose.position.z = position.z + 0.05
+        grasp_pose.pose.position.x = position.x
+        grasp_pose.pose.position.y = position.y
+        grasp_pose.pose.position.z = position.z + height
 
         # orientation
         orientation = object_pose.pose.orientation
@@ -124,14 +139,16 @@ class PoseTransform(object):
         elif self.use_interbotix:
             quat = tf.transformations.quaternion_from_euler(euler[0]- 3.1415, euler[1] + 3.1415/2, euler[2])
 
-        cage_pose.pose.orientation.x = quat[0]
-        cage_pose.pose.orientation.y = quat[1]
-        cage_pose.pose.orientation.z = quat[2]
-        cage_pose.pose.orientation.w = quat[3]
+        grasp_pose.pose.orientation.x = quat[0]
+        grasp_pose.pose.orientation.y = quat[1]
+        grasp_pose.pose.orientation.z = quat[2]
+        grasp_pose.pose.orientation.w = quat[3]
 
-        return cage_pose
+        return grasp_pose
 
-    def object_pose_to_place_pose(self, object_pose):
+    def object_pose_to_place_pose(self, height):
+
+        return self.object_pose_to_grasp_pose(height)
         # place_pose = PoseStamped()
         # place_pose.header = object_pose.header
         #
@@ -152,8 +169,6 @@ class PoseTransform(object):
         # place_pose.pose.orientation.y = quat[1]
         # place_pose.pose.orientation.z = quat[2]
         # place_pose.pose.orientation.w = quat[3]
-
-        return self.cage_pose
 
 def main():
     try:
