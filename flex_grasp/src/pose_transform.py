@@ -86,7 +86,7 @@ class PoseTransform(object):
                 msg_e.data = "e_success"
 
                 self.object_pose = tf2_geometry_msgs.do_transform_pose(self.object_features.cage_location, self.trans)
-                self.end_effector_distance = 0.4*2*self.object_features.peduncle.radius
+                self.end_effector_distance = 0.3*2*self.object_features.peduncle.radius
 
                 self.cage_pose = self.object_pose_to_cage_pose(self.object_pose)
                 self.place_pose = self.object_pose_to_place_pose(self.object_pose)
@@ -154,7 +154,7 @@ class PoseTransform(object):
         # place_pose.pose.orientation.w = quat[3]
 
         return self.cage_pose
-        
+
 def main():
     try:
         pose_transform = PoseTransform()
