@@ -32,6 +32,5 @@ def all_close(goal, actual, tolerance):
 
     return True
 
-
-def add_list(list1, list2):
+def add_lists(list1, list2):
     return [sum(x) for x in zip(list1, list2)]

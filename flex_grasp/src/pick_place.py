@@ -22,8 +22,8 @@ from moveit_msgs.srv import GetPositionIK, GetPositionIKRequest
 from std_msgs.msg       import Float64
 
 # custom functions
-from func.all_close import all_close
-from func.orientation_to_list import orientation_to_list
+from func.utils import all_close, add_lists
+from func.conversions import orientation_to_list
 
 
 class Pick_Place(object):
@@ -72,7 +72,7 @@ class Pick_Place(object):
         dist = msg.data
         if self.EE_GRASP is None:
             dist = msg.data
-            self.EE_GRASP = add_list(self.EE_CLOSED, [dist/2, -dist/2])
+            self.EE_GRASP = add_lists(self.EE_CLOSED, [dist/2, -dist/2])
             rospy.logdebug("[PICK PLACE] Received a new end effector distance message")
             rospy.logdebug("[PICK PLACE] New end effector grasp pose: %s", self.EE_GRASP)
 
@@ -533,10 +533,6 @@ class Pick_Place(object):
         else:
             # no robot command has been executed
             pass
-
-
-def add_list(list1, list2):
-    return [sum(x) for x in zip(list1, list2)]
 
 def main():
     try:
