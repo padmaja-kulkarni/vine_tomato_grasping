@@ -13,7 +13,7 @@ from moveit_commander.conversions import pose_to_list
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
 def pose_to_lists(pose_msg, orientation_type):
-    print(orientation_type)
+    # print(orientation_type)
     pose = pose_to_list(pose_msg)
     position = pose[0:3]
     quaternion = pose[3:7]

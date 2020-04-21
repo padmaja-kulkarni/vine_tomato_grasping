@@ -65,5 +65,9 @@ def all_close(goal, actual, position_tolerance, orientation_tolerance):
 def add_lists(list1, list2):
     return [sum(x) for x in zip(list1, list2)]
 
+def multiply_lists(list1, list2):
+    return [x*y for x, y in zip(list1, list2)]
+
+
 def neg_list(list1):
     return [ -x for x in list1]

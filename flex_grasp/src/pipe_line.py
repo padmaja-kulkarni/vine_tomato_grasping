@@ -17,7 +17,7 @@ class PipeLine(object):
         # Initialize Variables
         self.state = "IDLE"
         self.state_previous = "IDLE"
-        self.state_goal = None
+        self.command = None
 
         self.object_detected = None
         self.pose_transformed = None
@@ -46,9 +46,9 @@ class PipeLine(object):
     ### Callback Functions
     ## Pipeline State Callback Function
     def pipeline_state_call_back(self, msg):
-        if self.state_goal == None:
-            self.state_goal = msg.data
-            rospy.logdebug("[PIPELINE] Received new pipeline goal state event message: %s", self.state_goal)
+        if self.command == None:
+            self.command = msg.data
+            rospy.logdebug("[PIPELINE] Received new pipeline goal state event message: %s", self.command)
 
     ## Object Detection Callback Function
     def object_detection_call_back(self, msg):
@@ -81,30 +81,30 @@ class PipeLine(object):
     def update_state(self):
 
         ## update current state
-        if (self.state == "IDLE") and ((self.state_goal == "MOVE") or (self.state_goal == "PICK")):
+        if (self.state == "IDLE") and ((self.command == "MOVE") or (self.command == "PICK")):
             self.state_previous = self.state
             self.state = "DETECT"
             self.log_state_update()
             self.send_message()
 
-        if (self.state == "IDLE") and (self.state_goal == "OPEN"):
+        if (self.state == "IDLE") and (self.command == "OPEN"):
             self.state_previous = self.state
-            self.state = self.state_goal
-            self.state_goal = None
+            self.state = self.command
+            self.command = None
             self.log_state_update()
             self.send_message()
 
-        if (self.state == "IDLE") and (self.state_goal == "CLOSE"):
+        if (self.state == "IDLE") and (self.command == "CLOSE"):
             self.state_previous = self.state
-            self.state = self.state_goal
-            self.state_goal = None
+            self.state = self.command
+            self.command = None
             self.log_state_update()
             self.send_message()
 
-        if (self.state == "IDLE") and (self.state_goal == "HOME"):
+        if (self.state == "IDLE") and (self.command == "HOME"):
             self.state_previous = self.state
-            self.state = self.state_goal
-            self.state_goal = None
+            self.state = self.command
+            self.command = None
             self.log_state_update()
             self.send_message()
 
@@ -117,28 +117,28 @@ class PipeLine(object):
 
         if self.pose_transformed and self.state == "TRANSFORM":
             self.state_previous = self.state
-            self.state = self.state_goal
-            self.state_goal = None
+            self.state = self.command
+            self.command = None
             self.pose_transformed = None
             self.log_state_update()
             self.send_message()
 
-        if (self.state == "PICK") and (self.state_goal == "PLACE"):
+        if (self.state == "PICK") and (self.command == "PLACE"):
             self.robot_moved = None
             self.state_previous = self.state
-            self.state = self.state_goal
-            self.state_goal = None
+            self.state = self.command
+            self.command = None
             self.log_state_update()
             self.send_message()
 
-        if self.robot_moved and (self.state == "PLACE" or self.state == "HOME" or self.state == "MOVE" or self.state == "OPEN"  or self.state == "CLOSE"):
+        if self.robot_moved and (self.state == "PICK" or self.state == "PLACE" or self.state == "HOME" or self.state == "MOVE" or self.state == "OPEN"  or self.state == "CLOSE"):
             self.state_previous = self.state
             self.state = "IDLE"
             self.robot_moved = None
             self.log_state_update()
             self.send_message()
 
-        if (self.robot_moved == False) and (self.state == "PLACE" or self.state == "HOME" or self.state == "MOVE"  or self.state == "OPEN"  or self.state == "CLOSE"):
+        if (self.robot_moved == False) and (self.state == "PICK" or self.state == "PLACE" or self.state == "HOME" or self.state == "MOVE"  or self.state == "OPEN"  or self.state == "CLOSE"):
             rospy.logwarn("Robot did not move!")
             self.state_previous = self.state
             self.state = "IDLE"

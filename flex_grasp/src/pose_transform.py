@@ -14,7 +14,7 @@ from flex_grasp.msg import Truss
 from std_msgs.msg       import Float64
 
 from func.conversions import pose_to_lists
-from func.utils import add_lists
+from func.utils import add_lists, multiply_lists
 from moveit_commander.conversions import list_to_pose
 from math import pi
 
@@ -68,8 +68,8 @@ class PoseTransform(object):
             self.orientation_transform = [-pi, pi/2, 0]
 
 
-        self.place_orientation_transform = [0.0, 0.0, 1.0]
-        self.place_position_transform = [0.05, 0.0, 0.0]
+        self.place_orientation_transform = [1.0, 1.0, -1.0]
+        self.place_position_transform = [0.0, 0.0, 0.0]
 
         # Listen
         self.tfBuffer = tf2_ros.Buffer()
@@ -86,12 +86,12 @@ class PoseTransform(object):
     def object_features_cb(self, msg):
         if self.object_features is None:
             self.object_features = msg
-            rospy.logdebug("Received new object features message")
+            rospy.logdebug("[POSE TRANSFORM] Received new object feature message")
 
     def e_in_cb(self, msg):
         if self.event is None:
             self.event = "e_start"
-            rospy.logdebug("Received new move robot event message")
+            rospy.logdebug("[POSE TRANSFORM] Received new pose transform event message")
 
     def get_trans(self):
         if not (self.object_features is None):
@@ -104,7 +104,7 @@ class PoseTransform(object):
     def transform_pose(self):
         if self.event == "e_start":
             if self.object_features is None:
-                rospy.logwarn("Cannot transform pose, since it is still empty!")
+                rospy.logwarn("[POSE TRANSFORM] Cannot transform pose, since it is still empty!")
             else:
                 msg_e = String()
                 msg_e.data = "e_success"
@@ -151,7 +151,7 @@ class PoseTransform(object):
         # position
         grasp_position, grasp_orientation = pose_to_lists(grasp_pose.pose, 'euler')
         place_position = add_lists(grasp_position, self.place_position_transform)
-        place_orientation = add_lists(grasp_orientation, self.place_orientation_transform)
+        place_orientation = multiply_lists(grasp_orientation, self.place_orientation_transform)
 
         place_pose.pose = list_to_pose(place_position + place_orientation)
 

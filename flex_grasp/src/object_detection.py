@@ -123,10 +123,19 @@ class ObjectDetection(object):
             rospy.logdebug("Received depth info message")
             self.depth_info = msg
 
+    def received_all_data(self):
+        return (self.color_image is not None) and (self.depth_image is not None) and (self.depth_info is not None) and (self.color_info is not None)
+
+    def clear_all_data(self):
+        self.color_image = None
+        self.depth_image = None
+        self.depth_info = None
+        self.color_info = None
+
     def detect_object(self):
         if self.event == "e_start":
 
-            if (self.color_image is not None) and (self.depth_image is not None) and (self.depth_info is not None) and (self.color_info is not None):
+            if self.received_all_data():
                 pwd = os.path.dirname(__file__)
 
 
@@ -134,7 +143,7 @@ class ObjectDetection(object):
                                      pwdProcess = pwd,
                                      saveIntermediate = False)
 
-                rospy.logdebug("Image dimensions: %s", image.DIM)
+                # rospy.logdebug("Image dimensions: %s", image.DIM)
 
                 image.process_image()
                 object_feature = image.get_object_features()
@@ -158,7 +167,7 @@ class ObjectDetection(object):
                 ################
                 tomatoes = []
 
-                rospy.logdebug("cols: %s [px]", col)
+                # rospy.logdebug("cols: %s [px]", col)
                 for i in range(0, len(object_feature['tomato']['col'])):
 
                     # Load from struct
@@ -244,6 +253,9 @@ class ObjectDetection(object):
         self.event = None
         self.pub_object_features.publish(truss)
         self.pub_e_out.publish(msg_e)
+
+        # reset
+        self.clear_all_data()
 
     def deproject(self, row, col, intrin):
         # Deproject

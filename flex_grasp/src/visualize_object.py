@@ -36,7 +36,7 @@ class VisualizeObject(object):
     def object_feature_cb(self, msg):
         if self.object_feature is None:
             self.object_feature = msg
-            rospy.logdebug("Received new object feature: %s", self.object_feature)
+            rospy.logdebug("[VISUALIZE OBJECT] Received new object feature message")
 
 
 

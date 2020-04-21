@@ -45,7 +45,7 @@ class Pick_Place(object):
 
         self.state = "idle"
         self.prev_state = None
-        self.goal_state = None
+        self.command = None
 
         self.pre_grasp_pose = None
         self.grasp_pose = None
@@ -96,9 +96,9 @@ class Pick_Place(object):
             rospy.logdebug("[PICK PLACE] Received new placing pose message")
 
     def e_in_cb(self, msg):
-        if self.goal_state is None:
-            self.goal_state = msg.data
-            rospy.logdebug("[PICK PLACE] Received new move robot event in message: %s", self.goal_state)
+        if self.command is None:
+            self.command = msg.data
+            rospy.logdebug("[PICK PLACE] Received new move robot event in message: %s", self.command)
 
 
     def initialise_robot(self):
@@ -359,7 +359,8 @@ class Pick_Place(object):
         success = (self.EE_GRASP != None) and (self.grasp_pose != None) and (self.pre_grasp_pose != None) and (self.pre_place_pose != None) and (self.place_pose != None)
         return success
 
-    def clear_all_data(self):
+    def reset(self):
+        rospy.logdebug("Resetting for next grasp")
         self.EE_GRASP = None
         self.grasp_pose = None
         self.pre_grasp_pose = None
@@ -371,90 +372,67 @@ class Pick_Place(object):
         rospy.loginfo("[PICK PLACE] updated pick place state, from %s to %s",
                       self.prev_state, self.state)
 
-    def command_robot(self):
+    def update_state(self, success):
 
-        # Update state state
-        if (self.state != "init") and not self.received_all_data():
+        if (self.state == "idle") and not self.received_all_data():
             self.prev_state = self.state
             self.state = "init"
-            self.take_action()
+            self.log_state_update()
 
-        if self.state == "init" and self.received_all_data():
+        elif self.state == "init" and self.received_all_data():
             self.prev_state = self.state
             self.state = "idle"
-            self.take_action()
+            self.log_state_update()
 
-        if (self.state == "idle") and (self.goal_state == "pick"):
+        elif (self.state == "idle") and (self.command == "pick") and success:
             self.prev_state = self.state
-            self.state = self.goal_state # self.goal_state
-            self.take_action()
+            self.state = "picked"
+            self.log_state_update()
 
-        if (self.state == "pick") and (self.goal_state == "place"):
+        elif (self.state == "picked") and success: # and (self.command == "place")
             self.prev_state = self.state
-            self.state = self.goal_state # self.goal_state
-            self.take_action()
-
-        elif self.goal_state == "home":
-            self.prev_state = self.state
-            self.state = self.goal_state
-            self.take_action()
-
-        elif self.goal_state == "open":
-            self.prev_state = self.state
-            self.state = self.goal_state
-            self.take_action()
-
-        elif self.goal_state == "close":
-            self.prev_state = self.state
-            self.state = self.goal_state
-            self.take_action()
+            self.state = "init"
+            self.log_state_update()
 
 
     def take_action(self):
-        self.log_state_update()
         msg = String()
         success = None
 
-        # Take action based on state
-        if self.state == "init":
-            pass
+        # State dependent actions
+        if self.state == "idle":
+            if self.command == "pick":
+                success = self.pick()
 
-        elif self.state == "idle":
-            pass
-
-        elif self.state == "pick":
-            success = self.pick()
-
-        elif self.state == "place":
+        elif self.state == "picked":
+            # if self.command == "place":
             success = self.place()
-            self.clear_all_data()
+            self.reset()
 
-        elif self.state == "move":
+        # General actions, non state dependent
+        if self.command == "move":
             success = self.go_to_pre_grap_pose()
 
-        elif self.state == "home":
+        elif self.command == "home":
             success = self.home_man()
-            self.clear_all_data()
 
-        elif self.state == "open":
+        elif self.command == "open":
             success = self.open_ee()
-            self.state = "idle"
-            self.clear_all_data()
 
-        elif self.state == "close":
+        elif self.command == "close":
             success = self.close_ee()
-            self.state = "idle"
 
+        self.update_state(success)
 
         # publish success
         if success is not None:
             if success == True:
                 msg.data = "e_success"
-                self.goal_state = None
+                self.command = None
             elif success == False:
                 msg.data = "e_failure"
                 rospy.logwarn("Robot command failed")
-                self.goal_state = None
+                self.command = None
 
 
             self.pub_e_out.publish(msg)
@@ -464,10 +442,10 @@ class Pick_Place(object):
 
 def main():
     try:
-        pp = Pick_Place()
+        pick_place = Pick_Place()
         rate = rospy.Rate(10)
         while not rospy.core.is_shutdown():
-            pp.command_robot()
+            pick_place.take_action()
             rate.sleep()
 
     except rospy.ROSInterruptException:
