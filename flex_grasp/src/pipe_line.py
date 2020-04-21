@@ -73,7 +73,7 @@ class PipeLine(object):
 
     ### Log state update
     def log_state_update(self):
-        rospy.loginfo("updated pipeline state, from %s to %s",
+        rospy.loginfo("[PIPELINE] updated pipeline state, from %s to %s",
                       self.state_previous, self.state)
 
     ### Run Function
@@ -81,7 +81,7 @@ class PipeLine(object):
     def update_state(self):
 
         ## update current state
-        if (self.state == "IDLE") and ((self.state_goal == "MOVE") or (self.state_goal == "PICKPLACE")):
+        if (self.state == "IDLE") and ((self.state_goal == "MOVE") or (self.state_goal == "PICK")):
             self.state_previous = self.state
             self.state = "DETECT"
             self.log_state_update()
@@ -123,14 +123,22 @@ class PipeLine(object):
             self.log_state_update()
             self.send_message()
 
-        if self.robot_moved and (self.state == "PICKPLACE" or self.state == "HOME" or self.state == "MOVE" or self.state == "OPEN"  or self.state == "CLOSE"):
+        if (self.state == "PICK") and (self.state_goal == "PLACE"):
+            self.robot_moved = None
+            self.state_previous = self.state
+            self.state = self.state_goal
+            self.state_goal = None
+            self.log_state_update()
+            self.send_message()
+
+        if self.robot_moved and (self.state == "PLACE" or self.state == "HOME" or self.state == "MOVE" or self.state == "OPEN"  or self.state == "CLOSE"):
             self.state_previous = self.state
             self.state = "IDLE"
             self.robot_moved = None
             self.log_state_update()
             self.send_message()
 
-        if (self.robot_moved == False) and (self.state == "PICKPLACE" or self.state == "HOME" or self.state == "MOVE"  or self.state == "OPEN"  or self.state == "CLOSE"):
+        if (self.robot_moved == False) and (self.state == "PLACE" or self.state == "HOME" or self.state == "MOVE"  or self.state == "OPEN"  or self.state == "CLOSE"):
             rospy.logwarn("Robot did not move!")
             self.state_previous = self.state
             self.state = "IDLE"
@@ -155,8 +163,11 @@ class PipeLine(object):
         if self.state == "CLOSE":
             self.send_close_to_pick_place()
 
-        if self.state == "PICKPLACE":
-            self.send_pick_place_to_pick_place()
+        if self.state == "PICK":
+            self.send_pick_to_pick_place()
+
+        if self.state == "PLACE":
+            self.send_place_to_pick_place()
 
         if self.state == "HOME":
             self.send_home_to_pick_place()
@@ -172,19 +183,22 @@ class PipeLine(object):
         self.pub_pose_transform.publish("e_start")
 
     def send_move_to_pick_place(self):
-        self.pub_pick_place.publish("e_move")
+        self.pub_pick_place.publish("move")
 
-    def send_pick_place_to_pick_place(self):
-        self.pub_pick_place.publish("pick_place")
+    def send_pick_to_pick_place(self):
+        self.pub_pick_place.publish("pick")
+
+    def send_place_to_pick_place(self):
+        self.pub_pick_place.publish("place")
 
     def send_home_to_pick_place(self):
-        self.pub_pick_place.publish("e_home")
+        self.pub_pick_place.publish("home")
 
     def send_open_to_pick_place(self):
-        self.pub_pick_place.publish("e_open")
+        self.pub_pick_place.publish("open")
 
     def send_close_to_pick_place(self):
-        self.pub_pick_place.publish("e_close")
+        self.pub_pick_place.publish("close")
 
 
 def main():

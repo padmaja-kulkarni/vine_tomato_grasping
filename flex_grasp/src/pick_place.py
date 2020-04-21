@@ -9,22 +9,21 @@ Created on Tue Mar 31 13:07:08 2020
 import sys
 import rospy
 import moveit_commander
-import math as m
-from std_msgs.msg import String
-from geometry_msgs.msg import PoseStamped, Quaternion
-from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
-from moveit_msgs.msg import MoveItErrorCodes, PlaceLocation, Grasp, GripperTranslation
 
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
-
+# services
 from moveit_msgs.srv import GetPositionIK, GetPositionIKRequest
-from std_msgs.msg       import Float64
+
+# messages
+from std_msgs.msg import Float64
+from std_msgs.msg import String
+from geometry_msgs.msg import PoseStamped, Quaternion
+from moveit_msgs.msg import MoveItErrorCodes
 
 # custom functions
 from func.utils import all_close, add_lists
-from func.conversions import orientation_to_list
-
+from func.conversions import pose_to_lists
 
 class Pick_Place(object):
     """Pick_Place"""
@@ -41,9 +40,6 @@ class Pick_Place(object):
 
         self.initialise_robot()
         self.initialise_enviroment()
-
-
-        self.GRIPPER_EFFORT = [100.0]
 
         self._compute_ik = rospy.ServiceProxy('compute_ik', GetPositionIK)
 
@@ -107,12 +103,10 @@ class Pick_Place(object):
 
         moveit_commander.roscpp_initialize(sys.argv)
 
-        ## Instantiate a `RobotCommander`_ object. This object is the outer-level interface to
-        ## the robot:
+        ## This object is the outer-level interface to the robot:
         robot = moveit_commander.RobotCommander()
 
-        ## Instantiate a `MoveGroupCommander`_ object.  This object is an interface
-        ## to one group of joints.
+        ## This object is an interface to one group of joints.
         man_group_name = rospy.get_param('manipulator_group_name')
         ee_group_name = rospy.get_param('ee_group_name')
 
@@ -128,7 +122,6 @@ class Pick_Place(object):
         EE_CLOSED = ee_group.get_named_target_values("Closed").values()
         EE_OPEN = ee_group.get_named_target_values("Open").values()
         EE_GRASP = None
-        ee_group.clear_pose_target
 
         # Allow replanning to increase the odds of a solution
         man_group.allow_replanning(True)
@@ -213,109 +206,37 @@ class Pick_Place(object):
             return True
 
     def pick(self):
-        """ Pick an object
-        """
+        success =  self.go_to_pre_grasp_pose()
 
-        rospy.logdebug("==STARTING PICK PROCEDURE===")
+        if success:
+            success = self.open_ee()
 
-        # Initialize grasp
-        grasps = Grasp()
+        if success:
+            success = self.go_to_grasp_pose()
 
-        # Pre grasp posture
-        time_list = [0.5]
-        grasps.pre_grasp_posture = self.make_gripper_posture(self.EE_OPEN, time_list)
+        if success:
+            success = self.attach_object()
 
-        # Grasp posture
-        time_list = [1.5]
-        grasps.grasp_posture = self.make_gripper_posture(self.EE_GRASP, time_list)
+        if success:
+            success = self.close_ee()
 
-        # Set the approach and retreat parameters as desired
-        grasps.pre_grasp_approach = self.make_gripper_translation(0.05, 0.1, [0, 0, -1.0])
-        grasps.post_grasp_retreat = self.make_gripper_translation(0.05, 0.1, [0, 0, 1.0])
+        if success:
+            success = self.go_to_pre_grasp_pose()
 
-        # grasp pose
-        grasps.grasp_pose = self.grasp_pose
-
-        # touchable obejcts
-        grasps.allowed_touch_objects = ['table', 'wall', 'tomato_0', 'tomato_1', 'peduncle']
-
-        self.man_group.set_support_surface_name("table")
-
-        # Pick
-        result = None
-        n_attempts = 0
-
-        while result != MoveItErrorCodes.SUCCESS and n_attempts < self.max_pick_attempts:
-
-            n_attempts += 1
-            rospy.loginfo("Pick attempt: " +  str(n_attempts))
-            result = self.man_group.pick(self.target_object_name, grasps)
-
-            rospy.sleep(0.2)
-
-        return result == MoveItErrorCodes.SUCCESS
+        return success
 
     def place(self):
+        success = self.go_to_pre_place_pose()
 
-        # place
-        result = None
-        n_attempts = 0
+        # if success:
+        success = self.go_to_place_pose()
 
-        # Repeat until we succeed or run out of attempts
-        while result != MoveItErrorCodes.SUCCESS and n_attempts < self.max_place_attempts:
-            n_attempts += 1
-            rospy.loginfo("Place attempt: " +  str(n_attempts))
+        # if success:
+        success = self.open_ee()
 
-            result = self.man_group.place(self.target_object_name) # self.place_pose
-            rospy.sleep(0.2)
+        success = self.go_to_pre_place_pose()
 
-        return result == MoveItErrorCodes.SUCCESS
-
-    rospy.logdebug("==STARTING PLACE PROCEDURE===")
-
-    def make_gripper_posture(self, joint_positions, time_list):
-        # Initialize the joint trajectory for the gripper joints
-        t = JointTrajectory()
-
-        # Set the joint names to the gripper joint names
-        t.joint_names = self.ee_joint_names
-
-        for time in time_list:
-
-            # Initialize a joint trajectory point to represent the goal
-            tp = JointTrajectoryPoint()
-
-            # Assign the trajectory joint positions to the input positions
-            tp.positions = joint_positions
-
-            # Set the gripper effort
-            tp.effort = self.GRIPPER_EFFORT
-
-            tp.time_from_start = rospy.Duration(time)
-
-            # Append the goal point to the trajectory points
-            t.points.append(tp)
-
-        # Return the joint trajectory
-        return t
-
-    def make_gripper_translation(self, min_dist, desired, vector):
-        # Initialize the gripper translation object
-        g = GripperTranslation()
-
-        # Set the direction vector components to the input
-        g.direction.vector.x = vector[0]
-        g.direction.vector.y = vector[1]
-        g.direction.vector.z = vector[2]
-
-        # The vector is relative to the gripper frame
-        g.direction.header.frame_id = "world"
-
-        # Assign the min and desired distances from the input
-        g.min_distance = min_dist
-        g.desired_distance = desired
-
-        return g
+        return success
 
     def remove_attached_target_object(self):
         attached_objects = self.scene.get_attached_objects(object_ids=[self.target_object_name])
@@ -335,20 +256,24 @@ class Pick_Place(object):
         return True
 
     def go_to_grasp_pose(self):
+        rospy.logdebug("[PICK PLACE] Going to grasp pose")
         success = self.go_to_pose(self.grasp_pose)
         # self.grasp_pose = None
         return success
 
     def go_to_pre_grasp_pose(self):
+        rospy.logdebug("[PICK PLACE] Going to pre grasp pose")
         success = self.go_to_pose(self.pre_grasp_pose)
         # self.pre_grasp_pose = None
         return success
 
     def go_to_pre_place_pose(self):
+        rospy.logdebug("[PICK PLACE] Going to pre place pose")
         success = self.go_to_pose(self.pre_place_pose)
         return success
 
     def go_to_place_pose(self):
+        rospy.logdebug("[PICK PLACE] Going to place pose")
         success = self.go_to_pose(self.place_pose)
         return success
 
@@ -357,36 +282,45 @@ class Pick_Place(object):
 
 
         """
-        rospy.logdebug("==STARTING GO TO POSE PROCEDURE===")
 
         ## Only if inverse kinematics exist
         if self.compute_ik(goal_pose):
-            rospy.loginfo("Goal pose is reachable.")
-
             self.man_group.set_pose_target(goal_pose.pose)
             plan = self.man_group.plan()
             self.man_group.execute(plan, wait=True)
 
         else:
-            rospy.logwarn("Goal pose is not reachable!")
+            rospy.logwarn("[PICK PLACE] Goal pose is not reachable!")
 
         # Ensures that there is no residual movement and clear the target
         self.man_group.stop()
         self.man_group.clear_pose_targets()
 
         curr_pose = self.man_group.get_current_pose()
-        return all_close(goal_pose, curr_pose, 0.02)
+        success = all_close(goal_pose, curr_pose, 0.02)
+
+        if not success:
+            goal_position, goal_orientation = pose_to_lists(goal_pose.pose, 'euler')
+            curr_position, curr_orientation = pose_to_lists(curr_pose.pose, 'euler')
+
+            rospy.logwarn("Obtained pose is not sufficiently close to goal pose")
+            rospy.logdebug("Goal orientation %s", goal_orientation)
+            rospy.logdebug("Current orientation %s", curr_orientation)
+        return success
 
     def open_ee(self):
+        rospy.logdebug("[PICK PLACE] Opening end effector")
         success = self.move_ee("Open")
         self.remove_attached_target_object()
         return True
 
     def close_ee(self):
+        rospy.logdebug("[PICK PLACE] Closing end effector")
         success = self.move_ee("Closed")
         return True
 
     def home_man(self):
+        rospy.logdebug("[PICK PLACE] Homeing manipulator")
         return self.move_to_joint_target(self.man_group, 'Upright')
 
     def move_ee(self, named_target):
@@ -412,7 +346,7 @@ class Pick_Place(object):
 
     ### Log state update
     def log_state_update(self):
-        rospy.loginfo("[PICK PLACE] updated pipeline state, from %s to %s",
+        rospy.loginfo("[PICK PLACE] updated pick place state, from %s to %s",
                       self.prev_state, self.state)
 
     def command_robot(self):
@@ -428,27 +362,27 @@ class Pick_Place(object):
             self.state = "idle"
             self.take_action()
 
-        if (self.state == "idle") and (self.goal_state == "pick_place"):
+        if (self.state == "idle") and (self.goal_state == "pick"):
             self.prev_state = self.state
-            self.state = "pick" # self.goal_state
+            self.state = self.goal_state # self.goal_state
             self.take_action()
 
-        if (self.state == "pick") and (self.goal_state == "pick_place"):
+        if (self.state == "pick") and (self.goal_state == "place"):
             self.prev_state = self.state
-            self.state = "place" # self.goal_state
+            self.state = self.goal_state # self.goal_state
             self.take_action()
 
-        elif ((self.state == "init") or (self.state == "idle")) and self.goal_state == "e_home":
-            self.prev_state = self.state
-            self.state = self.goal_state
-            self.take_action()
-
-        elif ((self.state == "init") or (self.state == "idle")) and self.goal_state == "e_open":
+        elif self.goal_state == "home":
             self.prev_state = self.state
             self.state = self.goal_state
             self.take_action()
 
-        elif ((self.state == "init") or (self.state == "idle")) and self.goal_state == "e_close":
+        elif self.goal_state == "open":
+            self.prev_state = self.state
+            self.state = self.goal_state
+            self.take_action()
+
+        elif self.goal_state == "close":
             self.prev_state = self.state
             self.state = self.goal_state
             self.take_action()
@@ -467,53 +401,24 @@ class Pick_Place(object):
             pass
 
         elif self.state == "pick":
-
-            success = self.go_to_pre_grasp_pose()
-
-            if success:
-                success = self.open_ee()
-
-            if success:
-                success = self.go_to_grasp_pose()
-
-            if success:
-                success = self.attach_object()
-
-            if success:
-                success = self.close_ee()
-
-            if success:
-                success = self.go_to_pre_grasp_pose()
-
-        #elif self.state == "place":
-            if success:
-                success = self.go_to_pre_place_pose()
-
-            if success:
-                success = self.go_to_place_pose()
-
-            if success:
-                success = self.open_ee()
-
-        elif self.state == "pick_place":
             success = self.pick()
-            if success:
-                success = self.place()
-            self.state = "init"
 
-        elif self.state == "e_move":
+        elif self.state == "place":
+            success = self.place()
+
+        elif self.state == "move":
             success = self.go_to_pre_grap_pose()
             self.state = "init"
 
-        elif self.state == "e_home":
+        elif self.state == "home":
             success = self.home_man()
             self.state = "init"
 
-        elif self.state == "e_open":
+        elif self.state == "open":
             success = self.open_ee()
             self.state = "idle"
 
-        elif self.state == "e_close":
+        elif self.state == "close":
             success = self.close_ee()
             self.state = "idle"
 
