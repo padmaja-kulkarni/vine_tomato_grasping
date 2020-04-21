@@ -52,6 +52,9 @@ class Pick_Place(object):
         self.pre_place_pose = None
         self.place_pose = None
 
+        self.position_tolerance = 0.02 # [m]
+        self.orientation_tolerance = 0.02 # [rad]
+
         # Subscribers
         rospy.Subscriber("preGraspPose", PoseStamped, self.pre_grasp_pose_cb)
         rospy.Subscriber("graspPose", PoseStamped, self.grasp_pose_cb)
@@ -228,13 +231,17 @@ class Pick_Place(object):
     def place(self):
         success = self.go_to_pre_place_pose()
 
-        # if success:
-        success = self.go_to_place_pose()
+        if success:
+            success = self.go_to_place_pose()
 
-        # if success:
-        success = self.open_ee()
+        if success:
+            success = self.open_ee()
 
-        success = self.go_to_pre_place_pose()
+        if success:
+            success = self.go_to_pre_place_pose()
+
+        if success:
+            success = self.home_man()
 
         return success
 
@@ -297,15 +304,22 @@ class Pick_Place(object):
         self.man_group.clear_pose_targets()
 
         curr_pose = self.man_group.get_current_pose()
-        success = all_close(goal_pose, curr_pose, 0.02)
+        success = all_close(goal_pose, curr_pose, self.position_tolerance, self.orientation_tolerance)
 
         if not success:
-            goal_position, goal_orientation = pose_to_lists(goal_pose.pose, 'euler')
-            curr_position, curr_orientation = pose_to_lists(curr_pose.pose, 'euler')
+            goal_position, goal_euler = pose_to_lists(goal_pose.pose, 'euler')
+            curr_position, curr_euler = pose_to_lists(curr_pose.pose, 'euler')
+
+            goal_position, goal_quat = pose_to_lists(goal_pose.pose, 'quaternion')
+            curr_position, curr_quat = pose_to_lists(curr_pose.pose, 'quaternion')
 
             rospy.logwarn("Obtained pose is not sufficiently close to goal pose")
-            rospy.logdebug("Goal orientation %s", goal_orientation)
-            rospy.logdebug("Current orientation %s", curr_orientation)
+            rospy.logdebug("Goal quaternion orientation %s", goal_quat)
+            rospy.logdebug("Current quaternion orientation %s", curr_quat)
+
+
+            rospy.logdebug("Goal euler orientation %s", goal_euler)
+            rospy.logdebug("Current euler orientation %s", curr_euler)
         return success
 
     def open_ee(self):
@@ -336,13 +350,21 @@ class Pick_Place(object):
         # rospy.loginfo("Target joint values: %s", group.get_joint_value_target())
         # rospy.loginfo("Actual joint values: %s", group.get_current_joint_values())
 
-        success = all_close(group.get_joint_value_target(), group.get_current_joint_values(), 0.02)
+        # success = all_close(group.get_joint_value_target(), group.get_current_joint_values(), self.position_tolerance, self.orientation_tolerance)
+        success = True
         group.clear_pose_targets()
         return success
 
     def received_all_data(self):
         success = (self.EE_GRASP != None) and (self.grasp_pose != None) and (self.pre_grasp_pose != None) and (self.pre_place_pose != None) and (self.place_pose != None)
         return success
+
+    def clear_all_data(self):
+        self.EE_GRASP = None
+        self.grasp_pose = None
+        self.pre_grasp_pose = None
+        self.pre_place_pose = None
+        self.place_pose = None
 
     ### Log state update
     def log_state_update(self):
@@ -405,18 +427,19 @@ class Pick_Place(object):
 
         elif self.state == "place":
             success = self.place()
+            self.clear_all_data()
 
         elif self.state == "move":
             success = self.go_to_pre_grap_pose()
-            self.state = "init"
 
         elif self.state == "home":
             success = self.home_man()
-            self.state = "init"
+            self.clear_all_data()
 
         elif self.state == "open":
             success = self.open_ee()
             self.state = "idle"
+            self.clear_all_data()
 
         elif self.state == "close":
             success = self.close_ee()

@@ -10,27 +10,60 @@ from geometry_msgs.msg import PoseStamped
 from moveit_commander.conversions import pose_to_list
 from geometry_msgs.msg import Pose
 
-def all_close(goal, actual, tolerance):
+from tf.transformations import euler_from_quaternion
+
+def all_close(goal, actual, position_tolerance, orientation_tolerance):
     """
-    Convenience method for testing if a list of values are within a tolerance of their counterparts in another list
+    Convenience method for testing if a list of values are within a position_tolerance of their counterparts in another list
     @param: goal       A list of floats, a Pose or a PoseStamped
     @param: actual     A list of floats, a Pose or a PoseStamped
-    @param: tolerance  A float
+    @param: position_tolerance  A float
     @returns: bool
     """
 
     if type(goal) is list:
-        for index in range(len(goal)):
-            if abs(actual[index] - goal[index]) > tolerance:
-                return False
+
+        actual_position = actual[0:3]
+        actual_quat = actual[3:7]
+
+        goal_position = goal[0:3]
+        goal_quat = goal[3:7]
+
+        position_close = True
+
+        # check position
+        for index in range(len(goal_position)):
+            if abs(actual_position[index] - goal_position[index]) > position_tolerance:
+                position_close = False
+
+        # check orientation
+        orientation_close = True
+
+        for index in range(len(goal_quat)):
+            if abs(actual_quat[index] - goal_quat[index]) > orientation_tolerance:
+                orientation_close = False
+
+        if not orientation_close:
+            goal_quat = neg_list(goal_quat)
+
+            for index in range(len(goal_quat)):
+                if abs(actual_quat[index] - goal_quat[index]) > orientation_tolerance:
+                    orientation_close = False
+                else:
+                    orientation_close = True
+
+        return orientation_close and position_close
 
     elif type(goal) is PoseStamped:
-        return all_close(goal.pose, actual.pose, tolerance)
+        return all_close(goal.pose, actual.pose, position_tolerance, orientation_tolerance)
 
     elif type(goal) is Pose:
-        return all_close(pose_to_list(goal), pose_to_list(actual), tolerance)
+        return all_close(pose_to_list(goal), pose_to_list(actual), position_tolerance, orientation_tolerance)
 
     return True
 
 def add_lists(list1, list2):
     return [sum(x) for x in zip(list1, list2)]
+
+def neg_list(list1):
+    return [ -x for x in list1]
