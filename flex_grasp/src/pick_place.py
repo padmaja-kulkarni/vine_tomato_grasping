@@ -51,10 +51,13 @@ class Pick_Place(object):
         self.command = None
 
         self.pre_grasp_pose = None
+        self.pre_grasp_ee = None
         self.grasp_pose = None
+        self.grasp_ee = None
         self.pre_place_pose = None
         self.place_pose = None
 
+        # tolerance
         self.position_tolerance = 0.02 # [m]
         self.orientation_tolerance = 0.02 # [rad]
 
@@ -63,30 +66,41 @@ class Pick_Place(object):
         rospy.Subscriber("graspPose", PoseStamped, self.grasp_pose_cb)
         rospy.Subscriber("prePlacePose", PoseStamped, self.pre_place_pose_cb)
         rospy.Subscriber("placePose", PoseStamped, self.place_pose_cb)
-        rospy.Subscriber("endEffectorDistance", Float64, self.ee_distance_cb)
+        # rospy.Subscriber("endEffectorDistance", Float64, self.ee_distance_cb)
         rospy.Subscriber("~e_in", String, self.e_in_cb)
 
         # Publishers
         self.pub_e_out = rospy.Publisher("~e_out",
                                    String, queue_size=10, latch=True)
 
-    def ee_distance_cb(self, msg):
-        dist = msg.data
-        if self.EE_GRASP is None:
-            dist = msg.data
-            self.EE_GRASP = add_lists(self.EE_CLOSED, [dist/2, -dist/2])
-            rospy.logdebug("[PICK PLACE] Received a new end effector distance message")
-            rospy.logdebug("[PICK PLACE] New end effector grasp pose: %s", self.EE_GRASP)
+    # def ee_distance_cb(self, msg):
+    #     dist = msg.data
+    #     if self.EE_GRASP is None:
+    #         dist = msg.data
+    #         self.EE_GRASP = add_lists(self.EE_CLOSED, [dist/2, -dist/2])
+    #         rospy.logdebug("[PICK PLACE] Received a new end effector distance message")
+    #         rospy.logdebug("[PICK PLACE] New end effector grasp pose: %s", self.EE_GRASP)
 
     def grasp_pose_cb(self, msg):
         if self.grasp_pose is None:
             self.grasp_pose = msg
             rospy.logdebug("[PICK PLACE] Received new grasp pose massage")
 
+            if rospy.has_param('grasp_ee'):
+                self.grasp_ee = rospy.get_param('grasp_ee')
+            else:
+                rospy.logwarn("[PICK PLACE] Grasp end effector pose can not be loaded from parameter server")
+
+
     def pre_grasp_pose_cb(self, msg):
         if self.pre_grasp_pose is None:
             self.pre_grasp_pose = msg
             rospy.logdebug("[PICK PLACE] Received new pre grasp pose massage")
+
+            if rospy.has_param('pre_grasp_ee'):
+                self.pre_grasp_ee = rospy.get_param('pre_grasp_ee')
+            else:
+                rospy.logwarn("[PICK PLACE] Pre grasp end effector pose can not be loaded from parameter server")
 
     def pre_place_pose_cb(self, msg):
         if self.pre_place_pose is None:
@@ -135,7 +149,6 @@ class Pick_Place(object):
 
         EE_CLOSED = ee_group.get_named_target_values("Closed").values()
         EE_OPEN = ee_group.get_named_target_values("Open").values()
-        EE_GRASP = ee_group.get_named_target_values("Grasp").values()
 
         # Allow replanning to increase the odds of a solution
         man_group.allow_replanning(True)
@@ -167,7 +180,6 @@ class Pick_Place(object):
         self.ee_joint_names = ee_joint_names
         self.EE_OPEN = EE_OPEN
         self.EE_CLOSED = EE_CLOSED
-        self.EE_GRASP = EE_GRASP
 
     def initialise_enviroment(self):
         """" Checks wether the RViz enviroment is correctly set
@@ -226,13 +238,13 @@ class Pick_Place(object):
         success =  self.go_to_pre_grasp_pose()
 
         if success:
-            success = self.open_ee()
+            success = self.apply_pre_grasp_ee()
 
         if success:
             success = self.go_to_grasp_pose()
 
         if success:
-            success = self.grasp_ee()
+            success = self.apply_grasp_ee()
 
         if success:
             success = self.go_to_pre_grasp_pose()
@@ -246,7 +258,7 @@ class Pick_Place(object):
             success = self.go_to_place_pose()
 
         if success:
-            success = self.open_ee()
+            success = self.apply_pre_grasp_ee()
 
         if success:
             success = self.go_to_pre_place_pose()
@@ -341,30 +353,20 @@ class Pick_Place(object):
 
     def open_ee(self):
         rospy.logdebug("[PICK PLACE] Opening end effector")
-        success = self.move_ee("Open")
+        success = self.move_to_named_target(self.ee_group, "Open")
         self.remove_attached_target_object()
         return True
 
     def close_ee(self):
         rospy.logdebug("[PICK PLACE] Closing end effector")
-        success = self.move_ee("Closed")
-        return True
-
-    def grasp_ee(self):
-        rospy.logdebug("[PICK PLACE] Closing end effector")
-        # success = self.move_ee("Closed")
-        success = self.attach_object()
-        success = self.move_ee("Grasp")
+        success = self.move_to_named_target(self.ee_group, "Closed")
         return True
 
     def home_man(self):
         rospy.logdebug("[PICK PLACE] Homeing manipulator")
-        return self.move_to_joint_target(self.man_group, 'Upright')
+        return self.move_to_named_target(self.man_group, 'Upright')
 
-    def move_ee(self, named_target):
-        return self.move_to_joint_target(self.ee_group, named_target)
-
-    def move_to_joint_target(self, group, named_target):
+    def move_to_named_target(self, group, named_target):
         group.set_named_target(named_target)
 
         plan = group.plan()
@@ -379,13 +381,39 @@ class Pick_Place(object):
         group.clear_pose_targets()
         return success
 
+    def apply_grasp_ee(self):
+        rospy.logdebug("[PICK PLACE] Grasping end effector")
+
+        success = self.attach_object()
+        success = self.move_to_joint_target(self.ee_group, self.grasp_ee)
+        return True
+
+    def apply_pre_grasp_ee(self):
+        rospy.logdebug("[PICK PLACE] Pre grasping end effector")
+
+        success = self.move_to_joint_target(self.ee_group, self.pre_grasp_ee)
+        return True
+
+    def move_to_joint_target(self, group, target):
+        group.set_joint_value_target(target)
+
+        plan = group.plan()
+        group.execute(plan, wait=True)
+        group.stop()
+
+        actual = group.get_current_joint_values()
+        target = group.get_joint_value_target()
+        success = all_close(actual, target, self.position_tolerance, self.orientation_tolerance)
+        return success
+
     def received_all_data(self):
-        success = (self.EE_GRASP != None) and (self.grasp_pose != None) and (self.pre_grasp_pose != None) and (self.pre_place_pose != None) and (self.place_pose != None)
+        success = (self.pre_grasp_ee != None) and (self.grasp_ee != None) and (self.grasp_pose != None) and (self.pre_grasp_pose != None) and (self.pre_place_pose != None) and (self.place_pose != None)
         return success
 
     def reset(self):
         rospy.logdebug("Resetting for next grasp")
-        self.EE_GRASP = None
+        self.pre_grasp_ee = None
+        self.grasp_ee = None
         self.grasp_pose = None
         self.pre_grasp_pose = None
         self.pre_place_pose = None

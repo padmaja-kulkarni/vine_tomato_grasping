@@ -59,8 +59,8 @@ class PoseTransform(object):
         self.use_sdh = rospy.get_param('use_sdh')
 
         if self.use_iiwa:
-            self.grasp_position_transform = [0, 0, -0.05] # [m]
-            self.pre_grasp_position_transform = [0, 0, 0.1] # [m]
+            self.grasp_position_transform = [0, 0, -0.06] # [m]
+            self.pre_grasp_position_transform = [0, 0, 0.05] # [m]
             self.orientation_transform = [0, 0, -pi/2]
         if self.use_interbotix:
             self.grasp_position_transform =     [0, 0, 0.04] # [m]
@@ -70,6 +70,37 @@ class PoseTransform(object):
 
         self.place_orientation_transform = [1.0, 1.0, -1.0]
         self.place_position_transform = [0.0, 0.0, 0.0]
+
+        if self.use_interbotix:
+
+            self.pre_grasp_ee = {
+                "left_finger"   :0.015,
+                "right_finger"  :-0.015}
+
+            self.grasp_ee = {
+                "left_finger"   :0.03,
+                "right_finger"  :-0.03}
+        if self.use_iiwa:
+
+            self.pre_grasp_ee = {
+                "sdh_finger_12_joint"   :-0.7,
+                "sdh_finger_13_joint"   :1.57,
+                "sdh_finger_21_joint"   :0,
+                "sdh_finger_22_joint"   :-0.7,
+                "sdh_finger_23_joint"   :1.57,
+                "sdh_knuckle_joint"     :0,
+                "sdh_thumb_2_joint"     :-0.7,
+                "sdh_thumb_3_joint"     : 1.57}
+
+            self.grasp_ee = {
+                "sdh_finger_12_joint"   :0,
+                "sdh_finger_13_joint"   :1.57,
+                "sdh_finger_21_joint"   :0,
+                "sdh_finger_22_joint"   :0,
+                "sdh_finger_23_joint"   :1.57,
+                "sdh_knuckle_joint"     :0,
+                "sdh_thumb_2_joint"     :0,
+                "sdh_thumb_3_joint"     :1.57}
 
         # Listen
         self.tfBuffer = tf2_ros.Buffer()
@@ -121,6 +152,9 @@ class PoseTransform(object):
                 self.pub_grasp_pose.publish(grasp_pose)
                 self.pub_pre_place_pose.publish(pre_place_pose)
                 self.pub_place_pose.publish(place_pose)
+
+                rospy.set_param('pre_grasp_ee', self.pre_grasp_ee)
+                rospy.set_param('grasp_ee', self.grasp_ee)
 
                 self.pub_ee_distance.publish(end_effector_distance)
                 self.pub_e_out.publish(msg_e)

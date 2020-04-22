@@ -61,22 +61,6 @@
         <joint name="sdh_thumb_3_joint" value="1.57" />
     </group_state>
 
-    <group_state name="Grasp" group="hand">
-        <!-- finger 1-->
-        <joint name="sdh_knuckle_joint" value="0" />
-        <joint name="sdh_finger_12_joint" value="0" />
-        <joint name="sdh_finger_13_joint" value="1.57" />
-
-        <!-- finger 2 -->
-        <joint name="sdh_finger_21_joint" value="0" />
-        <joint name="sdh_finger_22_joint" value="0" />
-        <joint name="sdh_finger_23_joint" value="1.57" />
-
-        <!-- thumb -->
-        <joint name="sdh_thumb_2_joint" value="0" />
-        <joint name="sdh_thumb_3_joint" value="1.57" />
-    </group_state>
-
     <!--END EFFECTOR: Purpose: Represent information about an end effector.-->
     <end_effector name="sdh" parent_link="iiwa_link_ee" group="hand" />
     <!--DISABLE COLLISIONS: By default it is assumed that any link of the robot could potentially come into collision with any other link in the robot. This tag disables collision checking between a specified pair of links. -->
