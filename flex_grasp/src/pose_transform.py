@@ -74,12 +74,12 @@ class PoseTransform(object):
         if self.use_interbotix:
 
             self.pre_grasp_ee = {
-                "left_finger"   :0.015,
-                "right_finger"  :-0.015}
-
-            self.grasp_ee = {
                 "left_finger"   :0.03,
                 "right_finger"  :-0.03}
+
+            self.grasp_ee = {
+                "left_finger"   :0.015,
+                "right_finger"  :-0.015}
         if self.use_iiwa:
 
             self.pre_grasp_ee = {
