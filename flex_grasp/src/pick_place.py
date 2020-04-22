@@ -135,7 +135,7 @@ class Pick_Place(object):
 
         EE_CLOSED = ee_group.get_named_target_values("Closed").values()
         EE_OPEN = ee_group.get_named_target_values("Open").values()
-        EE_GRASP = None
+        EE_GRASP = ee_group.get_named_target_values("Grasp").values()
 
         # Allow replanning to increase the odds of a solution
         man_group.allow_replanning(True)
@@ -232,10 +232,7 @@ class Pick_Place(object):
             success = self.go_to_grasp_pose()
 
         if success:
-            success = self.attach_object()
-
-        if success:
-            success = self.close_ee()
+            success = self.grasp_ee()
 
         if success:
             success = self.go_to_pre_grasp_pose()
@@ -315,13 +312,13 @@ class Pick_Place(object):
         goal_frame = goal_pose.header.frame_id
 
         if goal_frame != planning_frame:
-            rospy.logwarn("Goal pose specified with respect to %s, but should be specified with respect to %s", goal_frame, planning_frame)
-            # success = False
-            # return success
+            rospy.logwarn("[PICK PLACE] Goal pose specified with respect to wronf frame: sould be specified with respect to %s, but is be specified with respect to %s", planning_frame, goal_frame)
+            success = False
+            return success
 
         ## Only if inverse kinematics exist
         if not self.compute_ik(goal_pose):
-            rospy.logwarn("[PICK PLACE] Goal pose is not reachable!")
+            rospy.logwarn("[PICK PLACE] Goal pose is not reachable: inverse kinematics can not be found")
             success = False
             return success
 
@@ -337,7 +334,6 @@ class Pick_Place(object):
         success = all_close(goal_pose, curr_pose, self.position_tolerance, self.orientation_tolerance)
 
         if not success:
-
             rospy.logwarn("[PICK PLACE] Obtained pose is not sufficiently close to goal pose")
             rospy.loginfo("[PICK PLACE] Goal pose: %s", pose_to_list(goal_pose.pose))
             rospy.loginfo("[PICK PLACE] Curr pose: %s", pose_to_list(curr_pose.pose))
@@ -352,6 +348,13 @@ class Pick_Place(object):
     def close_ee(self):
         rospy.logdebug("[PICK PLACE] Closing end effector")
         success = self.move_ee("Closed")
+        return True
+
+    def grasp_ee(self):
+        rospy.logdebug("[PICK PLACE] Closing end effector")
+        # success = self.move_ee("Closed")
+        success = self.attach_object()
+        success = self.move_ee("Grasp")
         return True
 
     def home_man(self):

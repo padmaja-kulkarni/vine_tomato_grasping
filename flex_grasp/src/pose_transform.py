@@ -59,8 +59,8 @@ class PoseTransform(object):
         self.use_sdh = rospy.get_param('use_sdh')
 
         if self.use_iiwa:
-            self.grasp_position_transform = [0, 0, 0.25] # [m]
-            self.pre_grasp_position_transform = [0, 0, 0.3] # [m]
+            self.grasp_position_transform = [0, 0, -0.05] # [m]
+            self.pre_grasp_position_transform = [0, 0, 0.1] # [m]
             self.orientation_transform = [0, 0, -pi/2]
         if self.use_interbotix:
             self.grasp_position_transform =     [0, 0, 0.04] # [m]
