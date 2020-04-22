@@ -30,7 +30,7 @@
   <!-- camera params-->
   <xacro:arg name="camera_name" default="rs_d435"/>
   <xacro:arg name="camera_sim" default="true"/>
-  <xacro:arg name="camera_origin_xyz" default="0 0.6 1.2"/>
+  <xacro:arg name="camera_origin_xyz" default="0 0.5 1.2"/>
   <xacro:arg name="camera_origin_rpy" default="3.1415 1.57 -1.57"/>
 
   <xacro:arg name="iiwa_origin_xyz" default="0.0 0.0 0.0"/>

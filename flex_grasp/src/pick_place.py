@@ -6,11 +6,14 @@ Created on Tue Mar 31 13:07:08 2020
 @author: jelle
 """
 
+# packages
 import sys
 import rospy
 import moveit_commander
 
+# functions
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
+from moveit_commander.conversions import pose_to_list
 
 # services
 from moveit_msgs.srv import GetPositionIK, GetPositionIKRequest
@@ -113,13 +116,21 @@ class Pick_Place(object):
         man_group_name = rospy.get_param('manipulator_group_name')
         ee_group_name = rospy.get_param('ee_group_name')
 
+        rospy.logdebug("Manipulator group name: %s", man_group_name)
+        rospy.logdebug("End effector group name: %s", ee_group_name)
+
         man_group = moveit_commander.MoveGroupCommander(man_group_name)
         ee_group = moveit_commander.MoveGroupCommander(ee_group_name)
+
+        man_planning_frame = man_group.get_planning_frame()
+        ee_planning_frame = ee_group.get_planning_frame()
+
+        rospy.logdebug("Manipulator planning frame: %s", man_planning_frame)
+        rospy.logdebug("End effector planning frame: %s", ee_planning_frame)
 
         ee_link = man_group.get_end_effector_link()
 
         manipulator_joint_names = man_group.get_joints()
-        # ee_joint_names = ee_group.get_joints()
         ee_joint_names = ee_group.get_named_target_values("Closed").keys() # the ee_group contains joints we cannot actually control?
 
         EE_CLOSED = ee_group.get_named_target_values("Closed").values()
@@ -148,6 +159,9 @@ class Pick_Place(object):
 
         self.man_group = man_group
         self.ee_group = ee_group
+
+        self.man_planning_frame = man_planning_frame
+        self.ee_planning_frame = ee_planning_frame
 
         self.ee_link = ee_link
         self.ee_joint_names = ee_joint_names
@@ -262,6 +276,13 @@ class Pick_Place(object):
         rospy.sleep(0.1)
         return True
 
+    def go_to_random_pose(self):
+        rospy.logdebug("[PICK PLACE] Going to random pose")
+        goal_pose = self.man_group.get_random_pose()
+        success = self.go_to_pose(goal_pose)
+        # self.grasp_pose = None
+        return success
+
     def go_to_grasp_pose(self):
         rospy.logdebug("[PICK PLACE] Going to grasp pose")
         success = self.go_to_pose(self.grasp_pose)
@@ -290,14 +311,23 @@ class Pick_Place(object):
 
         """
 
-        ## Only if inverse kinematics exist
-        if self.compute_ik(goal_pose):
-            self.man_group.set_pose_target(goal_pose.pose)
-            plan = self.man_group.plan()
-            self.man_group.execute(plan, wait=True)
+        planning_frame = self.man_planning_frame[1:]
+        goal_frame = goal_pose.header.frame_id
 
-        else:
+        if goal_frame != planning_frame:
+            rospy.logwarn("Goal pose specified with respect to %s, but should be specified with respect to %s", goal_frame, planning_frame)
+            # success = False
+            # return success
+
+        ## Only if inverse kinematics exist
+        if not self.compute_ik(goal_pose):
             rospy.logwarn("[PICK PLACE] Goal pose is not reachable!")
+            success = False
+            return success
+
+        self.man_group.set_pose_target(goal_pose.pose)
+        plan = self.man_group.plan()
+        self.man_group.execute(plan, wait=True)
 
         # Ensures that there is no residual movement and clear the target
         self.man_group.stop()
@@ -307,19 +337,10 @@ class Pick_Place(object):
         success = all_close(goal_pose, curr_pose, self.position_tolerance, self.orientation_tolerance)
 
         if not success:
-            goal_position, goal_euler = pose_to_lists(goal_pose.pose, 'euler')
-            curr_position, curr_euler = pose_to_lists(curr_pose.pose, 'euler')
 
-            goal_position, goal_quat = pose_to_lists(goal_pose.pose, 'quaternion')
-            curr_position, curr_quat = pose_to_lists(curr_pose.pose, 'quaternion')
-
-            rospy.logwarn("Obtained pose is not sufficiently close to goal pose")
-            rospy.logdebug("Goal quaternion orientation %s", goal_quat)
-            rospy.logdebug("Current quaternion orientation %s", curr_quat)
-
-
-            rospy.logdebug("Goal euler orientation %s", goal_euler)
-            rospy.logdebug("Current euler orientation %s", curr_euler)
+            rospy.logwarn("[PICK PLACE] Obtained pose is not sufficiently close to goal pose")
+            rospy.loginfo("[PICK PLACE] Goal pose: %s", pose_to_list(goal_pose.pose))
+            rospy.loginfo("[PICK PLACE] Curr pose: %s", pose_to_list(curr_pose.pose))
         return success
 
     def open_ee(self):
@@ -411,7 +432,8 @@ class Pick_Place(object):
 
         # General actions, non state dependent
         if self.command == "move":
-            success = self.go_to_pre_grap_pose()
+            # success = self.go_to_pre_grasp_pose()
+            success = self.go_to_random_pose()
 
         elif self.command == "home":
             success = self.home_man()

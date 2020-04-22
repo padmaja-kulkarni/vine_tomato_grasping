@@ -73,7 +73,7 @@ class ObjectDetection(object):
 
         self.DEBUG = rospy.get_param("~debug")
         if self.DEBUG:
-            rospy.logdebug("Launching object detection in debug mode.")
+            rospy.loginfo("Launching object detection in debug mode.")
 
         # Subscribe
         rospy.Subscriber("~e_in", String, self.e_in_cb)
