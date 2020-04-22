@@ -212,8 +212,8 @@ class Pick_Place(object):
         rospy.logdebug( "Known objects: %s", self.scene.get_known_object_names())
 
 
-    def compute_ik(self, pose_stamped, timeout=rospy.Duration(5)):
-        """Computes inverse kinematics for the given pose.
+    def check_ik(self, pose_stamped, timeout=rospy.Duration(5)):
+        """Checks inverse kinematics for the given pose.
 
         Args:
             pose_stamped: geometry_msgs/PoseStamped.
@@ -230,11 +230,24 @@ class Pick_Place(object):
         response = self._compute_ik(request)
 
         if not response.error_code.val == MoveItErrorCodes.SUCCESS:
+            rospy.logwarn("[PICK PLACE] Goal pose is not reachable: inverse kinematics can not be found")
             return False
         else:
             return True
 
+    def check_frames(self, goal_frame):
+        # remove initial "/"
+        planning_frame = self.man_planning_frame[1:]
+
+        if goal_frame == planning_frame:
+            return True
+        else:
+            rospy.logwarn("[PICK PLACE] Goal pose specified with respect to wronf frame: sould be specified with respect to %s, but is be specified with respect to %s", planning_frame, goal_frame)
+            return False
+
+
     def pick(self):
+        rospy.logdebug("[PICK PLACE] Picking object")
         success =  self.go_to_pre_grasp_pose()
 
         if success:
@@ -252,13 +265,14 @@ class Pick_Place(object):
         return success
 
     def place(self):
+        rospy.logdebug("[PICK PLACE] Placing object")
         success = self.go_to_pre_place_pose()
 
         if success:
             success = self.go_to_place_pose()
 
         if success:
-            success = self.apply_pre_grasp_ee()
+            success = self.apply_release_ee()
 
         if success:
             success = self.go_to_pre_place_pose()
@@ -266,6 +280,8 @@ class Pick_Place(object):
         if success:
             success = self.home_man()
 
+
+        self.reset_msg()
         return success
 
     def remove_attached_target_object(self):
@@ -273,10 +289,17 @@ class Pick_Place(object):
 
         if self.target_object_name in attached_objects.keys():
             if attached_objects[self.target_object_name].link_name == self.ee_link:
-                rospy.logdebug("Removing atached objects from ee_link")
+                rospy.logdebug("[PICK PLACE] Removing atached objects from ee_link")
                 self.scene.remove_attached_object(self.ee_link, self.target_object_name)
                 rospy.sleep(0.1)
                 self.scene.remove_world_object(self.target_object_name)
+                return True
+            else:
+                rospy.logwarn("[PICK PLACE] Cannot remove attached object: target object is not attached to the end effector link!")
+                return False
+        else:
+            rospy.logwarn("[PICK PLACE] Cannot remove attached object: target object is not attached to anything!")
+            return False
 
     def attach_object(self):
         grasping_group = self.ee_group_name
@@ -315,24 +338,12 @@ class Pick_Place(object):
         return success
 
     def go_to_pose(self, goal_pose):
-        """ plan and move to a pose goal
 
-
-        """
-
-        planning_frame = self.man_planning_frame[1:]
-        goal_frame = goal_pose.header.frame_id
-
-        if goal_frame != planning_frame:
-            rospy.logwarn("[PICK PLACE] Goal pose specified with respect to wronf frame: sould be specified with respect to %s, but is be specified with respect to %s", planning_frame, goal_frame)
-            success = False
-            return success
-
+        if not self.check_frames(goal_pose.header.frame_id):
+            return False
         ## Only if inverse kinematics exist
-        if not self.compute_ik(goal_pose):
-            rospy.logwarn("[PICK PLACE] Goal pose is not reachable: inverse kinematics can not be found")
-            success = False
-            return success
+        if not self.check_ik(goal_pose):
+            return False
 
         self.man_group.set_pose_target(goal_pose.pose)
         plan = self.man_group.plan()
@@ -345,73 +356,75 @@ class Pick_Place(object):
         curr_pose = self.man_group.get_current_pose()
         success = all_close(goal_pose, curr_pose, self.position_tolerance, self.orientation_tolerance)
 
-        if not success:
-            rospy.logwarn("[PICK PLACE] Obtained pose is not sufficiently close to goal pose")
+        if success is False:
+            rospy.logwarn("[PICK PLACE] Failed to move to pose target, obtained pose is not sufficiently close to goal pose!")
             rospy.loginfo("[PICK PLACE] Goal pose: %s", pose_to_list(goal_pose.pose))
             rospy.loginfo("[PICK PLACE] Curr pose: %s", pose_to_list(curr_pose.pose))
         return success
 
-    def open_ee(self):
-        rospy.logdebug("[PICK PLACE] Opening end effector")
-        success = self.move_to_named_target(self.ee_group, "Open")
-        self.remove_attached_target_object()
-        return True
-
-    def close_ee(self):
-        rospy.logdebug("[PICK PLACE] Closing end effector")
-        success = self.move_to_named_target(self.ee_group, "Closed")
-        return True
-
-    def home_man(self):
-        rospy.logdebug("[PICK PLACE] Homeing manipulator")
-        return self.move_to_named_target(self.man_group, 'Upright')
-
-    def move_to_named_target(self, group, named_target):
-        group.set_named_target(named_target)
-
-        plan = group.plan()
-        group.execute(plan, wait=True)
-        group.stop()
-
-        # rospy.loginfo("Target joint values: %s", group.get_joint_value_target())
-        # rospy.loginfo("Actual joint values: %s", group.get_current_joint_values())
-
-        # success = all_close(group.get_joint_value_target(), group.get_current_joint_values(), self.position_tolerance, self.orientation_tolerance)
-        success = True
-        group.clear_pose_targets()
-        return success
-
-    def apply_grasp_ee(self):
-        rospy.logdebug("[PICK PLACE] Grasping end effector")
-
-        success = self.attach_object()
-        success = self.move_to_joint_target(self.ee_group, self.grasp_ee)
-        return True
-
-    def apply_pre_grasp_ee(self):
-        rospy.logdebug("[PICK PLACE] Pre grasping end effector")
-
-        success = self.move_to_joint_target(self.ee_group, self.pre_grasp_ee)
-        return True
-
     def move_to_joint_target(self, group, target):
+
+        # if the target is a named target, get the corresponding joint values
+        if type(target) is str:
+            target = group.get_named_target_values(target)
+
         group.set_joint_value_target(target)
 
         plan = group.plan()
         group.execute(plan, wait=True)
         group.stop()
 
+        # target = group.get_joint_value_target() #get_remembered_joint_values().values()
         actual = group.get_current_joint_values()
-        target = group.get_joint_value_target()
-        success = all_close(actual, target, self.position_tolerance, self.orientation_tolerance)
+        success = all_close(target, actual, self.position_tolerance, self.orientation_tolerance)
+
+        if success is False:
+            rospy.logwarn("[PICK PLACE] Failed to move to joint target: obtained joint values are not sufficiently close to goal pose!")
+            rospy.loginfo("[PICK PLACE] Target joint values: %s", target)
+            rospy.loginfo("[PICK PLACE] Actual joint values: %s", actual)
+
+        group.clear_pose_targets()
         return success
+
+    def open_ee(self):
+        rospy.logdebug("[PICK PLACE] Opening end effector")
+        return self.move_to_joint_target(self.ee_group, "Open")
+
+    def close_ee(self):
+        rospy.logdebug("[PICK PLACE] Closing end effector")
+        return self.move_to_joint_target(self.ee_group, "Closed")
+
+    def home_man(self):
+        rospy.logdebug("[PICK PLACE] Homeing manipulator")
+        return self.move_to_joint_target(self.man_group, 'Upright')
+
+    def apply_release_ee(self):
+        rospy.logdebug("[PICK PLACE] Aplying release with end effector")
+
+        success = self.open_ee()
+        if success:
+            success = self.remove_attached_target_object()
+        return success
+
+    def apply_grasp_ee(self):
+        rospy.logdebug("[PICK PLACE] Aplying grasping with end effector")
+
+        success = self.attach_object()
+        if success:
+            success = self.move_to_joint_target(self.ee_group, self.grasp_ee)
+        return success
+
+    def apply_pre_grasp_ee(self):
+        rospy.logdebug("[PICK PLACE] Aplying pre grasping with end effector")
+
+        return self.move_to_joint_target(self.ee_group, self.pre_grasp_ee)
 
     def received_all_data(self):
         success = (self.pre_grasp_ee != None) and (self.grasp_ee != None) and (self.grasp_pose != None) and (self.pre_grasp_pose != None) and (self.pre_place_pose != None) and (self.place_pose != None)
         return success
 
-    def reset(self):
-        rospy.logdebug("Resetting for next grasp")
+    def reset_msg(self):
+        rospy.logdebug("[PICK PLACE] Resetting for next grasp")
         self.pre_grasp_ee = None
         self.grasp_ee = None
         self.grasp_pose = None
@@ -459,7 +472,6 @@ class Pick_Place(object):
         elif self.state == "picked":
             # if self.command == "place":
             success = self.place()
-            self.reset()
 
         # General actions, non state dependent
         if self.command == "move":
