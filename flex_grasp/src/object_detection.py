@@ -95,11 +95,11 @@ class ObjectDetection(object):
     def e_in_cb(self, msg):
         if self.event is None:
             self.event = msg.data
-            rospy.logdebug("Received new move robot event message: %s", self.event)
+            rospy.logdebug("[OBJECT DETECTION] Received object detection event message: %s", self.event)
 
     def color_image_cb(self, msg):
         if (self.color_image is None) and (self.event == "e_start"):
-            rospy.logdebug("Received color image message")
+            rospy.logdebug("[OBJECT DETECTION] Received color image message")
             try:
                 self.color_image = self.bridge.imgmsg_to_cv2(msg, "rgb8")
             except CvBridgeError as e:
@@ -107,7 +107,7 @@ class ObjectDetection(object):
 
     def depth_image_cb(self, msg):
         if (self.depth_image is None) and (self.event == "e_start"):
-            rospy.logdebug("Received depth image message")
+            rospy.logdebug("[OBJECT DETECTION] Received depth image message")
             try:
                 self.depth_image = self.bridge.imgmsg_to_cv2(msg, "passthrough")
             except CvBridgeError as e:
@@ -115,12 +115,12 @@ class ObjectDetection(object):
 
     def color_info_cb(self, msg):
         if (self.color_info is None) and (self.event == "e_start"):
-            rospy.logdebug("Received color info message")
+            rospy.logdebug("[OBJECT DETECTION] Received color info message")
             self.color_info = msg
 
     def depth_info_cb(self, msg):
         if (self.depth_info is None) and (self.event == "e_start"):
-            rospy.logdebug("Received depth info message")
+            rospy.logdebug("[OBJECT DETECTION] Received depth info message")
             self.depth_info = msg
 
     def received_all_data(self):

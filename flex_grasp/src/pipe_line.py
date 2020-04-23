@@ -72,78 +72,63 @@ class PipeLine(object):
 
 
     ### Log state update
-    def log_state_update(self):
+    def update_state(self, new_state):
+        self.state_previous = self.state
+        self.state = new_state
+
         rospy.loginfo("[PIPELINE] updated pipeline state, from %s to %s",
                       self.state_previous, self.state)
 
     ### Run Function
 
-    def update_state(self):
+    def set_state(self):
 
         ## update current state
-        if (self.state == "IDLE") and ((self.command == "MOVE") or (self.command == "PICK")):
-            self.state_previous = self.state
-            self.state = "DETECT"
-            self.log_state_update()
-            self.send_message()
-
         if (self.state == "IDLE") and (self.command == "OPEN"):
-            self.state_previous = self.state
-            self.state = self.command
+            self.update_state("OPEN")
             self.command = None
-            self.log_state_update()
             self.send_message()
 
         if (self.state == "IDLE") and (self.command == "CLOSE"):
-            self.state_previous = self.state
-            self.state = self.command
+            self.update_state("CLOSE")
             self.command = None
-            self.log_state_update()
             self.send_message()
 
         if (self.state == "IDLE") and (self.command == "HOME"):
-            self.state_previous = self.state
-            self.state = self.command
+            self.update_state("HOME")
             self.command = None
-            self.log_state_update()
+            self.send_message()
+
+        if (self.state == "IDLE") and ((self.command == "MOVE") or (self.command == "PICK")):
+            self.update_state("DETECT")
             self.send_message()
 
         if self.object_detected and self.state == "DETECT":
-            self.state_previous = self.state
-            self.state = "TRANSFORM"
             self.object_detected = None
-            self.log_state_update()
+            self.update_state("TRANSFORM")
             self.send_message()
 
         if self.pose_transformed and self.state == "TRANSFORM":
-            self.state_previous = self.state
-            self.state = self.command
+            self.update_state(self.command)
             self.command = None
             self.pose_transformed = None
-            self.log_state_update()
             self.send_message()
 
         if (self.state == "PICK") and (self.command == "PLACE"):
             self.robot_moved = None
-            self.state_previous = self.state
-            self.state = self.command
             self.command = None
-            self.log_state_update()
+            self.update_state("PLACE")
             self.send_message()
 
         if self.robot_moved and (self.state == "PICK" or self.state == "PLACE" or self.state == "HOME" or self.state == "MOVE" or self.state == "OPEN"  or self.state == "CLOSE"):
-            self.state_previous = self.state
-            self.state = "IDLE"
             self.robot_moved = None
-            self.log_state_update()
+            self.update_state("IDLE")
             self.send_message()
 
         if (self.robot_moved == False) and (self.state == "PICK" or self.state == "PLACE" or self.state == "HOME" or self.state == "MOVE"  or self.state == "OPEN"  or self.state == "CLOSE"):
             rospy.logwarn("Robot did not move!")
-            self.state_previous = self.state
-            self.state = "IDLE"
             self.robot_moved = None
-            self.log_state_update()
+            self.update_state("IDLE")
             self.send_message()
 
     def send_message(self):
@@ -203,10 +188,10 @@ class PipeLine(object):
 
 def main():
     try:
-        PL = PipeLine()
+        pipeline = PipeLine()
         rate = rospy.Rate(10)
         while not rospy.core.is_shutdown():
-            PL.update_state()
+            pipeline.set_state()
             rate.sleep()
 
     except rospy.ROSInterruptException:

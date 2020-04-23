@@ -475,8 +475,7 @@ class Pick_Place(object):
 
         # General actions, non state dependent
         if self.command == "move":
-            # success = self.go_to_pre_grasp_pose()
-            success = self.go_to_random_pose()
+            success = self.go_to_pre_grasp_pose()
 
         elif self.command == "home":
             success = self.home_man()
