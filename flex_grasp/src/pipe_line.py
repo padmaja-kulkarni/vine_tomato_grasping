@@ -34,14 +34,14 @@ class PipeLine(object):
         self.pub_pose_transform = rospy.Publisher("Pose_Transform/e_in",
                                       String, queue_size=10, latch=True)
 
-        self.pub_pick_place = rospy.Publisher("Pick_Place/e_in",
+        self.pub_move_robot = rospy.Publisher("Move_Robot/e_in",
                                       String, queue_size=10, latch=True)
 
         ## Initialize Subscribers
         rospy.Subscriber("pipelineState", String, self.pipeline_state_call_back)
         rospy.Subscriber("Object_Detection/e_out", String, self.object_detection_call_back)
         rospy.Subscriber("Pose_Transform/e_out", String, self.pose_transform_call_back)
-        rospy.Subscriber("Pick_Place/e_out", String, self.pick_place_call_back)
+        rospy.Subscriber("Move_Robot/e_out", String, self.move_robot_call_back)
 
     ### Callback Functions
     ## Pipeline State Callback Function
@@ -62,9 +62,9 @@ class PipeLine(object):
             self.pose_transformed = msg.data
             rospy.logdebug("[PIPELINE] Received new pose transformed event message: %s", self.pose_transformed)
 
-    def pick_place_call_back(self, msg):
+    def move_robot_call_back(self, msg):
         if self.robot_moved == None:
-            rospy.logdebug("[PIPELINE] Received new pick and place event out message: %s ", msg.data)
+            rospy.logdebug("[PIPELINE] Received new move robot event out message: %s ", msg.data)
             if msg.data == "e_success":
                 self.robot_moved = True
             elif msg.data == "e_failure":
@@ -140,22 +140,22 @@ class PipeLine(object):
             self.send_start_to_pose_transform()
 
         if self.state == "MOVE":
-            self.send_move_to_pick_place()
+            self.send_move_to_move_robot()
 
         if self.state == "OPEN":
-            self.send_open_to_pick_place()
+            self.send_open_to_move_robot()
 
         if self.state == "CLOSE":
-            self.send_close_to_pick_place()
+            self.send_close_to_move_robot()
 
         if self.state == "PICK":
-            self.send_pick_to_pick_place()
+            self.send_pick_to_move_robot()
 
         if self.state == "PLACE":
-            self.send_place_to_pick_place()
+            self.send_place_to_move_robot()
 
         if self.state == "HOME":
-            self.send_home_to_pick_place()
+            self.send_home_to_move_robot()
 
     ### Send Start Functions
     def start_obj_detection(self):
@@ -167,23 +167,23 @@ class PipeLine(object):
     def send_start_to_pose_transform(self):
         self.pub_pose_transform.publish("e_start")
 
-    def send_move_to_pick_place(self):
-        self.pub_pick_place.publish("move")
+    def send_move_to_move_robot(self):
+        self.pub_move_robot.publish("move")
 
-    def send_pick_to_pick_place(self):
-        self.pub_pick_place.publish("pick")
+    def send_pick_to_move_robot(self):
+        self.pub_move_robot.publish("pick")
 
-    def send_place_to_pick_place(self):
-        self.pub_pick_place.publish("place")
+    def send_place_to_move_robot(self):
+        self.pub_move_robot.publish("place")
 
-    def send_home_to_pick_place(self):
-        self.pub_pick_place.publish("home")
+    def send_home_to_move_robot(self):
+        self.pub_move_robot.publish("home")
 
-    def send_open_to_pick_place(self):
-        self.pub_pick_place.publish("open")
+    def send_open_to_move_robot(self):
+        self.pub_move_robot.publish("open")
 
-    def send_close_to_pick_place(self):
-        self.pub_pick_place.publish("close")
+    def send_close_to_move_robot(self):
+        self.pub_move_robot.publish("close")
 
 
 def main():

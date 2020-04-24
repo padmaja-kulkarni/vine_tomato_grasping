@@ -28,12 +28,12 @@ from moveit_msgs.msg import MoveItErrorCodes
 from func.utils import all_close, add_lists
 from func.conversions import pose_to_lists
 
-class Pick_Place(object):
-    """Pick_Place"""
+class MoveRobot(object):
+    """MoveRobot"""
     def __init__(self):
-        super(Pick_Place, self).__init__()
+        super(MoveRobot, self).__init__()
 
-        rospy.init_node("Pick_Place",
+        rospy.init_node("MoveRobot",
                         anonymous=True,
                         log_level=rospy.DEBUG)
 
@@ -78,44 +78,44 @@ class Pick_Place(object):
     #     if self.EE_GRASP is None:
     #         dist = msg.data
     #         self.EE_GRASP = add_lists(self.EE_CLOSED, [dist/2, -dist/2])
-    #         rospy.logdebug("[PICK PLACE] Received a new end effector distance message")
-    #         rospy.logdebug("[PICK PLACE] New end effector grasp pose: %s", self.EE_GRASP)
+    #         rospy.logdebug("[MOVE ROBOT] Received a new end effector distance message")
+    #         rospy.logdebug("[MOVE ROBOT] New end effector grasp pose: %s", self.EE_GRASP)
 
     def grasp_pose_cb(self, msg):
         if self.grasp_pose is None:
             self.grasp_pose = msg
-            rospy.logdebug("[PICK PLACE] Received new grasp pose massage")
+            rospy.logdebug("[MOVE ROBOT] Received new grasp pose massage")
 
             if rospy.has_param('grasp_ee'):
                 self.grasp_ee = rospy.get_param('grasp_ee')
             else:
-                rospy.logwarn("[PICK PLACE] Grasp end effector pose can not be loaded from parameter server")
+                rospy.logwarn("[MOVE ROBOT] Grasp end effector pose can not be loaded from parameter server")
 
 
     def pre_grasp_pose_cb(self, msg):
         if self.pre_grasp_pose is None:
             self.pre_grasp_pose = msg
-            rospy.logdebug("[PICK PLACE] Received new pre grasp pose massage")
+            rospy.logdebug("[MOVE ROBOT] Received new pre grasp pose massage")
 
             if rospy.has_param('pre_grasp_ee'):
                 self.pre_grasp_ee = rospy.get_param('pre_grasp_ee')
             else:
-                rospy.logwarn("[PICK PLACE] Pre grasp end effector pose can not be loaded from parameter server")
+                rospy.logwarn("[MOVE ROBOT] Pre grasp end effector pose can not be loaded from parameter server")
 
     def pre_place_pose_cb(self, msg):
         if self.pre_place_pose is None:
             self.pre_place_pose = msg
-            rospy.logdebug("[PICK PLACE] Received new pre place pose message")
+            rospy.logdebug("[MOVE ROBOT] Received new pre place pose message")
 
     def place_pose_cb(self, msg):
         if self.place_pose is None:
             self.place_pose = msg
-            rospy.logdebug("[PICK PLACE] Received new placing pose message")
+            rospy.logdebug("[MOVE ROBOT] Received new placing pose message")
 
     def e_in_cb(self, msg):
         if self.command is None:
             self.command = msg.data
-            rospy.logdebug("[PICK PLACE] Received new move robot event in message: %s", self.command)
+            rospy.logdebug("[MOVE ROBOT] Received new move robot event in message: %s", self.command)
 
 
     def initialise_robot(self):
@@ -130,8 +130,8 @@ class Pick_Place(object):
         man_group_name = rospy.get_param('manipulator_group_name')
         ee_group_name = rospy.get_param('ee_group_name')
 
-        rospy.logdebug("Manipulator group name: %s", man_group_name)
-        rospy.logdebug("End effector group name: %s", ee_group_name)
+        rospy.logdebug("[MOVE ROBOT] Manipulator group name: %s", man_group_name)
+        rospy.logdebug("[MOVE ROBOT] End effector group name: %s", ee_group_name)
 
         man_group = moveit_commander.MoveGroupCommander(man_group_name)
         ee_group = moveit_commander.MoveGroupCommander(ee_group_name)
@@ -139,8 +139,8 @@ class Pick_Place(object):
         man_planning_frame = man_group.get_planning_frame()
         ee_planning_frame = ee_group.get_planning_frame()
 
-        rospy.logdebug("Manipulator planning frame: %s", man_planning_frame)
-        rospy.logdebug("End effector planning frame: %s", ee_planning_frame)
+        rospy.logdebug("[MOVE ROBOT] Manipulator planning frame: %s", man_planning_frame)
+        rospy.logdebug("[MOVE ROBOT] End effector planning frame: %s", ee_planning_frame)
 
         ee_link = man_group.get_end_effector_link()
 
@@ -200,16 +200,16 @@ class Pick_Place(object):
 
             if not known_objects == known_objects_prev:
                 known_objects_prev = known_objects
-                rospy.logdebug("Known objects: %s", known_objects)
+                rospy.logdebug("[MOVE ROBOT] Known objects: %s", known_objects)
 
                 if ('table' in known_objects) and ('wall' in known_objects):
                     break
                 else:
-                    rospy.logwarn("[Pick Place] Table and wall object not present...")
+                    rospy.logwarn("[MOVE ROBOT] Table and wall object not present...")
                     break
             rospy.sleep(0.1)
 
-        rospy.logdebug( "Known objects: %s", self.scene.get_known_object_names())
+        rospy.logdebug("[MOVE ROBOT] Known objects: %s", self.scene.get_known_object_names())
 
 
     def check_ik(self, pose_stamped, timeout=rospy.Duration(5)):
@@ -230,7 +230,7 @@ class Pick_Place(object):
         response = self._compute_ik(request)
 
         if not response.error_code.val == MoveItErrorCodes.SUCCESS:
-            rospy.logwarn("[PICK PLACE] Goal pose is not reachable: inverse kinematics can not be found")
+            rospy.logwarn("[MOVE ROBOT] Goal pose is not reachable: inverse kinematics can not be found")
             return False
         else:
             return True
@@ -242,12 +242,12 @@ class Pick_Place(object):
         if goal_frame == planning_frame:
             return True
         else:
-            rospy.logwarn("[PICK PLACE] Goal pose specified with respect to wronf frame: sould be specified with respect to %s, but is be specified with respect to %s", planning_frame, goal_frame)
+            rospy.logwarn("[MOVE ROBOT] Goal pose specified with respect to wronf frame: sould be specified with respect to %s, but is be specified with respect to %s", planning_frame, goal_frame)
             return False
 
 
     def pick(self):
-        rospy.logdebug("[PICK PLACE] Picking object")
+        rospy.logdebug("[MOVE ROBOT] Picking object")
         success =  self.go_to_pre_grasp_pose()
 
         if success:
@@ -265,7 +265,7 @@ class Pick_Place(object):
         return success
 
     def place(self):
-        rospy.logdebug("[PICK PLACE] Placing object")
+        rospy.logdebug("[MOVE ROBOT] Placing object")
         success = self.go_to_pre_place_pose()
 
         if success:
@@ -289,16 +289,16 @@ class Pick_Place(object):
 
         if self.target_object_name in attached_objects.keys():
             if attached_objects[self.target_object_name].link_name == self.ee_link:
-                rospy.logdebug("[PICK PLACE] Removing atached objects from ee_link")
+                rospy.logdebug("[MOVE ROBOT] Removing atached objects from ee_link")
                 self.scene.remove_attached_object(self.ee_link, self.target_object_name)
                 rospy.sleep(0.1)
                 self.scene.remove_world_object(self.target_object_name)
                 return True
             else:
-                rospy.logwarn("[PICK PLACE] Cannot remove attached object: target object is not attached to the end effector link!")
+                rospy.logwarn("[MOVE ROBOT] Cannot remove attached object: target object is not attached to the end effector link!")
                 return False
         else:
-            rospy.logwarn("[PICK PLACE] Cannot remove attached object: target object is not attached to anything!")
+            rospy.logwarn("[MOVE ROBOT] Cannot remove attached object: target object is not attached to anything!")
             return False
 
     def attach_object(self):
@@ -309,31 +309,31 @@ class Pick_Place(object):
         return True
 
     def go_to_random_pose(self):
-        rospy.logdebug("[PICK PLACE] Going to random pose")
+        rospy.logdebug("[MOVE ROBOT] Going to random pose")
         goal_pose = self.man_group.get_random_pose()
         success = self.go_to_pose(goal_pose)
         # self.grasp_pose = None
         return success
 
     def go_to_grasp_pose(self):
-        rospy.logdebug("[PICK PLACE] Going to grasp pose")
+        rospy.logdebug("[MOVE ROBOT] Going to grasp pose")
         success = self.go_to_pose(self.grasp_pose)
         # self.grasp_pose = None
         return success
 
     def go_to_pre_grasp_pose(self):
-        rospy.logdebug("[PICK PLACE] Going to pre grasp pose")
+        rospy.logdebug("[MOVE ROBOT] Going to pre grasp pose")
         success = self.go_to_pose(self.pre_grasp_pose)
         # self.pre_grasp_pose = None
         return success
 
     def go_to_pre_place_pose(self):
-        rospy.logdebug("[PICK PLACE] Going to pre place pose")
+        rospy.logdebug("[MOVE ROBOT] Going to pre place pose")
         success = self.go_to_pose(self.pre_place_pose)
         return success
 
     def go_to_place_pose(self):
-        rospy.logdebug("[PICK PLACE] Going to place pose")
+        rospy.logdebug("[MOVE ROBOT] Going to place pose")
         success = self.go_to_pose(self.place_pose)
         return success
 
@@ -357,9 +357,9 @@ class Pick_Place(object):
         success = all_close(goal_pose, curr_pose, self.position_tolerance, self.orientation_tolerance)
 
         if success is False:
-            rospy.logwarn("[PICK PLACE] Failed to move to pose target, obtained pose is not sufficiently close to goal pose!")
-            rospy.loginfo("[PICK PLACE] Goal pose: %s", pose_to_list(goal_pose.pose))
-            rospy.loginfo("[PICK PLACE] Curr pose: %s", pose_to_list(curr_pose.pose))
+            rospy.logwarn("[MOVE ROBOT] Failed to move to pose target, obtained pose is not sufficiently close to goal pose!")
+            rospy.loginfo("[MOVE ROBOT] Goal pose: %s", pose_to_list(goal_pose.pose))
+            rospy.loginfo("[MOVE ROBOT] Curr pose: %s", pose_to_list(curr_pose.pose))
         return success
 
     def move_to_joint_target(self, group, target):
@@ -379,27 +379,28 @@ class Pick_Place(object):
         success = all_close(target, actual, self.position_tolerance, self.orientation_tolerance)
 
         if success is False:
-            rospy.logwarn("[PICK PLACE] Failed to move to joint target: obtained joint values are not sufficiently close to goal pose!")
-            rospy.loginfo("[PICK PLACE] Target joint values: %s", target)
-            rospy.loginfo("[PICK PLACE] Actual joint values: %s", actual)
+            rospy.logwarn("[MOVE ROBOT] Failed to move to joint target: obtained joint values are not sufficiently close to goal pose!")
+            rospy.loginfo("[MOVE ROBOT] Target joint values: %s", target)
+            rospy.loginfo("[MOVE ROBOT] Actual joint values: %s", actual)
 
         group.clear_pose_targets()
+        # rospy.logdebug("[MOVE ROBOT] Moving to joint target success: %s", success)
         return success
 
     def open_ee(self):
-        rospy.logdebug("[PICK PLACE] Opening end effector")
+        rospy.logdebug("[MOVE ROBOT] Opening end effector")
         return self.move_to_joint_target(self.ee_group, "Open")
 
     def close_ee(self):
-        rospy.logdebug("[PICK PLACE] Closing end effector")
+        rospy.logdebug("[MOVE ROBOT] Closing end effector")
         return self.move_to_joint_target(self.ee_group, "Closed")
 
     def home_man(self):
-        rospy.logdebug("[PICK PLACE] Homeing manipulator")
+        rospy.logdebug("[MOVE ROBOT] Homeing manipulator")
         return self.move_to_joint_target(self.man_group, 'Upright')
 
     def apply_release_ee(self):
-        rospy.logdebug("[PICK PLACE] Aplying release with end effector")
+        rospy.logdebug("[MOVE ROBOT] Aplying release with end effector")
 
         success = self.open_ee()
         if success:
@@ -407,7 +408,7 @@ class Pick_Place(object):
         return success
 
     def apply_grasp_ee(self):
-        rospy.logdebug("[PICK PLACE] Aplying grasping with end effector")
+        rospy.logdebug("[MOVE ROBOT] Aplying grasping with end effector")
 
         success = self.attach_object()
         if success:
@@ -415,7 +416,7 @@ class Pick_Place(object):
         return success
 
     def apply_pre_grasp_ee(self):
-        rospy.logdebug("[PICK PLACE] Aplying pre grasping with end effector")
+        rospy.logdebug("[MOVE ROBOT] Aplying pre grasping with end effector")
 
         return self.move_to_joint_target(self.ee_group, self.pre_grasp_ee)
 
@@ -424,7 +425,7 @@ class Pick_Place(object):
         return success
 
     def reset_msg(self):
-        rospy.logdebug("[PICK PLACE] Resetting for next grasp")
+        rospy.logdebug("[MOVE ROBOT] Resetting for next grasp")
         self.pre_grasp_ee = None
         self.grasp_ee = None
         self.grasp_pose = None
@@ -434,7 +435,7 @@ class Pick_Place(object):
 
     ### Log state update
     def log_state_update(self):
-        rospy.loginfo("[PICK PLACE] updated pick place state, from %s to %s",
+        rospy.loginfo("[MOVE ROBOT] updated move robot state, from %s to %s",
                       self.prev_state, self.state)
 
     def update_state(self, success):
@@ -489,26 +490,26 @@ class Pick_Place(object):
         self.update_state(success)
 
         # publish success
-        if success == True:
-            msg.data = "e_success"
-            self.command = None
-        elif success == False:
-            msg.data = "e_failure"
-            rospy.logwarn("Robot command failed")
-            self.command = None
+        if success is not None:
+            if success == True:
+                msg.data = "e_success"
+                self.command = None
 
+            elif success == False:
+                msg.data = "e_failure"
+                rospy.logwarn("Robot command failed")
+                self.command = None
 
             self.pub_e_out.publish(msg)
-        else:
-            # no robot command has been executed
-            pass
+
+
 
 def main():
     try:
-        pick_place = Pick_Place()
+        move_robot = MoveRobot()
         rate = rospy.Rate(10)
         while not rospy.core.is_shutdown():
-            pick_place.take_action()
+            move_robot.take_action()
             rate.sleep()
 
     except rospy.ROSInterruptException:
