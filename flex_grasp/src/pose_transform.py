@@ -124,6 +124,10 @@ class PoseTransform(object):
             self.event = "e_start"
             rospy.logdebug("[POSE TRANSFORM] Received new pose transform event message")
 
+            # self.pub_e_out.publish(msg_e)
+            # msg_e = String()
+            # msg_e.data = "e_wait"
+
     def get_trans(self):
         if not (self.object_features is None):
             try:

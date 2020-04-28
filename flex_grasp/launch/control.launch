@@ -9,7 +9,7 @@
 	<group ns="$(arg robot_name)">
 		<node name="Pipe_Line"
 			pkg="flex_grasp"
-			type="pipe_line.py"
+			type="smach_pipeline.py"
 			output="screen"/>
 
 		<node name="Object_Detection"
