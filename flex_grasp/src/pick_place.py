@@ -489,19 +489,17 @@ class Pick_Place(object):
         self.update_state(success)
 
         # publish success
-        if success == True:
-            msg.data = "e_success"
-            self.command = None
-        elif success == False:
-            msg.data = "e_failure"
-            rospy.logwarn("Robot command failed")
-            self.command = None
+        if success is not None:
+            if success == True:
+                msg.data = "e_success"
+                self.command = None
+            elif success == False:
+                msg.data = "e_failure"
+                rospy.logwarn("Robot command failed")
+                self.command = None
 
 
             self.pub_e_out.publish(msg)
-        else:
-            # no robot command has been executed
-            pass
 
 def main():
     try:
