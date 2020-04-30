@@ -135,7 +135,7 @@ class PoseTransform(object):
 
     def transform_pose(self):
         if self.object_features is None:
-            rospy.logwarn("[POSE TRANSFORM] Cannot transform pose, since it is still empty!")
+            rospy.logwarn("[POSE TRANSFORM] Cannot transform pose, since object_features still empty!")
             return False
         else:
 
@@ -216,7 +216,7 @@ class PoseTransform(object):
 
             elif success == False:
                 msg.data = "e_failure"
-                rospy.logwarn("Pose transform failed to execute %s", self.event)
+                rospy.logwarn("Pose transform failed to execute: %s", self.event)
                 self.event = None
 
             self.pub_e_out.publish(msg)

@@ -133,9 +133,15 @@ class ObjectDetection(object):
         self.depth_info = None
         self.color_info = None
 
+    def wait_for_data(self, time_out):
+        while not self.received_all_data():
+            rospy.sleep(0.1)
+        return True
+
     def detect_object(self):
 
-        if self.received_all_data():
+
+        if self.wait_for_data(5):
             pwd = os.path.dirname(__file__)
 
 
@@ -197,54 +203,56 @@ class ObjectDetection(object):
             # reset
             self.clear_all_data()
             return True
+        else:
+            rospy.logwarn("Did not receive all data")
+            return False
 
     def generate_object(self):
-        if self.event == "e_start":
 
-            #%%##################
-            ### Cage location ###
-            #####################
-            table_height = 0.23
-            frame = "world"
-            object_x = rospy.get_param("object_x")
-            object_y = rospy.get_param("object_y")
-            angle = rospy.get_param("object_angle")
-            xyz = [object_x, object_y, 0.05 + table_height]
-            rpy = [3.1415, 0, angle] #3.1415/2.0
+        #%%##################
+        ### Cage location ###
+        #####################
+        table_height = 0.23
+        frame = "world"
+        object_x = rospy.get_param("object_x")
+        object_y = rospy.get_param("object_y")
+        angle = rospy.get_param("object_angle")
+        xyz = [object_x, object_y, 0.05 + table_height]
+        rpy = [3.1415, 0, angle] #3.1415/2.0
 
-            cage_pose =  point_to_pose_stamped(xyz, rpy, frame)
+        cage_pose =  point_to_pose_stamped(xyz, rpy, frame)
 
-            #%%#############
-            ### Peduncle ###
-            ################
-            L = 0.15
-            peduncle = Peduncle()
-            peduncle.pose = cage_pose
-            peduncle.radius = 0.005
-            peduncle.length = L
+        #%%#############
+        ### Peduncle ###
+        ################
+        L = 0.15
+        peduncle = Peduncle()
+        peduncle.pose = cage_pose
+        peduncle.radius = 0.005
+        peduncle.length = L
 
-            #%%#############
-            ### tomatoes ###
-            ################
-            radii = [0.05, 0.05]
-            t1x = xyz[0] + (L/2 + radii[0])*math.cos(angle)
-            t1y = xyz[1] - (L/2 + radii[0])*math.sin(angle)
-            t2x = xyz[0] - (L/2 + radii[1])*math.cos(angle)
-            t2y = xyz[1] + (L/2 + radii[1])*math.sin(angle)
-            point1 = [t1x, t1y, table_height]
-            point2 = [t2x, t2y, table_height]
-            points = [point1, point2]
+        #%%#############
+        ### tomatoes ###
+        ################
+        radii = [0.05, 0.05]
+        t1x = xyz[0] + (L/2 + radii[0])*math.cos(angle)
+        t1y = xyz[1] - (L/2 + radii[0])*math.sin(angle)
+        t2x = xyz[0] - (L/2 + radii[1])*math.cos(angle)
+        t2y = xyz[1] + (L/2 + radii[1])*math.sin(angle)
+        point1 = [t1x, t1y, table_height]
+        point2 = [t2x, t2y, table_height]
+        points = [point1, point2]
 
-            tomatoes = []
-            for point, radius in zip(points, radii):
-                # tomatoes.append(point_to_tomato(point, radius, frame))
-                pass
+        tomatoes = []
+        for point, radius in zip(points, radii):
+            # tomatoes.append(point_to_tomato(point, radius, frame))
+            pass
 
-            self.create_truss(tomatoes, cage_pose, peduncle)
+        self.create_truss(tomatoes, cage_pose, peduncle)
 
-            # reset
-            self.clear_all_data()
-            return True
+        # reset
+        self.clear_all_data()
+        return True
 
     def create_truss(self, tomatoes, cage_pose, peduncle):
         #%%##########
@@ -254,6 +262,8 @@ class ObjectDetection(object):
         truss.tomatoes = tomatoes
         truss.cage_location = cage_pose
         truss.peduncle = peduncle
+
+        self.pub_object_features.publish(truss)
 
     def deproject(self, row, col, intrin):
         # Deproject
@@ -272,10 +282,10 @@ class ObjectDetection(object):
         success = None
         msg = String()
 
-        if (self.event == "e_start") and (not object_detection.DEBUG):
+        if (self.event == "e_start") and (not self.DEBUG):
             success = self.detect_object()
 
-        elif (self.event == "e_start") and (object_detection.DEBUG):
+        elif (self.event == "e_start") and (self.DEBUG):
             success = self.generate_object()
 
         elif (self.event == "e_init"):
@@ -333,6 +343,7 @@ def point_to_tomato(point, radius, frame):
 def main():
     try:
         object_detection = ObjectDetection()
+        rospy.loginfo("[OBJECT DETECTION] Initialized")
         rate = rospy.Rate(10)
 
         while not rospy.core.is_shutdown():

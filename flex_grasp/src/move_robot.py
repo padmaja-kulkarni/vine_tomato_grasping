@@ -70,7 +70,7 @@ class MoveRobot(object):
         rospy.Subscriber("~e_in", String, self.e_in_cb)
 
         # Publishers
-        latch = True
+        latch = False
         self.pub_e_out = rospy.Publisher("~e_out",
                                    String, queue_size=10, latch=latch)
 

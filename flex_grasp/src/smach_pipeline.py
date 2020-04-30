@@ -39,7 +39,7 @@ class Initializing(smach.State):
         request = String()
         request.data = "e_init"
         topic_in.publish(request)
-        
+
         try:
             message = rospy.wait_for_message(topic_out, String, self.timeout)
             if message.data == "e_success":
@@ -73,7 +73,7 @@ class DetectObject(smach.State):
         self.pub_obj_detection = rospy.Publisher("Object_Detection/e_in",
                                       String, queue_size=10, latch=True)
         self.counter = 3
-        self.timeout = 2.0
+        self.timeout = 4.0
         self.object_detected = String()
 
     def execute(self, userdata):
