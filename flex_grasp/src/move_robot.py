@@ -70,8 +70,9 @@ class MoveRobot(object):
         rospy.Subscriber("~e_in", String, self.e_in_cb)
 
         # Publishers
+        latch = True
         self.pub_e_out = rospy.Publisher("~e_out",
-                                   String, queue_size=10, latch=True)
+                                   String, queue_size=10, latch=latch)
 
     # def ee_distance_cb(self, msg):
     #     dist = msg.data
@@ -487,6 +488,9 @@ class MoveRobot(object):
         elif self.command == "close":
             success = self.close_ee()
 
+        elif self.command == "e_init":
+            success = True
+
         self.update_state(success)
 
         # publish success
@@ -502,11 +506,10 @@ class MoveRobot(object):
 
             self.pub_e_out.publish(msg)
 
-
-
 def main():
     try:
         move_robot = MoveRobot()
+
         rate = rospy.Rate(10)
         while not rospy.core.is_shutdown():
             move_robot.take_action()

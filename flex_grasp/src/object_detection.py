@@ -86,8 +86,9 @@ class ObjectDetection(object):
 
 
         # Publish
+        latch = False
         self.pub_e_out = rospy.Publisher("~e_out",
-                                         String, queue_size=10, latch=True)
+                                         String, queue_size=10, latch=latch)
 
         self.pub_object_features = rospy.Publisher("object_features",
                                         Truss, queue_size=5, latch=True)
@@ -133,66 +134,69 @@ class ObjectDetection(object):
         self.color_info = None
 
     def detect_object(self):
-        if self.event == "e_start":
 
-            if self.received_all_data():
-                pwd = os.path.dirname(__file__)
+        if self.received_all_data():
+            pwd = os.path.dirname(__file__)
 
 
-                image = ProcessImage(self.color_image, tomatoName = 'gazebo_tomato',
-                                     pwdProcess = pwd,
-                                     saveIntermediate = False)
+            image = ProcessImage(self.color_image, tomatoName = 'gazebo_tomato',
+                                 pwdProcess = pwd,
+                                 saveIntermediate = False)
 
-                # rospy.logdebug("Image dimensions: %s", image.DIM)
+            # rospy.logdebug("Image dimensions: %s", image.DIM)
 
-                image.process_image()
-                object_feature = image.get_object_features()
-                frame = "camera_color_optical_frame"
+            image.process_image()
+            object_feature = image.get_object_features()
+            frame = "camera_color_optical_frame"
 
-                #%%##################
-                ### Cage location ###
-                #####################
+            #%%##################
+            ### Cage location ###
+            #####################
 
-                row = object_feature['grasp']['row']
-                col = object_feature['grasp']['col']
-                angle = -object_feature['grasp']['angle'] # minus since camera frame is upside down...
-                rpy = [0, 0, angle]
+            row = object_feature['grasp']['row']
+            col = object_feature['grasp']['col']
+            angle = -object_feature['grasp']['angle'] # minus since camera frame is upside down...
+            rpy = [0, 0, angle]
 
-                intrin = camera_info2intrinsics(self.depth_info)
-                xyz = self.deproject(row, col, intrin)
-                cage_pose =  point_to_pose_stamped(xyz, rpy, frame)
+            intrin = camera_info2intrinsics(self.depth_info)
+            xyz = self.deproject(row, col, intrin)
+            cage_pose =  point_to_pose_stamped(xyz, rpy, frame)
 
-                #%%#############
-                ### tomatoes ###
-                ################
-                tomatoes = []
+            #%%#############
+            ### tomatoes ###
+            ################
+            tomatoes = []
 
-                # rospy.logdebug("cols: %s [px]", col)
-                for i in range(0, len(object_feature['tomato']['col'])):
+            # rospy.logdebug("cols: %s [px]", col)
+            for i in range(0, len(object_feature['tomato']['col'])):
 
-                    # Load from struct
-                    col = object_feature['tomato']['col'][i]
-                    row = object_feature['tomato']['row'][i]
-                    radius = object_feature['tomato']['radii'][i]
+                # Load from struct
+                col = object_feature['tomato']['col'][i]
+                row = object_feature['tomato']['row'][i]
+                radius = object_feature['tomato']['radii'][i]
 
-                    point = self.deproject(row, col, intrin)
+                point = self.deproject(row, col, intrin)
 
-                    depth = self.depth_image[(row, col)]
-                    point1 = rs.rs2_deproject_pixel_to_point(intrin, [0,0], depth)
-                    point2 = rs.rs2_deproject_pixel_to_point(intrin, [0,radius], depth)
-                    radius_m = euclidean(point1, point2)
+                depth = self.depth_image[(row, col)]
+                point1 = rs.rs2_deproject_pixel_to_point(intrin, [0,0], depth)
+                point2 = rs.rs2_deproject_pixel_to_point(intrin, [0,radius], depth)
+                radius_m = euclidean(point1, point2)
 
-                    # tomatoes.append(point_to_tomato(point, radius_m, frame))
+                # tomatoes.append(point_to_tomato(point, radius_m, frame))
 
-                #%%#############
-                ### Peduncle ###
-                ################
-                peduncle = Peduncle()
-                peduncle.pose = cage_pose
-                peduncle.radius = 0.01
-                peduncle.length = 0.15
+            #%%#############
+            ### Peduncle ###
+            ################
+            peduncle = Peduncle()
+            peduncle.pose = cage_pose
+            peduncle.radius = 0.01
+            peduncle.length = 0.15
 
-                self.create_truss(tomatoes, cage_pose, peduncle)
+            self.create_truss(tomatoes, cage_pose, peduncle)
+
+            # reset
+            self.clear_all_data()
+            return True
 
     def generate_object(self):
         if self.event == "e_start":
@@ -238,6 +242,10 @@ class ObjectDetection(object):
 
             self.create_truss(tomatoes, cage_pose, peduncle)
 
+            # reset
+            self.clear_all_data()
+            return True
+
     def create_truss(self, tomatoes, cage_pose, peduncle):
         #%%##########
         ### Truss ###
@@ -246,16 +254,6 @@ class ObjectDetection(object):
         truss.tomatoes = tomatoes
         truss.cage_location = cage_pose
         truss.peduncle = peduncle
-
-        msg_e = String()
-        msg_e.data = "e_success"
-
-        self.event = None
-        self.pub_object_features.publish(truss)
-        self.pub_e_out.publish(msg_e)
-
-        # reset
-        self.clear_all_data()
 
     def deproject(self, row, col, intrin):
         # Deproject
@@ -270,6 +268,31 @@ class ObjectDetection(object):
         point = rs.rs2_deproject_pixel_to_point(intrin, pixel, depth)
         return point
 
+    def take_action(self):
+        success = None
+        msg = String()
+
+        if (self.event == "e_start") and (not object_detection.DEBUG):
+            success = self.detect_object()
+
+        elif (self.event == "e_start") and (object_detection.DEBUG):
+            success = self.generate_object()
+
+        elif (self.event == "e_init"):
+            success = True
+
+        # publish success
+        if success is not None:
+            if success == True:
+                msg.data = "e_success"
+                self.event = None
+
+            elif success == False:
+                msg.data = "e_failure"
+                rospy.logwarn("Object detection failed to execute %s", self.event)
+                self.event = None
+
+            self.pub_e_out.publish(msg)
 
 def euclidean(v1, v2):
     return sum((p-q)**2 for p, q in zip(v1, v2)) ** .5
@@ -306,16 +329,14 @@ def point_to_tomato(point, radius, frame):
     return tomato
 
 
+
 def main():
     try:
         object_detection = ObjectDetection()
         rate = rospy.Rate(10)
 
         while not rospy.core.is_shutdown():
-            if not object_detection.DEBUG:
-                object_detection.detect_object()
-            else:
-                object_detection.generate_object()
+            object_detection.take_action()
             rate.sleep()
 
     except rospy.ROSInterruptException:

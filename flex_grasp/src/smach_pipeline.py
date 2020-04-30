@@ -4,6 +4,52 @@ import rospy
 import smach
 from std_msgs.msg import String
 
+class Initializing(smach.State):
+    def __init__(self):
+        smach.State.__init__(self, outcomes=['success','failure'])
+        self.timeout = 10.0
+
+        self.pub_object_detection = rospy.Publisher("Object_Detection/e_in",
+                                      String, queue_size=10, latch=True)
+        self.pub_pose_transform = rospy.Publisher("Pose_Transform/e_in",
+                                    String, queue_size=10, latch=True)
+        self.pub_move_robot = rospy.Publisher("Move_Robot/e_in",
+                                      String, queue_size=10, latch=True)
+
+    def execute(self, userdata):
+        rospy.loginfo('Executing state Initializing')
+
+        init_object_detection = self.initialized("Object_Detection/e_out", self.pub_object_detection)
+        init_pose_transform = self.initialized("Pose_Transform/e_out", self.pub_pose_transform)
+        init_move_robot = self.initialized("Move_Robot/e_out", self.pub_move_robot)
+
+        if init_object_detection & init_pose_transform & init_move_robot :
+            return "success"
+        else:
+            rospy.logwarn("Failed to initialize")
+            rospy.loginfo("init_object_detection %s", init_object_detection)
+            rospy.loginfo("init_pose_transform %s", init_pose_transform)
+            rospy.loginfo("init_move_robot %s", init_move_robot)
+            return "failure"
+
+        if self.command.data == "PICK":
+            return "pick"
+
+    def initialized(self, topic_out, topic_in):
+        request = String()
+        request.data = "e_init"
+        topic_in.publish(request)
+        
+        try:
+            message = rospy.wait_for_message(topic_out, String, self.timeout)
+            if message.data == "e_success":
+                return True
+            else:
+                rospy.logwarn("Failed to initialize node %s", topic_out)
+                return False
+        except:
+            rospy.logwarn("timeout exceeded while waiting for message on topic %s", topic_out)
+            return False
 
 class Idle(smach.State):
     def __init__(self):
@@ -128,6 +174,9 @@ def main():
     # Open the container
     with sm:
         # Add states to the container
+        smach.StateMachine.add('Initializing', Initializing(),
+                               transitions={'success':'Idle',
+                                            'failure':'total_failure'})
         smach.StateMachine.add('Idle', Idle(),
                                transitions={'pick':'DetectObject'})
         smach.StateMachine.add('DetectObject', DetectObject(),
@@ -148,4 +197,7 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except rospy.ROSInterruptException:
+        pass
