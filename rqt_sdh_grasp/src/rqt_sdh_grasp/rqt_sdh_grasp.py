@@ -47,10 +47,16 @@ class RqtSdhGrasp(Plugin):
         self.pub_grasp = rospy.Publisher("/px150/pipelineState",
                                       String, queue_size=10, latch=False)
 
-        self._widget.graspButton.clicked[bool].connect(self.handle_grasp)
-        self._widget.stopButton.clicked[bool].connect(self.handle_stop)
-        self._widget.openButton.clicked[bool].connect(self.handle_open)
-        self._widget.homeButton.clicked[bool].connect(self.handle_home)
+        # basic commands
+        self._widget.HomeButton.clicked[bool].connect(self.handle_home)
+        self._widget.OpenButton.clicked[bool].connect(self.handle_open)
+        self._widget.CloseButton.clicked[bool].connect(self.handle_close)
+
+        # tasks
+        self._widget.DetectButton.clicked[bool].connect(self.handle_detect)
+        self._widget.PickPlaceButton.clicked[bool].connect(self.handle_pick_place)
+        self._widget.PickButton.clicked[bool].connect(self.handle_pick)
+        self._widget.PlaceButton.clicked[bool].connect(self.handle_place)
 
     def shutdown_plugin(self):
         self.pub_grasp.unregister()
@@ -70,14 +76,23 @@ class RqtSdhGrasp(Plugin):
         # This will enable a setting button (gear icon) in each dock widget title bar
         # Usually used to open a modal configuration dialog
 
-    def handle_grasp(self):
-        self.pub_grasp.publish("pick")
-
-    def handle_stop(self):
-        self.pub_grasp.publish("detect")
+    def handle_home(self):
+        self.pub_grasp.publish("home")
 
     def handle_open(self):
         self.pub_grasp.publish("open")
 
-    def handle_home(self):
-        self.pub_grasp.publish("home")
+    def handle_close(self):
+        self.pub_grasp.publish("close")
+
+    def handle_detect(self):
+        self.pub_grasp.publish("detect")
+
+    def handle_pick_place(self):
+        self.pub_grasp.publish("pick_place")
+
+    def handle_pick(self):
+        self.pub_grasp.publish("pick")
+
+    def handle_place(self):
+        self.pub_grasp.publish("place")

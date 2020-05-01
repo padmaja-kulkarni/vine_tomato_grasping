@@ -12,6 +12,12 @@
 	<arg name="visualize_object_debug"	default="false"/>
 
 	<group ns="$(arg robot_name)">
+		<node name="rqt_sdh_grasp"
+			pkg="rqt_sdh_grasp"
+			type="rqt_sdh_grasp"
+			output="screen">
+		</node>
+
 		<node name="pipeline"
 			pkg="flex_grasp"
 			type="smach_pipeline.py"
