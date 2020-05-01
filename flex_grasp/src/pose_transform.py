@@ -28,31 +28,40 @@ class PoseTransform(object):
         self.event = None
         self.object_features = None
 
-        rospy.init_node("Object_Detection",
-                        anonymous=True, log_level=rospy.DEBUG)
+        self.debug_mode = rospy.get_param("pose_transform/debug")
+
+        if self.debug_mode:
+            log_level = rospy.DEBUG
+            rospy.loginfo("[POSE TRANSFORM] Luanching object detection node in debug mode")
+        else:
+            log_level = rospy.INFO
+
+        rospy.init_node("pose_transform",
+                        anonymous=True, log_level=log_level)
 
         # Initialize Subscribers
         rospy.Subscriber("object_features", Truss, self.object_features_cb)
         rospy.Subscriber("~e_in", String, self.e_in_cb)
 
         # Initialize Publishers
-        self.pub_pre_grasp_pose = rospy.Publisher('preGraspPose',
+        self.pub_pre_grasp_pose = rospy.Publisher('pre_grasp_pose',
                                         PoseStamped, queue_size=5, latch=True)
 
-        self.pub_grasp_pose = rospy.Publisher('graspPose',
+        self.pub_grasp_pose = rospy.Publisher('grasp_pose',
                                         PoseStamped, queue_size=5, latch=True)
 
-        self.pub_pre_place_pose = rospy.Publisher('prePlacePose',
+        self.pub_pre_place_pose = rospy.Publisher('pre_place_pose',
                                         PoseStamped, queue_size=5, latch=True)
 
-        self.pub_place_pose = rospy.Publisher('placePose',
+        self.pub_place_pose = rospy.Publisher('place_pose',
                                         PoseStamped, queue_size=5, latch=True)
 
-        self.pub_ee_distance = rospy.Publisher('endEffectorDistance',
+        self.pub_ee_distance = rospy.Publisher('end_effector_distance',
                                     Float64, queue_size=5, latch=True)
 
+        latch = True
         self.pub_e_out = rospy.Publisher("~e_out",
-                                         String, queue_size=10, latch=True)
+                                         String, queue_size=10, latch=latch)
 
         self.use_iiwa = rospy.get_param('use_iiwa')
         self.use_interbotix = rospy.get_param('use_interbotix')
@@ -109,10 +118,6 @@ class PoseTransform(object):
         #wait until transform is obtained
         self.trans = None
 
-        while self.trans is None:
-            self.get_trans()
-            rospy.sleep(0.1)
-
 
     def object_features_cb(self, msg):
         if self.object_features is None:
@@ -121,8 +126,15 @@ class PoseTransform(object):
 
     def e_in_cb(self, msg):
         if self.event is None:
-            self.event = "e_start"
-            rospy.logdebug("[POSE TRANSFORM] Received new pose transform event message")
+            self.event = msg.data
+            rospy.logdebug("[POSE TRANSFORM] Received new pose transform event message %s", self.event)
+
+            msg = String()
+            msg.data = ""
+            self.pub_e_out.publish(msg)
+            # self.pub_e_out.publish(msg_e)
+            # msg_e = String()
+            # msg_e.data = "e_wait"
 
     def get_trans(self):
         if not (self.object_features is None):
@@ -133,34 +145,37 @@ class PoseTransform(object):
             # continue
 
     def transform_pose(self):
-        if self.event == "e_start":
-            if self.object_features is None:
-                rospy.logwarn("[POSE TRANSFORM] Cannot transform pose, since it is still empty!")
-            else:
-                msg_e = String()
-                msg_e.data = "e_success"
+        if self.object_features is None:
+            rospy.logwarn("[POSE TRANSFORM] Cannot transform pose, since object_features still empty!")
+            return False
+        else:
 
-                self.object_pose = tf2_geometry_msgs.do_transform_pose(self.object_features.cage_location, self.trans)
-                end_effector_distance = 0.3*2*self.object_features.peduncle.radius
+            while self.trans is None:
+                rospy.logdebug("[POSE TRANSFORM] wating for transform")
+                self.get_trans()
+                rospy.sleep(0.5)
 
-                pre_grasp_pose = self.object_pose_to_grasp_pose(self.pre_grasp_position_transform)
-                grasp_pose = self.object_pose_to_grasp_pose(self.grasp_position_transform)
-                pre_place_pose = self.object_pose_to_place_pose(pre_grasp_pose)
-                place_pose = self.object_pose_to_place_pose(grasp_pose)
+            self.object_pose = tf2_geometry_msgs.do_transform_pose(self.object_features.cage_location, self.trans)
+            end_effector_distance = 0.3*2*self.object_features.peduncle.radius
 
-                self.pub_pre_grasp_pose.publish(pre_grasp_pose)
-                self.pub_grasp_pose.publish(grasp_pose)
-                self.pub_pre_place_pose.publish(pre_place_pose)
-                self.pub_place_pose.publish(place_pose)
+            pre_grasp_pose = self.object_pose_to_grasp_pose(self.pre_grasp_position_transform)
+            grasp_pose = self.object_pose_to_grasp_pose(self.grasp_position_transform)
+            pre_place_pose = self.object_pose_to_place_pose(pre_grasp_pose)
+            place_pose = self.object_pose_to_place_pose(grasp_pose)
 
-                rospy.set_param('pre_grasp_ee', self.pre_grasp_ee)
-                rospy.set_param('grasp_ee', self.grasp_ee)
+            self.pub_pre_grasp_pose.publish(pre_grasp_pose)
+            self.pub_grasp_pose.publish(grasp_pose)
+            self.pub_pre_place_pose.publish(pre_place_pose)
+            self.pub_place_pose.publish(place_pose)
 
-                self.pub_ee_distance.publish(end_effector_distance)
-                self.pub_e_out.publish(msg_e)
+            rospy.set_param('pre_grasp_ee', self.pre_grasp_ee)
+            rospy.set_param('grasp_ee', self.grasp_ee)
 
-                self.object_features = None
-                self.event = None
+            self.pub_ee_distance.publish(end_effector_distance)
+
+            # reset
+            self.object_features = None
+            return True
 
     def object_pose_to_grasp_pose(self, position_transform):
 
@@ -192,13 +207,38 @@ class PoseTransform(object):
         return place_pose
         # return self.object_pose_to_grasp_pose(height)
 
+    def take_action(self):
+
+        success = None
+        msg = String()
+
+        if self.event == "e_start":
+            success = self.transform_pose()
+
+        elif self.event == "e_init":
+            rospy.logdebug("[POSE TRANSFORM] executing e_init command")
+            success = True
+
+        # publish success
+        if success is not None:
+            if success == True:
+                msg.data = "e_success"
+                self.event = None
+
+            elif success == False:
+                msg.data = "e_failure"
+                rospy.logwarn("Pose transform failed to execute: %s", self.event)
+                self.event = None
+
+            self.pub_e_out.publish(msg)
+
 def main():
     try:
         pose_transform = PoseTransform()
         rate = rospy.Rate(10)
 
         while not rospy.core.is_shutdown():
-            pose_transform.transform_pose()
+            pose_transform.take_action()
             rate.sleep()
 
     except rospy.ROSInterruptException:

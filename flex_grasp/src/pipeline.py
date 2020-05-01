@@ -28,20 +28,20 @@ class PipeLine(object):
 
         ## Initialize Publishers
 
-        self.pub_obj_detection = rospy.Publisher("object_detection/e_in",
+        self.pub_obj_detection = rospy.Publisher("Object_Detection/e_in",
                                       String, queue_size=10, latch=True)
 
-        self.pub_pose_transform = rospy.Publisher("pose_transform/e_in",
+        self.pub_pose_transform = rospy.Publisher("Pose_Transform/e_in",
                                       String, queue_size=10, latch=True)
 
-        self.pub_move_robot = rospy.Publisher("move_robot/e_in",
+        self.pub_move_robot = rospy.Publisher("Move_Robot/e_in",
                                       String, queue_size=10, latch=True)
 
         ## Initialize Subscribers
-        rospy.Subscriber("pipeline_state", String, self.pipeline_state_call_back)
-        rospy.Subscriber("object_detection/e_out", String, self.object_detection_call_back)
-        rospy.Subscriber("pose_transform/e_out", String, self.pose_transform_call_back)
-        rospy.Subscriber("move_robot/e_out", String, self.move_robot_call_back)
+        rospy.Subscriber("pipelineState", String, self.pipeline_state_call_back)
+        rospy.Subscriber("Object_Detection/e_out", String, self.object_detection_call_back)
+        rospy.Subscriber("Pose_Transform/e_out", String, self.pose_transform_call_back)
+        rospy.Subscriber("Move_Robot/e_out", String, self.move_robot_call_back)
 
     ### Callback Functions
     ## Pipeline State Callback Function
