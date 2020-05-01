@@ -2,6 +2,8 @@
 
 import rospy
 import smach
+import smach_ros
+
 from std_msgs.msg import String
 
 class Initializing(smach.State):
@@ -183,6 +185,10 @@ def main():
 
     # Create a SMACH state machine
     sm = smach.StateMachine(outcomes=['total_success', 'total_failure'])
+
+    # Create and start the introspection server
+    sis = smach_ros.IntrospectionServer('pipeline_server', sm, '/SM_ROOT')
+    sis.start()
 
     # Open the container
     with sm:
