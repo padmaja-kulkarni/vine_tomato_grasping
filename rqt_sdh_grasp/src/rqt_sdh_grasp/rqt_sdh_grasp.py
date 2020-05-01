@@ -6,7 +6,6 @@ from qt_gui.plugin import Plugin
 from python_qt_binding import loadUi
 from python_qt_binding.QtWidgets import QWidget
 from std_msgs.msg import String
-from sdh_interface import SDHInterface
 
 class RqtSdhGrasp(Plugin):
 
@@ -35,20 +34,19 @@ class RqtSdhGrasp(Plugin):
         loadUi(ui_file, self._widget)
         # Give QObjects reasonable names
         self._widget.setObjectName('RqtSdhGraspUi')
-        # Show _widget.windowTitle on left-top of each plugin (when 
-        # it's set in _widget). This is useful when you open multiple 
-        # plugins at once. Also if you open multiple instances of your 
-        # plugin at once, these lines add number to make it easy to 
+        # Show _widget.windowTitle on left-top of each plugin (when
+        # it's set in _widget). This is useful when you open multiple
+        # plugins at once. Also if you open multiple instances of your
+        # plugin at once, these lines add number to make it easy to
         # tell from pane to pane.
         if context.serial_number() > 1:
             self._widget.setWindowTitle(self._widget.windowTitle() + (' (%d)' % context.serial_number()))
         # Add widget to the user interface
         context.add_widget(self._widget)
-        
-        self.sdhi = SDHInterface()
-        self.pub_grasp = rospy.Publisher("sdh_grasp/e_in",
-                                      String, queue_size=10, latch=True)
-        
+
+        self.pub_grasp = rospy.Publisher("/px150/pipelineState",
+                                      String, queue_size=10, latch=False)
+
         self._widget.graspButton.clicked[bool].connect(self.handle_grasp)
         self._widget.stopButton.clicked[bool].connect(self.handle_stop)
         self._widget.openButton.clicked[bool].connect(self.handle_open)
@@ -71,15 +69,15 @@ class RqtSdhGrasp(Plugin):
         # Comment in to signal that the plugin has a way to configure
         # This will enable a setting button (gear icon) in each dock widget title bar
         # Usually used to open a modal configuration dialog
-        
+
     def handle_grasp(self):
-        self.pub_grasp.publish("e_grasp")
-            
+        self.pub_grasp.publish("pick")
+
     def handle_stop(self):
-        self.sdhi.cmdZeroJointVel()
-            
+        self.pub_grasp.publish("detect")
+
     def handle_open(self):
-        self.pub_grasp.publish("e_open")
+        self.pub_grasp.publish("open")
 
     def handle_home(self):
-        self.pub_grasp.publish("e_home")
+        self.pub_grasp.publish("home")
