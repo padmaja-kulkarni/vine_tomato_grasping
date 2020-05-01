@@ -2,9 +2,9 @@
 
 import sys
 
-from rqt_sdh_grasp.rqt_sdh_grasp import RqtSdhGrasp
+from rqt_user_interface.rqt_user_interface import RqtSdhGrasp
 from rqt_gui.main import Main
 
-plugin = 'rqt_sdh_grasp'
+plugin = 'rqt_user_interface' #
 main = Main(filename=plugin)
 sys.exit(main.main(standalone=plugin))
