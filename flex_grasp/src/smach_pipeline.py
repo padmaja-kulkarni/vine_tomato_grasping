@@ -46,7 +46,7 @@ class Idle(smach.State):
         self.command_op_topic = "pipelineState"
 
         self.detect_commands =  ["detect"]
-        self.move_commands =  ["home", "open", "close", "pick", "place", "pickplace"]
+        self.move_commands =  ["home", "open", "close", "pick", "place", "pick_place"]
 
     def execute(self, userdata):
         rospy.logdebug('Executing state Idle')

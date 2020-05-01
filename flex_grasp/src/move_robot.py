@@ -449,7 +449,7 @@ class MoveRobot(object):
             self.state = "idle"
             self.log_state_update()
 
-        elif (self.state == "idle") and (self.command == "pick") and success:
+        elif (self.state == "idle") and ((self.command == "pick") or (self.command == "pick_place")) and success:
             self.prev_state = self.state
             self.state = "picked"
             self.log_state_update()
@@ -472,12 +472,12 @@ class MoveRobot(object):
                 success = False
 
         if self.state == "idle":
-            if self.command == "pick":
+            if self.command == "pick" or self.command == "pick_place":
                 success = self.pick()
 
         elif self.state == "picked":
-            # if self.command == "place":
-            success = self.place()
+            if self.command == "place" or self.command == "pick_place":
+                success = self.place()
 
         # General actions, non state dependent
         if self.command == "move":
@@ -487,7 +487,7 @@ class MoveRobot(object):
             success = self.home_man()
 
         elif self.command == "open":
-            success = self.open_ee()
+            success = self.apply_release_ee()
 
         elif self.command == "close":
             success = self.close_ee()
@@ -496,6 +496,9 @@ class MoveRobot(object):
             success = True
 
         self.update_state(success)
+
+        if self.command == "pick_place" and self.state == "picked":
+            success = None
 
         # publish success
         if success is not None:
