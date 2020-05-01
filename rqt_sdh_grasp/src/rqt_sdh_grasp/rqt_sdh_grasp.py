@@ -44,7 +44,7 @@ class RqtSdhGrasp(Plugin):
         # Add widget to the user interface
         context.add_widget(self._widget)
 
-        self.pub_grasp = rospy.Publisher("/px150/pipelineState",
+        self.pub_grasp = rospy.Publisher("pipelineState",
                                       String, queue_size=10, latch=False)
 
         # basic commands
