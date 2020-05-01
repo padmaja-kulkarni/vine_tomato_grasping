@@ -9,19 +9,19 @@ class Initializing(smach.State):
         smach.State.__init__(self, outcomes=['success','failure', 'complete_failure'])
         self.timeout = 10.0
 
-        self.pub_object_detection = rospy.Publisher("Object_Detection/e_in",
+        self.pub_object_detection = rospy.Publisher("object_detection/e_in",
                                       String, queue_size=10, latch=True)
-        self.pub_pose_transform = rospy.Publisher("Pose_Transform/e_in",
+        self.pub_pose_transform = rospy.Publisher("pose_transform/e_in",
                                     String, queue_size=10, latch=True)
-        self.pub_move_robot = rospy.Publisher("Move_Robot/e_in",
+        self.pub_move_robot = rospy.Publisher("move_robot/e_in",
                                       String, queue_size=10, latch=True)
 
     def execute(self, userdata):
         rospy.loginfo('Executing state Initializing')
 
-        init_object_detection = self.is_initialized("Object_Detection/e_out", self.pub_object_detection)
-        init_pose_transform = self.is_initialized("Pose_Transform/e_out", self.pub_pose_transform)
-        init_move_robot = self.is_initialized("Move_Robot/e_out", self.pub_move_robot)
+        init_object_detection = self.is_initialized("object_detection/e_out", self.pub_object_detection)
+        init_pose_transform = self.is_initialized("pose_transform/e_out", self.pub_pose_transform)
+        init_move_robot = self.is_initialized("move_robot/e_out", self.pub_move_robot)
 
         if init_object_detection & init_pose_transform & init_move_robot :
             return "success"
@@ -31,9 +31,6 @@ class Initializing(smach.State):
             rospy.loginfo("init_pose_transform %s", init_pose_transform)
             rospy.loginfo("init_move_robot %s", init_move_robot)
             return "failure"
-
-        if self.command.data == "PICK":
-            return "pick"
 
     def is_initialized(self, topic_out, topic_in):
         request = String()
@@ -67,9 +64,9 @@ class Idle(smach.State):
 class DetectObject(smach.State):
     def __init__(self):
         smach.State.__init__(self, outcomes=['success','failure', 'complete_failure'])
-        self.detection_op_topic = "Object_Detection/e_out"
+        self.detection_op_topic = "object_detection/e_out"
 
-        self.pub_obj_detection = rospy.Publisher("Object_Detection/e_in",
+        self.pub_obj_detection = rospy.Publisher("object_detection/e_in",
                                       String, queue_size=10, latch=True)
         self.counter = 3
         self.timeout = 5.0
@@ -96,8 +93,8 @@ class DetectObject(smach.State):
 class PoseTransform(smach.State):
     def __init__(self):
         smach.State.__init__(self, outcomes=['success','failure','complete_failure'])
-        self.tf_op_topic = "Pose_Transform/e_out"
-        self.pub_pose_transform = rospy.Publisher("Pose_Transform/e_in",
+        self.tf_op_topic = "pose_transform/e_out"
+        self.pub_pose_transform = rospy.Publisher("pose_transform/e_in",
                                       String, queue_size=10, latch=True)
         self.timeout = 5.0
         self.counter = 3
@@ -124,8 +121,8 @@ class PoseTransform(smach.State):
 class MoveRobot(smach.State):
     def __init__(self):
         smach.State.__init__(self, outcomes=['success', 'failure', 'retry'], input_keys=['command'])
-        self.mv_robot_op_topic = "Move_Robot/e_out"
-        self.pub_move_robot = rospy.Publisher("Move_Robot/e_in",
+        self.mv_robot_op_topic = "move_robot/e_out"
+        self.pub_move_robot = rospy.Publisher("move_robot/e_in",
                                       String, queue_size=10, latch=True)
         self.timeout = 30.0
         self.counter = 3
@@ -163,21 +160,21 @@ def wait_for_success(topic, timeout):
         try:
             message = rospy.wait_for_message(topic, String, timeout)
             if message.data == "e_success":
-                rospy.logdebug("[PIPELINE] Received on topic %s a new message: %s", topic, message.data)
+                rospy.logdebug("[PIPELINE] Command succeeded: received %s on topic %s", message.data, topic)
                 return True
             elif message.data == "":
                 pass
             else:
-                rospy.logwarn("[PIPELINE] Failed to initialize node: node returned %s on topic %s", message.data, topic)
+                rospy.logwarn("[PIPELINE] Command failed: node returned %s on topic %s", message.data, topic)
                 return False
         except:
-            rospy.logwarn("[PIPELINE] Failed to initialize node: timeout exceeded while waiting for message on topic %s", topic)
+            rospy.logwarn("[PIPELINE] Command failed: timeout exceeded while waiting for message on topic %s", topic)
             return False
 
         rospy.sleep(0.2)
         curr_time = rospy.get_time()
 
-    rospy.logwarn("[PIPELINE] Failed to initialize node: node did not return success within timeout on topic %s", topic)
+    rospy.logwarn("[PIPELINE] Command failed: node did not return success within timeout on topic %s", topic)
     return False
 
 # main

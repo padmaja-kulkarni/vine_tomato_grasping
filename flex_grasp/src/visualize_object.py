@@ -22,7 +22,7 @@ import moveit_commander
 class VisualizeObject(object):
     def __init__(self):
 
-        rospy.init_node("Visualize_Object",
+        rospy.init_node("visualize_object",
                         anonymous=True, log_level=rospy.DEBUG)
 
         # init enviroment

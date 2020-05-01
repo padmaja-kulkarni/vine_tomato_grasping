@@ -68,7 +68,7 @@ class ObjectDetection(object):
         pathCurrent = os.path.dirname(__file__) # path to THIS file
         self.pwdProcess = os.path.join(pathCurrent, '..', '..', 'results')
 
-        rospy.init_node("Object_Detection",
+        rospy.init_node("object_detection",
                         anonymous=True, log_level=rospy.DEBUG)
 
         self.DEBUG = rospy.get_param("~debug")

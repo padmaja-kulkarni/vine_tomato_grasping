@@ -33,7 +33,7 @@ class MoveRobot(object):
     def __init__(self):
         super(MoveRobot, self).__init__()
 
-        rospy.init_node("MoveRobot",
+        rospy.init_node("move_robot",
                         anonymous=True,
                         log_level=rospy.DEBUG)
 
@@ -62,10 +62,10 @@ class MoveRobot(object):
         self.orientation_tolerance = 0.02 # [rad]
 
         # Subscribers
-        rospy.Subscriber("preGraspPose", PoseStamped, self.pre_grasp_pose_cb)
-        rospy.Subscriber("graspPose", PoseStamped, self.grasp_pose_cb)
-        rospy.Subscriber("prePlacePose", PoseStamped, self.pre_place_pose_cb)
-        rospy.Subscriber("placePose", PoseStamped, self.place_pose_cb)
+        rospy.Subscriber("pre_grasp_pose", PoseStamped, self.pre_grasp_pose_cb)
+        rospy.Subscriber("grasp_pose", PoseStamped, self.grasp_pose_cb)
+        rospy.Subscriber("pre_place_pose", PoseStamped, self.pre_place_pose_cb)
+        rospy.Subscriber("place_pose", PoseStamped, self.place_pose_cb)
         # rospy.Subscriber("endEffectorDistance", Float64, self.ee_distance_cb)
         rospy.Subscriber("~e_in", String, self.e_in_cb)
 
@@ -73,14 +73,6 @@ class MoveRobot(object):
         latch = True
         self.pub_e_out = rospy.Publisher("~e_out",
                                    String, queue_size=10, latch=latch)
-
-    # def ee_distance_cb(self, msg):
-    #     dist = msg.data
-    #     if self.EE_GRASP is None:
-    #         dist = msg.data
-    #         self.EE_GRASP = add_lists(self.EE_CLOSED, [dist/2, -dist/2])
-    #         rospy.logdebug("[MOVE ROBOT] Received a new end effector distance message")
-    #         rospy.logdebug("[MOVE ROBOT] New end effector grasp pose: %s", self.EE_GRASP)
 
     def load_param(self, timeout):
         self.pre_grasp_ee =  wait_for_param('pre_grasp_ee', timeout)

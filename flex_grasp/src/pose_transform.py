@@ -28,7 +28,7 @@ class PoseTransform(object):
         self.event = None
         self.object_features = None
 
-        rospy.init_node("Object_Detection",
+        rospy.init_node("pose_transform",
                         anonymous=True, log_level=rospy.DEBUG)
 
         # Initialize Subscribers
@@ -36,19 +36,19 @@ class PoseTransform(object):
         rospy.Subscriber("~e_in", String, self.e_in_cb)
 
         # Initialize Publishers
-        self.pub_pre_grasp_pose = rospy.Publisher('preGraspPose',
+        self.pub_pre_grasp_pose = rospy.Publisher('pre_grasp_pose',
                                         PoseStamped, queue_size=5, latch=True)
 
-        self.pub_grasp_pose = rospy.Publisher('graspPose',
+        self.pub_grasp_pose = rospy.Publisher('grasp_pose',
                                         PoseStamped, queue_size=5, latch=True)
 
-        self.pub_pre_place_pose = rospy.Publisher('prePlacePose',
+        self.pub_pre_place_pose = rospy.Publisher('pre_place_pose',
                                         PoseStamped, queue_size=5, latch=True)
 
-        self.pub_place_pose = rospy.Publisher('placePose',
+        self.pub_place_pose = rospy.Publisher('place_pose',
                                         PoseStamped, queue_size=5, latch=True)
 
-        self.pub_ee_distance = rospy.Publisher('endEffectorDistance',
+        self.pub_ee_distance = rospy.Publisher('end_effector_distance',
                                     Float64, queue_size=5, latch=True)
 
         latch = True

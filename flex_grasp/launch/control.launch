@@ -7,24 +7,24 @@
 	<arg name="object_detection_debug"	default="false"/>
 
 	<group ns="$(arg robot_name)">
-		<node name="Pipe_Line"
+		<node name="pipeline"
 			pkg="flex_grasp"
 			type="smach_pipeline.py"
 			output="screen"/>
 
-		<node name="Object_Detection"
+		<node name="object_detection"
 			pkg="flex_grasp"
 			type="object_detection.py"
 			output="screen">
 			<param name ="debug" value="$(arg object_detection_debug)"/>
 		</node>
 
-		<node name="Pose_Transform"
+		<node name="pose_transform"
 			pkg="flex_grasp"
 			type="pose_transform.py"
 			output="screen"/>
 
-    <node name="Move_Robot"
+    <node name="move_robot"
 			pkg="flex_grasp"
 			type="move_robot.py"
 			output="screen">
@@ -39,7 +39,7 @@
 		</node>
 	-->
 
-		<node pkg="flex_grasp" name="Visualize_Object"  type="visualize_object.py" output="screen">
+		<node pkg="flex_grasp" name="visualize_object"  type="visualize_object.py" output="screen">
 			<remap from="/attached_collision_object" to="/$(arg robot_name)/attached_collision_object"/>
 			<remap from="/collision_object" to="/$(arg robot_name)/collision_object"/>
 		</node>
