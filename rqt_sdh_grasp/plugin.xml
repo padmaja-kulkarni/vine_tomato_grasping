@@ -1,0 +1,20 @@
+<library path="src">
+  <class name="SDH Grasp" type="rqt_sdh_grasp.rqt_sdh_grasp.RqtSdhGrasp" base_class_type="rqt_gui_py::Plugin">
+    <description>
+      GUI for grasping with the SDH hand.
+    </description>
+    <qtgui>
+      <!-- optional grouping...
+      <group>
+        <label>Group</label>
+      </group>
+      <group>
+        <label>Subgroup</label>
+      </group>
+      -->
+      <label>Robot Tools</label>
+      <icon type="theme">system-help</icon>
+      <statustip>Grasping system.</statustip>
+    </qtgui>
+  </class>
+</library>
