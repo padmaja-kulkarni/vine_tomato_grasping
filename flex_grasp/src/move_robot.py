@@ -70,7 +70,7 @@ class MoveRobot(object):
         rospy.Subscriber("~e_in", String, self.e_in_cb)
 
         # Publishers
-        latch = False
+        latch = True
         self.pub_e_out = rospy.Publisher("~e_out",
                                    String, queue_size=10, latch=latch)
 
@@ -82,26 +82,20 @@ class MoveRobot(object):
     #         rospy.logdebug("[MOVE ROBOT] Received a new end effector distance message")
     #         rospy.logdebug("[MOVE ROBOT] New end effector grasp pose: %s", self.EE_GRASP)
 
+    def load_param(self, timeout):
+        self.pre_grasp_ee =  wait_for_param('pre_grasp_ee', timeout)
+        self.grasp_ee =  wait_for_param('grasp_ee', timeout)
+
     def grasp_pose_cb(self, msg):
         if self.grasp_pose is None:
             self.grasp_pose = msg
             rospy.logdebug("[MOVE ROBOT] Received new grasp pose massage")
-
-            if rospy.has_param('grasp_ee'):
-                self.grasp_ee = rospy.get_param('grasp_ee')
-            else:
-                rospy.logwarn("[MOVE ROBOT] Grasp end effector pose can not be loaded from parameter server")
-
+            self.load_param(1.0)
 
     def pre_grasp_pose_cb(self, msg):
         if self.pre_grasp_pose is None:
             self.pre_grasp_pose = msg
             rospy.logdebug("[MOVE ROBOT] Received new pre grasp pose massage")
-
-            if rospy.has_param('pre_grasp_ee'):
-                self.pre_grasp_ee = rospy.get_param('pre_grasp_ee')
-            else:
-                rospy.logwarn("[MOVE ROBOT] Pre grasp end effector pose can not be loaded from parameter server")
 
     def pre_place_pose_cb(self, msg):
         if self.pre_place_pose is None:
@@ -118,6 +112,10 @@ class MoveRobot(object):
             self.command = msg.data
             rospy.logdebug("[MOVE ROBOT] Received new move robot event in message: %s", self.command)
 
+            # reset outputting message
+            msg = String()
+            msg.data = ""
+            self.pub_e_out.publish(msg)
 
     def initialise_robot(self):
         rospy.logdebug("===INITIALIZING ROBOT====")
@@ -467,6 +465,12 @@ class MoveRobot(object):
         success = None
 
         # State dependent actions
+        if self.state == "init":
+            if self.command == "pick":
+                rospy.logwarn("[Move Robot] Cannot pick object, it still needs to be detected!")
+                # rospy.sleep(3.0)
+                success = False
+
         if self.state == "idle":
             if self.command == "pick":
                 success = self.pick()
@@ -505,6 +509,19 @@ class MoveRobot(object):
                 self.command = None
 
             self.pub_e_out.publish(msg)
+
+def wait_for_param(param_name, timeout):
+
+    start_time = rospy.get_time()
+
+    while (rospy.get_time() - start_time < timeout):
+
+        if rospy.has_param(param_name):
+            return rospy.get_param(param_name)
+
+    rospy.logwarn("[MOVE ROBOT] Parameter %s can not be loaded from parameter server: timeout passed", param_name)
+    return None
+
 
 def main():
     try:

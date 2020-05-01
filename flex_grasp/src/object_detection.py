@@ -75,6 +75,14 @@ class ObjectDetection(object):
         if self.DEBUG:
             rospy.loginfo("Launching object detection in debug mode.")
 
+        # Publish
+        latch = True
+        self.pub_e_out = rospy.Publisher("~e_out",
+                                         String, queue_size=10, latch=latch)
+
+        self.pub_object_features = rospy.Publisher("object_features",
+                                        Truss, queue_size=5, latch=True)
+
         # Subscribe
         rospy.Subscriber("~e_in", String, self.e_in_cb)
 
@@ -84,19 +92,14 @@ class ObjectDetection(object):
             rospy.Subscriber("camera/color/camera_info", CameraInfo, self.color_info_cb)
             rospy.Subscriber("camera/color/camera_info", CameraInfo, self.depth_info_cb)
 
-
-        # Publish
-        latch = False
-        self.pub_e_out = rospy.Publisher("~e_out",
-                                         String, queue_size=10, latch=latch)
-
-        self.pub_object_features = rospy.Publisher("object_features",
-                                        Truss, queue_size=5, latch=True)
-
     def e_in_cb(self, msg):
         if self.event is None:
             self.event = msg.data
             rospy.logdebug("[OBJECT DETECTION] Received object detection event message: %s", self.event)
+
+            msg = String()
+            msg.data = ""
+            self.pub_e_out.publish(msg)
 
     def color_image_cb(self, msg):
         if (self.color_image is None) and (self.event == "e_start"):

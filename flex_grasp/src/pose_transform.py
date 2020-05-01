@@ -51,7 +51,7 @@ class PoseTransform(object):
         self.pub_ee_distance = rospy.Publisher('endEffectorDistance',
                                     Float64, queue_size=5, latch=True)
 
-        latch = False
+        latch = True
         self.pub_e_out = rospy.Publisher("~e_out",
                                          String, queue_size=10, latch=latch)
 
@@ -121,6 +121,9 @@ class PoseTransform(object):
             self.event = msg.data
             rospy.logdebug("[POSE TRANSFORM] Received new pose transform event message %s", self.event)
 
+            msg = String()
+            msg.data = ""
+            self.pub_e_out.publish(msg)
             # self.pub_e_out.publish(msg_e)
             # msg_e = String()
             # msg_e.data = "e_wait"
