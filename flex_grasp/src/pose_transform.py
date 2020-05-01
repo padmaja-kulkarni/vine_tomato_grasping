@@ -28,8 +28,16 @@ class PoseTransform(object):
         self.event = None
         self.object_features = None
 
+        self.debug_mode = rospy.get_param("pose_transform/debug")
+
+        if self.debug_mode:
+            log_level = rospy.DEBUG
+            rospy.loginfo("[POSE TRANSFORM] Luanching object detection node in debug mode")
+        else:
+            log_level = rospy.INFO
+
         rospy.init_node("pose_transform",
-                        anonymous=True, log_level=rospy.DEBUG)
+                        anonymous=True, log_level=log_level)
 
         # Initialize Subscribers
         rospy.Subscriber("object_features", Truss, self.object_features_cb)

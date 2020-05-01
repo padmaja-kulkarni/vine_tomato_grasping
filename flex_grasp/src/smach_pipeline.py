@@ -19,7 +19,7 @@ class Initializing(smach.State):
                                       String, queue_size=10, latch=True)
 
     def execute(self, userdata):
-        rospy.loginfo('Executing state Initializing')
+        rospy.logdebug('Executing state Initializing')
 
         init_object_detection = self.is_initialized("object_detection/e_out", self.pub_object_detection)
         init_pose_transform = self.is_initialized("pose_transform/e_out", self.pub_pose_transform)
@@ -49,7 +49,7 @@ class Idle(smach.State):
         self.move_commands =  ["home", "open", "close", "pick", "place", "pickplace"]
 
     def execute(self, userdata):
-        rospy.loginfo('Executing state Idle')
+        rospy.logdebug('Executing state Idle')
 
         command = rospy.wait_for_message(self.command_op_topic, String).data
 
@@ -75,7 +75,7 @@ class DetectObject(smach.State):
         self.object_detected = String()
 
     def execute(self, userdata):
-        rospy.loginfo('Executing state Detect')
+        rospy.logdebug('Executing state Detect')
 
         # command node
         self.pub_obj_detection.publish("e_start")
@@ -103,7 +103,7 @@ class PoseTransform(smach.State):
         self.tf_result = String()
 
     def execute(self, userdata):
-        rospy.loginfo('Executing state Transform')
+        rospy.logdebug('Executing state Transform')
 
         # command node
         self.pub_pose_transform.publish("e_start")
@@ -131,7 +131,7 @@ class MoveRobot(smach.State):
         self.mv_robot_result = String()
 
     def execute(self, userdata):
-        rospy.loginfo('Executing state Move Robot')
+        rospy.logdebug('Executing state Move Robot')
 
         # command node
         self.pub_move_robot.publish(userdata.command)
@@ -181,7 +181,15 @@ def wait_for_success(topic, timeout):
 
 # main
 def main():
-    rospy.init_node('smach_state_machine',anonymous=True, log_level=rospy.DEBUG)
+    debug_mode = rospy.get_param("pipeline/debug")
+
+    if debug_mode:
+        log_level = rospy.DEBUG
+        rospy.loginfo("[PIPELINE] Luanching pipeline node in debug mode")
+    else:
+        log_level = rospy.INFO
+
+    rospy.init_node('smach_state_machine',anonymous=True, log_level=log_level)
 
     # Create a SMACH state machine
     sm = smach.StateMachine(outcomes=['total_success', 'total_failure'])

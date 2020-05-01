@@ -68,12 +68,16 @@ class ObjectDetection(object):
         pathCurrent = os.path.dirname(__file__) # path to THIS file
         self.pwdProcess = os.path.join(pathCurrent, '..', '..', 'results')
 
-        rospy.init_node("object_detection",
-                        anonymous=True, log_level=rospy.DEBUG)
 
-        self.DEBUG = rospy.get_param("~debug")
-        if self.DEBUG:
-            rospy.loginfo("Launching object detection in debug mode.")
+        self.debug_mode = rospy.get_param("object_detection/debug")
+
+        if self.debug_mode:
+            log_level = rospy.DEBUG
+            rospy.loginfo("[OBJECT DETECTION] Luanching object detection node in debug mode")
+        else:
+            log_level = rospy.INFO
+
+        rospy.init_node("object_detection", anonymous=True, log_level=log_level)
 
         # Publish
         latch = True
@@ -86,7 +90,7 @@ class ObjectDetection(object):
         # Subscribe
         rospy.Subscriber("~e_in", String, self.e_in_cb)
 
-        if not self.DEBUG:
+        if not self.debug_mode:
             rospy.Subscriber("camera/color/image_raw", Image, self.color_image_cb)
             rospy.Subscriber("camera/depth/image_rect_raw", Image, self.depth_image_cb)
             rospy.Subscriber("camera/color/camera_info", CameraInfo, self.color_info_cb)
@@ -285,11 +289,11 @@ class ObjectDetection(object):
         success = None
         msg = String()
 
-        if (self.event == "e_start") and (not self.DEBUG):
-            success = self.detect_object()
-
-        elif (self.event == "e_start") and (self.DEBUG):
-            success = self.generate_object()
+        if (self.event == "e_start"):
+            if not self.debug_mode:
+                success = self.detect_object()
+            if self.debug_mode:
+                success = self.generate_object()
 
         elif (self.event == "e_init"):
             success = True

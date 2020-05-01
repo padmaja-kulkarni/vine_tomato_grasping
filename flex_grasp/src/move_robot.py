@@ -33,9 +33,17 @@ class MoveRobot(object):
     def __init__(self):
         super(MoveRobot, self).__init__()
 
+        self.debug_mode = rospy.get_param("move_robot/debug")
+
+        if self.debug_mode:
+            log_level = rospy.DEBUG
+            rospy.loginfo("[MOVE ROBOT] Luanching move robot in debug mode")
+        else:
+            log_level = rospy.INFO
+
         rospy.init_node("move_robot",
                         anonymous=True,
-                        log_level=rospy.DEBUG)
+                        log_level=log_level)
 
         # wait until clock is initialized
         while rospy.get_time() < 0.1:

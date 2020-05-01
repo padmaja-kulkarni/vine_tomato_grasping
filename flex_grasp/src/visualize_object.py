@@ -22,8 +22,16 @@ import moveit_commander
 class VisualizeObject(object):
     def __init__(self):
 
+        self.debug_mode = rospy.get_param("visualize_object/debug")
+
+        if self.debug_mode:
+            log_level = rospy.DEBUG
+            rospy.loginfo("[VISUALIZE OBJECT] Luanching visualize object in debug mode")
+        else:
+            log_level = rospy.INFO
+
         rospy.init_node("visualize_object",
-                        anonymous=True, log_level=rospy.DEBUG)
+                        anonymous=True, log_level=log_level)
 
         # init enviroment
         # moveit_commander.roscpp_initialize(sys.argv)
