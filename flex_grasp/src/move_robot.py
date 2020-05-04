@@ -294,11 +294,11 @@ class MoveRobot(object):
                 self.scene.remove_world_object(self.target_object_name)
                 return True
             else:
-                rospy.logwarn("[MOVE ROBOT] Cannot remove attached object: target object is not attached to the end effector link!")
-                return False
+                rospy.logdebug("[MOVE ROBOT] Cannot remove attached object: target object is not attached to the end effector link!")
+                return True
         else:
-            rospy.logwarn("[MOVE ROBOT] Cannot remove attached object: target object is not attached to anything!")
-            return False
+            rospy.logdebug("[MOVE ROBOT] Cannot remove attached object: target object is not attached to anything!")
+            return True
 
     def attach_object(self):
         grasping_group = self.ee_group_name
