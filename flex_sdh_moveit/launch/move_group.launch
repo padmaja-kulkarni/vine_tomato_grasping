@@ -14,7 +14,7 @@
   <arg name="use_interbotix" default="false"/>
 
   <include file="$(find flex_sdh_moveit)/launch/planning_context.launch">
-    <arg name="load_robot_description" value="true"/>
+    <arg name="load_robot_description" value="false"/>
     <arg name="hardware_interface" value="$(arg hardware_interface)"/>
     <arg name="robot_name" value="$(arg robot_name)"/>
     <arg name="robot_model" value="$(arg robot_model)"/>
