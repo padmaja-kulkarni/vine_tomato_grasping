@@ -12,12 +12,21 @@
 	<arg name="visualize_object_debug"	default="false"/>
 
 	<group ns="$(arg robot_name)">
+
+		<node name = "my_rqt_dashboard" 
+			pkg = "rqt_gui"
+			type = "rqt_gui"
+			respawn = "false"
+			output = "screen"
+			args = "--perspective-file $(find rqt_user_interface)/config/my_dashboard.perspective"/>
+
+		<!--
 		<node name="rqt_user_interface"
 			pkg="rqt_user_interface"
 			type="rqt_user_interface"
 			output="screen">
 		</node>
-
+	-->
 		<node name="pipeline"
 			pkg="flex_grasp"
 			type="smach_pipeline.py"
