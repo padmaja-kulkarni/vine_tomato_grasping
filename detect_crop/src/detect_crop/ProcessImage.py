@@ -40,7 +40,6 @@ from util import plot_circles
 class ProcessImage(object):
 
     def __init__(self, imRGB, tomatoName = 'tomato', saveIntermediate = False, pwdProcess = '', saveFormat = 'png'):
-        print("Storing visiual results in: ", pwdProcess)
 
         self.saveFormat = saveFormat
 
@@ -110,10 +109,10 @@ class ProcessImage(object):
         ### rotate and cut ###
         ######################
         label_img = label(self.peduncle)
-        regions = regionprops(label_img)
+        regions = regionprops(label_img , coordinates='xy')
         if len(regions) > 1: warnings.warn("Multiple regions found!")
-        angle = regions[0].orientation*180/np.pi
-        print('angle: ', angle)
+        angle = regions[0].orientation*180/np.pi # + 90
+        # print('angle: ', angle)
 
         # rotate
         tomatoFilteredR= np.uint8(self.imMax*rotate(self.tomato, -angle, resize=True))

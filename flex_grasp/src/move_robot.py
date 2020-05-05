@@ -466,7 +466,7 @@ class MoveRobot(object):
 
         # State dependent actions
         if self.state == "init":
-            if self.command == "pick":
+            if self.command == "pick" or self.command == "pick_place":
                 rospy.logwarn("[Move Robot] Cannot pick object, it still needs to be detected!")
                 # rospy.sleep(3.0)
                 success = False

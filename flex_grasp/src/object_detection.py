@@ -68,6 +68,7 @@ class ObjectDetection(object):
         pathCurrent = os.path.dirname(__file__) # path to THIS file
         self.pwdProcess = os.path.join(pathCurrent, '..', '..', 'results')
 
+        rospy.loginfo("Storing visiual results in: ", self.pwdProcess)
 
         self.debug_mode = rospy.get_param("object_detection/debug")
 
