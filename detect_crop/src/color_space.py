@@ -27,7 +27,7 @@ from detect_crop.util import rgb2hsi
 from detect_crop.util import romove_blobs_2
 from detect_crop.util import segmentation_parametric
 from detect_crop.util import segmentation_cluster
-from detect_crop.util import save_fig
+from detect_crop.util import save_img
 
 from detect_crop.util import stack_segments
 
@@ -56,7 +56,6 @@ def hsv_3d_scatter(HSV, RGB):
     rows, cols = HSV.shape[:2]
     
 
-    
     pixel_colors = RGB.reshape((rows*cols, 3))
     norm = colors.Normalize(vmin=-1.,vmax=1.)
     norm.autoscale(pixel_colors)
@@ -219,7 +218,8 @@ plt.savefig(os.path.join(pwdResults, 'legend'))
 #%%
 
 # define criteria and apply kmeans()
-background, tomato, peduncle = segmentation_cluster(imRGB, 255)
+# background, tomato, peduncle = segmentation_cluster(imRGB, 255)
+background, tomato, peduncle = segmentation_otsu(imRGB, 255)
 
 
 #%% VISUALIZE
@@ -258,4 +258,4 @@ plt.axis('off')
 plt.imshow(imRGB) 
 
 segmentsRGB = stack_segments(imRGB, background, tomato, peduncle)
-save_fig(segmentsRGB, pwdResults, 'segments', saveFormat = 'png')
+save_img(segmentsRGB, pwdResults, 'segments', saveFormat = 'png')

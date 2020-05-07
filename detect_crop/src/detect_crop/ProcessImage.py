@@ -30,7 +30,7 @@ from util import segmentation_otsu
 from util import rot2or
 from util import or2rot
 
-from util import save_fig
+from util import save_img
 from util import load_rgb
 from util import stack_segments
 from util import plot_circles
@@ -65,7 +65,7 @@ class ProcessImage(object):
 
 
         if self.saveIntermediate:
-            save_fig(self.imRGB, self.pwdProcess, '01', saveFormat = self.saveFormat)
+            save_img(self.imRGB, self.pwdProcess, '01', saveFormat = self.saveFormat)
 
     def segment_img(self):
         #%%#################
@@ -152,7 +152,7 @@ class ProcessImage(object):
 
         if self.saveIntermediate:
             self.save_results('04')
-            save_fig(self.imRGB, self.pwdProcess, '04_e', saveFormat = self.saveFormat)
+            save_img(self.imRGB, self.pwdProcess, '04_e', saveFormat = self.saveFormat)
 
 
     def detect_tomatoes(self):
@@ -203,18 +203,18 @@ class ProcessImage(object):
             contours, hierarchy= cv2.findContours(penduncleMain, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
             segmentPeduncle = self.imRGB.copy()
             cv2.drawContours(segmentPeduncle, contours, -1, (0,255,0), 3)
-            save_fig(segmentPeduncle, self.pwdProcess, '05_b', saveFormat= self.saveFormat)
+            save_img(segmentPeduncle, self.pwdProcess, '05_b', saveFormat= self.saveFormat)
 
             penduncleMain = cv2.erode(self.peduncle,kernel,iterations = 1)
-            save_fig(penduncleMain, self.pwdProcess, '05_b1', saveFormat = self.saveFormat)
+            save_img(penduncleMain, self.pwdProcess, '05_b1', saveFormat = self.saveFormat)
 
             penduncleMain = cv2.dilate(penduncleMain,kernel,iterations = 1)
-            save_fig(penduncleMain, self.pwdProcess, '05_b2', saveFormat = self.saveFormat)
+            save_img(penduncleMain, self.pwdProcess, '05_b2', saveFormat = self.saveFormat)
 
     def detect_junction(self):
         skeleton = skeletonize(self.peduncle/self.imMax)
         if self.saveIntermediate:
-            save_fig(skeleton, self.pwdProcess, '05_c2', saveFormat = self.saveFormat)
+            save_img(skeleton, self.pwdProcess, '05_c2', saveFormat = self.saveFormat)
 
 
     def detect_junctione_rip(self):
@@ -369,12 +369,12 @@ class ProcessImage(object):
         fig.savefig(os.path.join(self.pwdResults, self.tomatoName), dpi = 300)
 
     def save_results(self, step):
-        save_fig(self.background, self.pwdProcess, step + '_a', saveFormat = self.saveFormat) # figureTitle = "Background",
-        save_fig(self.tomato, self.pwdProcess, step + '_b', saveFormat = self.saveFormat) # figureTitle = "Tomato",
-        save_fig(self.peduncle, self.pwdProcess, step + '_c',  saveFormat = self.saveFormat) # figureTitle = "Peduncle",
+        save_img(self.background, self.pwdProcess, step + '_a', saveFormat = self.saveFormat) # figureTitle = "Background",
+        save_img(self.tomato, self.pwdProcess, step + '_b', saveFormat = self.saveFormat) # figureTitle = "Tomato",
+        save_img(self.peduncle, self.pwdProcess, step + '_c',  saveFormat = self.saveFormat) # figureTitle = "Peduncle",
 
         segmentsRGB = stack_segments(self.imRGB, self.background, self.tomato, self.peduncle)
-        save_fig(segmentsRGB, self.pwdProcess, step + '_d', saveFormat = self.saveFormat)
+        save_img(segmentsRGB, self.pwdProcess, step + '_d', saveFormat = self.saveFormat)
 
     def process_image(self):
 
@@ -404,7 +404,6 @@ def main():
     pwdTest = os.path.join("..") # "..", "..", ,  "taeke"
 
     pwdData = os.path.join(pathCurrent, pwdTest, "data", dataSet)
-    pwdDataProc = os.path.join(pathCurrent, pwdTest,"data_processed", dataSet)
     pwdResults = os.path.join(pathCurrent, pwdTest, "results", dataSet)
 
 
@@ -433,7 +432,7 @@ def main():
         imRGB, DIM = load_rgb(pwdData, fileName, horizontal = True)
 
         if saveIntermediate:
-            save_fig(imRGB, pwdProcess, '01')
+            save_img(imRGB, pwdProcess, '01')
 
 
 

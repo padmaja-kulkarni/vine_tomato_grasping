@@ -13,6 +13,12 @@ import warnings
 
 from matplotlib import pyplot as plt
 
+
+def make_dirs(pwd):
+    if not os.path.isdir(pwd):
+        print("New path, creating a new folder: " + pwd)
+        os.makedirs(pwd)
+
 def rgb2hsi(RGB):
     
     RGB = RGB.astype('int64')
@@ -284,7 +290,7 @@ def segmentation_otsu(imRGB, imMax):
 
     return background, tomato, peduncle
 
-def segmentation_otsu_test(im1, im2, imMax):
+def segmentation_otsu_test(im1, im2, imMax, pwd, name):
     # im1 is used for seperating background from the truss
     # im2 is used to seperate the tomato from the peduncle
     
@@ -303,6 +309,18 @@ def segmentation_otsu_test(im1, im2, imMax):
     # label
     temp, peduncle = cv2.threshold(im2,threshPeduncle,imMax,cv2.THRESH_BINARY)
     peduncle = cv2.bitwise_and(tomato, peduncle)
+
+    fig = plt.figure() 
+    plt.hist(im1.ravel(),256)
+    plt.axvline(x=threshTomato,  color='r')
+    plt.xlim(0, 255)
+    save_fig(fig, pwd, name + "_hist_1", figureTitle = "")
+    
+    fig = plt.figure() 
+    plt.hist(dataCut.ravel(),180)
+    plt.axvline(x=threshPeduncle,  color='r')
+    plt.xlim(0, 180)
+    save_fig(fig, pwd, name + "_hist_2", figureTitle = "")
 
     return background, tomato, peduncle
 
@@ -336,7 +354,7 @@ def stack_segments(imRGB, background, tomato, peduncle):
     
     return res2
 
-def save_fig(img, pwd, name, resolution = 300, figureTitle = "", titleSize = 20, saveFormat = 'png'):
+def save_img(img, pwd, name, resolution = 300, figureTitle = "", titleSize = 20, saveFormat = 'png'):
         plt.rcParams["savefig.format"] = saveFormat
         plt.rcParams["savefig.bbox"] = 'tight' 
         plt.rcParams['axes.titlesize'] = titleSize
@@ -353,6 +371,26 @@ def save_fig(img, pwd, name, resolution = 300, figureTitle = "", titleSize = 20,
             hspace = 0, wspace = 0)
         plt.margins(0,0)
         plt.gca().xaxis.set_major_locator(plt.NullLocator())
+        plt.gca().yaxis.set_major_locator(plt.NullLocator())
+        
+        
+        fig.savefig(os.path.join(pwd, name), dpi = resolution, bbox_inches='tight', pad_inches=0)
+        
+def save_fig(fig, pwd, name, resolution = 300, figureTitle = "", titleSize = 20, saveFormat = 'png'):
+        plt.rcParams["savefig.format"] = saveFormat
+        plt.rcParams["savefig.bbox"] = 'tight' 
+        plt.rcParams['axes.titlesize'] = titleSize
+        
+    
+        # plt.axis('off')
+        plt.title(figureTitle)
+        
+        # https://stackoverflow.com/a/27227718
+        # plt.gca().set_axis_off()
+        plt.subplots_adjust(top = 1, bottom = 0, right = 1, left = 0, 
+            hspace = 0, wspace = 0)
+        plt.margins(0,0)
+        # plt.gca().xaxis.set_major_locator(plt.NullLocator())
         plt.gca().yaxis.set_major_locator(plt.NullLocator())
         
         
