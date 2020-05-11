@@ -294,33 +294,56 @@ def segmentation_otsu_test(im1, im2, imMax, pwd, name):
     # im1 is used for seperating background from the truss
     # im2 is used to seperate the tomato from the peduncle
     
+    
+  
     # init
     [h, w] = im1.shape[:2]
     data2 = im2.reshape((h * w), 1) 
     
     # Otsu's thresholding
-    threshTomato,tomato = cv2.threshold(im1,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-    background = cv2.bitwise_not(tomato)
+    threshTomato, temp = cv2.threshold(im1,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+    
+    temp, truss = cv2.threshold(im1,threshTomato,imMax,cv2.THRESH_BINARY)
+    background_1 = cv2.bitwise_not(truss)
     
     # seperate tomato from peduncle
-    dataCut = data2[(tomato == imMax).flatten()]
-    threshPeduncle,peduncle = cv2.threshold(dataCut,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+    dataCut = data2[(truss == imMax).flatten()]
+    threshPeduncle, temp = cv2.threshold(dataCut,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
     
     # label
-    temp, peduncle = cv2.threshold(im2,threshPeduncle,imMax,cv2.THRESH_BINARY)
-    peduncle = cv2.bitwise_and(tomato, peduncle)
+    temp, peduncle_1 = cv2.threshold(im2,threshPeduncle,imMax,cv2.THRESH_BINARY_INV)
+    temp, tomato = cv2.threshold(im2,threshPeduncle,imMax,cv2.THRESH_BINARY)
+    peduncle_1 = cv2.bitwise_and(truss, peduncle_1)
 
-    fig = plt.figure() 
-    plt.hist(im1.ravel(),256)
-    plt.axvline(x=threshTomato,  color='r')
-    plt.xlim(0, 255)
-    save_fig(fig, pwd, name + "_hist_1", figureTitle = "")
+    dataCut2 = data2[(peduncle_1 == imMax).flatten()]
+    threshPeduncle_2, temp = cv2.threshold(dataCut2,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
     
-    fig = plt.figure() 
-    plt.hist(dataCut.ravel(),180)
-    plt.axvline(x=threshPeduncle,  color='r')
-    plt.xlim(0, 180)
-    save_fig(fig, pwd, name + "_hist_2", figureTitle = "")
+    # label
+    temp, peduncle_2 = cv2.threshold(im2,threshPeduncle_2,imMax,cv2.THRESH_BINARY_INV)
+    temp, background_2 = cv2.threshold(im2,threshPeduncle_2,imMax,cv2.THRESH_BINARY)
+    
+    peduncle = cv2.bitwise_and(peduncle_2, peduncle_1)
+    background = cv2.bitwise_or(background_2, background_1)
+    # tomato = cv2.bitwise_and(cv2.bitwise_not(peduncle), cv2.bitwise_not(background))
+
+    fig, ax= plt.subplots(1)
+#    fig.suptitle('Histogram')
+    
+    ax.set_title('S (HSV)')
+    values = ax.hist(im1.ravel(), bins=256/1, range=(0, 255))
+    ax.set_ylim(0, 4*np.mean(values[0]))
+    ax.set_xlim(0, 255)
+    ax.axvline(x=threshTomato,  color='r')
+    save_fig(fig, pwd, name + "_hist_1", figureTitle = "", resolution = 100, titleSize = 10)
+
+    fig, ax= plt.subplots(1)
+    ax.set_title('A (LAB)')
+    values = ax.hist(data2.ravel(), bins=256/1, range=(0,255))
+    ax.set_ylim(0, 4*np.mean(values[0]))
+    ax.set_xlim(0, 255)
+    ax.axvline(x=threshPeduncle,  color='r')
+    ax.axvline(x=threshPeduncle_2,  color='r')
+    save_fig(fig, pwd, name + "_hist_2", figureTitle = "", resolution = 100, titleSize = 10)
 
     return background, tomato, peduncle
 
@@ -377,22 +400,27 @@ def save_img(img, pwd, name, resolution = 300, figureTitle = "", titleSize = 20,
         fig.savefig(os.path.join(pwd, name), dpi = resolution, bbox_inches='tight', pad_inches=0)
         
 def save_fig(fig, pwd, name, resolution = 300, figureTitle = "", titleSize = 20, saveFormat = 'png'):
+        
+        SMALL_SIZE = 8
+        MEDIUM_SIZE = 15
+        BIGGER_SIZE = 20
+    
         plt.rcParams["savefig.format"] = saveFormat
         plt.rcParams["savefig.bbox"] = 'tight' 
-        plt.rcParams['axes.titlesize'] = titleSize
+        # plt.rcParams['axes.titlesize'] = titleSize
         
+        plt.rc('axes', labelsize=MEDIUM_SIZE)    # fontsize of the x and y labels
+        plt.rc('xtick', labelsize=MEDIUM_SIZE)    # fontsize of the tick labels
     
-        # plt.axis('off')
-        plt.title(figureTitle)
+       
+        for ax in fig.get_axes():
+            ax.label_outer()
         
-        # https://stackoverflow.com/a/27227718
-        # plt.gca().set_axis_off()
-        plt.subplots_adjust(top = 1, bottom = 0, right = 1, left = 0, 
-            hspace = 0, wspace = 0)
-        plt.margins(0,0)
-        # plt.gca().xaxis.set_major_locator(plt.NullLocator())
-        plt.gca().yaxis.set_major_locator(plt.NullLocator())
         
+        for ax in fig.get_axes():
+            # ax.yaxis.set_major_locator(plt.nulllocator())\
+            ax.set_yticklabels([])
+        plt.margins(0,0) 
         
         fig.savefig(os.path.join(pwd, name), dpi = resolution, bbox_inches='tight', pad_inches=0)
         
