@@ -18,12 +18,13 @@ from matplotlib import pyplot as plt
 from detect_crop.util import save_img
 from detect_crop.util import stack_segments
 from detect_crop.util import segmentation_otsu_test
+from detect_crop.util import segmentation_cluster_test
 from detect_crop.util import make_dirs
 #%% init
 
 # tomato rot: 15
 # tomato cases: 48
-N = 48               # tomato file to load
+N = 10               # tomato file to load
 nDigits = 3
 # ls | cat -n | while read n f; do mv "$f" `printf "%04d.extension" $n`; done
 
@@ -83,7 +84,8 @@ for iTomato in range(1, N):
     # save_img(segmentsRGB, pwdResults, '1RGB', figureTitle = 'Green (RGB)')
     
     # HSV
-    background, tomato, peduncle = segmentation_otsu_test(imHSV[:,:,1], imLAB[:,:,1], imMax, pwdResults, tomatoID)
+    background, tomato, peduncle = segmentation_cluster_test(imHSV[:,:,1], imLAB[:,:,1], imMax, pwdResults, tomatoID)
+    # background, tomato, peduncle = segmentation_otsu_test(imHSV[:,:,1], imLAB[:,:,1], imMax, pwdResults, tomatoID)
     segmentsRGB = stack_segments(imRGB, background, tomato, np.zeros(tomato.shape, dtype = np.uint8))
     
 

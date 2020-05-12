@@ -233,36 +233,6 @@ def or2rot(loc, dim, alpha):
     LOC = np.matrix((X, Y))
     return LOC
 
-def segmentation_cluster_test(im1, im2, imMax):
-    # im1 is used for seperating background from the truss
-    # im2 is used to seperate the tomato from the peduncle
-    
-    # init
-    [h, w] = im1.shape[:2]
-    data1 = np.float32(im1.reshape((h * w), 1))
-    data2 = np.float32(im2.reshape((h * w), 1))   
-
-    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1)
-    ret,label,center=cv2.kmeans(data1,2,None,criteria,10,cv2.KMEANS_RANDOM_CENTERS)
-    
-    # compute masks
-    tomato = label.ravel() == np.argmax(center)
-    tomato = tomato.reshape((h, w))
-    tomato = bin2img(tomato) #convert to an unsigned byte
-    #tomato = romove_blobs_2(tomato, imMax)
-    background = cv2.bitwise_not(tomato)
-    
-    # seperate tomato from peduncle
-    dataCut = data2[(tomato == 255).flatten()]
-    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1)
-    ret,label,center=cv2.kmeans(dataCut,2,None,criteria,10,cv2.KMEANS_RANDOM_CENTERS)
-    
-    # label
-    peduncle = np.logical_and(tomato, im2 > np.mean(center))
-    peduncle = bin2img(peduncle)
-    peduncle = romove_blobs(peduncle, imMax)
-
-    return background, tomato, peduncle
 
 def segmentation_otsu(imRGB, imMax):
     # im1 is used for seperating background from the truss
@@ -277,7 +247,7 @@ def segmentation_otsu(imRGB, imMax):
     data2 = im2.reshape((h * w), 1) 
     
     # Otsu's thresholding
-    threshTomato,tomato = cv2.threshold(im1,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+    threshholdTruss,tomato = cv2.threshold(im1,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
     background = cv2.bitwise_not(tomato)
     
     # seperate tomato from peduncle
@@ -290,6 +260,98 @@ def segmentation_otsu(imRGB, imMax):
 
     return background, tomato, peduncle
 
+def segmentation_cluster_test(im1, im2, imMax, pwd, name):
+    # im1 is used for seperating background from the truss
+    # im2 is used to seperate the tomato from the peduncle
+    
+    # init
+    [h, w] = im1.shape[:2]
+    data1 = np.float32(im1.reshape((h * w), 1))
+    data2 = np.float32(im2.reshape((h * w), 1))   
+
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1)
+    ret,label,center=cv2.kmeans(data = data1,
+                                K = 2,
+                                bestLabels = None,
+                                criteria = criteria,
+                                attempts = 10,
+                                flags = cv2.KMEANS_RANDOM_CENTERS)
+    
+    # compute masks
+    truss = label.ravel() == np.argmax(center)
+    truss = truss.reshape((h, w))
+    truss = bin2img(truss) #convert to an unsigned byte
+    #tomato = romove_blobs_2(tomato, imMax)
+    background_1 = cv2.bitwise_not(truss)
+    
+    dataCut = data2[(truss == 255).flatten()]
+    centers = np.array([[0], [256/2], [256]])
+    labels = label_img(dataCut, centers)
+    
+    # seperate tomato from peduncle
+    reshaped_data = np.reshape(dataCut, dataCut.shape[0] * dataCut.shape[1]).copy()
+    reshaped_labels = np.reshape(labels, (labels.shape[0] * labels.shape[1], 1)).copy()
+    
+    
+    
+    _, new_labels, centers = cv2.kmeans(data=reshaped_data,
+                                   K=3,
+                                   bestLabels=reshaped_labels,
+                                   criteria=criteria,
+                                   attempts=1,
+                                   flags=cv2.KMEANS_USE_INITIAL_LABELS)
+   
+    
+
+    allLabel = [0,1,2]
+    peduncleLabel = np.argmin(centers)
+    tomatoLabel = np.argmax(centers)
+    backgroundLabel = list(set(allLabel) - set( [peduncleLabel, tomatoLabel]))[0]   
+    
+    # centers[peduncleLabel] = 120
+    # centers[backgroundLabel] = 138
+    label = label_img(data2, centers)
+    
+    tomato = label.ravel() == tomatoLabel
+    tomato = tomato.reshape((h, w))
+    tomato = bin2img(tomato)   
+    tomato = cv2.bitwise_and(tomato, truss)
+    
+    peduncle = label.ravel() == peduncleLabel
+    peduncle = peduncle.reshape((h, w))
+    peduncle = bin2img(peduncle)   
+    peduncle = cv2.bitwise_and(peduncle, truss)
+    
+    background_2 = label.ravel() == backgroundLabel
+    background_2 = background_2.reshape((h, w))
+    background_2 = bin2img(background_2)   
+    background = cv2.bitwise_or(background_1, background_2)
+    truss = cv2.bitwise_not(background)
+    
+    
+    fig, ax= plt.subplots(1)
+    ax.set_title('A (LAB)')
+    values = ax.hist(dataCut.ravel(), bins=256/2, range=(0,255))
+    # ax.set_ylim(0, 4*np.mean(values[0]))
+    ax.set_xlim(0, 255)
+    ax.axvline(x=centers[peduncleLabel],  color='g')
+    ax.axvline(x=centers[tomatoLabel],  color='r')
+    ax.axvline(x=centers[backgroundLabel],  color='k')
+    save_fig(fig, pwd, name + "_hist_2_k_means", figureTitle = "", resolution = 100, titleSize = 10)
+    
+    # label
+#    peduncle = np.logical_and(tomato, im2 > np.mean(center))
+#    peduncle = bin2img(peduncle)
+#    peduncle = romove_blobs(peduncle, imMax)
+
+    return background, tomato, peduncle
+
+
+def label_img(data, centers):
+    dist = abs(data - np.transpose(centers))
+    labels = np.argmin(dist,1).astype(np.int32)
+    return np.expand_dims(labels, axis=1)    
+
 def segmentation_otsu_test(im1, im2, imMax, pwd, name):
     # im1 is used for seperating background from the truss
     # im2 is used to seperate the tomato from the peduncle
@@ -301,9 +363,9 @@ def segmentation_otsu_test(im1, im2, imMax, pwd, name):
     data2 = im2.reshape((h * w), 1) 
     
     # Otsu's thresholding
-    threshTomato, temp = cv2.threshold(im1,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+    thresholdTruss, temp = cv2.threshold(im1,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
     
-    temp, truss = cv2.threshold(im1,threshTomato,imMax,cv2.THRESH_BINARY)
+    temp, truss = cv2.threshold(im1,thresholdTruss,imMax,cv2.THRESH_BINARY)
     background_1 = cv2.bitwise_not(truss)
     
     # seperate tomato from peduncle
@@ -333,12 +395,12 @@ def segmentation_otsu_test(im1, im2, imMax, pwd, name):
     values = ax.hist(im1.ravel(), bins=256/1, range=(0, 255))
     ax.set_ylim(0, 4*np.mean(values[0]))
     ax.set_xlim(0, 255)
-    ax.axvline(x=threshTomato,  color='r')
+    ax.axvline(x=thresholdTruss,  color='r')
     save_fig(fig, pwd, name + "_hist_1", figureTitle = "", resolution = 100, titleSize = 10)
 
     fig, ax= plt.subplots(1)
     ax.set_title('A (LAB)')
-    values = ax.hist(data2.ravel(), bins=256/1, range=(0,255))
+    values = ax.hist(dataCut.ravel(), bins=256/1, range=(0,255))
     ax.set_ylim(0, 4*np.mean(values[0]))
     ax.set_xlim(0, 255)
     ax.axvline(x=threshPeduncle,  color='r')
