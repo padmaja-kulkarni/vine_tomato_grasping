@@ -46,6 +46,8 @@
 
     <arg name="image_width"             value="$(arg image_width)"/>
     <arg name="image_height"            value="$(arg image_height)"/>
+
+    <arg name="rviz"                    value="$(arg rviz)"/>
   </include>
 
 </launch>
