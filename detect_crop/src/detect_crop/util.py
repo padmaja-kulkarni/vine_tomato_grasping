@@ -280,72 +280,70 @@ def segmentation_cluster_test(im1, im2, imMax, pwd, name):
     # compute masks
     truss = label.ravel() == np.argmax(center)
     truss = truss.reshape((h, w))
-    truss = bin2img(truss) #convert to an unsigned byte
-    #tomato = romove_blobs_2(tomato, imMax)
+    truss = bin2img(truss) 
+    
     background_1 = cv2.bitwise_not(truss)
     
+    #%%#################
+    ### SECOND STAGE ###
+    ####################
+    K = 3
+    labelSet = set(np.arange(0,K))
     dataCut = data2[(truss == 255).flatten()]
-    centers = np.array([[0], [256/2], [256]])
-    labels = label_img(dataCut, centers)
-    
-    # seperate tomato from peduncle
-    reshaped_data = np.reshape(dataCut, dataCut.shape[0] * dataCut.shape[1]).copy()
-    reshaped_labels = np.reshape(labels, (labels.shape[0] * labels.shape[1], 1)).copy()
+    centersInit = np.linspace(start = [0], stop = [256], num = K) # np.array([[0], [256/2], [256]])
+    labelsInit = label_img(dataCut, centersInit)
     
     
-    
-    _, new_labels, centers = cv2.kmeans(data=reshaped_data,
-                                   K=3,
-                                   bestLabels=reshaped_labels,
-                                   criteria=criteria,
-                                   attempts=1,
-                                   flags=cv2.KMEANS_USE_INITIAL_LABELS)
+    _, _, centers = cv2.kmeans(data = dataCut,
+                                   K = K,
+                                   bestLabels = labelsInit,
+                                   criteria = criteria,
+                                   attempts = 1,
+                                   flags = cv2.KMEANS_USE_INITIAL_LABELS)
    
-    
-
-    allLabel = [0,1,2]
+    # determine which center corresponds to which label
     peduncleLabel = np.argmin(centers)
     tomatoLabel = np.argmax(centers)
-    backgroundLabel = list(set(allLabel) - set( [peduncleLabel, tomatoLabel]))[0]   
     
-    # centers[peduncleLabel] = 120
-    # centers[backgroundLabel] = 138
-    label = label_img(data2, centers)
+    if K == 3:
+        backgroundLabel = list(labelSet - set( [peduncleLabel, tomatoLabel]))[0]   
+    else:
+        backgroundLabel = None
+    # apply to entire image
+    labels = label_img(data2, centers)
     
-    tomato = label.ravel() == tomatoLabel
-    tomato = tomato.reshape((h, w))
-    tomato = bin2img(tomato)   
+    tomato = label2img(labels, tomatoLabel, h ,w) 
     tomato = cv2.bitwise_and(tomato, truss)
     
-    peduncle = label.ravel() == peduncleLabel
-    peduncle = peduncle.reshape((h, w))
-    peduncle = bin2img(peduncle)   
+    peduncle = label2img(labels, peduncleLabel, h ,w)
     peduncle = cv2.bitwise_and(peduncle, truss)
     
-    background_2 = label.ravel() == backgroundLabel
-    background_2 = background_2.reshape((h, w))
-    background_2 = bin2img(background_2)   
-    background = cv2.bitwise_or(background_1, background_2)
-    truss = cv2.bitwise_not(background)
-    
+    if backgroundLabel is not None:
+        background_2 = label2img(labels, backgroundLabel, h ,w)
+        background = cv2.bitwise_or(background_1, background_2)
+        truss = cv2.bitwise_not(background)
+    else:
+        background = background_1
     
     fig, ax= plt.subplots(1)
     ax.set_title('A (LAB)')
-    values = ax.hist(dataCut.ravel(), bins=256/2, range=(0,255))
-    # ax.set_ylim(0, 4*np.mean(values[0]))
+    ax.hist(dataCut.ravel(), bins=256, range=(0,255))
     ax.set_xlim(0, 255)
     ax.axvline(x=centers[peduncleLabel],  color='g')
     ax.axvline(x=centers[tomatoLabel],  color='r')
-    ax.axvline(x=centers[backgroundLabel],  color='k')
+    
+    if backgroundLabel is not None:
+        ax.axvline(x=centers[backgroundLabel],  color='k')
     save_fig(fig, pwd, name + "_hist_2_k_means", figureTitle = "", resolution = 100, titleSize = 10)
     
-    # label
-#    peduncle = np.logical_and(tomato, im2 > np.mean(center))
-#    peduncle = bin2img(peduncle)
-#    peduncle = romove_blobs(peduncle, imMax)
 
-    return background, tomato, peduncle
+    return background, tomato, peduncle,truss
 
+
+def label2img(labels, label, h ,w):
+    data = labels.ravel() == label
+    img = data.reshape((h, w))
+    return bin2img(img)   
 
 def label_img(data, centers):
     dist = abs(data - np.transpose(centers))
@@ -407,7 +405,7 @@ def segmentation_otsu_test(im1, im2, imMax, pwd, name):
     ax.axvline(x=threshPeduncle_2,  color='r')
     save_fig(fig, pwd, name + "_hist_2", figureTitle = "", resolution = 100, titleSize = 10)
 
-    return background, tomato, peduncle
+    return background, tomato, peduncle, truss
 
 # used to be called visualize_cluster
 def stack_segments(imRGB, background, tomato, peduncle):

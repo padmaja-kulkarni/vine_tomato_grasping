@@ -24,106 +24,95 @@ from detect_crop.util import make_dirs
 
 # tomato rot: 15
 # tomato cases: 48
-N = 10               # tomato file to load
-nDigits = 3
-# ls | cat -n | while read n f; do mv "$f" `printf "%04d.extension" $n`; done
 
+def test_segmentation(dataSet, algorithm):
+    settings = {
+            "rot": {
+                "extension": ".png",
+                "files": 14,
+                "name": "tomato_rot"},
+            "cases": {
+                "extension": ".jpg",
+                "files": 47,
+                "name": "tomato_cases"},
+            "blue": {
+                "extension": ".jpg",
+                "files": 3,
+                "name": "tomato_blue"},
+                    }
+    
+    
+    N = settings[dataSet]["files"]              # tomato file to load
+    extension = settings[dataSet]["extension"]
+    dataSet = settings[dataSet]["name"] # "tomato_rot" #  
+    
+    nDigits = 3
+    # ls | cat -n | while read n f; do mv "$f" `printf "%03d.jpg" $n`; done
+    
+    
+    plt.rcParams["image.cmap"] = 'plasma'
+    plt.rcParams["savefig.format"] = 'pdf' 
+    plt.rcParams["savefig.bbox"] = 'tight' 
+    plt.rcParams['axes.titlesize'] = 20
+    
+    pathCurrent = os.path.dirname(__file__)
+    
+    
+    pwdData = os.path.join(pathCurrent, "data", dataSet)
+    pwdResults = os.path.join(pathCurrent, "results", dataSet, "segmentation_" + algorithm)
+    
+    make_dirs(pwdData)
+    make_dirs(pwdResults)
+    
+    imMax = 255
+    count = 0
+    
+    for iTomato in range(1, N + 1):
+    
+        tomatoID = str(iTomato).zfill(nDigits)
+        tomatoName = tomatoID # "tomato" + "_RGB_" + 
+        fileName = tomatoName + extension
+        
+        imPath = os.path.join(pwdData, fileName)
+        imBGR = cv2.imread(imPath)
+        
+        if imBGR is None:
+            print("Failed to load image from path: %s" %(imPath))
+        else:
+            
+            # color spaces
+            imRGB = cv2.cvtColor(imBGR, cv2.COLOR_BGR2RGB)
+            imHSV = cv2.cvtColor(imRGB, cv2.COLOR_RGB2HSV)
+            imLAB = cv2.cvtColor(imRGB, cv2.COLOR_RGB2LAB)
+            
+            #%%#################
+            ### SEGMENTATION ###
+            ####################
+        
+            if algorithm == "otsu":
+                background, tomato, peduncle, truss = segmentation_otsu_test(imHSV[:,:,1], imLAB[:,:,1], imMax, pwdResults, tomatoID)
+            elif algorithm == "kmeans":
+                background, tomato, peduncle, truss = segmentation_cluster_test(imHSV[:,:,1], imLAB[:,:,1], imMax, pwdResults, tomatoID)
+            
+            segmentsRGB = stack_segments(imRGB, background, truss, np.zeros(tomato.shape, dtype = np.uint8))
+        
+            figureTitle = ""
+            save_img(segmentsRGB, pwdResults, tomatoID + "_img_1", figureTitle = figureTitle)
+            
+        
+            
+            segmentsRGB = stack_segments(imRGB, background, tomato, peduncle)
+            save_img(segmentsRGB, pwdResults, tomatoID + "_img_2", figureTitle = figureTitle)
+        
+        count = count + 1
+        print("completed image %d out of %d" %(count, N))
 
-plt.rcParams["image.cmap"] = 'plasma'
-plt.rcParams["savefig.format"] = 'pdf' 
-plt.rcParams["savefig.bbox"] = 'tight' 
-plt.rcParams['axes.titlesize'] = 20
+def main():
+    # test_segmentation("rot", "otsu")
+    # test_segmentation("rot", "kmeans")
+    # test_segmentation("cases", "otsu")
+    # test_segmentation("cases", "kmeans")
+    test_segmentation("blue", "kmeans")
 
-pathCurrent = os.path.dirname(__file__)
-dataSet = "tomato_cases" # "tomato_rot" # 
-
-pwdData = os.path.join(pathCurrent, "data", dataSet)
-pwdResults = os.path.join(pathCurrent, "results", dataSet, "segmentation")
-
-make_dirs(pwdData)
-make_dirs(pwdResults)
-
-imMax = 255
-count = 0
-
-for iTomato in range(1, N):
-
-    tomatoID = str(iTomato).zfill(nDigits)
-    tomatoName = tomatoID # "tomato" + "_RGB_" + 
-    fileName = tomatoName + ".jpg" #  ".png" #
-    
-    imPath = os.path.join(pwdData, fileName)
-    imBGR = cv2.imread(imPath)
-    [H, W] = imBGR.shape[:2]
-    
-    # Cropping, only works for this specific image!
-    h = int(H/2)
-    w = int(W/2)
-    #row = int(H/4)
-    #col = int(w/1.5)
-    
-    row = H - h
-    col = int(w/1.5)
-    # imBGR = imBGR[row:row + h, col:col + w]
-    
-    
-    # color spaces
-    imRGB = cv2.cvtColor(imBGR, cv2.COLOR_BGR2RGB)
-    imHSV = cv2.cvtColor(imRGB, cv2.COLOR_RGB2HSV)
-    imLAB = cv2.cvtColor(imRGB, cv2.COLOR_RGB2LAB)
-    # imYCrCb = cv2.cvtColor(imRGB, cv2.COLOR_RGB2YCrCb)
-    
-    #%%######################
-    ### background, truss ###
-    #########################
-    # 
-    
-    # RGB
-    # background, tomato, peduncle = segmentation_otsu_test(imRGB[:,:,1], imHSV[:,:,0], imMax)
-    # segmentsRGB = stack_segments(imRGB, background, tomato, np.zeros(tomato.shape, dtype = np.uint8))
-    # save_img(segmentsRGB, pwdResults, '1RGB', figureTitle = 'Green (RGB)')
-    
-    # HSV
-    background, tomato, peduncle = segmentation_cluster_test(imHSV[:,:,1], imLAB[:,:,1], imMax, pwdResults, tomatoID)
-    # background, tomato, peduncle = segmentation_otsu_test(imHSV[:,:,1], imLAB[:,:,1], imMax, pwdResults, tomatoID)
-    segmentsRGB = stack_segments(imRGB, background, tomato, np.zeros(tomato.shape, dtype = np.uint8))
-    
-
-    figureTitle = ""
-    save_img(segmentsRGB, pwdResults, tomatoID + "_img_1", figureTitle = figureTitle)
-    
-
-    
-    segmentsRGB = stack_segments(imRGB, background, tomato, peduncle)
-    save_img(segmentsRGB, pwdResults, tomatoID + "_img_2", figureTitle = figureTitle)
-    
-    
-    count = count + 1
-    # LAB
-    # background, tomato, peduncle = segmentation_otsu_test(imLAB[:,:,1], imHSV[:,:,0], imMax)
-    # segmentsRGB = stack_segments(imRGB, background, tomato, np.zeros(tomato.shape, dtype = np.uint8))
-    # save_img(segmentsRGB, pwdResults, '1LAB', figureTitle = 'A (LAB)')
-    
-    
-    #%%#####################
-    ### tomato, peduncle ###
-    ########################
-    # # HSV
-    # background, tomato, peduncle = segmentation_otsu_test(imHSV[:,:,1], imRGB[:,:,0], imMax)
-    # segmentsRGB = stack_segments(imRGB, background, tomato, peduncle)
-    # save_img(segmentsRGB, pwdResults, '2RGB', figureTitle = 'R (RGB)')
-    
-    
-    # HUE
-    
-    
-    
-    # background, tomato, peduncle = segmentation_otsu_test(imHSV[:,:,1], imLAB[:,:,1], imMax)
-    # segmentsRGB = stack_segments(imRGB, background, tomato, peduncle)
-    # save_img(segmentsRGB, pwdResults, '2LAB', figureTitle = 'A (LAB)')
-    
-    
-    
-    # background, tomato, peduncle = segmentation_otsu_test(imHSV[:,:,1], imYCrCb[:,:,1], imMax)
-    # segmentsRGB = stack_segments(imRGB, background, tomato, peduncle)
-    # save_img(segmentsRGB, pwdResults, '2YCrCb', figureTitle = 'Cr (YCbCr)')
+if __name__ == '__main__':
+    main()

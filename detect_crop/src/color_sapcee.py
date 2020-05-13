@@ -28,7 +28,7 @@ from detect_crop.util import stack_segments
 from detect_crop.util import segmentation_otsu_test
 from detect_crop.util import make_dirs
 #%% init
-N = 15 #  48 #        # tomato file to load
+N = 4 #  48 #        # tomato file to load
 nDigits = 3
 
 plt.rcParams["image.cmap"] = 'plasma'
@@ -37,7 +37,7 @@ plt.rcParams["savefig.bbox"] = 'tight'
 plt.rcParams['axes.titlesize'] = 20
 
 pathCurrent = os.path.dirname(__file__)
-dataSet = "tomato_rot" # "tomato_cases" # 
+dataSet = "tomato_blue" # "tomato_cases" # 
 
 pwdData = os.path.join(pathCurrent, "data", dataSet)
 pwdResults = os.path.join(pathCurrent, "results", dataSet, "color_space")
@@ -52,7 +52,7 @@ for iTomato in range(1, N):
 
     tomatoID = str(iTomato).zfill(nDigits)
     tomatoName = tomatoID # "tomato" + "_RGB_" + 
-    fileName = tomatoName + ".png" # ".jpg" # 
+    fileName = tomatoName + ".jpg" # ".png" # 
     
     imPath = os.path.join(pwdData, fileName)
     imBGR = cv2.imread(imPath)
