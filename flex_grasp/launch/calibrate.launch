@@ -4,7 +4,7 @@
 
     <arg name="start_simulator" default="true" doc="Start a simulated tracking system with a trivial noise model" />
 
-    <arg name="namespace_prefix" default="handeyecalibration" />
+    <arg name="namespace_prefix" default="calibration" />
     <arg name="eye_on_hand" default="false" />
     <arg name="use_iiwa" default="false" />
     <arg name="use_interbotix" default="true" />
@@ -12,13 +12,13 @@
 
 
 
-    <arg if="$(arg use_iiwa)" name="robot_base_frame" value="iiwa_link_0" />
+    <arg if="$(arg use_iiwa)" name="robot_base_frame" value="world" /> <!-- iiwa_link_0 -->
     <arg if="$(arg use_iiwa)" name="robot_effector_frame" value="iiwa_link_ee" />
     <arg if="$(arg use_iiwa)" name="manipulator_group_name" value="manipulator" />
 
 
 
-    <arg if="$(arg use_interbotix)" name="robot_base_frame" value="$(arg robot_name)/base_link"/>
+    <arg if="$(arg use_interbotix)" name="robot_base_frame" value="world"/> <!-- $(arg robot_name)/base_link -->
     <arg if="$(arg use_interbotix)" name="robot_effector_frame" value="$(arg robot_name)/ee_arm_link"/>
     <arg if="$(arg use_interbotix)" name="manipulator_group_name" value="interbotix_arm" />
 
