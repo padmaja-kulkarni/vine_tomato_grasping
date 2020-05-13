@@ -12,7 +12,7 @@
     <arg name="hardware_interface" default="PositionJointInterface"/>
     <arg name="robot_name" default="iiwa" />
 
-    <arg name="ee" />
+    <arg name="ee" default="sdh"/>
     <arg name="robot_model" default="iiwa7"/>
 
     <arg name="camera_sim" default="true"/>
