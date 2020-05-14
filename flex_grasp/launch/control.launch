@@ -13,7 +13,7 @@
 
 	<group ns="$(arg robot_name)">
 
-		<node name = "my_rqt_dashboard" 
+		<node name = "my_rqt_dashboard"
 			pkg = "rqt_gui"
 			type = "rqt_gui"
 			respawn = "false"
@@ -57,8 +57,8 @@
 			<param name ="debug" value="$(arg move_robot_debug)"/>
     </node>
 
-		<node pkg="flex_grasp"
-			name="visualize_object"
+		<node name="visualize_object"
+			pkg="flex_grasp"
 			type="visualize_object.py"
 			output="screen">
 			<remap from="/attached_collision_object" to="/$(arg robot_name)/attached_collision_object"/>

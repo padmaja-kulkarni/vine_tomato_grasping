@@ -7,7 +7,7 @@ Created on Tue Mar 10 10:09:14 2020
 """
 
 from moveit_commander import MoveItCommanderException
-from geometry_msgs.msg import Pose, PoseStamped, Transform, Point
+from geometry_msgs.msg import Pose, PoseStamped, Transform, Point, Quaternion
 from moveit_commander.conversions import pose_to_list
 
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
@@ -41,7 +41,7 @@ def position_to_list(position_msg):
 def list_to_position(position_list):
     position_msg = Point()
 
-    if len(pose_list) == 3:
+    if len(position_list) == 3:
         position_msg.x = position_list[0]
         position_msg.y = position_list[1]
         position_msg.z = position_list[2]
@@ -60,3 +60,19 @@ def orientation_to_list(orientation_msg):
     orientation.append(orientation_msg.w)
 
     return orientation
+
+def list_to_orientation(orientation_list):
+    if len(orientation_list) == 3:
+        quat_list = quaternion_from_euler(orientation_list[0], orientation_list[1], orientation_list[2])
+    elif len(orientation_list) == 4:
+        quat_list = orientation_list
+    else: 
+        raise MoveItCommanderException("Expected orinetation list containing 3 (x, y, z) or 4 (x, y, z, w) elements")
+    
+    orientation_msg = Quaternion()
+    orientation_msg.x = quat_list[0]
+    orientation_msg.y = quat_list[1]
+    orientation_msg.z = quat_list[2]
+    orientation_msg.w = quat_list[3]
+    
+    return orientation_msg
