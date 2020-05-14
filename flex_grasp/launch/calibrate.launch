@@ -10,13 +10,14 @@
     <arg name="use_interbotix" default="true" />
     <arg name="robot_name" default="px150"/>
 
-
+    <!-- Aruco settings -->
+    <arg name="track_aruco" default="true" doc="When set to false a tracking simulator will be used"/>
+    <arg name="marker_size" default="0.04" doc="Size of the ArUco marker used, in meters"/>
+    <arg name="marker_id" default="26" doc="The ID of the ArUco marker used"  />
 
     <arg if="$(arg use_iiwa)" name="robot_base_frame" value="world" /> <!-- iiwa_link_0 -->
     <arg if="$(arg use_iiwa)" name="robot_effector_frame" value="iiwa_link_ee" />
     <arg if="$(arg use_iiwa)" name="manipulator_group_name" value="manipulator" />
-
-
 
     <arg if="$(arg use_interbotix)" name="robot_base_frame" value="world"/> <!-- $(arg robot_name)/base_link -->
     <arg if="$(arg use_interbotix)" name="robot_effector_frame" value="$(arg robot_name)/ee_arm_link"/>
@@ -36,11 +37,11 @@
       </include>
     </group>
 
-    <arg name="tracking_base_frame" value="tracking_origin" />
-    <arg name="tracking_marker_frame" value="tracking_marker" />
+    <arg name="tracking_base_frame" value="camera_bottom_screw_frame" />
+    <arg name="marker_frame" value="tracking_marker" />
 
     <!-- start the simulated tracking -->
-    <node name="tracking_simulator" pkg="flex_grasp" type="tracking_simulator.py" output="screen">
+    <node unless="$(arg track_aruco)"  name="tracking_simulator" pkg="flex_grasp" type="tracking_simulator.py" output="screen">
         <!-- if false, it computes the tracking output with respect to the ground truth and publishes it wrt the calibration result -->
         <param name="is_calibration" value="true" />
 
@@ -58,7 +59,7 @@
         <param if="$(arg eye_on_hand)" name="arbitrary_marker_placement_transformation" value="1 0 0.5 0 0 0 1" />
 
         <param name="tracking_base_frame" value="$(arg tracking_base_frame)" />
-        <param name="tracking_marker_frame" value="$(arg tracking_marker_frame)" />
+        <param name="tracking_marker_frame" value="$(arg marker_frame)" />
         <param name="robot_base_frame" value="$(arg robot_base_frame)" />
         <param name="robot_effector_frame" value="$(arg robot_effector_frame)" />
 
@@ -66,6 +67,19 @@
         <param name="frequency" value="10" />
         <param name="translation_noise_stdev" value="0.0001" />
         <param name="rotation_noise_stdev" value="0.00001" />
+    </node>
+
+
+     <!-- start ArUco -->
+    <node if="$(arg track_aruco)" name="aruco_tracker" pkg="aruco_ros" type="single">
+        <remap from="/camera_info" to="$(arg robot_name)/camera/color/camera_info" />
+        <remap from="/image" to="$(arg robot_name)/camera/color/image_raw" />
+        <param name="image_is_rectified" value="false"/>
+        <param name="marker_size"        value="$(arg marker_size)"/>
+        <param name="marker_id"          value="$(arg marker_id)"/>
+        <param name="reference_frame"    value="$(arg robot_base_frame)"/>
+        <param name="camera_frame"       value="camera_color_optical_frame"/>
+        <param name="marker_frame"       value="$(arg marker_frame)" />
     </node>
 
     <!-- start easy_handeye calibration procedure -->
@@ -77,7 +91,7 @@
         <arg name="publish_dummy" value="false" /> <!-- in our case it is done by the tracking simulator -->
 
         <arg name="tracking_base_frame" value="$(arg tracking_base_frame)" />
-        <arg name="tracking_marker_frame" value="$(arg tracking_marker_frame)" />
+        <arg name="tracking_marker_frame" value="$(arg marker_frame)" />
         <arg name="robot_base_frame" value="$(arg robot_base_frame)" />
         <arg name="robot_effector_frame" value="$(arg robot_effector_frame)" />
 
