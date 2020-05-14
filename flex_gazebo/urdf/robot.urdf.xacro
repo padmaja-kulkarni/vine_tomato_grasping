@@ -9,6 +9,10 @@
   <!--Import the lbr iiwa macro -->
   <xacro:include filename="$(find iiwa_description)/urdf/iiwa7.xacro"/>
 
+
+  <!-- Impoprt the aruco marker -->
+  <xacro:include filename="$(find flex_gazebo)/urdf/marker/marker.xacro"/>
+
   <!-- import the camera -->
   <xacro:include filename="$(find realsense2_description)/urdf/_d435.urdf.xacro" />
   <xacro:include filename="$(find flex_gazebo)/urdf/camera/camera.gazebo.xacro" />
@@ -44,6 +48,9 @@
   <xacro:arg name="endeffector_origin_xyz" default="0 0 0"/>
   <xacro:arg name="endeffector_origin_rpy" default="0 0 0"/>
   <xacro:arg name="use_nominal_extrinsics" default="$(arg camera_sim)"/>
+
+  <xacro:arg name="marker_origin_xyz" default="0 0 0"/>
+  <xacro:arg name="marker_origin_rpy" default="0 0 0"/>
 
 
   <!-- Fix to world -->
@@ -81,6 +88,11 @@
     <xacro:px150>
     </xacro:px150>
   </xacro:if>
+
+
+  <xacro:marker parent_link="px150/ee_arm_link" size="0.02">
+    <origin xyz="$(arg marker_origin_xyz)" rpy="$(arg marker_origin_rpy)" />
+  </xacro:marker>
 
   <!-- camera -->
   <xacro:sensor_d435 parent="world" name="$(arg camera_name)" use_nominal_extrinsics="$(arg use_nominal_extrinsics)">

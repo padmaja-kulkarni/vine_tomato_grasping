@@ -14,6 +14,11 @@
       <uri>model://sun</uri>
     </include>
 
+
+    <include>
+      <uri>model://marker26_8cm</uri>
+      <pose>0 0.4 .24 0 0 0</pose>
+    </include>
     <!---
     <include>
         <uri>model://realsense_camera</uri>

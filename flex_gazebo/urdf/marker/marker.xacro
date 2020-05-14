@@ -1,0 +1,41 @@
+<?xml version="1.0" ?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+<xacro:include filename="$(find flex_gazebo)/urdf/marker/marker.gazebo.xacro" />
+
+  <xacro:macro name="marker" params="parent_link size *origin">
+    <xacro:property name = "ID" value="26"/>
+    <xacro:property name = "xyz" value="-0.01 0 0.035"/>
+
+    <joint name="marker__${ID}_joint" type="fixed">
+      <xacro:insert_block name="origin" />
+      <parent link="${parent_link}"/>
+      <child link="marker_${ID}" />
+    </joint>
+
+    <link name="marker_${ID}">
+      <inertial>
+        <origin xyz="${xyz}" rpy="0 0 0"/>
+        <mass value="0.001"/>
+        <inertia ixx="0"  ixy="0"  ixz="0" iyy="0" iyz="0" izz="0" />
+      </inertial>
+
+      <visual>
+        <origin xyz="${xyz}" rpy="0 0 0"/>
+        <geometry>
+          <box size="${size} ${size} 0.001"/>
+        </geometry>
+        <materia name="Marker"/> <!-- Aruco/marker26_8cm -->
+      </visual>
+
+      <collision>
+        <origin xyz="${xyz}" rpy="0 0 0"/>
+        <geometry>
+          <box size="${size} ${size} 0.001"/>
+        </geometry>
+      </collision>
+    </link>
+
+    <xacro:marker_gazebo ID="${ID}"/>
+  </xacro:macro>
+</robot>
