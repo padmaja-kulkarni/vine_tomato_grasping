@@ -118,14 +118,17 @@
       args="-d $(find easy_handeye_demo)/launch/iiwa_stack_config.rviz"
       output="screen" />
 
-    <node name="calibrate"
-      pkg="flex_grasp"
-      type="calibrate.py"
-      output="screen">
-      <param name ="debug" value="$(arg calibrate_debug)"/>
-    </node>
+
 
     <group ns="$(arg robot_name)">
+
+      <node name="calibrate"
+        pkg="flex_grasp"
+        type="calibrate.py"
+        output="screen">
+        <param name ="debug" value="$(arg calibrate_debug)"/>
+      </node>
+
       <node name="move_robot"
 
         pkg="flex_grasp"

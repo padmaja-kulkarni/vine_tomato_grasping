@@ -241,7 +241,7 @@ class MoveRobot(object):
         if goal_frame == planning_frame:
             return True
         else:
-            rospy.logwarn("[MOVE ROBOT] Goal pose specified with respect to wronf frame: sould be specified with respect to %s, but is be specified with respect to %s", planning_frame, goal_frame)
+            rospy.logwarn("[MOVE ROBOT] Goal pose specified with respect to wrong frame: sould be specified with respect to %s, but is be specified with respect to %s", planning_frame, goal_frame)
             return False
 
 
@@ -323,7 +323,6 @@ class MoveRobot(object):
     def go_to_pre_grasp_pose(self):
         rospy.logdebug("[MOVE ROBOT] Going to pre grasp pose")
         success = self.go_to_pose(self.pre_grasp_pose)
-        # self.pre_grasp_pose = None
         return success
 
     def go_to_pre_place_pose(self):
@@ -482,6 +481,7 @@ class MoveRobot(object):
         # General actions, non state dependent
         if self.command == "move":
             success = self.go_to_pre_grasp_pose()
+            self.pre_grasp_pose = None
 
         elif self.command == "home":
             success = self.home_man()
