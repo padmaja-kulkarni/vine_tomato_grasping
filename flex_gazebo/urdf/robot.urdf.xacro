@@ -90,7 +90,7 @@
   </xacro:if>
 
 
-  <xacro:marker parent_link="px150/ee_arm_link" size="0.02">
+  <xacro:marker parent_link="px150/ee_arm_link" size="0.04" ID ="26" >
     <origin xyz="$(arg marker_origin_xyz)" rpy="$(arg marker_origin_rpy)" />
   </xacro:marker>
 

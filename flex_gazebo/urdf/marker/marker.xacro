@@ -3,9 +3,8 @@
 
 <xacro:include filename="$(find flex_gazebo)/urdf/marker/marker.gazebo.xacro" />
 
-  <xacro:macro name="marker" params="parent_link size *origin">
-    <xacro:property name = "ID" value="26"/>
-    <xacro:property name = "xyz" value="-0.01 0 0.035"/>
+  <xacro:macro name="marker" params="parent_link size ID *origin">
+    <xacro:property name = "xyz" value="-0.02 0 0.036"/>
 
     <joint name="marker__${ID}_joint" type="fixed">
       <xacro:insert_block name="origin" />
@@ -34,7 +33,9 @@
           <box size="${size} ${size} 0.001"/>
         </geometry>
       </collision>
+
     </link>
+
 
     <xacro:marker_gazebo ID="${ID}"/>
   </xacro:macro>

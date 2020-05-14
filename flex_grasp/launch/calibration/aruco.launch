@@ -2,7 +2,7 @@
 
 <launch>
 
-  <arg name="marker_size" doc="Size of the ArUco marker used, in meters" default="0.08"/>
+  <arg name="marker_size" doc="Size of the ArUco marker used, in meters" default="0.04"/>
   <arg name="marker_id" doc="The ID of the ArUco marker used" default="26" />
      <!-- start ArUco -->
   <node name="aruco_tracker" pkg="aruco_ros" type="single">
