@@ -23,8 +23,8 @@ from easy_handeye.handeye_client import HandeyeClient
 from func.ros_utils import wait_for_success
 from func.conversions import list_to_position, list_to_orientation
 
-class Calibrate(object):
-    """Calibrate"""
+class Calibration(object):
+    """Calibration"""
     def __init__(self):    
 
         self.debug_mode = rospy.get_param("/px150/calibration_eye_on_base/calibrate/debug")
@@ -86,16 +86,17 @@ class Calibrate(object):
         z_min = 0.08 # 0.05
 
         
-        intervals = 2
-        x_vec = np.linspace(x_min, x_min + 2*x_amplitude, intervals)
-        y_vec = np.linspace(y_min, y_min + 2*y_amplitude, intervals)
-        z_vec = np.linspace(z_min, z_min + 2*z_amplitude, intervals)
+        pos_intervals = 2
+        x_vec = np.linspace(x_min, x_min + 2*x_amplitude, pos_intervals)
+        y_vec = np.linspace(y_min, y_min + 2*y_amplitude, pos_intervals)
+        z_vec = np.linspace(z_min, z_min + 2*z_amplitude, pos_intervals)
         
         ai_amplitude = 20.0/180*np.pi
         aj_amplitude = 20.0/180*np.pi
         
-        ai_vec = np.linspace(-ai_amplitude, ai_amplitude, intervals)
-        aj_vec = np.linspace(-aj_amplitude, aj_amplitude, intervals)
+        rot_intervals = 3
+        ai_vec = np.linspace(-ai_amplitude, ai_amplitude, rot_intervals)
+        aj_vec = np.linspace(-aj_amplitude, aj_amplitude, rot_intervals)
         
         poses = []
         
@@ -115,7 +116,7 @@ class Calibrate(object):
         pose_array.poses = poses
         self.pose_array = pose_array
         
-    def go_to_poses(self):
+    def calibrate(self):
         
         # does pose array contain something?
         if self.pose_array is None:
@@ -147,7 +148,8 @@ class Calibrate(object):
             
             # get response
             success = wait_for_success("/px150/move_robot/e_out", 5)
-            attempts = 3
+            attempts = 1
+            
             if success:
                 # wait a small amount of time for vibrations to stop
                 rospy.sleep(0.5)
@@ -160,9 +162,8 @@ class Calibrate(object):
                     except:
                         rospy.logwarn("[CALIBRATE] Failed to take sample, marker might not be visible. Attempts remaining: %s", attempts - attempt - 1)
 
-        rospy.loginfo("computing calibration")
+
         result = self.client.compute_calibration()
-        rospy.loginfo("result: %s", result)
         self.client.save()
         return True
 
@@ -172,15 +173,15 @@ class Calibrate(object):
 def main():
     try:
         
-        calibrate = Calibrate()
+        calibration = Calibration()
         rate = rospy.Rate(1)
         
-        calibrate.init_poses()
-        calibrate.pub_pose_array.publish(calibrate.pose_array)
+        calibration.init_poses()
+        calibration.pub_pose_array.publish(calibration.pose_array)
         
         rospy.sleep(10)
         
-        success = calibrate.go_to_poses()
+        success = calibration.calibrate()
         if success:
             rospy.loginfo("Calibration finished succesfully")
         else:

@@ -39,9 +39,9 @@
     <xacro:arg name="camera_origin_xyz" default="0 0.5 1.2"/>
   </xacro:if>
   <xacro:if value="$(arg use_interbotix)">
-    <xacro:arg name="camera_origin_xyz" default="0 0.5 1.0"/>
+    <xacro:arg name="camera_origin_xyz" default="0.1 0.45 0.9"/>
   </xacro:if>
-  
+
   <xacro:arg name="camera_origin_rpy" default="3.1415 1.57 -1.57"/>
 
   <xacro:arg name="iiwa_origin_xyz" default="0.0 0.0 0.0"/>
