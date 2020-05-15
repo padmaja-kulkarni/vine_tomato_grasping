@@ -86,13 +86,18 @@ class Calibration(object):
         z_min = 0.08 # 0.05
 
         
-        pos_intervals = 2
-        x_vec = np.linspace(x_min, x_min + 2*x_amplitude, pos_intervals)
-        y_vec = np.linspace(y_min, y_min + 2*y_amplitude, pos_intervals)
-        z_vec = np.linspace(z_min, z_min + 2*z_amplitude, pos_intervals)
+        pos_intervals = 1
+        if pos_intervals == 1:
+            x_vec = [x_min + x_amplitude]
+            y_vec = [y_min + y_amplitude]
+            z_vec = [z_min + z_amplitude]
+        else:
+            x_vec = np.linspace(x_min, x_min + 2*x_amplitude, pos_intervals)
+            y_vec = np.linspace(y_min, y_min + 2*y_amplitude, pos_intervals)
+            z_vec = np.linspace(z_min, z_min + 2*z_amplitude, pos_intervals)
         
-        ai_amplitude = 20.0/180*np.pi
-        aj_amplitude = 20.0/180*np.pi
+        ai_amplitude = 30.0/180*np.pi
+        aj_amplitude = 30.0/180*np.pi
         
         rot_intervals = 3
         ai_vec = np.linspace(-ai_amplitude, ai_amplitude, rot_intervals)

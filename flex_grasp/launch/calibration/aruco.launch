@@ -4,6 +4,13 @@
 
   <arg name="marker_size" doc="Size of the ArUco marker used, in meters" default="0.04"/>
   <arg name="marker_id" doc="The ID of the ArUco marker used" default="26" />
+
+  <arg name="robot_name" value="px150"/>
+  <arg name="robot_base_frame" value="$(arg robot_name)/base_link"/>
+
+  <arg name="tracking_base_frame" value="camera_bottom_screw_frame" />
+  <arg name="marker_frame" value="tracking_marker" />
+
      <!-- start ArUco -->
   <node name="aruco_tracker" pkg="aruco_ros" type="single">
       <remap from="/camera_info" to="px150/camera/color/camera_info" />
@@ -11,8 +18,8 @@
       <param name="image_is_rectified" value="false"/>
       <param name="marker_size"        value="$(arg marker_size)"/>
       <param name="marker_id"          value="$(arg marker_id)"/>
-      <param name="reference_frame"    value="world"/>
+      <param name="reference_frame"    value="$(arg tracking_base_frame)"/>
       <param name="camera_frame"       value="camera_color_optical_frame"/>
-      <param name="marker_frame"       value="camera_marker" />
+      <param name="marker_frame"       value="$(arg marker_frame)" />
   </node>
 </launch>

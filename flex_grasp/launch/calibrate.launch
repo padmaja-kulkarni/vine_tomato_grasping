@@ -10,9 +10,9 @@
     <arg name="use_interbotix" default="true" />
     <arg name="robot_name" default="px150"/>
 
-
+    <!-- set debug mode-->
     <arg name="move_robot_debug" default="false"/>
-    <arg name="calibrate_debug" default="true"/>
+    <arg name="calibrate_debug" default="false"/>
 
     <!-- Aruco settings -->
     <arg name="track_aruco" default="true" doc="When set to false a tracking simulator will be used"/>
@@ -24,24 +24,10 @@
     <arg if="$(arg use_iiwa)" name="manipulator_group_name" value="manipulator" />
     <arg if="$(arg use_iiwa)" name="ee_group_name" value="gripper" />
 
-    <arg if="$(arg use_interbotix)" name="robot_base_frame" value="world"/> <!-- $(arg robot_name)/base_link -->
+    <arg if="$(arg use_interbotix)" name="robot_base_frame" value="$(arg robot_name)/base_link"/> <!-- $(arg robot_name)/base_link -->
     <arg if="$(arg use_interbotix)" name="robot_effector_frame" value="$(arg robot_name)/ee_arm_link"/>
     <arg if="$(arg use_interbotix)" name="manipulator_group_name" value="interbotix_arm" />
     <arg if="$(arg use_interbotix)" name="ee_group_name" value="interbotix_gripper" />
-    <!--
-    <group if="$(arg use_iiwa)">
-      <include file="$(find flex_grasp)/launch/iiwa_enviroment.launch">
-          <arg name="rviz" value="false" />
-      </include>
-    </group>
-
-
-    <group if="$(arg use_interbotix)">
-      <include file="$(find flex_grasp)/launch/interbotix_enviroment.launch">
-          <arg name="rviz" value="false" />
-      </include>
-    </group>
-    -->
 
     <arg name="tracking_base_frame" value="camera_bottom_screw_frame" />
     <arg name="marker_frame" value="tracking_marker" />
@@ -83,7 +69,7 @@
         <param name="image_is_rectified" value="false"/>
         <param name="marker_size"        value="$(arg marker_size)"/>
         <param name="marker_id"          value="$(arg marker_id)"/>
-        <param name="reference_frame"    value="$(arg robot_base_frame)"/>
+        <param name="reference_frame"    value="$(arg tracking_base_frame)"/>
         <param name="camera_frame"       value="camera_color_optical_frame"/>
         <param name="marker_frame"       value="$(arg marker_frame)" />
     </node>
@@ -141,7 +127,7 @@
         <param name ="debug" value="$(arg move_robot_debug)"/>
       </node>
 
-      <param name="planning_frame" value="/world"/>
+      <param name="planning_frame" value="world"/>
       <param name="manipulator_group_name" value="$(arg manipulator_group_name)"/>
       <param name="ee_group_name" value="$(arg ee_group_name)"/>
     </group>
