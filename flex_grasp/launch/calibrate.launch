@@ -12,7 +12,7 @@
 
 
     <arg name="move_robot_debug" default="false"/>
-    <arg name="calibrate_debug" default="false"/>
+    <arg name="calibrate_debug" default="true"/>
 
     <!-- Aruco settings -->
     <arg name="track_aruco" default="true" doc="When set to false a tracking simulator will be used"/>
@@ -91,6 +91,7 @@
     <!-- start easy_handeye calibration procedure -->
     <include ns="/$(arg robot_name)" file="$(find easy_handeye)/launch/calibrate.launch" >
         <arg name="start_rviz" value="false" />
+        <arg name="start_rqt" value="true" />
 
         <arg name="namespace_prefix" value="$(arg namespace_prefix)" />
         <arg name="eye_on_hand" value="$(arg eye_on_hand)" />
@@ -101,7 +102,7 @@
         <arg name="robot_base_frame" value="$(arg robot_base_frame)" />
         <arg name="robot_effector_frame" value="$(arg robot_effector_frame)" />
 
-        <arg name="freehand_robot_movement" value="false" />
+        <arg name="freehand_robot_movement" value="false" /> <!-- we dont want to use the -->
         <arg name="robot_velocity_scaling" value="0.5" />
         <arg name="robot_acceleration_scaling" value="0.2" />
 

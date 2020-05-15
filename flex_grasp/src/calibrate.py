@@ -16,8 +16,12 @@ from geometry_msgs.msg import PoseStamped, PoseArray, Pose
 import tf2_ros # for error messages
 import tf2_geometry_msgs
 
-from func.conversions import list_to_position, list_to_orientation
+from easy_handeye.handeye_client import HandeyeClient
 
+
+# custom functions
+from func.ros_utils import wait_for_success
+from func.conversions import list_to_position, list_to_orientation
 
 class Calibrate(object):
     """Calibrate"""
@@ -27,7 +31,6 @@ class Calibrate(object):
         
         if self.debug_mode:
             log_level = rospy.DEBUG
-            rospy.loginfo("[CALIBRATE] Luanching move robot in debug mode")
         else:
             log_level = rospy.INFO
         
@@ -35,12 +38,26 @@ class Calibrate(object):
                 anonymous=True,
                 log_level=log_level)
         
+        if self.debug_mode:
+            rospy.loginfo("[CALIBRATE] Luanching calibrate in debug mode")
+        
+
+        rospy.sleep(5)
+        
+        # rospy.loginfo("[CALIBRATE] initializing hand eye client")
+        # self.client = HandeyeClient()
+        
         # Listen
+        rospy.loginfo("[CALIBRATE] initializing tf2_ros buffer")
         self.tfBuffer = tf2_ros.Buffer()
         self.listener = tf2_ros.TransformListener(self.tfBuffer)
         
         
-        self.frame = "px150/base_link"
+        self.calibration_frame = "px150/base_link"
+        self.planning_frame = "world"
+        self.pose_array = None
+        
+        # rospy.Subscriber("/aruco_tracker/pose", PoseStamped, self.aruco_tracker_cb)
     
         self.pub_move_robot_command = rospy.Publisher("move_robot/e_in",
                                   String, queue_size=10, latch=True)
@@ -52,13 +69,13 @@ class Calibrate(object):
                                 PoseArray, queue_size=5, latch=True)
         
         
+    # def aruco_tracker_cb(self, msg):
+    #     pass
+        
     def init_poses(self):
         pose_array = PoseArray()
-        pose_array.header.frame_id = self.frame
+        pose_array.header.frame_id = self.calibration_frame
         pose_array.header.stamp = rospy.Time.now()
-        
-        
-
         
         x_amplitude = 0.05
         y_amplitude = 0.08
@@ -100,12 +117,21 @@ class Calibrate(object):
         
     def go_to_poses(self):
         
+        # does pose array contain something?
+        if self.pose_array is None:
+            rospy.logwarn("[CALIBRATE] pose_array is still empty")
+            return False
+        
         try:
-            trans = self.tfBuffer.lookup_transform('world',self.pose_array.header.frame_id,  rospy.Time(0))
+            trans = self.tfBuffer.lookup_transform(self.planning_frame,self.pose_array.header.frame_id,  rospy.Time(0))
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
-            pass
+            rospy.logwarn("[CALIBRATE] failed to get transform from %s to %s", self.pose_array.header.frame_id, self.planning_frame)
+            return False
+
         
         for pose in self.pose_array.poses:
+            if rospy.is_shutdown():
+                return False
             
             pose_stamped = PoseStamped()
             pose_stamped.header = self.pose_array.header
@@ -120,55 +146,39 @@ class Calibrate(object):
             self.pub_move_robot_command.publish("move")
             
             # get response
-            success = wait_for_success("move_robot/e_out", 10)
+            success = wait_for_success("move_robot/e_out", 5)
         
             if success:
-                pass
+                # wait a small amount of time for vibrations to stop
+                rospy.sleep(0.1)
+                # sample_list = self.client.take_sample()
+                # rospy.loginfo("taking sample, sample list: %s", sample_list)
 
-def wait_for_success(topic, timeout):
+        # rospy.loginfo("computing calibration")
+        # result = self.client.compute_calibration()
+        # rospy.loginfo("result: %s", result)
+        # self.client.save()
+        return True
 
 
-    start_time = rospy.get_time()
-    curr_time = rospy.get_time()
-
-    # rospy.logdebug("==WAITING FOR SUCCESS==")
-    # rospy.logdebug("start time: %s", start_time)
-    # rospy.logdebug("current time: %s", curr_time)
-    while (curr_time - start_time < timeout): # and not rospy.is_shutdown():
-        # rospy.logdebug("current time: %s", curr_time)
-        try:
-            message = rospy.wait_for_message(topic, String, timeout)
-            if message.data == "e_success":
-                rospy.logdebug("[CALIBRATE] Command succeeded: received %s on topic %s", message.data, topic)
-                return True
-            elif message.data == "":
-                pass
-            else:
-                rospy.logwarn("[CALIBRATE] Command failed: node returned %s on topic %s", message.data, topic)
-                return False
-        except:
-            rospy.logwarn("[CALIBRATE] Command failed: timeout exceeded while waiting for message on topic %s", topic)
-            return False
-
-        rospy.sleep(0.2)
-        curr_time = rospy.get_time()
-
-    rospy.logwarn("[CALIBRATE] Command failed: node did not return success within timeout on topic %s", topic)
-    return False
 
 
 def main():
     try:
         
         calibrate = Calibrate()
-        rate = rospy.Rate(10)
+        rate = rospy.Rate(1)
         
         calibrate.init_poses()
         calibrate.pub_pose_array.publish(calibrate.pose_array)
         
         rospy.sleep(10)
         
-        calibrate.go_to_poses()
+        success = calibrate.go_to_poses()
+        if success:
+            rospy.loginfo("Calibration finished succesfully")
+        else:
+            rospy.logwarn("Calibration failed")
         
         while not rospy.core.is_shutdown():
             rate.sleep()
