@@ -2,6 +2,7 @@
 <launch>
 
   <!-- camera -->
+  <arg name="robot_name" default="px150"/>
   <arg name="camera_name" default="camera"/>
   <arg name="use_nominal_extrinsics" default="true"/>
   <arg name="camera_origin_xyz" default="'0 0.6 1.2'"/>
@@ -9,7 +10,7 @@
 
 
   <!-- robot -->
-  <param name="robot_description" command="$(find xacro)/xacro --inorder '$(find flex_gazebo)/urdf/camera.urdf.xacro'
+  <param name="$(arg robot_name)/robot_description" command="$(find xacro)/xacro --inorder '$(find flex_gazebo)/urdf/camera.urdf.xacro'
     use_nominal_extrinsics:=$(arg use_nominal_extrinsics)
     camera_name:=$(arg camera_name)
     "/>

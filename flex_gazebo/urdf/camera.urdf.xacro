@@ -3,16 +3,21 @@
 
   <!-- import the camera -->
   <xacro:include filename="$(find realsense2_description)/urdf/_d435.urdf.xacro" />
-
   <xacro:include filename="$(find flex_gazebo)/urdf/camera/camera.gazebo.xacro" />
 
+  <!-- Impoprt the aruco marker -->
+  <xacro:include filename="$(find flex_gazebo)/urdf/marker/marker.xacro"/>
 
   <!-- camera params-->
   <xacro:arg name="camera_name" default="camera"/>
-  <xacro:arg name="camera_origin_xyz" default="0 0.6 1.2"/>
+  <xacro:arg name="camera_origin_xyz" default="0 0 0.5"/>
   <xacro:arg name="camera_origin_rpy" default="3.1415 1.57 -1.57"/>
   <xacro:arg name="use_nominal_extrinsics" default="true"/>
 
+
+  <!-- marker params -->
+  <xacro:arg name="marker_origin_xyz" default="0 0 0"/>
+  <xacro:arg name="marker_origin_rpy" default="0 0 0"/>
 
   <!-- Fix to world just for testing -->
   <link name="world"/>
@@ -23,6 +28,13 @@
   </xacro:sensor_d435>
 
   <xacro:my_camera name="$(arg camera_name)"/>
+
+  <xacro:marker parent_link="world" size="0.04" ID ="26" >
+    <origin xyz="$(arg marker_origin_xyz)" rpy="$(arg marker_origin_rpy)" />
+  </xacro:marker>
+
+
+
 </robot>
 
 <!-- This does not belong here! -->

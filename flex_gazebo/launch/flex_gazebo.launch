@@ -36,6 +36,7 @@
     <env name="GAZEBO_RESOURCE_PATH" value="$(find interbotix_gazebo)"/>
 
     <!-- Loads the Gazebo world. -->
+    <!--
     <include file="$(find flex_gazebo)/launch/flex_world.launch">
         <arg name="hardware_interface" value="$(arg hardware_interface)" />
         <arg name="robot_name" value="$(arg robot_name)" />
@@ -55,6 +56,12 @@
         <arg name="object_angle" value="$(arg object_angle)"/>
         <arg name="object_name" value="$(arg object_name)"/>
         <arg name="object_dimension" value="$(arg object_dimension)"/>
+    </include>
+  -->
+
+
+    <include file="$(find flex_gazebo)/launch/camera_world.launch">
+      <arg name="robot_name" value="$(arg robot_name)" />
     </include>
 
     <!-- Spawn controllers - it uses a JointTrajectoryController -->

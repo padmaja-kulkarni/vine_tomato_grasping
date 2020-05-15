@@ -56,7 +56,7 @@
   <xacro:arg name="endeffector_origin_rpy" default="0 0 0"/>
   <xacro:arg name="use_nominal_extrinsics" default="$(arg camera_sim)"/>
 
-  <xacro:arg name="marker_origin_xyz" default="0 0 0.05"/>
+  <xacro:arg name="marker_origin_xyz" default="-0.02 0 0.036"/>
   <xacro:arg name="marker_origin_rpy" default="0 0 0"/>
 
 

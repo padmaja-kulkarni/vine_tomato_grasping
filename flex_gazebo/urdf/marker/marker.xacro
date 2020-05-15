@@ -4,7 +4,7 @@
 <xacro:include filename="$(find flex_gazebo)/urdf/marker/marker.gazebo.xacro" />
 
   <xacro:macro name="marker" params="parent_link size ID *origin">
-    <xacro:property name = "xyz" value="-0.02 0 0.036"/>
+    <xacro:property name = "xyz" value="0 0 0"/>
 
     <joint name="marker__${ID}_joint" type="fixed">
       <xacro:insert_block name="origin" />

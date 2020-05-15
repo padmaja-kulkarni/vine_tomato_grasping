@@ -158,11 +158,11 @@
       </include>
     </group>
 
-
+    <!--
     <include file="$(find easy_handeye)/launch/publish.launch">
       <arg name="eye_on_hand"                       value="false"/>
       <arg name="namespace_prefix"                  value="calibration"/>
-      <!-- <arg name="tracking_base_frame"               value="camera_bottom_screw_frame"/> -->
 
     </include>
+  -->
 </launch>
