@@ -336,7 +336,9 @@ class MoveRobot(object):
         return success
 
     def go_to_pose(self, goal_pose):
-
+        if goal_pose is None:
+            rospy.logwarn("goal pose is empty!")
+            return False
         if not self.check_frames(goal_pose.header.frame_id):
             return False
         ## Only if inverse kinematics exist
