@@ -27,7 +27,7 @@ class Calibrate(object):
     """Calibrate"""
     def __init__(self):    
 
-        self.debug_mode = rospy.get_param("/px150/calibrate/debug")
+        self.debug_mode = rospy.get_param("/px150/calibration_eye_on_base/calibrate/debug")
         
         if self.debug_mode:
             log_level = rospy.DEBUG
