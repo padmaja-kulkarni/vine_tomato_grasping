@@ -27,7 +27,7 @@ class Calibrate(object):
     """Calibrate"""
     def __init__(self):    
 
-        self.debug_mode = rospy.get_param("calibrate/debug")
+        self.debug_mode = rospy.get_param("/px150/calibrate/debug")
         
         if self.debug_mode:
             log_level = rospy.DEBUG
@@ -44,8 +44,8 @@ class Calibrate(object):
 
         rospy.sleep(5)
         
-        # rospy.loginfo("[CALIBRATE] initializing hand eye client")
-        # self.client = HandeyeClient()
+        rospy.loginfo("[CALIBRATE] initializing hand eye client")
+        self.client = HandeyeClient()
         
         # Listen
         rospy.loginfo("[CALIBRATE] initializing tf2_ros buffer")
@@ -57,20 +57,20 @@ class Calibrate(object):
         self.planning_frame = "world"
         self.pose_array = None
         
-        # rospy.Subscriber("/aruco_tracker/pose", PoseStamped, self.aruco_tracker_cb)
+        rospy.Subscriber("/aruco_tracker/pose", PoseStamped, self.aruco_tracker_cb)
     
-        self.pub_move_robot_command = rospy.Publisher("move_robot/e_in",
+        self.pub_move_robot_command = rospy.Publisher("/px150/move_robot/e_in",
                                   String, queue_size=10, latch=True)
         
-        self.pub_move_robot_pose = rospy.Publisher("pre_grasp_pose",
+        self.pub_move_robot_pose = rospy.Publisher("/px150/pre_grasp_pose",
                                   PoseStamped, queue_size=10, latch=True)
         
-        self.pub_pose_array = rospy.Publisher("pose_array",
+        self.pub_pose_array = rospy.Publisher("/px150/pose_array",
                                 PoseArray, queue_size=5, latch=True)
         
         
-    # def aruco_tracker_cb(self, msg):
-    #     pass
+    def aruco_tracker_cb(self, msg):
+        pass
         
     def init_poses(self):
         pose_array = PoseArray()
@@ -86,7 +86,7 @@ class Calibrate(object):
         z_min = 0.08 # 0.05
 
         
-        intervals = 3
+        intervals = 2
         x_vec = np.linspace(x_min, x_min + 2*x_amplitude, intervals)
         y_vec = np.linspace(y_min, y_min + 2*y_amplitude, intervals)
         z_vec = np.linspace(z_min, z_min + 2*z_amplitude, intervals)
@@ -146,18 +146,24 @@ class Calibrate(object):
             self.pub_move_robot_command.publish("move")
             
             # get response
-            success = wait_for_success("move_robot/e_out", 5)
-        
+            success = wait_for_success("/px150/move_robot/e_out", 5)
+            attempts = 3
             if success:
                 # wait a small amount of time for vibrations to stop
-                rospy.sleep(0.1)
-                # sample_list = self.client.take_sample()
-                # rospy.loginfo("taking sample, sample list: %s", sample_list)
+                rospy.sleep(0.5)
+                
+                for attempt in range(0,attempts):
+                    
+                    try:
+                        self.client.take_sample()
+                        break
+                    except:
+                        rospy.logwarn("[CALIBRATE] Failed to take sample, marker might not be visible. Attempts remaining: %s", attempts - attempt - 1)
 
-        # rospy.loginfo("computing calibration")
-        # result = self.client.compute_calibration()
-        # rospy.loginfo("result: %s", result)
-        # self.client.save()
+        rospy.loginfo("computing calibration")
+        result = self.client.compute_calibration()
+        rospy.loginfo("result: %s", result)
+        self.client.save()
         return True
 
 
