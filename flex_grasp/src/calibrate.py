@@ -60,13 +60,13 @@ class Calibrate(object):
         
 
         
-        x_amplitude = 0.1
-        y_amplitude = 0.1
+        x_amplitude = 0.05
+        y_amplitude = 0.08
         z_amplitude = 0.05
         
-        x_min = 0.2
+        x_min = 0.25
         y_min = -y_amplitude
-        z_min = 0.05
+        z_min = 0.08 # 0.05
 
         
         intervals = 3
@@ -74,10 +74,10 @@ class Calibrate(object):
         y_vec = np.linspace(y_min, y_min + 2*y_amplitude, intervals)
         z_vec = np.linspace(z_min, z_min + 2*z_amplitude, intervals)
         
-        ai_amplitude = 10/180*np.pi
-        aj_amplitude = 10/180*np.pi
+        ai_amplitude = 20.0/180*np.pi
+        aj_amplitude = 20.0/180*np.pi
         
-        ai_vec = [0] # np.linspace(-ai_amplitude, ai_amplitude, intervals)
+        ai_vec = np.linspace(-ai_amplitude, ai_amplitude, intervals)
         aj_vec = np.linspace(-aj_amplitude, aj_amplitude, intervals)
         
         poses = []
@@ -85,15 +85,15 @@ class Calibrate(object):
         for x in x_vec:
             for y in y_vec:
                 for z in z_vec:
-                    for ai in ai_vec:
-                        for aj in aj_vec:
-                        pose = Pose()
-                        pose.position = list_to_position([x, y, z])
-                        
-                        ak = np.arctan(y/x)
-                        pose.orientation = list_to_orientation([ai, aj, ak])
-                        
-                        poses.append(pose)
+                    for aj in aj_vec:
+                        for ai in ai_vec:
+                            pose = Pose()
+                            pose.position = list_to_position([x, y, z])
+                            
+                            ak = np.arctan(y/x)
+                            pose.orientation = list_to_orientation([ai, aj, ak])
+                            
+                            poses.append(pose)
                     
         pose_array.poses = poses
         self.pose_array = pose_array
