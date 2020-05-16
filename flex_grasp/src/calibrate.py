@@ -170,10 +170,19 @@ class Calibration(object):
 
         result = self.client.compute_calibration()
         self.client.save()
+        
+        self.result = result
         return True
 
 
-
+    def broadcast(self):
+        rospy.loginfo("Broadcasting result")
+        broadcaster = tf2_ros.StaticTransformBroadcaster()
+        
+        
+        static_transformStamped = self.result.calibration.transform 
+        print(static_transformStamped)
+        broadcaster.sendTransform(static_transformStamped)
 
 def main():
     try:
@@ -188,9 +197,13 @@ def main():
         
         success = calibration.calibrate()
         if success:
-            rospy.loginfo("Calibration finished succesfully")
+            if calibration.result.valid:
+                rospy.loginfo("Calibration finished succesfully")
+                calibration.broadcast()
+            else:
+                rospy.logwarn("Calibration computed but invalid")
         else:
-            rospy.logwarn("Calibration failed")
+            rospy.logwarn("Execuing calibration failed")
         
         while not rospy.core.is_shutdown():
             rate.sleep()
