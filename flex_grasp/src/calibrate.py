@@ -57,7 +57,17 @@ class Calibration(object):
         self.planning_frame = "world"
         self.pose_array = None
         
-        rospy.Subscriber("/aruco_tracker/pose", PoseStamped, self.aruco_tracker_cb)
+        self.event = None
+        
+        
+        # Subscribe
+        rospy.Subscriber("~e_in", String, self.e_in_cb)
+        
+        # we need to be sucsribed to the aruco tracker for it to publish the tf
+        rospy.Subscriber("/px150/aruco_tracker/pose", PoseStamped, self.aruco_tracker_cb)
+    
+        self.pub_e_out = rospy.Publisher("~e_out",
+                                     String, queue_size=10, latch=True)
     
         self.pub_move_robot_command = rospy.Publisher("/px150/move_robot/e_in",
                                   String, queue_size=10, latch=True)
@@ -67,6 +77,15 @@ class Calibration(object):
         
         self.pub_pose_array = rospy.Publisher("/px150/pose_array",
                                 PoseArray, queue_size=5, latch=True)
+        
+    def e_in_cb(self, msg):
+        if self.event is None:
+            self.event = msg.data
+            rospy.logdebug("[CALIBTRATION] Received object detection event message: %s", self.event)
+        
+            msg = String()
+            msg.data = ""
+            self.pub_e_out.publish(msg)    
         
         
     def aruco_tracker_cb(self, msg):
@@ -119,7 +138,11 @@ class Calibration(object):
                             poses.append(pose)
                     
         pose_array.poses = poses
+        
+        self.pub_pose_array.publish(pose_array)
         self.pose_array = pose_array
+        return True
+        
         
     def calibrate(self):
         
@@ -169,10 +192,18 @@ class Calibration(object):
 
 
         result = self.client.compute_calibration()
-        self.client.save()
         
+        if result.valid:
+            rospy.loginfo("Found valid transfrom")
+            self.broadcast()
+            success = True
+        else:
+            rospy.logwarn("Computed calibration is invalid")
+            success = False
+        
+        self.client.save()
         self.result = result
-        return True
+        return success
 
 
     def broadcast(self):
@@ -180,32 +211,42 @@ class Calibration(object):
         broadcaster = tf2_ros.StaticTransformBroadcaster()
         
         
-        static_transformStamped = self.result.calibration.transform 
-        print(static_transformStamped)
+        static_transformStamped = self.result.calibration.transform
         broadcaster.sendTransform(static_transformStamped)
+
+
+    def take_action(self):
+        success = None
+        msg = String()
+
+        if (self.event == "e_init"):
+            success = self.init_poses()
+
+        elif (self.event == "e_start"):
+            success = self.calibrate()
+            
+
+        # publish success
+        if success is not None:
+            if success == True:
+                msg.data = "e_success"
+                self.event = None
+
+            elif success == False:
+                msg.data = "e_failure"
+                rospy.logwarn("Calibration failed to execute command: %s", self.event)
+                self.event = None
+
+            self.pub_e_out.publish(msg)
+
 
 def main():
     try:
-        
         calibration = Calibration()
-        rate = rospy.Rate(1)
-        
-        calibration.init_poses()
-        calibration.pub_pose_array.publish(calibration.pose_array)
-        
-        rospy.sleep(10)
-        
-        success = calibration.calibrate()
-        if success:
-            if calibration.result.valid:
-                rospy.loginfo("Calibration finished succesfully")
-                calibration.broadcast()
-            else:
-                rospy.logwarn("Calibration computed but invalid")
-        else:
-            rospy.logwarn("Execuing calibration failed")
+        rate = rospy.Rate(10)
         
         while not rospy.core.is_shutdown():
+            calibration.take_action()
             rate.sleep()
 
     except rospy.ROSInterruptException:

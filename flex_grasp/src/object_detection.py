@@ -81,9 +81,8 @@ class ObjectDetection(object):
         rospy.init_node("object_detection", anonymous=True, log_level=log_level)
 
         # Publish
-        latch = True
         self.pub_e_out = rospy.Publisher("~e_out",
-                                         String, queue_size=10, latch=latch)
+                                         String, queue_size=10, latch=True)
 
         self.pub_object_features = rospy.Publisher("object_features",
                                         Truss, queue_size=5, latch=True)

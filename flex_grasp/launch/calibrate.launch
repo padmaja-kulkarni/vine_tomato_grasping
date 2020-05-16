@@ -2,38 +2,33 @@
     <!-- you can write your own calibrate.launch, by including the ROS drivers for robot and tracking and choosing
     your own namespace if you have multiple tracking devices or robots -->
 
-    <arg name="start_simulator" default="true" doc="Start a simulated tracking system with a trivial noise model" />
+    <arg name="start_rviz" default="false"/>
+    <arg name="start_independent" default="false"/>
 
-    <arg name="namespace_prefix" default="calibration" />
-    <arg name="eye_on_hand" default="false" />
-    <arg name="use_iiwa" default="false" />
-    <arg name="use_interbotix" default="true" />
-    <arg name="robot_name" default="px150"/>
-
-    <!-- set debug mode-->
-    <arg name="move_robot_debug" default="false"/>
-    <arg name="calibrate_debug" default="false"/>
+    <arg name="namespace_prefix" default="calibration"/>
+    <arg name="eye_on_hand" default="false"/>
 
     <!-- Aruco settings -->
-    <arg name="track_aruco" default="true" doc="When set to false a tracking simulator will be used"/>
+    <arg name="use_aruco" default="true" doc="When set to false a tracking simulator will be used"/>
     <arg name="marker_size" default="0.04" doc="Size of the ArUco marker used, in meters"/>
-    <arg name="marker_id" default="26" doc="The ID of the ArUco marker used"  />
+    <arg name="marker_id" default="26" doc="The ID of the ArUco marker used"/>
 
-    <arg if="$(arg use_iiwa)" name="robot_base_frame" value="world" /> <!-- iiwa_link_0 -->
-    <arg if="$(arg use_iiwa)" name="robot_effector_frame" value="iiwa_link_ee" />
-    <arg if="$(arg use_iiwa)" name="manipulator_group_name" value="manipulator" />
-    <arg if="$(arg use_iiwa)" name="ee_group_name" value="gripper" />
+    <!-- Robot setting -->
+    <arg name="robot_name" default="px150"/>
+    <arg name="manipulator_group_name" default="interbotix_arm"/>
+    <arg name="ee_group_name" default="interbotix_gripper"/>
 
-    <arg if="$(arg use_interbotix)" name="robot_base_frame" value="$(arg robot_name)/base_link"/> <!-- $(arg robot_name)/base_link -->
-    <arg if="$(arg use_interbotix)" name="robot_effector_frame" value="$(arg robot_name)/ee_arm_link"/>
-    <arg if="$(arg use_interbotix)" name="manipulator_group_name" value="interbotix_arm" />
-    <arg if="$(arg use_interbotix)" name="ee_group_name" value="interbotix_gripper" />
+    <!-- Frame settings -->
+    <arg name="robot_base_frame" default="$(arg robot_name)/base_link"/> <!-- $(arg robot_name)/base_link -->
+    <arg name="robot_effector_frame" default="$(arg robot_name)/ee_arm_link"/>
+    <arg name="tracking_base_frame" default="camera_bottom_screw_frame" />
+    <arg name="marker_frame" default="tracking_marker" />
 
-    <arg name="tracking_base_frame" value="camera_bottom_screw_frame" />
-    <arg name="marker_frame" value="tracking_marker" />
+
+    <arg name="calibrate_debug" value="false"/>
 
     <!-- start the simulated tracking -->
-    <node unless="$(arg track_aruco)"  name="tracking_simulator" pkg="flex_grasp" type="tracking_simulator.py" output="screen">
+    <node unless="$(arg use_aruco)"  name="tracking_simulator" pkg="flex_grasp" type="tracking_simulator.py" output="screen">
         <!-- if false, it computes the tracking output with respect to the ground truth and publishes it wrt the calibration result -->
         <param name="is_calibration" value="true" />
 
@@ -61,53 +56,48 @@
         <param name="rotation_noise_stdev" value="0.00001" />
     </node>
 
-
-     <!-- start ArUco -->
-    <node if="$(arg track_aruco)" name="aruco_tracker" pkg="aruco_ros" type="single">
-        <remap from="/camera_info" to="$(arg robot_name)/camera/color/camera_info" />
-        <remap from="/image" to="$(arg robot_name)/camera/color/image_raw" />
-        <param name="image_is_rectified" value="false"/>
-        <param name="marker_size"        value="$(arg marker_size)"/>
-        <param name="marker_id"          value="$(arg marker_id)"/>
-        <param name="reference_frame"    value="$(arg tracking_base_frame)"/>
-        <param name="camera_frame"       value="camera_color_optical_frame"/>
-        <param name="marker_frame"       value="$(arg marker_frame)" />
-    </node>
-
-    <!-- start easy_handeye calibration procedure -->
-    <include ns="/$(arg robot_name)" file="$(find easy_handeye)/launch/calibrate.launch" >
-        <arg name="start_rviz" value="false" />
-        <arg name="start_rqt" value="false" />
-
-        <arg name="namespace_prefix" value="$(arg namespace_prefix)" />
-        <arg name="eye_on_hand" value="$(arg eye_on_hand)" />
-        <arg name="publish_dummy" value="false" /> <!-- in our case it is done by the tracking simulator -->
-
-        <arg name="tracking_base_frame" value="$(arg tracking_base_frame)" />
-        <arg name="tracking_marker_frame" value="$(arg marker_frame)" />
-        <arg name="robot_base_frame" value="$(arg robot_base_frame)" />
-        <arg name="robot_effector_frame" value="$(arg robot_effector_frame)" />
-
-        <arg name="freehand_robot_movement" value="true" /> <!-- we use or own node to move the robot -->
-        <arg name="robot_velocity_scaling" value="0.5" />
-        <arg name="robot_acceleration_scaling" value="0.2" />
-
-        <arg name="move_group" value="$(arg manipulator_group_name)"/>
-    </include>
-
-    <!-- start rviz with custom configuration -->
-    <!-- ns="$(arg robot_name)" -->
-    <node ns="$(arg robot_name)"
-      name="$(anon rviz)"
-      pkg="rviz"
-      type="rviz"
-      respawn="true"
-      args="-d $(find easy_handeye_demo)/launch/iiwa_stack_config.rviz"
-      output="screen" />
-
-
-
     <group ns="$(arg robot_name)">
+       <!-- start ArUco -->
+      <node if="$(arg use_aruco)" name="aruco_tracker" pkg="aruco_ros" type="single">
+          <remap from="/camera_info" to="camera/color/camera_info" />
+          <remap from="/image" to="camera/color/image_raw" />
+          <param name="image_is_rectified" value="false"/>
+          <param name="marker_size"        value="$(arg marker_size)"/>
+          <param name="marker_id"          value="$(arg marker_id)"/>
+          <param name="reference_frame"    value="$(arg tracking_base_frame)"/>
+          <param name="camera_frame"       value="camera_color_optical_frame"/>
+          <param name="marker_frame"       value="$(arg marker_frame)" />
+      </node>
+
+      <!-- start easy_handeye calibration procedure -->
+      <include file="$(find easy_handeye)/launch/calibrate.launch" >
+          <arg name="start_rviz" value="false" />
+          <arg name="start_rqt" value="false" />
+
+          <arg name="namespace_prefix" value="$(arg namespace_prefix)" />
+          <arg name="eye_on_hand" value="$(arg eye_on_hand)" />
+          <arg name="publish_dummy" value="false" /> <!-- in our case it is done by the tracking simulator -->
+
+          <arg name="tracking_base_frame" value="$(arg tracking_base_frame)" />
+          <arg name="tracking_marker_frame" value="$(arg marker_frame)" />
+          <arg name="robot_base_frame" value="$(arg robot_base_frame)" />
+          <arg name="robot_effector_frame" value="$(arg robot_effector_frame)" />
+
+          <arg name="freehand_robot_movement" value="true" /> <!-- we use or own node to move the robot -->
+          <arg name="robot_velocity_scaling" value="0.5" />
+          <arg name="robot_acceleration_scaling" value="0.2" />
+
+          <arg name="move_group" value="$(arg manipulator_group_name)"/>
+      </include>
+
+      <!-- start rviz with custom configuration -->
+      <node if="$(arg start_rviz)" name="$(anon rviz)"
+        pkg="rviz"
+        type="rviz"
+        respawn="true"
+        args="-d $(find easy_handeye_demo)/launch/iiwa_stack_config.rviz"
+        output="screen" />
+
 
       <node name="calibrate"
         pkg="flex_grasp"
@@ -117,8 +107,9 @@
         <param name ="debug" value="$(arg calibrate_debug)"/>
       </node>
 
-      <node name="move_robot"
 
+      <group if="$(arg start_independent)">
+      <node name="move_robot"
         pkg="flex_grasp"
         type="move_robot.py"
         output="screen">
@@ -130,5 +121,7 @@
       <param name="planning_frame" value="world"/>
       <param name="manipulator_group_name" value="$(arg manipulator_group_name)"/>
       <param name="ee_group_name" value="$(arg ee_group_name)"/>
+
+      </group>
     </group>
 </launch>

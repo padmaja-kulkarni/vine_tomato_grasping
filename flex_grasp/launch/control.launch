@@ -11,6 +11,16 @@
 	<arg name="move_robot_debug"	default="false"/>
 	<arg name="visualize_object_debug"	default="false"/>
 
+
+	<include file="$(find flex_grasp)/launch/calibrate.launch">
+		<arg name="start_rviz" value="false"/>
+		<arg name="start_independent" value="false"/>
+		
+		<arg name="robot_name" value="$(arg robot_name)"/>
+		<arg name="manipulator_group_name" value="$(arg manipulator_group_name)"/>
+		<arg name="ee_group_name" value="$(arg ee_group_name)"/>
+	</include>
+
 	<group ns="$(arg robot_name)">
 
 		<node name = "my_rqt_dashboard"
@@ -20,13 +30,6 @@
 			output = "screen"
 			args = "--perspective-file $(find rqt_user_interface)/config/my_dashboard.perspective"/>
 
-		<!--
-		<node name="rqt_user_interface"
-			pkg="rqt_user_interface"
-			type="rqt_user_interface"
-			output="screen">
-		</node>
-	-->
 		<node name="pipeline"
 			pkg="flex_grasp"
 			type="smach_pipeline.py"

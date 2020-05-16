@@ -51,6 +51,7 @@ class RqtSdhGrasp(Plugin):
         self._widget.HomeButton.clicked[bool].connect(self.handle_home)
         self._widget.OpenButton.clicked[bool].connect(self.handle_open)
         self._widget.CloseButton.clicked[bool].connect(self.handle_close)
+        self._widget.CalibrateButton.clicked[bool].connect(self.handle_calibrate)
 
         # tasks
         self._widget.DetectButton.clicked[bool].connect(self.handle_detect)
@@ -75,6 +76,9 @@ class RqtSdhGrasp(Plugin):
         # Comment in to signal that the plugin has a way to configure
         # This will enable a setting button (gear icon) in each dock widget title bar
         # Usually used to open a modal configuration dialog
+
+    def handle_calibrate(self):
+        self.pub_grasp.publish("calibrate")
 
     def handle_home(self):
         self.pub_grasp.publish("home")
