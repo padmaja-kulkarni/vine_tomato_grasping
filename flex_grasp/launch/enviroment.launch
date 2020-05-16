@@ -5,11 +5,12 @@
 
     <!-- | 		PARAMETERS  		| -->
     <!-- the "sim" argument controls whether we connect to a Simulated or Real robot. -->
-    <arg name="robot_sim"           default="true" />
+    <arg name="robot_sim"           default="true"/>
     <arg name="camera_sim"          default="true"/>
     <arg name="use_sdh"             default="true"/>
     <arg name="use_iiwa"            default="true"/>
     <arg name="use_interbotix"      default="false"/>
+    <arg name="use_calibration"     default="true"/>
 
     <!-- hardware_interface to use : PositionJointInterface, EffortJointInterface, VelocityJointInterface. -->
     <arg name="hardware_interface"  default="PositionJointInterface"/>
@@ -158,11 +159,11 @@
       </include>
     </group>
 
-    <!--
-    <include file="$(find easy_handeye)/launch/publish.launch">
+
+    <include if="$(arg use_calibration)" file="$(find easy_handeye)/launch/publish.launch">
       <arg name="eye_on_hand"                       value="false"/>
       <arg name="namespace_prefix"                  value="calibration"/>
 
     </include>
-  -->
+
 </launch>
