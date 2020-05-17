@@ -98,7 +98,7 @@
         args="-d $(find easy_handeye_demo)/launch/iiwa_stack_config.rviz"
         output="screen" />
 
-
+        <!-- ns="$(arg namespace_prefix)_eye_on_base" -->
       <node name="calibrate"
         pkg="flex_grasp"
         type="calibrate.py"

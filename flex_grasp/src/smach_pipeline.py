@@ -17,7 +17,7 @@ class Initializing(smach.State):
                                     String, queue_size=10, latch=True)
         self.pub_move_robot = rospy.Publisher("move_robot/e_in",
                                       String, queue_size=10, latch=True)
-        self.pub_calibrate = rospy.Publisher("calibrate/e_in",
+        self.pub_calibrate = rospy.Publisher("calibration_eye_on_base/calibrate/e_in",
                               String, queue_size=10, latch=True)
 
     def execute(self, userdata):
@@ -26,7 +26,7 @@ class Initializing(smach.State):
         init_object_detection = self.is_initialized("object_detection/e_out", self.pub_object_detection)
         init_pose_transform = self.is_initialized("pose_transform/e_out", self.pub_pose_transform)
         init_move_robot = self.is_initialized("move_robot/e_out", self.pub_move_robot)
-        init_calibrate = self.is_initialized("calibrate/e_out", self.pub_calibrate)
+        init_calibrate = self.is_initialized("calibration_eye_on_base/calibrate/e_out", self.pub_calibrate)
 
         if init_object_detection & init_pose_transform & init_move_robot & init_calibrate:
             return "success"
@@ -35,7 +35,7 @@ class Initializing(smach.State):
             rospy.loginfo("init_object_detection %s", init_object_detection)
             rospy.loginfo("init_pose_transform %s", init_pose_transform)
             rospy.loginfo("init_move_robot %s", init_move_robot)
-            rospy.loginfo("init_move_robot %s", init_calibrate)
+            rospy.loginfo("init_calibrate %s", init_calibrate)
             return "failure"
 
     def is_initialized(self, topic_out, topic_in):
@@ -46,11 +46,11 @@ class Initializing(smach.State):
 
 class Idle(smach.State):
     def __init__(self):
-        smach.State.__init__(self, outcomes=['calib', 'detect', 'move', 'failure'], output_keys=['command'])
+        smach.State.__init__(self, outcomes=['calibrate', 'detect', 'move', 'failure'], output_keys=['command'])
         self.command_op_topic = "pipelineState"
 
         self.detect_commands =  ["detect"]
-        self.calib_commands =  ["calib"]
+        self.calibrate_commands =  ["calibrate"]
         self.move_commands =  ["home", "open", "close", "pick", "place", "pick_place"]
 
     def execute(self, userdata):
@@ -63,9 +63,9 @@ class Idle(smach.State):
         elif command in self.move_commands:
             userdata.command = command
             return "move"
-        elif command in self.calib_commands:
+        elif command in self.calibrate_commands:
             userdata.command = command
-            return "calib"
+            return "calibrate"
         else:
             rospy.logwarn('Unknown command: %s', command)
             return "failure"
@@ -102,9 +102,9 @@ class DetectObject(smach.State):
 class CalibrateRobot(smach.State):
     def __init__(self):
         smach.State.__init__(self, outcomes=['success','failure', 'complete_failure'])
-        self.calibrate_topic = "calibrate/e_out"
+        self.calibrate_topic = "calibration_eye_on_base/calibrate/e_out"
 
-        self.pub_calibrate = rospy.Publisher("calibrate/e_in",
+        self.pub_calibrate = rospy.Publisher("calibration_eye_on_base/calibrate/e_in",
                                       String, queue_size=10, latch=True)
         self.counter = 3
         self.timeout = 30.0
@@ -242,9 +242,14 @@ def main():
         smach.StateMachine.add('Idle', Idle(),
                                transitions={'detect':'DetectObject',
                                             'move': 'MoveRobot',
-                                            'calib': 'CalibrateRobot',
+                                            'calibrate': 'CalibrateRobot',
                                             'failure': 'Idle'})
 
+        smach.StateMachine.add('CalibrateRobot', CalibrateRobot(),
+                           transitions={'success':'Idle',
+                                        'failure': 'Idle',
+                                        'complete_failure':'total_failure'})
+    
         smach.StateMachine.add('DetectObject', DetectObject(),
                                transitions={'success':'PoseTransform',
                                             'failure':'DetectObject',

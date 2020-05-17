@@ -44,11 +44,12 @@ class Calibration(object):
 
         rospy.sleep(5)
         
-        rospy.loginfo("[CALIBRATE] initializing hand eye client")
+        rospy.logdebug("[CALIBRATE] initializing hand eye client")
         self.client = HandeyeClient()
         
+        
         # Listen
-        rospy.loginfo("[CALIBRATE] initializing tf2_ros buffer")
+        rospy.logdebug("[CALIBRATE] initializing tf2_ros buffer")
         self.tfBuffer = tf2_ros.Buffer()
         self.listener = tf2_ros.TransformListener(self.tfBuffer)
         
@@ -112,7 +113,7 @@ class Calibration(object):
             z_vec = [z_min + z_amplitude]
         else:
             x_vec = np.linspace(x_min, x_min + 2*x_amplitude, pos_intervals)
-            y_vec = np.linspace(y_min, y_min + 2*y_amplitude, pos_intervals)
+            y_vec = np.linspace(y_min, y_min + 2*y_amplitude, 2)
             z_vec = np.linspace(z_min, z_min + 2*z_amplitude, pos_intervals)
         
         ai_amplitude = 30.0/180*np.pi
@@ -192,28 +193,27 @@ class Calibration(object):
 
 
         result = self.client.compute_calibration()
+        self.result = result
         
         if result.valid:
             rospy.loginfo("Found valid transfrom")
-            self.broadcast()
+            self.broadcast(result)
             success = True
         else:
             rospy.logwarn("Computed calibration is invalid")
             success = False
         
         self.client.save()
-        self.result = result
+        
         return success
 
 
-    def broadcast(self):
+    def broadcast(self, result):
         rospy.loginfo("Broadcasting result")
         broadcaster = tf2_ros.StaticTransformBroadcaster()
         
-        
-        static_transformStamped = self.result.calibration.transform
+        static_transformStamped = result.calibration.transform
         broadcaster.sendTransform(static_transformStamped)
-
 
     def take_action(self):
         success = None
