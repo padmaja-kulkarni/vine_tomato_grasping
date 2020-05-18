@@ -87,20 +87,20 @@
 
     <!-- Working with the real robot.  -->
     <group ns="$(arg robot_name)" unless="$(arg robot_sim)">
+        <group if="$(arg use_iiwa)">
+          <!-- Load controllers accordingly to parameters -->
+          <include file="$(find iiwa_control)/launch/iiwa_control.launch">
+              <arg name="hardware_interface" value="$(arg hardware_interface)" />
+              <arg name="controllers" value="joint_state_controller $(arg hardware_interface)_trajectory_controller" />
+              <arg name="robot_name" value="$(arg robot_name)" />
+              <arg name="model" value="$(arg robot_model)" />
+          </include>
 
-        <!-- Load controllers accordingly to parameters -->
-        <include file="$(find iiwa_control)/launch/iiwa_control.launch">
-            <arg name="hardware_interface" value="$(arg hardware_interface)" />
-            <arg name="controllers" value="joint_state_controller $(arg hardware_interface)_trajectory_controller" />
-            <arg name="robot_name" value="$(arg robot_name)" />
-            <arg name="model" value="$(arg robot_model)" />
-        </include>
-
-        <!-- Robot interface -->
-        <include file="$(find iiwa_hw)/launch/iiwa_hw.launch" >
-            <arg name="hardware_interface" value="$(arg hardware_interface)" />
-        </include>
-
+          <!-- Robot interface -->
+          <include file="$(find iiwa_hw)/launch/iiwa_hw.launch" >
+              <arg name="hardware_interface" value="$(arg hardware_interface)" />
+          </include>
+        </group>
     </group>
 
     <!-- Load move_group -->
@@ -142,7 +142,23 @@
       </group>
     </group>
 
-    <group if="$(arg use_interbotix)" ns="$(arg robot_name)"> <!-- $(arg use_interbotix) -->
+
+    <arg name="use_actual" if="$(arg robot_sim)" value="false"/>
+    <arg name="use_actual" unless="$(arg robot_sim)" value="true"/>
+
+
+    <include if="$(arg use_interbotix)" file="$(find interbotix_moveit)/launch/interbotix_moveit.launch">
+      <arg name="robot_name"                value="$(arg robot_name)"/>
+      <arg name="arm_operating_mode"        value="position"/>
+      <arg name="arm_profile_velocity"      value="131"/>
+      <arg name="arm_profile_acceleration"  value="15"/>
+      <arg name="use_pid_cntlrs"            value="false"/>
+      <arg name="use_gazebo"                value="false"/>
+      <arg name="use_actual"                value="$(arg use_actual)"/>
+      <arg name="use_fake"                  value="false"/>
+      <arg name="dof"                       value="5"/>
+    </include>
+      <!--
       <include file="$(find interbotix_moveit)/launch/move_group.launch">
         <arg name="robot_name"                       value="$(arg robot_name)"/>
         <arg name="robot_model"                      value="$(arg robot_model)"/>
@@ -157,7 +173,7 @@
         <arg name="rviz_frame"                       value="world"/>
         <arg name="config"                           value="true"/>
       </include>
-    </group>
+      -->
 
 
     <include if="$(arg use_calibration)" file="$(find easy_handeye)/launch/publish.launch">
