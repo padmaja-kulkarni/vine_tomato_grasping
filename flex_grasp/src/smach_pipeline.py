@@ -248,17 +248,17 @@ def main():
         smach.StateMachine.add('CalibrateRobot', CalibrateRobot(),
                            transitions={'success':'Idle',
                                         'failure': 'Idle',
-                                        'complete_failure':'total_failure'})
-    
+                                        'complete_failure':'Idle'})
+
         smach.StateMachine.add('DetectObject', DetectObject(),
                                transitions={'success':'PoseTransform',
                                             'failure':'DetectObject',
-                                            'complete_failure':'total_failure'})
+                                            'complete_failure':'Idle'})
 
         smach.StateMachine.add('PoseTransform', PoseTransform(),
                                transitions={'success':'Idle',
                                             'failure':'DetectObject',
-                                            'complete_failure':'total_failure'})
+                                            'complete_failure':'Idle'})
 
         smach.StateMachine.add('MoveRobot', MoveRobot(),
                                transitions={'success':'Idle',
