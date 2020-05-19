@@ -8,7 +8,7 @@
   <arg name="robot_name" default="px150"/>
   <arg name="robot_base_frame" default="$(arg robot_name)/base_link"/>
 
-  <arg name="tracking_base_frame" value="camera_bottom_screw_frame" />
+  <arg name="tracking_base_frame" value="camera_link" /> <!-- camera_bottom_screw_frame -->
   <arg name="marker_frame" value="tracking_marker" />
 
      <!-- start ArUco -->
