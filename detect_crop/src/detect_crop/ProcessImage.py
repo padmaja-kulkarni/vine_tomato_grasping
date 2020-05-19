@@ -25,7 +25,7 @@ from skimage.morphology import skeletonize
 # custom functions
 from util import add_border
 from util import romove_blobs
-from util import segmentation_otsu
+from util import segmentation_otsu, segmentation_otsu_test, segmentation_cluster_test
 
 from util import rot2or
 from util import or2rot
@@ -311,6 +311,11 @@ class ProcessImage(object):
         angle = self.angle/180*np.pi
 
         return row, col, angle
+        
+    def get_segmented_image(self):
+        
+        segmentsRGB = stack_segments(self.imRGB, self.background, self.tomato, self.peduncle)
+        return segmentsRGB
 
     def rescale(self):
         #%%############
