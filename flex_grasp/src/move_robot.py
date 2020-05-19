@@ -66,8 +66,8 @@ class MoveRobot(object):
         self.place_pose = None
 
         # tolerance
-        self.position_tolerance = 0.02 # [m]
-        self.orientation_tolerance = 0.02 # [rad]
+        self.position_tolerance = 0.05 # [m]
+        self.orientation_tolerance = 0.1 # [rad]
 
         # Subscribers
         rospy.Subscriber("pre_grasp_pose", PoseStamped, self.pre_grasp_pose_cb)
@@ -156,14 +156,10 @@ class MoveRobot(object):
         man_group.set_planning_time(5)
 
         # Allow some leeway in position (meters) and orientation (radians)
-        # man_group.set_goal_position_tolerance(0.05)
-        # man_group.set_goal_orientation_tolerance(0.1)
+        man_group.set_goal_position_tolerance(0.02)
+        man_group.set_goal_orientation_tolerance(0.1)
 
-        # ee_group.set_goal_position_tolerance(0.05)
-        # ee_group.set_goal_orientation_tolerance(0.1)
-
-        self.max_pick_attempts = 10
-        self.max_place_attempts = 10
+        self.max_attempts = 2
 
         self.man_group_name = man_group_name
         self.ee_group_name = ee_group_name
@@ -346,20 +342,39 @@ class MoveRobot(object):
             return False
 
         self.man_group.set_pose_target(goal_pose.pose)
-        plan = self.man_group.plan()
-        self.man_group.execute(plan, wait=True)
+        
+        orientation_close = False
+        position_close = False
+        success = orientation_close and position_close
+        attempt = 0
+        while success is False:        
+            attempt = attempt + 1
+            
+            plan = self.man_group.plan()
+            self.man_group.execute(plan, wait=True)
+    
+            # Ensures that there is no residual movement and clear the target
+            self.man_group.stop()
+            self.man_group.clear_pose_targets()
+            rospy.sleep(1)            
+            
+            curr_pose = self.man_group.get_current_pose()
+            
+            orientation_close, position_close = all_close(goal_pose, curr_pose, self.position_tolerance, self.orientation_tolerance)
+            success = orientation_close and position_close
 
-        # Ensures that there is no residual movement and clear the target
-        self.man_group.stop()
-        self.man_group.clear_pose_targets()
-
-        curr_pose = self.man_group.get_current_pose()
-        success = all_close(goal_pose, curr_pose, self.position_tolerance, self.orientation_tolerance)
-
-        if success is False:
-            rospy.logwarn("[MOVE ROBOT] Failed to move to pose target, obtained pose is not sufficiently close to goal pose!")
-            rospy.loginfo("[MOVE ROBOT] Goal pose: %s", pose_to_list(goal_pose.pose))
-            rospy.loginfo("[MOVE ROBOT] Curr pose: %s", pose_to_list(curr_pose.pose))
+            if attempt >= self.max_attempts:
+                break
+            
+            if success is False:
+                if orientation_close is False:
+                    rospy.logwarn("[MOVE ROBOT] Failed to move to pose target, obtained orientation is not sufficiently close to goal oreintation (tolerance: %s). Attempts remaining: %s", self.orientation_tolerance, self.max_attempts - attempt)
+                    
+                if position_close is False:
+                    rospy.logwarn("[MOVE ROBOT] Failed to move to pose target, obtained position is not sufficiently close to goal position (tolerance: %s). Attempts remaining: %s", self.position_tolerance, self.max_attempts - attempt)            
+                    
+                rospy.logdebug("[MOVE ROBOT] Goal pose: %s", pose_to_list(goal_pose.pose))
+                rospy.logdebug("[MOVE ROBOT] Curr pose: %s", pose_to_list(curr_pose.pose))
         return success
 
     def move_to_joint_target(self, group, target):
@@ -374,10 +389,12 @@ class MoveRobot(object):
         group.execute(plan, wait=True)
         group.stop()
 
-        # target = group.get_joint_value_target() #get_remembered_joint_values().values()
+        # target = group.get_joint_value_target() #get_remembered_joint_values().values()        
         actual = group.get_current_joint_values()
-        success = all_close(target, actual, self.position_tolerance, self.orientation_tolerance)
-
+        orientation_close = True
+        position_close = True # all_close(target, actual, self.position_tolerance, self.orientation_tolerance)
+        success = orientation_close and position_close
+        
         if success is False:
             rospy.logwarn("[MOVE ROBOT] Failed to move to joint target: obtained joint values are not sufficiently close to goal pose!")
             rospy.loginfo("[MOVE ROBOT] Target joint values: %s", target)

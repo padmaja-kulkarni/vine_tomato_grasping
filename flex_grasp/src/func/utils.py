@@ -39,10 +39,12 @@ def all_close(goal, actual, position_tolerance, orientation_tolerance):
         # check orientation
         orientation_close = True
 
+        # actual_quat = goal_quat
         for index in range(len(goal_quat)):
             if abs(actual_quat[index] - goal_quat[index]) > orientation_tolerance:
                 orientation_close = False
 
+        # actual_quat = -goal_quat
         if not orientation_close:
             goal_quat = neg_list(goal_quat)
 
@@ -52,7 +54,7 @@ def all_close(goal, actual, position_tolerance, orientation_tolerance):
                 else:
                     orientation_close = True
 
-        return orientation_close and position_close
+        return orientation_close, position_close
 
     elif type(goal) is PoseStamped:
         return all_close(goal.pose, actual.pose, position_tolerance, orientation_tolerance)
