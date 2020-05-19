@@ -76,3 +76,20 @@ def list_to_orientation(orientation_list):
     orientation_msg.w = quat_list[3]
     
     return orientation_msg
+    
+def point_to_pose_stamped(xyz, rpy, frame, time):
+
+    pose_stamped = PoseStamped()
+    pose_stamped.header.frame_id = frame
+    pose_stamped.header.stamp = time
+
+    quat = quaternion_from_euler(rpy[0], rpy[1], rpy[2])
+    pose_stamped.pose.orientation.x = quat[0]
+    pose_stamped.pose.orientation.y = quat[1]
+    pose_stamped.pose.orientation.z = quat[2]
+    pose_stamped.pose.orientation.w = quat[3]
+    pose_stamped.pose.position.x = xyz[0]
+    pose_stamped.pose.position.y = xyz[1]
+    pose_stamped.pose.position.z = xyz[2]
+
+    return pose_stamped
