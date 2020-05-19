@@ -37,30 +37,28 @@
     <remap from="/$(arg hardware_interface)_trajectory_controller/follow_joint_trajectory"
            to="/$(arg robot_name)/$(arg hardware_interface)_trajectory_controller/follow_joint_trajectory" />
 
-    <rosparam param="$(arg robot_name)/object_x" subst_value="True">$(arg object_x)</rosparam>
-    <rosparam param="$(arg robot_name)/object_y" subst_value="True">$(arg object_y)</rosparam>
-    <rosparam param="$(arg robot_name)/object_angle" subst_value="True">$(arg object_angle)</rosparam>
+    <rosparam param="$(arg robot_name)/object_x" subst_value="true">$(arg object_x)</rosparam>
+    <rosparam param="$(arg robot_name)/object_y" subst_value="true">$(arg object_y)</rosparam>
+    <rosparam param="$(arg robot_name)/object_angle" subst_value="true">$(arg object_angle)</rosparam>
 
-    <rosparam param="$(arg robot_name)/use_iiwa" subst_value="True">$(arg use_iiwa)</rosparam>
-    <rosparam param="$(arg robot_name)/use_sdh" subst_value="True">$(arg use_sdh)</rosparam>
-    <rosparam param="$(arg robot_name)/use_interbotix" subst_value="True">$(arg use_interbotix)</rosparam>
+    <rosparam param="$(arg robot_name)/use_iiwa" subst_value="true">$(arg use_iiwa)</rosparam>
+    <rosparam param="$(arg robot_name)/use_sdh" subst_value="true">$(arg use_sdh)</rosparam>
+    <rosparam param="$(arg robot_name)/use_interbotix" subst_value="true">$(arg use_interbotix)</rosparam>
 
-    <group unless="$(arg camera_sim)">
-      <include file="$(find realsense2_camera)/launch/rs_camera.launch">
-        <arg name="camera" value="$(arg camera_name)"/>
-        <arg name="enable_infra1" value="false"/>
-        <arg name="enable_infra2" value="false"/>
-        <!--
-        <arg name="depth_width" value="$(arg image_width)"/>
-        <arg name="depth_height" value="$(arg image_height)"/>
-        <arg name="color_width" value="$(arg image_width)"/>
-        <arg name="color_height" value="$(arg image_height)"/>
-      -->
-      </include>
-    </group>
+    <include unless="$(arg camera_sim)" file="$(find realsense2_camera)/launch/rs_camera.launch" ns="$(arg robot_name)">
+      <arg name="camera" value="$(arg camera_name)"/>
+      <arg name="enable_infra1" value="false"/>
+      <arg name="enable_infra2" value="false"/>
+      <!--
+      <arg name="depth_width" value="$(arg image_width)"/>
+      <arg name="depth_height" value="$(arg image_height)"/>
+      <arg name="color_width" value="$(arg image_width)"/>
+      <arg name="color_height" value="$(arg image_height)"/>
+    -->
+    </include>
 
     <!-- Run the robot within a Gazebo simulation. -->
-    <group if="$(arg robot_sim)">
+    <group if="$(eval arg('robot_sim') or arg('camera_sim'))">
 
         <!-- Load Gazebo with given values -->
         <include file="$(find flex_gazebo)/launch/flex_gazebo.launch">
@@ -75,6 +73,8 @@
             <arg name="use_interbotix" default="$(arg use_interbotix)"/>
 
             <arg name="camera_sim" value="$(arg camera_sim)"/>
+            <arg name="robot_sim" value="$(arg robot_sim)"/>
+
             <arg name="camera_name" value="$(arg camera_name)"/>
 
             <arg name="object_x" value="$(arg object_x)"/>
@@ -83,24 +83,6 @@
             <arg name="object_name" value="$(arg object_name)"/>
             <arg name="object_dimension" value="$(arg object_dimension)"/>
         </include>
-    </group>
-
-    <!-- Working with the real robot.  -->
-    <group ns="$(arg robot_name)" unless="$(arg robot_sim)">
-        <group if="$(arg use_iiwa)">
-          <!-- Load controllers accordingly to parameters -->
-          <include file="$(find iiwa_control)/launch/iiwa_control.launch">
-              <arg name="hardware_interface" value="$(arg hardware_interface)" />
-              <arg name="controllers" value="joint_state_controller $(arg hardware_interface)_trajectory_controller" />
-              <arg name="robot_name" value="$(arg robot_name)" />
-              <arg name="model" value="$(arg robot_model)" />
-          </include>
-
-          <!-- Robot interface -->
-          <include file="$(find iiwa_hw)/launch/iiwa_hw.launch" >
-              <arg name="hardware_interface" value="$(arg hardware_interface)" />
-          </include>
-        </group>
     </group>
 
     <!-- Load move_group -->
@@ -142,10 +124,27 @@
       </group>
     </group>
 
-
     <arg name="use_actual" if="$(arg robot_sim)" value="false"/>
     <arg name="use_actual" unless="$(arg robot_sim)" value="true"/>
 
+
+    <!-- Working with the real robot.  -->
+    <group if="$(arg use_actual)">
+        <group if="$(arg use_iiwa)" ns="$(arg robot_name)">
+          <!-- Load controllers accordingly to parameters -->
+          <include file="$(find iiwa_control)/launch/iiwa_control.launch">
+              <arg name="hardware_interface" value="$(arg hardware_interface)" />
+              <arg name="controllers" value="joint_state_controller $(arg hardware_interface)_trajectory_controller" />
+              <arg name="robot_name" value="$(arg robot_name)" />
+              <arg name="model" value="$(arg robot_model)" />
+          </include>
+
+          <!-- Robot interface -->
+          <include file="$(find iiwa_hw)/launch/iiwa_hw.launch" >
+              <arg name="hardware_interface" value="$(arg hardware_interface)" />
+          </include>
+        </group>
+    </group>
 
     <include if="$(arg use_interbotix)" file="$(find interbotix_moveit)/launch/interbotix_moveit.launch">
       <arg name="robot_name"                value="$(arg robot_name)"/>
@@ -158,22 +157,6 @@
       <arg name="use_fake"                  value="false"/>
       <arg name="dof"                       value="5"/>
     </include>
-      <!--
-      <include file="$(find interbotix_moveit)/launch/move_group.launch">
-        <arg name="robot_name"                       value="$(arg robot_name)"/>
-        <arg name="robot_model"                      value="$(arg robot_model)"/>
-        <arg name="publish_monitored_planning_scene" value="true" />
-
-        <arg name="external_srdf_loc"                value=""/>
-        <arg name="dof"                              value="5"/>
-        <arg name="fake_execution"                   value="false"/>
-      </include>
-
-      <include if="$(arg rviz)" file="$(find interbotix_moveit)/launch/moveit_rviz.launch">
-        <arg name="rviz_frame"                       value="world"/>
-        <arg name="config"                           value="true"/>
-      </include>
-      -->
 
 
     <include if="$(arg use_calibration)" file="$(find easy_handeye)/launch/publish.launch">

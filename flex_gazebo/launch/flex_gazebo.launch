@@ -15,15 +15,16 @@
 
     <arg name="ee" default="sdh"/>
 
-    <arg name="robot_model" default="iiwa7"/>
-    <arg name="robot_name" default="iiwa"/>
+    <arg name="robot_model" default="px150"/>
+    <arg name="robot_name" default="$(arg robot_model)"/>
     <arg name="trajectory" default="true"/>
 
     <arg name="use_sdh" default="false"/>
     <arg name="use_iiwa" default="false"/>
-    <arg name="use_interbotix" default="false"/>
+    <arg name="use_interbotix" default="true"/>
 
     <arg name="camera_sim" default="true"/>
+    <arg name="robot_sim" default="true"/>
     <arg name="camera_name" default="rs_d435"/>
 
     <!-- Object params -->
@@ -61,7 +62,10 @@
     <include file="$(find flex_gazebo)/launch/camera_world.launch">
       <arg name="robot_name" value="$(arg robot_name)" />
     </include>
-    -->
+  -->
+
+
+  <group if="$(arg robot_sim)">
 
     <!-- Spawn controllers - it uses a JointTrajectoryController -->
     <group ns="$(arg robot_name)" if="$(arg use_iiwa)">
@@ -122,6 +126,14 @@
         output="screen"
         ns="$(arg robot_name)"
         args="arm_controller gripper_controller joint_state_controller"/>
+      <node
+        name="robot_state_publisher"
+        pkg="robot_state_publisher"
+        type="robot_state_publisher"
+        ns="$(arg robot_name)">
+      </node>
+
     </group>
+  </group>
 
 </launch>
