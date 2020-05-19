@@ -45,7 +45,7 @@
     <rosparam param="$(arg robot_name)/use_sdh" subst_value="true">$(arg use_sdh)</rosparam>
     <rosparam param="$(arg robot_name)/use_interbotix" subst_value="true">$(arg use_interbotix)</rosparam>
 
-    <include unless="$(arg camera_sim)" file="$(find realsense2_camera)/launch/rs_camera.launch" ns="$(arg robot_name)">
+    <include unless="$(arg camera_sim)" file="$(find realsense2_camera)/launch/rs_aligned_depth.launch" ns="$(arg robot_name)">
       <arg name="camera" value="$(arg camera_name)"/>
       <arg name="enable_infra1" value="false"/>
       <arg name="enable_infra2" value="false"/>
