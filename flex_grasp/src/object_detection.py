@@ -7,16 +7,12 @@ Created on Mon Mar  9 15:30:31 2020
 """
 
 import rospy
-import tf
-
 import math
-import numpy as np
 
 from cv_bridge import CvBridge, CvBridgeError
 
 # msg
 from std_msgs.msg import String
-from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import CameraInfo
 
@@ -26,6 +22,8 @@ from flex_grasp.msg import Peduncle
 
 # custom func
 from detect_crop.ProcessImage import ProcessImage
+from func.conversions import point_to_pose_stamped
+
 
 import pyrealsense2 as rs
 
@@ -62,6 +60,7 @@ class ObjectDetection(object):
         self.depth_info = None
         self.color_info = None
         self.trans = None
+        self.init = None
 
         self.bridge = CvBridge()
 
@@ -86,6 +85,9 @@ class ObjectDetection(object):
 
         self.pub_object_features = rospy.Publisher("object_features",
                                         Truss, queue_size=5, latch=True)
+                                        
+        self.pub_segment_image = rospy.Publisher("segment_image",
+                                        Image, queue_size=5, latch=True)
 
         # Subscribe
         rospy.Subscriber("~e_in", String, self.e_in_cb)
@@ -117,7 +119,7 @@ class ObjectDetection(object):
         if (self.depth_image is None) and (self.event == "e_start"):
             rospy.logdebug("[OBJECT DETECTION] Received depth image message")
             try:
-                self.depth_image = self.bridge.imgmsg_to_cv2(msg, "passthrough")
+                self.depth_image = self.bridge.imgmsg_to_cv2(msg, "passthrough") # /1000.0
             except CvBridgeError as e:
                 print(e)
 
@@ -144,6 +146,25 @@ class ObjectDetection(object):
         while not self.received_all_data():
             rospy.sleep(0.1)
         return True
+
+
+    def segment_image(self):
+
+
+        if self.wait_for_data(5):
+            pwd = os.path.dirname(__file__)
+
+
+            image = ProcessImage(self.color_image, tomatoName = 'gazebo_tomato',
+                                 pwdProcess = pwd,
+                                 saveIntermediate = False)
+
+            image.segment_img()
+            segment_image = image.get_segmented_image()
+            
+            imgmsg = self.bridge.cv2_to_imgmsg(segment_image, encoding="rgb8")
+            self.pub_segment_image.publish(imgmsg)
+            return True
 
     def detect_object(self):
 
@@ -173,7 +194,7 @@ class ObjectDetection(object):
 
             intrin = camera_info2intrinsics(self.depth_info)
             xyz = self.deproject(row, col, intrin)
-            cage_pose =  point_to_pose_stamped(xyz, rpy, frame)
+            cage_pose =  point_to_pose_stamped(xyz, rpy, frame, rospy.Time.now())
 
             #%%#############
             ### tomatoes ###
@@ -207,8 +228,6 @@ class ObjectDetection(object):
 
             self.create_truss(tomatoes, cage_pose, peduncle)
 
-            # reset
-            self.clear_all_data()
             return True
         else:
             rospy.logwarn("Did not receive all data")
@@ -226,8 +245,8 @@ class ObjectDetection(object):
         angle = rospy.get_param("object_angle")
         xyz = [object_x, object_y, 0.05 + table_height]
         rpy = [3.1415, 0, angle] #3.1415/2.0
-
-        cage_pose =  point_to_pose_stamped(xyz, rpy, frame)
+        
+        cage_pose =  point_to_pose_stamped(xyz, rpy, frame, rospy.Time.now())
 
         #%%#############
         ### Peduncle ###
@@ -256,9 +275,7 @@ class ObjectDetection(object):
             pass
 
         self.create_truss(tomatoes, cage_pose, peduncle)
-
-        # reset
-        self.clear_all_data()
+     
         return True
 
     def create_truss(self, tomatoes, cage_pose, peduncle):
@@ -296,11 +313,13 @@ class ObjectDetection(object):
                 success = self.generate_object()
 
         elif (self.event == "e_init"):
+            self.init = True
             success = True
 
         # publish success
         if success is not None:
             if success == True:
+                self.clear_all_data()
                 msg.data = "e_success"
                 self.event = None
 
@@ -313,23 +332,6 @@ class ObjectDetection(object):
 
 def euclidean(v1, v2):
     return sum((p-q)**2 for p, q in zip(v1, v2)) ** .5
-
-def point_to_pose_stamped(xyz, rpy, frame):
-
-    pose_stamped = PoseStamped()
-    pose_stamped.header.frame_id = frame
-    pose_stamped.header.stamp = rospy.Time.now()
-
-    quat = tf.transformations.quaternion_from_euler(rpy[0], rpy[1], rpy[2])
-    pose_stamped.pose.orientation.x = quat[0]
-    pose_stamped.pose.orientation.y = quat[1]
-    pose_stamped.pose.orientation.z = quat[2]
-    pose_stamped.pose.orientation.w = quat[3]
-    pose_stamped.pose.position.x = xyz[0]
-    pose_stamped.pose.position.y = xyz[1]
-    pose_stamped.pose.position.z = xyz[2]
-
-    return pose_stamped
 
 
 def point_to_tomato(point, radius, frame):
