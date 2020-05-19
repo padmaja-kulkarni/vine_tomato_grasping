@@ -100,7 +100,7 @@ class Calibration(object):
         y_amplitude = 0.08
         z_amplitude = 0.05
 
-        x_min = 0.25
+        x_min = 0.20
         y_min = -y_amplitude
         z_min = 0.15 # 0.05
 
@@ -112,7 +112,7 @@ class Calibration(object):
             z_vec = [z_min + z_amplitude]
         else:
             x_vec = np.linspace(x_min, x_min + 2*x_amplitude, pos_intervals)
-            y_vec = np.linspace(y_min, y_min + 2*y_amplitude, 2)
+            y_vec = np.linspace(y_min, y_min + 2*y_amplitude, pos_intervals)
             z_vec = np.linspace(z_min, z_min + 2*z_amplitude, pos_intervals)
 
         ai_amplitude = 30.0/180*np.pi
@@ -180,7 +180,7 @@ class Calibration(object):
 
             if success:
                 # wait a small amount of time for vibrations to stop
-                rospy.sleep(0.5)
+                rospy.sleep(1)
 
                 for attempt in range(0,attempts):
 
