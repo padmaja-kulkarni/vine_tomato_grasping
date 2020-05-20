@@ -15,7 +15,7 @@
 	<include file="$(find flex_grasp)/launch/calibrate.launch">
 		<arg name="start_rviz" value="false"/>
 		<arg name="start_independent" value="false"/>
-		
+
 		<arg name="robot_name" value="$(arg robot_name)"/>
 		<arg name="manipulator_group_name" value="$(arg manipulator_group_name)"/>
 		<arg name="ee_group_name" value="$(arg ee_group_name)"/>

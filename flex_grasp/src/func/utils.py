@@ -12,7 +12,7 @@ from geometry_msgs.msg import Pose
 
 from tf.transformations import euler_from_quaternion
 
-def all_close(goal, actual, position_tolerance, orientation_tolerance):
+def pose_close(goal, actual, position_tolerance, orientation_tolerance):
     """
     Convenience method for testing if a list of values are within a position_tolerance of their counterparts in another list
     @param: goal       A list of floats, a Pose or a PoseStamped
@@ -22,7 +22,6 @@ def all_close(goal, actual, position_tolerance, orientation_tolerance):
     """
 
     if type(goal) is list:
-
         actual_position = actual[0:3]
         actual_quat = actual[3:7]
 
@@ -57,12 +56,22 @@ def all_close(goal, actual, position_tolerance, orientation_tolerance):
         return orientation_close, position_close
 
     elif type(goal) is PoseStamped:
-        return all_close(goal.pose, actual.pose, position_tolerance, orientation_tolerance)
+        return pose_close(goal.pose, actual.pose, position_tolerance, orientation_tolerance)
 
     elif type(goal) is Pose:
-        return all_close(pose_to_list(goal), pose_to_list(actual), position_tolerance, orientation_tolerance)
+        return pose_close(pose_to_list(goal), pose_to_list(actual), position_tolerance, orientation_tolerance)
 
     return True
+
+def joint_close(goal, actual, angle_tolerance):
+    is_close = True    
+    
+    for index in range(len(goal)):
+            if abs(actual[index] - goal[index]) > angle_tolerance:
+                is_close = False
+
+    return is_close
+
 
 def add_lists(list1, list2):
     return [sum(x) for x in zip(list1, list2)]
@@ -73,3 +82,7 @@ def multiply_lists(list1, list2):
 
 def neg_list(list1):
     return [ -x for x in list1]
+
+def deg2rad(deg):
+    rad =  float(deg)/180.0*3.1415
+    return rad
