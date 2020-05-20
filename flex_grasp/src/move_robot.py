@@ -12,21 +12,18 @@ import rospy
 import moveit_commander
 
 # functions
-from tf.transformations import euler_from_quaternion, quaternion_from_euler
 from moveit_commander.conversions import pose_to_list
 
 # services
 from moveit_msgs.srv import GetPositionIK, GetPositionIKRequest
 
 # messages
-from std_msgs.msg import Float64
 from std_msgs.msg import String
-from geometry_msgs.msg import PoseStamped, Quaternion
+from geometry_msgs.msg import PoseStamped
 from moveit_msgs.msg import MoveItErrorCodes
 
 # custom functions
-from func.utils import all_close, add_lists
-from func.conversions import pose_to_lists
+from func.utils import all_close
 
 class MoveRobot(object):
     """MoveRobot"""
@@ -449,6 +446,7 @@ class MoveRobot(object):
         self.pre_grasp_pose = None
         self.pre_place_pose = None
         self.place_pose = None
+        return True
 
     ### Log state update
     def log_state_update(self):
@@ -472,7 +470,7 @@ class MoveRobot(object):
             self.state = "picked"
             self.log_state_update()
 
-        elif (self.state == "picked") and success: # and (self.command == "place")
+        elif (self.state == "picked") and success:
             self.prev_state = self.state
             self.state = "init"
             self.log_state_update()
@@ -510,6 +508,9 @@ class MoveRobot(object):
 
         elif self.command == "close":
             success = self.close_ee()
+            
+        elif self.command == "reset":
+            success = self.reset_msg()
 
         elif self.command == "e_init":
             success = True

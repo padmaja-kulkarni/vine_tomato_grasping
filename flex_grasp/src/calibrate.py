@@ -67,10 +67,10 @@ class Calibration(object):
                                      String, queue_size=10, latch=True)
 
         self.pub_move_robot_command = rospy.Publisher("/px150/move_robot/e_in",
-                                  String, queue_size=10, latch=True)
+                                  String, queue_size=10, latch=False)
 
         self.pub_move_robot_pose = rospy.Publisher("/px150/pre_grasp_pose",
-                                  PoseStamped, queue_size=10, latch=True)
+                                  PoseStamped, queue_size=10, latch=False)
 
         self.pub_pose_array = rospy.Publisher("/px150/pose_array",
                                 PoseArray, queue_size=5, latch=True)
@@ -157,6 +157,8 @@ class Calibration(object):
             rospy.logwarn("[CALIBRATE] failed to get transform from %s to %s", self.pose_array.header.frame_id, self.planning_frame)
             return False
 
+        self.pub_move_robot_command.publish("reset")
+        wait_for_success("/px150/move_robot/e_out", 5)
 
         for pose in self.pose_array.poses:
             if rospy.is_shutdown():
@@ -166,11 +168,9 @@ class Calibration(object):
             pose_stamped.header = self.pose_array.header
             pose_stamped.pose = pose
 
-
+            # transform to planning frame
             pose_trans = tf2_geometry_msgs.do_transform_pose(pose_stamped, trans)
-
-
-
+        
             self.pub_move_robot_pose.publish(pose_trans)
             self.pub_move_robot_command.publish("move")
 
@@ -190,7 +190,11 @@ class Calibration(object):
                     except:
                         rospy.logwarn("[CALIBRATE] Failed to take sample, marker might not be visible. Attempts remaining: %s", attempts - attempt - 1)
 
-
+        # reset
+        self.pub_move_robot_command.publish("home")
+        success = wait_for_success("/px150/move_robot/e_out", 5) 
+        
+        # compute result
         result = self.client.compute_calibration()
         self.result = result
 
