@@ -27,8 +27,13 @@ from detect_crop.util import save_img
 from detect_crop.util import stack_segments
 from detect_crop.util import segmentation_otsu_test
 from detect_crop.util import make_dirs
+from detect_crop.util import rgb2hsi
+
+
+
+
 #%% init
-N = 4 #  48 #        # tomato file to load
+N = 11 #  48 #        # tomato file to load
 nDigits = 3
 
 plt.rcParams["image.cmap"] = 'plasma'
@@ -37,7 +42,7 @@ plt.rcParams["savefig.bbox"] = 'tight'
 plt.rcParams['axes.titlesize'] = 20
 
 pathCurrent = os.path.dirname(__file__)
-dataSet = "tomato_blue" # "tomato_cases" # 
+dataSet = "tomato_real_blue" # "tomato_cases" # 
 
 pwdData = os.path.join(pathCurrent, "data", dataSet)
 pwdResults = os.path.join(pathCurrent, "results", dataSet, "color_space")
@@ -48,33 +53,30 @@ make_dirs(pwdResults)
 imMax = 255
 count = 0
 
-for iTomato in range(1, N):
+for iTomato in range(1, N + 1):
 
     tomatoID = str(iTomato).zfill(nDigits)
     tomatoName = tomatoID # "tomato" + "_RGB_" + 
-    fileName = tomatoName + ".jpg" # ".png" # 
+    fileName = tomatoName + ".png" # ".jpg" # 
     
     imPath = os.path.join(pwdData, fileName)
     imBGR = cv2.imread(imPath)
-    [H, W] = imBGR.shape[:2]
-    
-    # Cropping, only works for this specific image!
-    h = int(H/2)
-    w = int(W/2)
-    #row = int(H/4)
-    #col = int(w/1.5)
-    
-    row = H - h
-    col = int(w/1.5)
-    # imBGR = imBGR[row:row + h, col:col + w]
-    
     
     # color spaces
     imRGB = cv2.cvtColor(imBGR, cv2.COLOR_BGR2RGB)
     imHSV = cv2.cvtColor(imRGB, cv2.COLOR_RGB2HSV)
-    imLAB = cv2.cvtColor(imRGB, cv2.COLOR_RGB2LAB)
+    # imHLS = cv2.cvtColor(imRGB, cv2.COLOR_RGB2HLS)
+    # imHSL = np.dstack((np.dstack((imHLS[:,:,0], imHLS[:,:,2])), imHLS[:,:,1]))
+    # imHSI = rgb2hsi(imRGB)    
+    
+    imLAB = cv2.cvtColor(imRGB, cv2.COLOR_RGB2LAB)    
+    
 
-
-    save_img(imHSV[:,:,1], pwdResults, tomatoID + "_S")
-    save_img(imHSV[:,:,0], pwdResults, tomatoID + "_H")
-    save_img(imLAB[:,:,1], pwdResults, tomatoID + "_A")  
+    save_img(imHSV[:,:,0], pwdResults, tomatoID + "H")
+    save_img(imHSV[:,:,1], pwdResults, tomatoID + "S")
+    save_img(imLAB[:,:,1], pwdResults, tomatoID + "A")
+    # save_img(imLAB[:,:,2], pwdResults, tomatoID + "B")
+    # save_img(imHSI[:,:,1], pwdResults, tomatoID + "HSI_1S")
+    # save_img(imHSV[:,:,2], pwdResults, tomatoID + "HSV_2V")
+    # save_img(imLAB[:,:,0], pwdResults, tomatoID + "_L")
+    # save_img(imLAB[:,:,1], pwdResults, tomatoID + "_A")  
