@@ -24,30 +24,12 @@ from flex_grasp.msg import Peduncle
 from detect_crop.ProcessImage import ProcessImage
 from func.conversions import point_to_pose_stamped
 
+from func.utils import camera_info2intrinsics
 
 import pyrealsense2 as rs
 
 # import pathlib
 import os # os.sep
-
-def camera_info2intrinsics(camera_info):
-
-    # init object
-    intrin = rs.intrinsics()
-
-    # dimensions
-    intrin.width = camera_info.width
-    intrin.height = camera_info.height
-
-    # principal point coordinates
-    intrin.ppx = camera_info.K[2]
-    intrin.ppy = camera_info.K[5]
-
-    # focal point
-    intrin.fx = camera_info.K[0]
-    intrin.fy = camera_info.K[4]
-
-    return intrin
 
 class ObjectDetection(object):
     """ObjectDetection"""
@@ -150,7 +132,6 @@ class ObjectDetection(object):
 
     def segment_image(self):
 
-
         if self.wait_for_data(5):
             pwd = os.path.dirname(__file__)
 
@@ -226,7 +207,8 @@ class ObjectDetection(object):
             peduncle.radius = 0.01
             peduncle.length = 0.15
 
-            self.create_truss(tomatoes, cage_pose, peduncle)
+            truss = self.create_truss(tomatoes, cage_pose, peduncle)
+            self.pub_object_features.publish(truss)
 
             return True
         else:
@@ -274,8 +256,8 @@ class ObjectDetection(object):
             # tomatoes.append(point_to_tomato(point, radius, frame))
             pass
 
-        self.create_truss(tomatoes, cage_pose, peduncle)
-     
+        truss = self.create_truss(tomatoes, cage_pose, peduncle)
+        self.pub_object_features.publish(truss)
         return True
 
     def create_truss(self, tomatoes, cage_pose, peduncle):
@@ -287,7 +269,7 @@ class ObjectDetection(object):
         truss.cage_location = cage_pose
         truss.peduncle = peduncle
 
-        self.pub_object_features.publish(truss)
+        return truss
 
     def deproject(self, row, col, intrin):
         # Deproject
@@ -307,10 +289,11 @@ class ObjectDetection(object):
         msg = String()
 
         if (self.event == "e_start"):
-            if not self.debug_mode:
-                success = self.detect_object()
-            if self.debug_mode:
-                success = self.generate_object()
+#            if not self.debug_mode:
+#                success = self.detect_object()
+#            if self.debug_mode:
+#                success = self.generate_object()
+            success = self.segment_image()
 
         elif (self.event == "e_init"):
             self.init = True
