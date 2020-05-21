@@ -132,7 +132,7 @@ class PoseTransform(smach.State):
         self.tf_op_topic = "pose_transform/e_out"
         self.pub_pose_transform = rospy.Publisher("pose_transform/e_in",
                                       String, queue_size=10, latch=True)
-        self.timeout = 5.0
+        self.timeout = 40.0
         self.counter = 3
         self.tf_result = String()
 
