@@ -25,8 +25,7 @@ from skimage.morphology import skeletonize
 # custom functions
 from util import add_border
 from util import romove_blobs
-from util import segmentation_otsu, segmentation_otsu_test, segmentation_cluster_test
-
+from util import segmentation_otsu, segmentation_otsu_test, segmentation_2, segmentation_blue
 from util import rot2or
 from util import or2rot
 
@@ -52,6 +51,9 @@ class ProcessImage(object):
         imRGB = cv2.resize(imRGB, (width, height), interpolation = cv2.INTER_AREA)
         self.scale = scale
         self.DIM = imRGB.shape[:2]
+        self.W = DIM[0]
+        self.H = DIM[1]        
+        
         self.imRGB = imRGB
         self.saveIntermediate = saveIntermediate
 
@@ -67,12 +69,25 @@ class ProcessImage(object):
         if self.saveIntermediate:
             save_img(self.imRGB, self.pwdProcess, '01', saveFormat = self.saveFormat)
 
+
+    def segment_img_2(self):
+        #%%##########################
+        ### two step segmentation ###
+        ############################
+
+        background, tomato, peduncle = segmentation_2(self.imRGB, self.imMax)
+        self.background = background
+        self.tomato = tomato
+        self.peduncle = peduncle
+
+
     def segment_img(self):
         #%%#################
         ### segmentation ###
         ####################
 
-        background, tomato, peduncle = segmentation_otsu(self.imRGB, self.imMax)
+        # background, tomato, peduncle = segmentation_otsu(self.imRGB, self.imMax) 
+        background, tomato, peduncle = segmentation_blue(self.imRGB, self.imMax)
         self.background = background
         self.tomato = tomato
         self.peduncle = peduncle
@@ -154,6 +169,21 @@ class ProcessImage(object):
             self.save_results('04')
             save_img(self.imRGB, self.pwdProcess, '04_e', saveFormat = self.saveFormat)
 
+
+    def detect_tomatoes_global(self):
+        tomatoFilteredLBlurred = cv2.GaussianBlur(self.tomato, (3, 3), 0)
+        minR = self.W/20 # 6
+        maxR = self.W/6
+        minDist = self.W/20
+
+        circles = cv2.HoughCircles(tomatoFilteredLBlurred, cv2.HOUGH_GRADIENT, 5, minDist,
+                                   param1=50,param2=100, minRadius=minR, maxRadius=maxR)
+
+        centers = np.matrix(circles[0][:,0:2])
+        radii = circles[0][:,2]
+
+        self.centers = centers
+        self.radii = radii
 
     def detect_tomatoes(self):
         #%%##################
@@ -283,6 +313,16 @@ class ProcessImage(object):
 
         if self.saveIntermediate:
             plot_circles(self.imRGB, graspL, [10], savePath = self.pwdProcess, saveName = '06')
+
+    def get_tomatoes(self):
+        tomatoPixel = np.around(self.centers/self.scale).astype(int)
+        radii = self.radii/self.scale
+        
+        tomatoRow = tomatoPixel[:, 1]
+        tomatoCol = tomatoPixel[:, 0]
+        
+        tomato= {"row": tomatoRow, "col": tomatoCol, "radii": radii}
+        return tomato
 
     def get_object_features(self):
         graspPixel = np.around(self.graspO[0]/self.scale).astype(int)

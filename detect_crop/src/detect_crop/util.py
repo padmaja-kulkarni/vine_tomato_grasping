@@ -21,7 +21,7 @@ def make_dirs(pwd):
 
 def rgb2hsi(RGB):
     
-    RGB = RGB.astype('int64')
+    RGB = RGB.astype('float')
     
     # unsigned int!
     R, G, B = cv2.split(RGB)
@@ -127,6 +127,61 @@ def add_border(imOriginal, location, sizeBorder):
     
     return imBorder
 
+
+def segmentation_2(imRGB, imMax):
+    
+        imHSV = cv2.cvtColor(imRGB, cv2.COLOR_RGB2HSV)
+        imLAB = cv2.cvtColor(imRGB, cv2.COLOR_RGB2LAB)
+        
+        im1 = imHSV[:, :, 0]
+        im2 = imLAB[:, :, 1]
+        
+        # Otsu's thresholding
+        thresholdTomato, temp = cv2.threshold(im1,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+        
+        temp, truss = cv2.threshold(im1,thresholdTomato,imMax,cv2.THRESH_BINARY_INV)
+        background = cv2.bitwise_not(truss)
+        
+
+        # seperate tomato from peduncle
+        dataCut = im2[(truss == imMax)].flatten()
+        threshPeduncle, temp = cv2.threshold(dataCut,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+#        
+#        # label
+        temp, tomato_temp = cv2.threshold(im2,threshPeduncle,imMax,cv2.THRESH_BINARY)
+        tomato = cv2.bitwise_and(tomato_temp, truss)
+        peduncle = cv2.bitwise_and(cv2.bitwise_not(tomato_temp), truss)
+        
+        return background, tomato, peduncle
+
+def segmentation_blue(imRGB, imMax):
+        imHSV = cv2.cvtColor(imRGB, cv2.COLOR_RGB2HSV)
+        imLAB = cv2.cvtColor(imRGB, cv2.COLOR_RGB2LAB)
+        
+        #%%#################
+        ### SEGMENTATION ###
+        ####################
+    
+        im1 = imHSV[:, :, 1]
+        im2 = imLAB[:, :, 1]
+        
+
+        # Otsu's thresholding
+        thresholdTomato, temp = cv2.threshold(im2,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+        
+        temp, tomato = cv2.threshold(im2,thresholdTomato,imMax,cv2.THRESH_BINARY)
+        background = cv2.bitwise_not(tomato)
+        
+
+        # seperate tomato from peduncle
+        dataCut = im1[(background == imMax)].flatten()
+        threshPeduncle, temp = cv2.threshold(dataCut,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+#        
+#        # label
+        temp, peduncle = cv2.threshold(im1,threshPeduncle,imMax,cv2.THRESH_BINARY)
+        peduncle = cv2.bitwise_and(peduncle, background)
+        
+        return background, tomato, peduncle
 
 def segmentation_parametric(imRGB, imMax):
     
