@@ -1,0 +1,76 @@
+<?xml version="1.0"?>
+<launch>
+	<!-- Parameters to pass to the ROS node -->
+	<arg name="robot_name" 							default="px150"/>
+	<arg name="manipulator_group_name" 	default="interbotix_arm"/>
+  <arg name="ee_group_name"           default="interbotix_gripper"/>
+
+	<arg name="pipeline_debug"	default="false"/>
+	<arg name="object_detection_debug"	default="false"/>
+	<arg name="pose_transform_debug"	default="false"/>
+	<arg name="move_robot_debug"	default="false"/>
+	<arg name="visualize_object_debug"	default="false"/>
+
+
+	<include file="$(find flex_grasp)/launch/calibrate.launch">
+		<arg name="start_rviz" value="false"/>
+		<arg name="start_independent" value="false"/>
+
+		<arg name="robot_name" value="$(arg robot_name)"/>
+		<arg name="manipulator_group_name" value="$(arg manipulator_group_name)"/>
+		<arg name="ee_group_name" value="$(arg ee_group_name)"/>
+	</include>
+
+	<group ns="$(arg robot_name)">
+
+		<node name = "my_rqt_dashboard"
+			pkg = "rqt_gui"
+			type = "rqt_gui"
+			respawn = "false"
+			output = "screen"
+			args = "--perspective-file $(find rqt_user_interface)/config/my_dashboard.perspective"/>
+
+		<node name="pipeline"
+			pkg="flex_grasp"
+			type="smach_pipeline.py"
+			output="screen">
+			<param name ="debug" value="$(arg pipeline_debug)"/>
+		</node>
+
+		<node name="object_detection"
+			pkg="flex_point"
+			type="object_detection.py"
+			output="screen">
+			<param name ="debug" value="$(arg object_detection_debug)"/>
+		</node>
+
+		<node name="pose_transform"
+			pkg="flex_point"
+			type="pose_transform.py"
+			output="screen">
+			<param name ="debug" value="$(arg object_detection_debug)"/>
+		</node>
+
+    <node name="move_robot"
+			pkg="flex_grasp"
+			type="move_robot.py"
+			output="screen">
+    	<remap from="/attached_collision_object" to="/$(arg robot_name)/attached_collision_object"/>
+    	<remap from="/collision_object" to="/$(arg robot_name)/collision_object"/>
+			<param name ="debug" value="$(arg move_robot_debug)"/>
+    </node>
+
+		<node name="visualize_object"
+			pkg="flex_grasp"
+			type="visualize_object.py"
+			output="screen">
+			<remap from="/attached_collision_object" to="/$(arg robot_name)/attached_collision_object"/>
+			<remap from="/collision_object" to="/$(arg robot_name)/collision_object"/>
+			<param name ="debug" value="$(arg visualize_object_debug)"/>
+		</node>
+
+		<param name="planning_frame" value="/world"/>
+		<param name="manipulator_group_name" value="$(arg manipulator_group_name)"/>
+		<param name="ee_group_name" value="$(arg ee_group_name)"/>
+	</group>
+</launch>
