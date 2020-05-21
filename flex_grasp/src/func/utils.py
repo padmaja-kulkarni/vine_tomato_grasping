@@ -11,6 +11,27 @@ from moveit_commander.conversions import pose_to_list
 from geometry_msgs.msg import Pose
 
 from tf.transformations import euler_from_quaternion
+import pyrealsense2 as rs
+
+def camera_info2intrinsics(camera_info):
+
+    # init object
+    intrin = rs.intrinsics()
+
+    # dimensions
+    intrin.width = camera_info.width
+    intrin.height = camera_info.height
+
+    # principal point coordinates
+    intrin.ppx = camera_info.K[2]
+    intrin.ppy = camera_info.K[5]
+
+    # focal point
+    intrin.fx = camera_info.K[0]
+    intrin.fy = camera_info.K[4]
+
+    return intrin
+
 
 def pose_close(goal, actual, position_tolerance, orientation_tolerance):
     """
