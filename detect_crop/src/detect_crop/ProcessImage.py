@@ -70,24 +70,14 @@ class ProcessImage(object):
             save_img(self.imRGB, self.pwdProcess, '01', saveFormat = self.saveFormat)
 
 
-    def segment_img_2(self):
-        #%%##########################
-        ### two step segmentation ###
-        ############################
-
-        background, tomato, peduncle = segmentation_2(self.imRGB, self.imMax)
-        self.background = background
-        self.tomato = tomato
-        self.peduncle = peduncle
-
-
     def segment_img(self):
         #%%#################
         ### segmentation ###
         ####################
 
         # background, tomato, peduncle = segmentation_otsu(self.imRGB, self.imMax) 
-        background, tomato, peduncle = segmentation_blue(self.imRGB, self.imMax)
+        # background, tomato, peduncle = segmentation_blue(self.imRGB, self.imMax)
+        background, tomato, peduncle = segmentation_2(self.imRGB, self.imMax)
         self.background = background
         self.tomato = tomato
         self.peduncle = peduncle
