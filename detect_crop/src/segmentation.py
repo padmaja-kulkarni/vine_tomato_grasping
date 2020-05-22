@@ -36,9 +36,9 @@ def test_segmentation(dataSet, algorithm):
                 "files": 47,
                 "name": "tomato_cases"},
             "blue": {
-                "extension": ".jpg",
-                "files": 3,
-                "name": "tomato_blue"},
+                "extension": ".png",
+                "files": 7,
+                "name": "tomato_real_blue"},
                     }
     
     

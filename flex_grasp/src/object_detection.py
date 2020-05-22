@@ -70,6 +70,18 @@ class ObjectDetection(object):
                                         
         self.pub_segment_image = rospy.Publisher("segment_image",
                                         Image, queue_size=5, latch=True)
+                                        
+        self.pub_tomato_image = rospy.Publisher("tomato_image",
+                                Image, queue_size=5, latch=True)
+                                
+        self.pub_color_hue = rospy.Publisher("color_hue",
+                        Image, queue_size=5, latch=True)
+
+        self.pub_color_saturation = rospy.Publisher("color_saturation",
+                                Image, queue_size=5, latch=True)
+
+        self.pub_color_A = rospy.Publisher("color_A",
+                                Image, queue_size=5, latch=True)
 
         # Subscribe
         rospy.Subscriber("~e_in", String, self.e_in_cb)
@@ -130,23 +142,6 @@ class ObjectDetection(object):
         return True
 
 
-    def segment_image(self):
-
-        if self.wait_for_data(5):
-            pwd = os.path.dirname(__file__)
-
-
-            image = ProcessImage(self.color_image, tomatoName = 'gazebo_tomato',
-                                 pwdProcess = pwd,
-                                 saveIntermediate = False)
-
-            image.segment_img()
-            segment_image = image.get_segmented_image()
-            
-            imgmsg = self.bridge.cv2_to_imgmsg(segment_image, encoding="rgb8")
-            self.pub_segment_image.publish(imgmsg)
-            return True
-
     def detect_object(self):
 
 
@@ -154,7 +149,9 @@ class ObjectDetection(object):
             pwd = os.path.dirname(__file__)
 
 
-            image = ProcessImage(self.color_image, tomatoName = 'gazebo_tomato',
+            image = ProcessImage(self.color_image, 
+                                 camera_sim = True,
+                                 tomatoName = 'gazebo_tomato',
                                  pwdProcess = pwd,
                                  saveIntermediate = False)
 
@@ -162,6 +159,11 @@ class ObjectDetection(object):
 
             image.process_image()
             object_feature = image.get_object_features()
+            
+            # get results
+            img_hue, img_saturation, img_A  = image.get_color_components()
+            img_segment = image.get_segmented_image()
+            img_tomato = image.get_tomato_visualization() 
             frame = "camera_color_optical_frame"
 
             #%%##################
@@ -197,7 +199,7 @@ class ObjectDetection(object):
                 point2 = rs.rs2_deproject_pixel_to_point(intrin, [0,radius], depth)
                 radius_m = euclidean(point1, point2)
 
-                # tomatoes.append(point_to_tomato(point, radius_m, frame))
+                tomatoes.append(point_to_tomato(point, radius_m, frame))
 
             #%%#############
             ### Peduncle ###
@@ -208,6 +210,20 @@ class ObjectDetection(object):
             peduncle.length = 0.15
 
             truss = self.create_truss(tomatoes, cage_pose, peduncle)
+            
+            # publish results tomato_img
+            imgmsg_segment = self.bridge.cv2_to_imgmsg(img_segment, encoding="rgb8")
+            imgmsg_tomato = self.bridge.cv2_to_imgmsg(img_tomato, encoding="rgb8")
+            imgmsg_hue = self.bridge.cv2_to_imgmsg(img_hue)
+            imgmsg_saturation = self.bridge.cv2_to_imgmsg(img_saturation)
+            imgmsg_A = self.bridge.cv2_to_imgmsg(img_A)  
+          
+            rospy.loginfo("Publishing results")
+            self.pub_segment_image.publish(imgmsg_segment)
+            self.pub_tomato_image.publish(imgmsg_tomato)
+            self.pub_color_hue.publish(imgmsg_hue)
+            self.pub_color_saturation.publish(imgmsg_saturation)
+            self.pub_color_A.publish(imgmsg_A)
             self.pub_object_features.publish(truss)
 
             return True
@@ -289,11 +305,10 @@ class ObjectDetection(object):
         msg = String()
 
         if (self.event == "e_start"):
-#            if not self.debug_mode:
-#                success = self.detect_object()
-#            if self.debug_mode:
-#                success = self.generate_object()
-            success = self.segment_image()
+            if not self.debug_mode:
+                success = self.detect_object()
+            if self.debug_mode:
+                success = self.generate_object()
 
         elif (self.event == "e_init"):
             self.init = True

@@ -128,31 +128,62 @@ def add_border(imOriginal, location, sizeBorder):
     return imBorder
 
 
-def segmentation_2(imRGB, imMax):
+def segmentation_truss_sim(img_saturation, img_hue, img_A, imMax):
     
-        imHSV = cv2.cvtColor(imRGB, cv2.COLOR_RGB2HSV)
-        imLAB = cv2.cvtColor(imRGB, cv2.COLOR_RGB2LAB)
-        
-        im1 = imHSV[:, :, 0]
-        im2 = imLAB[:, :, 1]
-        
-        # Otsu's thresholding
-        thresholdTomato, temp = cv2.threshold(im1,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-        
-        temp, truss = cv2.threshold(im1,thresholdTomato,imMax,cv2.THRESH_BINARY_INV)
-        background = cv2.bitwise_not(truss)
-        
+        im0 = img_saturation    # saturation
+        im1 = img_hue           # hue
+        im2 = img_A             # A
+ 
+        # Seperate robot from rest
+        data0 = im0.flatten()
+        thresholdRobot, temp = cv2.threshold(data0,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)    
+        temp, robot = cv2.threshold(im0, thresholdRobot, imMax, cv2.THRESH_BINARY_INV)
+        not_tobot = cv2.bitwise_not(robot)
 
+
+        # Seperate truss from background
+        data1 = im1[(not_tobot == imMax)].flatten()
+        thresholdTomato, temp = cv2.threshold(data1,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+        
+        temp, truss_1 = cv2.threshold(im1,thresholdTomato,imMax,cv2.THRESH_BINARY_INV)
+        temp, truss_2 = cv2.threshold(im1,thresholdTomato + 90,imMax,cv2.THRESH_BINARY) # circle
+        truss = cv2.bitwise_and(cv2.bitwise_or(truss_1,truss_2), not_tobot)
+        background = cv2.bitwise_or(cv2.bitwise_not(truss), robot)
+        
         # seperate tomato from peduncle
-        dataCut = im2[(truss == imMax)].flatten()
-        threshPeduncle, temp = cv2.threshold(dataCut,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-#        
-#        # label
+        data2 = im2[(truss == imMax)].flatten()
+        threshPeduncle, temp = cv2.threshold(data2,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+   
         temp, tomato_temp = cv2.threshold(im2,threshPeduncle,imMax,cv2.THRESH_BINARY)
         tomato = cv2.bitwise_and(tomato_temp, truss)
         peduncle = cv2.bitwise_and(cv2.bitwise_not(tomato_temp), truss)
         
-        return background, tomato, peduncle, im1, im2
+        return background, tomato, peduncle
+        
+def segmentation_truss_real(img_hue, imMax):
+        im1 = img_hue # hue
+ 
+        # Seperate truss from background
+        data1 = im1.flatten()
+        thresholdTomato, temp = cv2.threshold(data1,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+        
+        threshPeduncle = 15
+        temp, truss_1 = cv2.threshold(im1,threshPeduncle,imMax,cv2.THRESH_BINARY_INV)
+        temp, truss_2 = cv2.threshold(im1,150,imMax,cv2.THRESH_BINARY) # circle
+        truss = cv2.bitwise_or(truss_1,truss_2)
+        background = cv2.bitwise_not(truss)
+        
+        # seperate tomato from peduncle
+        data2 = im1[(truss == imMax)].flatten()
+        threshPeduncle, temp = cv2.threshold(data2,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+   
+
+        temp, peduncle_1 = cv2.threshold(im1,threshPeduncle + 60,imMax,cv2.THRESH_BINARY_INV)
+        temp, peduncle_2 = cv2.threshold(im1,threshPeduncle,imMax,cv2.THRESH_BINARY)
+        peduncle = cv2.bitwise_and(peduncle_1, peduncle_2)
+        tomato = truss # cv2.bitwise_not(peduncle)
+        
+        return background, tomato, peduncle
 
 def segmentation_blue(imRGB, imMax):
         imHSV = cv2.cvtColor(imRGB, cv2.COLOR_RGB2HSV)
@@ -562,7 +593,10 @@ def load_rgb(pwd, name, horizontal = True):
 def add_circles(imRGB, centers, radii):
     if radii is not None:
         for i in range(0, len(radii), 1):
-            cv2.circle(imRGB,(centers[i, 0], centers[i, 1]), radii[i], (0,255,0))
+            col = int(centers[i, 0])
+            row = int(centers[i, 1])
+            r = int(radii[i])
+            cv2.circle(imRGB,(col, row), r, (0,255,0))
             
     return imRGB
 

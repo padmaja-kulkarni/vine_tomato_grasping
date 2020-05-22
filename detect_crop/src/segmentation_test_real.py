@@ -1,5 +1,12 @@
 # -*- coding: utf-8 -*-
 """
+Created on Fri May 22 12:04:59 2020
+
+@author: taeke
+"""
+
+# -*- coding: utf-8 -*-
+"""
 Created on Wed May 20 13:32:31 2020
 
 @author: taeke
@@ -21,7 +28,7 @@ from detect_crop.util import save_fig
 
 # tomato rot: 15
 # tomato cases: 48
-dataSet = "sim_blue"
+dataSet = "real_blue"
 
 
 settings = {
@@ -98,46 +105,28 @@ for iTomato in range(1, N + 1):
         #%%#################
         ### SEGMENTATION ###
         ####################
-        im0 = imHSV[:, :, 1] # suturation
         im1 = imHSV[:, :, 0] # hue
-        im2 = imLAB[:, :, 1] # A
  
-        # Seperate robot from rest
-        data0 = im0.flatten()
-        thresholdRobot, temp = cv2.threshold(data0,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)    
-        temp, robot = cv2.threshold(im0, thresholdRobot, imMax, cv2.THRESH_BINARY_INV)
-        not_tobot = cv2.bitwise_not(robot)
-
 
         # Seperate truss from background
-        data1 = im1[(not_tobot == imMax)].flatten()
+        data1 = im1.flatten()
         thresholdTomato, temp = cv2.threshold(data1,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
         
-        temp, truss_1 = cv2.threshold(im1,thresholdTomato,imMax,cv2.THRESH_BINARY_INV)
-        temp, truss_2 = cv2.threshold(im1,thresholdTomato + 90,imMax,cv2.THRESH_BINARY) # circle
-        truss = cv2.bitwise_and(cv2.bitwise_or(truss_1,truss_2), not_tobot)
-        background = cv2.bitwise_or(cv2.bitwise_not(truss), robot)
+        thresholdTomato = 29
+        temp, truss_1 = cv2.threshold(im1,15,imMax,cv2.THRESH_BINARY_INV)
+        temp, truss_2 = cv2.threshold(im1,150,imMax,cv2.THRESH_BINARY) # circle
+        truss = cv2.bitwise_or(truss_1,truss_2)
+        background = cv2.bitwise_not(truss)
         
         # seperate tomato from peduncle
-        data2 = im2[(truss == imMax)].flatten()
+        data2 = im1[(truss == imMax)].flatten()
         threshPeduncle, temp = cv2.threshold(data2,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
    
-        temp, tomato_temp = cv2.threshold(im2,threshPeduncle,imMax,cv2.THRESH_BINARY)
-        tomato = cv2.bitwise_and(tomato_temp, truss)
-        peduncle = cv2.bitwise_and(cv2.bitwise_not(tomato_temp), truss)
-
-    
-        # Plot Saturation (HSV)
-        fig, ax= plt.subplots(1)
-        fig.suptitle('Histogram')
-        ax.set_title('Saturation (HSV)')
-        
-        values = ax.hist(data0, bins=256/1, range=(0, 255))
-        # ax.set_ylim(0, 4*np.mean(values[0]))
-        ax.set_xlim(0, 255)
-        ax.axvline(x=thresholdRobot,  color='r')
-        save_fig(fig, pwdResults, tomatoID + "_hist_1", figureTitle = "", resolution = 100, titleSize = 10)
-    
+        threshPeduncle = 15
+        temp, peduncle_1 = cv2.threshold(im1,90,imMax,cv2.THRESH_BINARY_INV)
+        temp, peduncle_2 = cv2.threshold(im1,15,imMax,cv2.THRESH_BINARY)
+        peduncle = cv2.bitwise_and(peduncle_1, peduncle_2)
+        tomato = truss # cv2.bitwise_not(peduncle)
     
         # plot Hue (HSV)
         fig, ax= plt.subplots(1)

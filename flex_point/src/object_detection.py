@@ -76,10 +76,13 @@ class ObjectDetection(object):
         self.pub_tomato_image = rospy.Publisher("tomato_image",
                                         Image, queue_size=5, latch=True)
                             
-        self.pub_color_component1 = rospy.Publisher("color_component_1",
+        self.pub_color_hue = rospy.Publisher("color_hue",
+                        Image, queue_size=5, latch=True)
+
+        self.pub_color_saturation = rospy.Publisher("color_saturation",
                                 Image, queue_size=5, latch=True)
 
-        self.pub_color_component2 = rospy.Publisher("color_component_2",
+        self.pub_color_A = rospy.Publisher("color_A",
                                 Image, queue_size=5, latch=True)
 
         # Subscribe
@@ -147,16 +150,19 @@ class ObjectDetection(object):
             pwd = os.path.dirname(__file__)
 
 
-            image = ProcessImage(self.color_image, tomatoName = 'gazebo_tomato',
+            image = ProcessImage(self.color_image, 
+                                 camera_sim = True,
+                                 tomatoName = 'gazebo_tomato',
                                  pwdProcess = pwd,
                                  saveIntermediate = False)
 
             # Image processing
-            image.segment_img()
+            image.color_space()
+            image.segment_truss()
             image.detect_tomatoes_global()
             
             # get results
-            img_color_component_1, img_color_component_2 = image.get_color_components()
+            img_hue, img_saturation, img_A  = image.get_color_components()
             img_segment = image.get_segmented_image()
             
             img_tomato = image.get_tomato_visualization() 
@@ -198,13 +204,15 @@ class ObjectDetection(object):
             # publish results tomato_img
             imgmsg_segment = self.bridge.cv2_to_imgmsg(img_segment, encoding="rgb8")
             imgmsg_tomato = self.bridge.cv2_to_imgmsg(img_tomato, encoding="rgb8")
-            imgmsg_color_component_1 = self.bridge.cv2_to_imgmsg(img_color_component_1)
-            imgmsg_color_component_2 = self.bridge.cv2_to_imgmsg(img_color_component_2)
+            imgmsg_hue = self.bridge.cv2_to_imgmsg(img_hue)
+            imgmsg_saturation = self.bridge.cv2_to_imgmsg(img_saturation)
+            imgmsg_A = self.bridge.cv2_to_imgmsg(img_A)  
             
             self.pub_segment_image.publish(imgmsg_segment)
             self.pub_tomato_image.publish(imgmsg_tomato)
-            self.pub_color_component1.publish(imgmsg_color_component_1)
-            self.pub_color_component2.publish(imgmsg_color_component_2)
+            self.pub_color_hue.publish(imgmsg_hue)
+            self.pub_color_saturation.publish(imgmsg_saturation)
+            self.pub_color_A.publish(imgmsg_A)
             
             self.pub_object_features.publish(truss)
 

@@ -25,7 +25,8 @@ from skimage.morphology import skeletonize
 # custom functions
 from util import add_border
 from util import romove_blobs
-from util import segmentation_otsu, segmentation_otsu_test, segmentation_2, segmentation_blue
+from util import segmentation_truss_real
+from util import segmentation_truss_sim
 from util import rot2or
 from util import or2rot
 from util import add_circles
@@ -41,7 +42,7 @@ from util import plot_circles
 
 class ProcessImage(object):
 
-    def __init__(self, imRGB, tomatoName = 'tomato', saveIntermediate = False, pwdProcess = '', saveFormat = 'png'):
+    def __init__(self, imRGB, camera_sim = True, tomatoName = 'tomato', saveIntermediate = False, pwdProcess = '', saveFormat = 'png'):
 
         self.saveFormat = saveFormat
 
@@ -60,6 +61,7 @@ class ProcessImage(object):
         self.imRGB = imRGB
         self.saveIntermediate = saveIntermediate
 
+        self.camera_sim = camera_sim
         self.imMax = 255
         self.pwdProcess = pwdProcess
         self.tomatoName = tomatoName
@@ -72,18 +74,21 @@ class ProcessImage(object):
         if self.saveIntermediate:
             save_img(self.imRGB, self.pwdProcess, '01', saveFormat = self.saveFormat)
 
-
-    def segment_img(self):
-        #%%#################
-        ### segmentation ###
-        ####################
-
-        # background, tomato, peduncle = segmentation_otsu(self.imRGB, self.imMax) 
-        # background, tomato, peduncle = segmentation_blue(self.imRGB, self.imMax)
-        background, tomato, peduncle, im1, im2 = segmentation_2(self.imRGB, self.imMax)
+    def color_space(self):
         
-        self.im1 = im1
-        self.im2 = im2        
+        imHSV = cv2.cvtColor(self.imRGB, cv2.COLOR_RGB2HSV)
+        imLAB = cv2.cvtColor(self.imRGB, cv2.COLOR_RGB2LAB)
+        self.img_hue = imHSV[:, :, 0]
+        self.img_saturation = imHSV[:, :, 1]
+        self.img_A  = imLAB[:, :, 1]
+        
+    def segment_truss(self):
+
+        if self.camera_sim:
+            background, tomato, peduncle = segmentation_truss_sim(self.img_saturation, self.img_hue, self.img_A, self.imMax)
+
+        else:
+            background, tomato, peduncle = segmentation_truss_real(self.img_hue, self.imMax)
         
         self.background = background
         self.tomato = tomato
@@ -91,6 +96,7 @@ class ProcessImage(object):
 
         if self.saveIntermediate:
             self.save_results('02')
+
 
     def filter_img(self):
         #%%###########
@@ -176,10 +182,10 @@ class ProcessImage(object):
         circles = cv2.HoughCircles(tomatoFilteredLBlurred, cv2.HOUGH_GRADIENT, 5, minDist,
                                    param1=50,param2=100, minRadius=minR, maxRadius=maxR)
 
-        centers = np.matrix(circles[0][:,0:2])
+        centersO = np.matrix(circles[0][:,0:2])
         radii = circles[0][:,2]
 
-        self.centers = centers
+        self.centersO = centersO
         self.radii = radii
 
     def detect_tomatoes(self):
@@ -312,7 +318,7 @@ class ProcessImage(object):
             plot_circles(self.imRGB, graspL, [10], savePath = self.pwdProcess, saveName = '06')
 
     def get_tomatoes(self):
-        tomatoPixel = np.around(self.centers/self.scale).astype(int)
+        tomatoPixel = np.around(self.centersO/self.scale).astype(int)
         radii = self.radii/self.scale
         
         tomatoRow = tomatoPixel[:, 1]
@@ -351,7 +357,7 @@ class ProcessImage(object):
         
     def get_tomato_visualization(self):
         
-        return add_circles(self.imRGB, self.centers, self.radii)
+        return add_circles(self.imRGB, self.centersO, self.radii)
         
         
     def get_segmented_image(self):
@@ -359,7 +365,8 @@ class ProcessImage(object):
         return segmentsRGB
         
     def get_color_components(self):
-        return self.im1, self.im2
+        
+        return self.img_hue, self.img_saturation, self.img_A
 
     def rescale(self):
         #%%############
@@ -427,7 +434,8 @@ class ProcessImage(object):
 
     def process_image(self):
 
-        self.segment_img()
+        self.color_space()
+        self.segment_truss()
         self.filter_img()
         self.rotate_cut_img()
         self.detect_tomatoes()
@@ -448,7 +456,7 @@ def main():
     saveIntermediate = True
 
     pathCurrent = os.path.dirname(__file__)
-    dataSet = "tomato_rot" # "tomato_rot"
+    dataSet = "sim_blue" # "tomato_rot"
 
     pwdTest = os.path.join("..") # "..", "..", ,  "taeke"
 
@@ -456,42 +464,38 @@ def main():
     pwdResults = os.path.join(pathCurrent, pwdTest, "results", dataSet)
 
 
+
     # create folder if required
     if not os.path.isdir(pwdResults):
         print("New data set, creating a new folder: " + pwdResults)
         os.makedirs(pwdResults)
 
-    if  not os.path.isdir(pwdDataProc):
-        print("New data set, creating a new folder: " + pwdDataProc)
-        os.makedirs(pwdDataProc)
-
-
-
     # general settings
-    pwdProcess = os.path.join(pathCurrent, pwdTest, "results", "process")
 
     #%%#########
     ### Loop ###
     ############
     for iTomato in range(N, N + 1, 1):
 
-        tomatoName = "tomato" + "_RGB_" + str(iTomato).zfill(nDigits)
+        tomatoName = str(iTomato).zfill(nDigits)
         fileName = tomatoName + ".png" # png
 
         imRGB, DIM = load_rgb(pwdData, fileName, horizontal = True)
 
         if saveIntermediate:
-            save_img(imRGB, pwdProcess, '01')
+            save_img(imRGB, pwdResults, '01')
 
 
 
-        image = ProcessImage(imRGB, tomatoName = tomatoName, pwdProcess = pwdProcess, saveIntermediate = saveIntermediate)
+        image = ProcessImage(imRGB, 
+                             camera_sim = True,
+                             tomatoName = tomatoName, pwdProcess = pwdResults, saveIntermediate = saveIntermediate)
         image.process_image()
 
         # plot_circles(image.imRGB, image.graspL, [10], savePath = pwdDataProc, saveName = str(iTomato), fileFormat = 'png')
         # plot_circles(image.imRGB, image.graspL, [10], savePath = pwdProcess, saveName = '06')
         # plot_circles(image.imRGBR, image.graspR, [10], savePath = pwdProcess, saveName = '06')
-        plot_circles(imRGB, image.graspO, [10], savePath = pwdProcess, saveName = '06')
+        plot_circles(imRGB, image.graspO, [10], savePath = pwdResults, saveName = '06')
 
         row, col, angle = image.get_grasp_info()
 
