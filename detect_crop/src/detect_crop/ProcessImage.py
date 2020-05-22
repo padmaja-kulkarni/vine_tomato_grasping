@@ -25,7 +25,7 @@ from skimage.morphology import skeletonize
 # custom functions
 from util import add_border
 from util import romove_blobs
-from util import segmentation_truss_real
+from util import segmentation_truss_real, segmentation_tomato_real
 from util import segmentation_truss_sim
 from util import rot2or
 from util import or2rot
@@ -88,7 +88,8 @@ class ProcessImage(object):
             background, tomato, peduncle = segmentation_truss_sim(self.img_saturation, self.img_hue, self.img_A, self.imMax)
 
         else:
-            background, tomato, peduncle = segmentation_truss_real(self.img_hue, self.imMax)
+            # background, tomato, peduncle = segmentation_truss_real(self.img_hue, self.imMax)
+            background, tomato, peduncle = segmentation_tomato_real(self.img_hue, self.imMax)
         
         self.background = background
         self.tomato = tomato
@@ -175,9 +176,9 @@ class ProcessImage(object):
 
     def detect_tomatoes_global(self):
         tomatoFilteredLBlurred = cv2.GaussianBlur(self.tomato, (3, 3), 0)
-        minR = self.W/20 # 6
-        maxR = self.W/6
-        minDist = self.W/20
+        minR = self.W/15 # 6
+        maxR = self.W/8
+        minDist = self.W/10
 
         circles = cv2.HoughCircles(tomatoFilteredLBlurred, cv2.HOUGH_GRADIENT, 5, minDist,
                                    param1=50,param2=100, minRadius=minR, maxRadius=maxR)

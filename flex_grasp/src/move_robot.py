@@ -63,7 +63,7 @@ class MoveRobot(object):
         self.position_tolerance = 0.01 # [m]
         self.orientation_tolerance = deg2rad(1.0) # [rad]
         self.man_joint_tolerance = deg2rad(1.0) # [rad]
-        self.ee_joint_tolerance = 0.001 # [m]
+        self.ee_joint_tolerance = 0.0005 # [m]
 
         self.initialise_robot()
         self.initialise_enviroment()
@@ -163,7 +163,7 @@ class MoveRobot(object):
         
         ee_group.set_goal_position_tolerance(self.position_tolerance)
         ee_group.set_goal_orientation_tolerance(self.orientation_tolerance)
-        # ee_group.set_goal_joint_tolerance(self.ee_joint_tolerance)
+        ee_group.set_goal_joint_tolerance(self.ee_joint_tolerance)
 
         self.max_attempts = 2
 

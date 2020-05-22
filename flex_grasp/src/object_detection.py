@@ -43,6 +43,11 @@ class ObjectDetection(object):
         self.color_info = None
         self.trans = None
         self.init = None
+        
+        self.color_frame = None
+        self.depth_frame = None
+
+        self.camera_sim = rospy.get_param("camera_sim")
 
         self.bridge = CvBridge()
 
@@ -106,6 +111,7 @@ class ObjectDetection(object):
             rospy.logdebug("[OBJECT DETECTION] Received color image message")
             try:
                 self.color_image = self.bridge.imgmsg_to_cv2(msg, "rgb8")
+                self.color_frame = "camera_color_optical_frame" # msg.header.frame_id
             except CvBridgeError as e:
                 print(e)
 
@@ -113,7 +119,11 @@ class ObjectDetection(object):
         if (self.depth_image is None) and (self.event == "e_start"):
             rospy.logdebug("[OBJECT DETECTION] Received depth image message")
             try:
-                self.depth_image = self.bridge.imgmsg_to_cv2(msg, "passthrough") # /1000.0
+                if self.camera_sim:
+                    self.depth_image = self.bridge.imgmsg_to_cv2(msg, "passthrough")
+                else:
+                    self.depth_image = self.bridge.imgmsg_to_cv2(msg, "passthrough")/1000.0
+                self.depth_frame = "camera_depth_optical_frame" # msg.header.frame_id
             except CvBridgeError as e:
                 print(e)
 
@@ -164,7 +174,7 @@ class ObjectDetection(object):
             img_hue, img_saturation, img_A  = image.get_color_components()
             img_segment = image.get_segmented_image()
             img_tomato = image.get_tomato_visualization() 
-            frame = "camera_color_optical_frame"
+            frame = self.color_frame # "camera_color_optical_frame"
 
             #%%##################
             ### Cage location ###

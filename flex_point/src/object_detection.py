@@ -9,6 +9,7 @@ Created on Mon Mar  9 15:30:31 2020
 import sys
 sys.path.append('/home/taeke/catkin_ws/src/flexcraft_jelle/flex_grasp/src/func/')
 
+import numpy as np
 import rospy
 
 from cv_bridge import CvBridge, CvBridgeError
@@ -48,6 +49,9 @@ class ObjectDetection(object):
         self.bridge = CvBridge()
         self.camera_frame = "camera_color_optical_frame"
 
+        self.patch_size = 7
+
+        self.camera_sim = rospy.get_param("camera_sim")
         pathCurrent = os.path.dirname(__file__) # path to THIS file
         self.pwdProcess = os.path.join(pathCurrent, '..', '..', 'results')
 
@@ -115,7 +119,10 @@ class ObjectDetection(object):
         if (self.depth_image is None) and (self.event == "e_start"):
             rospy.logdebug("[OBJECT DETECTION] Received depth image message")
             try:
-                self.depth_image = self.bridge.imgmsg_to_cv2(msg, "passthrough")  # /1000.0
+                if self.camera_sim:
+                    self.depth_image = self.bridge.imgmsg_to_cv2(msg, "passthrough")
+                else:
+                    self.depth_image = self.bridge.imgmsg_to_cv2(msg, "passthrough")/1000.0
             except CvBridgeError as e:
                 print(e)
 
@@ -151,7 +158,7 @@ class ObjectDetection(object):
 
 
             image = ProcessImage(self.color_image, 
-                                 camera_sim = True,
+                                 camera_sim = self.camera_sim,
                                  tomatoName = 'gazebo_tomato',
                                  pwdProcess = pwd,
                                  saveIntermediate = False)
@@ -186,7 +193,7 @@ class ObjectDetection(object):
 
                 point = self.deproject(row, col, intrin)
 
-                depth = self.depth_image[(row, col)]
+                depth = self.get_depth(row, col)
                 point1 = rs.rs2_deproject_pixel_to_point(intrin, [0,0], depth)
                 point2 = rs.rs2_deproject_pixel_to_point(intrin, [0,radius], depth)
                 radius_m = euclidean(point1, point2)
@@ -234,8 +241,8 @@ class ObjectDetection(object):
 
     def deproject(self, row, col, intrin):
         # Deproject
-        index = (row, col)
-        depth = self.depth_image[index]
+        
+        depth = self.get_depth(row, col)
         # rospy.logdebug("Corresponding depth: %s", self.depth_image[index])
         # https://github.com/IntelRealSense/librealsense/wiki/Projection-in-RealSense-SDK-2.0
 
@@ -269,6 +276,25 @@ class ObjectDetection(object):
                 self.event = None
 
             self.pub_e_out.publish(msg)
+            
+    def get_depth(self, row, col):
+        patch_width = (self.patch_size - 1)/2           
+        
+        dim = self.depth_image.shape
+        H = dim[0]        
+        W = dim[1]        
+        
+        row_start = max([row - patch_width, 0])
+        row_end = min([row + patch_width, H])         
+        
+        col_start = max([col - patch_width, 0])
+        col_end = min([col + patch_width, W])         
+        
+        rows = np.arange(row_start, row_end + 1)
+        cols = np.arange(col_start, col_end + 1)
+        
+        depth_patch = self.depth_image[rows[:, np.newaxis], cols]
+        return np.mean(depth_patch)
 
 def euclidean(v1, v2):
     return sum((p-q)**2 for p, q in zip(v1, v2)) ** .5

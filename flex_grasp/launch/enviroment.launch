@@ -33,8 +33,8 @@
 
     <arg name="depth_width"         default="1280"/>
     <arg name="depth_height"        default="720"/>
-    <arg name="color_width"         default="1920"/>
-    <arg name="color_height"        default="1080"/>
+    <arg name="color_width"         default="1280"/>
+    <arg name="color_height"        default="720"/>
 
     <remap from="/$(arg hardware_interface)_trajectory_controller/follow_joint_trajectory"
            to="/$(arg robot_name)/$(arg hardware_interface)_trajectory_controller/follow_joint_trajectory" />
@@ -46,6 +46,8 @@
     <rosparam param="$(arg robot_name)/use_iiwa" subst_value="true">$(arg use_iiwa)</rosparam>
     <rosparam param="$(arg robot_name)/use_sdh" subst_value="true">$(arg use_sdh)</rosparam>
     <rosparam param="$(arg robot_name)/use_interbotix" subst_value="true">$(arg use_interbotix)</rosparam>
+
+    <rosparam param="$(arg robot_name)/camera_sim" subst_value="true">$(arg camera_sim)</rosparam>
 
     <include unless="$(arg camera_sim)" file="$(find realsense2_camera)/launch/rs_aligned_depth.launch" ns="$(arg robot_name)">
       <arg name="camera" value="$(arg camera_name)"/>

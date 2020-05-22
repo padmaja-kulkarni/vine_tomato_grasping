@@ -168,11 +168,11 @@ class PoseTransform(object):
                 tomato_pose.pose.orientation = list_to_orientation([0,0,0])
                 
                 tomato_pose_world = tf2_geometry_msgs.do_transform_pose(tomato_pose, self.trans)
-#                self.object_pose.pose.position.z = 0.1  
-#                ai = 0.0
-#                aj = 0.0
-#                ak = np.arctan(self.object_pose.pose.position.y/self.object_pose.pose.position.x)
-#                self.object_pose.pose.orientation = list_to_orientation([ai, aj, ak])
+                tomato_pose_world.pose.position.z = 0.05  
+                ai = 0.0
+                aj = 0.0
+                ak = np.arctan(tomato_pose_world.pose.position.y/tomato_pose_world.pose.position.x) + np.pi
+                tomato_pose_world.pose.orientation = list_to_orientation([ai, aj, ak])
                 
                 pre_grasp_pose = self.object_pose_to_grasp_pose(tomato_pose_world, self.pre_grasp_position_transform)
                 # pre_grasp_pose = tomato_pose_world
