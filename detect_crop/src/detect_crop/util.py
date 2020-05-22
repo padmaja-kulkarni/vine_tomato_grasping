@@ -152,7 +152,7 @@ def segmentation_2(imRGB, imMax):
         tomato = cv2.bitwise_and(tomato_temp, truss)
         peduncle = cv2.bitwise_and(cv2.bitwise_not(tomato_temp), truss)
         
-        return background, tomato, peduncle
+        return background, tomato, peduncle, im1, im2
 
 def segmentation_blue(imRGB, imMax):
         imHSV = cv2.cvtColor(imRGB, cv2.COLOR_RGB2HSV)
@@ -557,6 +557,14 @@ def load_rgb(pwd, name, horizontal = True):
     DIM = [H,W]
     
     return imRGB, DIM
+
+
+def add_circles(imRGB, centers, radii):
+    if radii is not None:
+        for i in range(0, len(radii), 1):
+            cv2.circle(imRGB,(centers[i, 0], centers[i, 1]), radii[i], (0,255,0))
+            
+    return imRGB
 
 def plot_circles(imRGB, centers, radii, savePath = None, saveName = None, 
                  figureTitle = "", titleSize = 20, resolution = 300, 

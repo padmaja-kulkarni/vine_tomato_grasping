@@ -72,6 +72,15 @@ class ObjectDetection(object):
                                         
         self.pub_segment_image = rospy.Publisher("segment_image",
                                         Image, queue_size=5, latch=True)
+                                        
+        self.pub_tomato_image = rospy.Publisher("tomato_image",
+                                        Image, queue_size=5, latch=True)
+                            
+        self.pub_color_component1 = rospy.Publisher("color_component_1",
+                                Image, queue_size=5, latch=True)
+
+        self.pub_color_component2 = rospy.Publisher("color_component_2",
+                                Image, queue_size=5, latch=True)
 
         # Subscribe
         rospy.Subscriber("~e_in", String, self.e_in_cb)
@@ -103,7 +112,7 @@ class ObjectDetection(object):
         if (self.depth_image is None) and (self.event == "e_start"):
             rospy.logdebug("[OBJECT DETECTION] Received depth image message")
             try:
-                self.depth_image = self.bridge.imgmsg_to_cv2(msg, "passthrough")  /1000.0
+                self.depth_image = self.bridge.imgmsg_to_cv2(msg, "passthrough")  # /1000.0
             except CvBridgeError as e:
                 print(e)
 
@@ -143,11 +152,14 @@ class ObjectDetection(object):
                                  saveIntermediate = False)
 
             # Image processing
-            image.segment_img_2()
+            image.segment_img()
             image.detect_tomatoes_global()
             
             # get results
-            segment_image = image.get_segmented_image()
+            img_color_component_1, img_color_component_2 = image.get_color_components()
+            img_segment = image.get_segmented_image()
+            
+            img_tomato = image.get_tomato_visualization() 
             tomato_features = image.get_tomatoes()
             
             # get camera properties
@@ -183,9 +195,17 @@ class ObjectDetection(object):
 
             truss = self.create_truss(tomatoes, cage_pose, peduncle)
             
-            # publish results
-            imgmsg = self.bridge.cv2_to_imgmsg(segment_image, encoding="rgb8")
-            self.pub_segment_image.publish(imgmsg)
+            # publish results tomato_img
+            imgmsg_segment = self.bridge.cv2_to_imgmsg(img_segment, encoding="rgb8")
+            imgmsg_tomato = self.bridge.cv2_to_imgmsg(img_tomato, encoding="rgb8")
+            imgmsg_color_component_1 = self.bridge.cv2_to_imgmsg(img_color_component_1)
+            imgmsg_color_component_2 = self.bridge.cv2_to_imgmsg(img_color_component_2)
+            
+            self.pub_segment_image.publish(imgmsg_segment)
+            self.pub_tomato_image.publish(imgmsg_tomato)
+            self.pub_color_component1.publish(imgmsg_color_component_1)
+            self.pub_color_component2.publish(imgmsg_color_component_2)
+            
             self.pub_object_features.publish(truss)
 
             return True

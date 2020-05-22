@@ -28,6 +28,9 @@ from util import romove_blobs
 from util import segmentation_otsu, segmentation_otsu_test, segmentation_2, segmentation_blue
 from util import rot2or
 from util import or2rot
+from util import add_circles
+
+
 
 from util import save_img
 from util import load_rgb
@@ -77,7 +80,11 @@ class ProcessImage(object):
 
         # background, tomato, peduncle = segmentation_otsu(self.imRGB, self.imMax) 
         # background, tomato, peduncle = segmentation_blue(self.imRGB, self.imMax)
-        background, tomato, peduncle = segmentation_2(self.imRGB, self.imMax)
+        background, tomato, peduncle, im1, im2 = segmentation_2(self.imRGB, self.imMax)
+        
+        self.im1 = im1
+        self.im2 = im2        
+        
         self.background = background
         self.tomato = tomato
         self.peduncle = peduncle
@@ -342,10 +349,17 @@ class ProcessImage(object):
 
         return row, col, angle
         
-    def get_segmented_image(self):
+    def get_tomato_visualization(self):
         
+        return add_circles(self.imRGB, self.centers, self.radii)
+        
+        
+    def get_segmented_image(self):
         segmentsRGB = stack_segments(self.imRGB, self.background, self.tomato, self.peduncle)
         return segmentsRGB
+        
+    def get_color_components(self):
+        return self.im1, self.im2
 
     def rescale(self):
         #%%############

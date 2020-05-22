@@ -73,7 +73,7 @@ class PoseTransform(object):
             self.orientation_transform = [0, 0, -pi/2]
         if self.use_interbotix:
             self.grasp_position_transform =     [0, 0, 0.04] # [m]
-            self.pre_grasp_position_transform = [0, 0, 0.08] # [m]
+            self.pre_grasp_position_transform = [0, 0, 0.12] # [m] 0.08
             self.orientation_transform = [-pi, pi/2, 0]
 
 
@@ -144,7 +144,7 @@ class PoseTransform(object):
         if not (self.object_features is None):
             try:
                 frame = self.object_features.tomatoes[0].header.frame_id
-                self.trans = self.tfBuffer.lookup_transform('world',frame,  rospy.Time(0))
+                self.trans = self.tfBuffer.lookup_transform('world',frame, rospy.Time(0))
             except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
                 pass
             # continue
@@ -165,19 +165,17 @@ class PoseTransform(object):
                 tomato_pose = PoseStamped()
                 tomato_pose.header = tomato.header
                 tomato_pose.pose.position = tomato.position
-                tomato_pose.pose.orientation = quaternion_from_euler(0,0,0)
-
-                tomato_pose = point_to_pose_stamped([tomato.position.x, tomato.position.y, tomato.position.z], [0,0,0], tomato.header.frame_id, tomato.header.stamp)
-
-                self.object_pose = tf2_geometry_msgs.do_transform_pose(tomato_pose, self.trans)
-                self.object_pose.pose.position.z = 0.1  
-                ai = 0.0
-                aj = 0.0
-                ak = np.arctan(self.object_pose.pose.position.y/self.object_pose.pose.position.x)
-                self.object_pose.pose.orientation = list_to_orientation([ai, aj, ak])
+                tomato_pose.pose.orientation = list_to_orientation([0,0,0])
                 
-                pre_grasp_pose = self.object_pose_to_grasp_pose(self.pre_grasp_position_transform)
-
+                tomato_pose_world = tf2_geometry_msgs.do_transform_pose(tomato_pose, self.trans)
+#                self.object_pose.pose.position.z = 0.1  
+#                ai = 0.0
+#                aj = 0.0
+#                ak = np.arctan(self.object_pose.pose.position.y/self.object_pose.pose.position.x)
+#                self.object_pose.pose.orientation = list_to_orientation([ai, aj, ak])
+                
+                pre_grasp_pose = self.object_pose_to_grasp_pose(tomato_pose_world, self.pre_grasp_position_transform)
+                # pre_grasp_pose = tomato_pose_world
 
                 self.pub_pre_grasp_pose.publish(pre_grasp_pose)
                 self.pub_move_robot_command.publish("move")
@@ -192,9 +190,8 @@ class PoseTransform(object):
             self.object_features = None
             return success
 
-    def object_pose_to_grasp_pose(self, position_transform):
+    def object_pose_to_grasp_pose(self, object_pose, position_transform):
 
-        object_pose = self.object_pose
         grasp_pose = PoseStamped()
         grasp_pose.header = object_pose.header
 

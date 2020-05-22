@@ -5,7 +5,7 @@
       "keys": {
         "running-plugins": {
           "type": "repr",
-          "repr": "{u'rqt_user_interface/SDH Grasp': [1], u'rqt_image_view/ImageView': [2, 1], u'rqt_console/Console': [1]}"
+          "repr": "{u'rqt_user_interface/SDH Grasp': [1], u'rqt_image_view/ImageView': [5, 4, 2, 1, 3], u'rqt_console/Console': [1]}"
         }
       },
       "groups": {
@@ -65,14 +65,14 @@
             }
           }
         },
-        "plugin__rqt_launchtree__Launch Tree__1": {
+        "plugin__rqt_image_view__ImageView__4": {
           "keys": {},
           "groups": {
-            "dock_widget__LaunchtreeWidget": {
+            "dock_widget__ImageViewWidget": {
               "keys": {
                 "dockable": {
                   "type": "repr",
-                  "repr": "u'true'"
+                  "repr": "True"
                 },
                 "parent": {
                   "type": "repr",
@@ -80,28 +80,253 @@
                 },
                 "dock_widget_title": {
                   "type": "repr",
-                  "repr": "u'LaunchtreeWidget'"
+                  "repr": "u'Image View (4)'"
                 }
               },
               "groups": {}
             },
             "plugin": {
               "keys": {
-                "last_launch": {
+                "max_range": {
                   "type": "repr",
-                  "repr": "u'launch/interbotix_enviroment.launch'"
+                  "repr": "10.0"
                 },
-                "last_pkg": {
+                "rotate": {
                   "type": "repr",
-                  "repr": "u'flex_grasp'"
+                  "repr": "0"
                 },
-                "editor": {
+                "smooth_image": {
                   "type": "repr",
-                  "repr": "u'gedit'"
+                  "repr": "False"
                 },
-                "last_args": {
+                "mouse_pub_topic": {
                   "type": "repr",
-                  "repr": "u''"
+                  "repr": "u'/px150/color_component_2_mouse_left'"
+                },
+                "num_gridlines": {
+                  "type": "repr",
+                  "repr": "0"
+                },
+                "toolbar_hidden": {
+                  "type": "repr",
+                  "repr": "False"
+                },
+                "zoom1": {
+                  "type": "repr",
+                  "repr": "False"
+                },
+                "dynamic_range": {
+                  "type": "repr",
+                  "repr": "False"
+                },
+                "topic": {
+                  "type": "repr",
+                  "repr": "u'/px150/color_component_2'"
+                },
+                "publish_click_location": {
+                  "type": "repr",
+                  "repr": "False"
+                }
+              },
+              "groups": {}
+            }
+          }
+        },
+        "plugin__rqt_image_view__ImageView__5": {
+          "keys": {},
+          "groups": {
+            "dock_widget__ImageViewWidget": {
+              "keys": {
+                "dockable": {
+                  "type": "repr",
+                  "repr": "True"
+                },
+                "parent": {
+                  "type": "repr",
+                  "repr": "None"
+                },
+                "dock_widget_title": {
+                  "type": "repr",
+                  "repr": "u'Image View (5)'"
+                }
+              },
+              "groups": {}
+            },
+            "plugin": {
+              "keys": {
+                "max_range": {
+                  "type": "repr",
+                  "repr": "10.0"
+                },
+                "rotate": {
+                  "type": "repr",
+                  "repr": "0"
+                },
+                "smooth_image": {
+                  "type": "repr",
+                  "repr": "False"
+                },
+                "mouse_pub_topic": {
+                  "type": "repr",
+                  "repr": "u'/px150/segment_image_mouse_left'"
+                },
+                "num_gridlines": {
+                  "type": "repr",
+                  "repr": "0"
+                },
+                "toolbar_hidden": {
+                  "type": "repr",
+                  "repr": "False"
+                },
+                "zoom1": {
+                  "type": "repr",
+                  "repr": "False"
+                },
+                "dynamic_range": {
+                  "type": "repr",
+                  "repr": "False"
+                },
+                "topic": {
+                  "type": "repr",
+                  "repr": "u'/px150/segment_image'"
+                },
+                "publish_click_location": {
+                  "type": "repr",
+                  "repr": "False"
+                }
+              },
+              "groups": {}
+            }
+          }
+        },
+        "plugin__rqt_image_view__ImageView__2": {
+          "keys": {},
+          "groups": {
+            "dock_widget__ImageViewWidget": {
+              "keys": {
+                "dockable": {
+                  "type": "repr",
+                  "repr": "True"
+                },
+                "parent": {
+                  "type": "repr",
+                  "repr": "None"
+                },
+                "dock_widget_title": {
+                  "type": "repr",
+                  "repr": "u'Image View (2)'"
+                }
+              },
+              "groups": {}
+            },
+            "plugin": {
+              "keys": {
+                "max_range": {
+                  "type": "repr",
+                  "repr": "10.0"
+                },
+                "rotate": {
+                  "type": "repr",
+                  "repr": "0"
+                },
+                "smooth_image": {
+                  "type": "repr",
+                  "repr": "False"
+                },
+                "mouse_pub_topic": {
+                  "type": "repr",
+                  "repr": "u'/px150/tomato_image_mouse_left'"
+                },
+                "num_gridlines": {
+                  "type": "repr",
+                  "repr": "0"
+                },
+                "toolbar_hidden": {
+                  "type": "repr",
+                  "repr": "False"
+                },
+                "zoom1": {
+                  "type": "repr",
+                  "repr": "False"
+                },
+                "dynamic_range": {
+                  "type": "repr",
+                  "repr": "False"
+                },
+                "topic": {
+                  "type": "repr",
+                  "repr": "u'/px150/tomato_image'"
+                },
+                "publish_click_location": {
+                  "type": "repr",
+                  "repr": "False"
+                }
+              },
+              "groups": {}
+            }
+          }
+        },
+        "plugin__rqt_image_view__ImageView__3": {
+          "keys": {},
+          "groups": {
+            "dock_widget__ImageViewWidget": {
+              "keys": {
+                "dockable": {
+                  "type": "repr",
+                  "repr": "True"
+                },
+                "parent": {
+                  "type": "repr",
+                  "repr": "None"
+                },
+                "dock_widget_title": {
+                  "type": "repr",
+                  "repr": "u'Image View (3)'"
+                }
+              },
+              "groups": {}
+            },
+            "plugin": {
+              "keys": {
+                "max_range": {
+                  "type": "repr",
+                  "repr": "10.0"
+                },
+                "rotate": {
+                  "type": "repr",
+                  "repr": "0"
+                },
+                "smooth_image": {
+                  "type": "repr",
+                  "repr": "False"
+                },
+                "mouse_pub_topic": {
+                  "type": "repr",
+                  "repr": "u'/px150/color_component_1_mouse_left'"
+                },
+                "num_gridlines": {
+                  "type": "repr",
+                  "repr": "0"
+                },
+                "toolbar_hidden": {
+                  "type": "repr",
+                  "repr": "False"
+                },
+                "zoom1": {
+                  "type": "repr",
+                  "repr": "False"
+                },
+                "dynamic_range": {
+                  "type": "repr",
+                  "repr": "False"
+                },
+                "topic": {
+                  "type": "repr",
+                  "repr": "u'/px150/color_component_1'"
+                },
+                "publish_click_location": {
+                  "type": "repr",
+                  "repr": "False"
                 }
               },
               "groups": {}
@@ -227,14 +452,14 @@
             }
           }
         },
-        "plugin__rqt_image_view__ImageView__2": {
+        "plugin__rqt_launchtree__Launch Tree__1": {
           "keys": {},
           "groups": {
-            "dock_widget__ImageViewWidget": {
+            "dock_widget__LaunchtreeWidget": {
               "keys": {
                 "dockable": {
                   "type": "repr",
-                  "repr": "True"
+                  "repr": "u'true'"
                 },
                 "parent": {
                   "type": "repr",
@@ -242,52 +467,28 @@
                 },
                 "dock_widget_title": {
                   "type": "repr",
-                  "repr": "u'Image View (2)'"
+                  "repr": "u'LaunchtreeWidget'"
                 }
               },
               "groups": {}
             },
             "plugin": {
               "keys": {
-                "max_range": {
+                "last_launch": {
                   "type": "repr",
-                  "repr": "10.0"
+                  "repr": "u'launch/interbotix_enviroment.launch'"
                 },
-                "rotate": {
+                "last_pkg": {
                   "type": "repr",
-                  "repr": "0"
+                  "repr": "u'flex_grasp'"
                 },
-                "smooth_image": {
+                "editor": {
                   "type": "repr",
-                  "repr": "False"
+                  "repr": "u'gedit'"
                 },
-                "mouse_pub_topic": {
+                "last_args": {
                   "type": "repr",
-                  "repr": "u'/px150/segment_image_mouse_left'"
-                },
-                "num_gridlines": {
-                  "type": "repr",
-                  "repr": "0"
-                },
-                "toolbar_hidden": {
-                  "type": "repr",
-                  "repr": "False"
-                },
-                "zoom1": {
-                  "type": "repr",
-                  "repr": "False"
-                },
-                "dynamic_range": {
-                  "type": "repr",
-                  "repr": "False"
-                },
-                "topic": {
-                  "type": "repr",
-                  "repr": "u'/px150/segment_image'"
-                },
-                "publish_click_location": {
-                  "type": "repr",
-                  "repr": "False"
+                  "repr": "u''"
                 }
               },
               "groups": {}
@@ -330,8 +531,8 @@
                 },
                 "table_splitter": {
                   "type": "repr(QByteArray.hex)",
-                  "repr(QByteArray.hex)": "QtCore.QByteArray('000000ff0000000100000002000001540000026f0100000009010000000200')",
-                  "pretty-print": "       T o     "
+                  "repr(QByteArray.hex)": "QtCore.QByteArray('000000ff0000000100000002000002be000001050100000009010000000200')",
+                  "pretty-print": "               "
                 },
                 "highlight_filters": {
                   "type": "repr",
@@ -347,8 +548,8 @@
                 },
                 "filter_splitter": {
                   "type": "repr(QByteArray.hex)",
-                  "repr(QByteArray.hex)": "QtCore.QByteArray('000000ff00000001000000020000006f0000006f0100000009010000000200')",
-                  "pretty-print": "       o o     "
+                  "repr(QByteArray.hex)": "QtCore.QByteArray('000000ff00000001000000020000008d0000006f0100000009010000000200')",
+                  "pretty-print": "         o     "
                 }
               },
               "groups": {
@@ -410,8 +611,8 @@
         },
         "state": {
           "type": "repr(QByteArray.hex)",
-          "repr(QByteArray.hex)": "QtCore.QByteArray('000000ff00000000fd0000000100000003000007800000040afc0100000006fc00000000000001f6000000e000fffffffc0200000004fc00000000000000f1000000a500fffffffa000000010200000002fb00000060007200710074005f006c00610075006e006300680074007200650065005f005f004c00610075006e0063006800200054007200650065005f005f0031005f005f004c00610075006e0063006800740072006500650057006900640067006500740100000000ffffffff0000000000000000fb0000005e007200710074005f0075007300650072005f0069006e0074006500720066006100630065005f005f005300440048002000470072006100730070005f005f0031005f005f005200710074005300640068004700720061007300700055006901000000000000040a000000a500fffffffb0000005a007200710074005f0069006d006100670065005f0076006900650077005f005f0049006d0061006700650056006900650077005f005f0031005f005f0049006d006100670065005600690065007700570069006400670065007401000000f70000018a0000005100fffffffb0000005a007200710074005f0069006d006100670065005f0076006900650077005f005f0049006d0061006700650056006900650077005f005f0032005f005f0049006d00610067006500560069006500770057006900640067006500740100000287000001830000005100fffffffb00000030005f005f0044006f0063006b0057006900640067006500740043006f006e007400610069006e00650072005f005f003103000007800000015c0000017d000002c6fb0000004c007200710074005f0063006f006e0073006f006c0065005f005f0043006f006e0073006f006c0065005f005f0031005f005f0043006f006e0073006f006c006500570069006400670065007401000001fc00000584000001e000fffffffb0000004c007200710074005f0074006f007000690063005f005f0054006f0070006900630050006c007500670069006e005f005f0031005f005f0054006f00700069006300570069006400670065007401000003b9000003860000000000000000fb00000050007200710074005f0070006f00730065005f0076006900650077005f005f0050006f007300650056006900650077005f005f0031005f005f0047004c005600690065007700570069006400670065007401000000000000073f0000000000000000fb00000064007200710074005f006c00610075006e00630068005f005f004c00610075006e00630068005f005f0031005f005f005f0070006c007500670069006e0063006f006e007400610069006e00650072005f0074006f0070005f00770069006400670065007401000002d6000001500000000000000000fb00000026007200710074005f007200760069007a005f005f005200560069007a005f005f0031005f005f0100000480000003000000000000000000000007800000000000000004000000040000000800000008fc00000001000000030000000100000036004d0069006e0069006d0069007a006500640044006f0063006b00570069006400670065007400730054006f006f006c0062006100720000000000ffffffff0000000000000000')",
-          "pretty-print": "                                          `rqt_launchtree__Launch Tree__1__LaunchtreeWidget          ^rqt_user_interface__SDH Grasp__1__RqtSdhGraspUi          Zrqt_image_view__ImageView__1__ImageViewWidget          Zrqt_image_view__ImageView__2__ImageViewWidget          0__DockWidgetContainer__1          Lrqt_console__Console__1__ConsoleWidget          Lrqt_topic__TopicPlugin__1__TopicWidget          Prqt_pose_view__PoseView__1__GLViewWidget          drqt_launch__Launch__1___plugincontainer_top_widget          &rqt_rviz__RViz__1__                            6MinimizedDockWidgetsToolbar        "
+          "repr(QByteArray.hex)": "QtCore.QByteArray('000000ff00000000fd0000000100000003000007800000040afc0100000006fc00000000000001bf000000e000fffffffc0200000004fc0000000000000161000000a500fffffffa000000010200000002fb00000060007200710074005f006c00610075006e006300680074007200650065005f005f004c00610075006e0063006800200054007200650065005f005f0031005f005f004c00610075006e0063006800740072006500650057006900640067006500740100000000ffffffff0000000000000000fb0000005e007200710074005f0075007300650072005f0069006e0074006500720066006100630065005f005f005300440048002000470072006100730070005f005f0031005f005f005200710074005300640068004700720061007300700055006901000000000000040a000000a500fffffffb0000005a007200710074005f0069006d006100670065005f0076006900650077005f005f0049006d0061006700650056006900650077005f005f0031005f005f0049006d006100670065005600690065007700570069006400670065007401000001670000014e0000005100fffffffb0000005a007200710074005f0069006d006100670065005f0076006900650077005f005f0049006d0061006700650056006900650077005f005f0032005f005f0049006d006100670065005600690065007700570069006400670065007401000002bb0000014f0000005100fffffffb00000030005f005f0044006f0063006b0057006900640067006500740043006f006e007400610069006e00650072005f005f003103000007800000015c0000017d000002c6fb0000004c007200710074005f0074006f007000690063005f005f0054006f0070006900630050006c007500670069006e005f005f0031005f005f0054006f00700069006300570069006400670065007401000003b9000003860000000000000000fb00000050007200710074005f0070006f00730065005f0076006900650077005f005f0050006f007300650056006900650077005f005f0031005f005f0047004c005600690065007700570069006400670065007401000000000000073f0000000000000000fb00000064007200710074005f006c00610075006e00630068005f005f004c00610075006e00630068005f005f0031005f005f005f0070006c007500670069006e0063006f006e007400610069006e00650072005f0074006f0070005f00770069006400670065007401000002d6000001500000000000000000fb00000026007200710074005f007200760069007a005f005f005200560069007a005f005f0031005f005f0100000480000003000000000000000000fc000001c5000005bb000002c300fffffffc0100000002fc000001c5000001ab000000dd00fffffffc0200000003fb0000005a007200710074005f0069006d006100670065005f0076006900650077005f005f0049006d0061006700650056006900650077005f005f0034005f005f0049006d00610067006500560069006500770057006900640067006500740100000000000001550000005100fffffffb0000005a007200710074005f0069006d006100670065005f0076006900650077005f005f0049006d0061006700650056006900650077005f005f0033005f005f0049006d0061006700650056006900650077005700690064006700650074010000015b000001550000005100fffffffb0000005a007200710074005f0069006d006100670065005f0076006900650077005f005f0049006d0061006700650056006900650077005f005f0035005f005f0049006d006100670065005600690065007700570069006400670065007401000002b6000001540000005100fffffffb0000004c007200710074005f0063006f006e0073006f006c0065005f005f0043006f006e0073006f006c0065005f005f0031005f005f0043006f006e0073006f006c006500570069006400670065007401000003760000040a000001e000ffffff000007800000000000000004000000040000000800000008fc00000001000000030000000100000036004d0069006e0069006d0069007a006500640044006f0063006b00570069006400670065007400730054006f006f006c0062006100720000000000ffffffff0000000000000000')",
+          "pretty-print": "                                          `rqt_launchtree__Launch Tree__1__LaunchtreeWidget          ^rqt_user_interface__SDH Grasp__1__RqtSdhGraspUi          Zrqt_image_view__ImageView__1__ImageViewWidget          Zrqt_image_view__ImageView__2__ImageViewWidget          0__DockWidgetContainer__1          Lrqt_topic__TopicPlugin__1__TopicWidget          Prqt_pose_view__PoseView__1__GLViewWidget          drqt_launch__Launch__1___plugincontainer_top_widget          &rqt_rviz__RViz__1__                                 Zrqt_image_view__ImageView__4__ImageViewWidget          Zrqt_image_view__ImageView__3__ImageViewWidget          Zrqt_image_view__ImageView__5__ImageViewWidget          Lrqt_console__Console__1__ConsoleWidget                            6MinimizedDockWidgetsToolbar        "
         }
       },
       "groups": {
