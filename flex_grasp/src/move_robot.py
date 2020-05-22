@@ -411,7 +411,7 @@ class MoveRobot(object):
                 
             if attempt >= self.max_attempts:
                 break
-        print("Finished go to pose, success: ", success)
+
         return success
 
     def move_to_joint_target(self, group, target):
