@@ -160,6 +160,30 @@ def segmentation_truss_sim(img_saturation, img_hue, img_A, imMax):
         
         return background, tomato, peduncle
         
+def segmentation_truss_real_simpel(img_hue, img_A, imMax):
+
+        im1 = img_hue # hue
+        im2 = img_A # A
+
+        # Seperate truss from background
+        data1 = im1.flatten()
+        thresholdTomato, temp = cv2.threshold(data1,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+        
+        thresholdTruss = 15
+        temp, truss_1 = cv2.threshold(im1,thresholdTruss,imMax,cv2.THRESH_BINARY_INV)
+        temp, truss_2 = cv2.threshold(im1,thresholdTruss + 120,imMax,cv2.THRESH_BINARY) # circle
+        tomato = cv2.bitwise_or(truss_1,truss_2)
+        
+        # seperate tomato from peduncle
+        # data2 = im2[(truss == imMax)].flatten()
+        # threshPeduncle, temp = cv2.threshold(data2,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+   
+        temp, peduncle = cv2.threshold(im1,60,imMax,cv2.THRESH_BINARY)
+        #temp, peduncle_2 = cv2.threshold(im1,thresholdTruss,imMax,cv2.THRESH_BINARY)
+        # peduncle = cv2.bitwise_and(peduncle_1, peduncle_2)
+        truss = cv2.bitwise_or(tomato, peduncle) # 
+        background = cv2.bitwise_not(truss)    
+        
 def segmentation_truss_real(img_hue, imMax):
         im1 = img_hue # hue
  
@@ -167,8 +191,7 @@ def segmentation_truss_real(img_hue, imMax):
         data1 = im1.flatten()
         thresholdTomato, temp = cv2.threshold(data1,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
         
-        threshPeduncle = 15
-        temp, truss_1 = cv2.threshold(im1,threshPeduncle,imMax,cv2.THRESH_BINARY_INV)
+        temp, truss_1 = cv2.threshold(im1,15,imMax,cv2.THRESH_BINARY_INV)
         temp, truss_2 = cv2.threshold(im1,150,imMax,cv2.THRESH_BINARY) # circle
         truss = cv2.bitwise_or(truss_1,truss_2)
         background = cv2.bitwise_not(truss)
@@ -178,10 +201,9 @@ def segmentation_truss_real(img_hue, imMax):
         threshPeduncle, temp = cv2.threshold(data2,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
    
 
-        temp, peduncle_1 = cv2.threshold(im1,threshPeduncle + 60,imMax,cv2.THRESH_BINARY_INV)
-        temp, peduncle_2 = cv2.threshold(im1,threshPeduncle,imMax,cv2.THRESH_BINARY)
+        temp, peduncle_1 = cv2.threshold(im1,60,imMax,cv2.THRESH_BINARY_INV)
+        temp, peduncle_2 = cv2.threshold(im1,15,imMax,cv2.THRESH_BINARY)
         peduncle = cv2.bitwise_and(peduncle_1, peduncle_2)
-        tomato = truss # cv2.bitwise_not(peduncle)
         
         return background, truss, peduncle
         

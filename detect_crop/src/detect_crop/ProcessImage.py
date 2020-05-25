@@ -68,7 +68,7 @@ class ProcessImage(object):
         self.saveIntermediate = saveIntermediate
 
         self.camera_sim = camera_sim
-        self.use_truss = camera_sim
+        self.use_truss = use_truss
         self.imMax = 255
         self.pwdProcess = pwdProcess
         self.tomatoName = tomatoName
@@ -470,12 +470,12 @@ def main():
 
     ## params ##
     # params
-    N = 1               # tomato file to load
+    N = 3               # tomato file to load
     nDigits = 3
     saveIntermediate = True
 
     pathCurrent = os.path.dirname(__file__)
-    dataSet = "sim_blue" # "tomato_rot"
+    dataSet = "real_blue" # "tomato_rot"
 
     pwdTest = os.path.join("..") # "..", "..", ,  "taeke"
 
@@ -507,8 +507,11 @@ def main():
 
 
         image = ProcessImage(imRGB, 
-                             camera_sim = True,
-                             tomatoName = tomatoName, pwdProcess = pwdResults, saveIntermediate = saveIntermediate)
+                             camera_sim = False,
+                             use_truss = True,
+                             tomatoName = tomatoName, 
+                             pwdProcess = pwdResults, 
+                             saveIntermediate = saveIntermediate)
         image.process_image()
 
         # plot_circles(image.imRGB, image.graspL, [10], savePath = pwdDataProc, saveName = str(iTomato), fileFormat = 'png')

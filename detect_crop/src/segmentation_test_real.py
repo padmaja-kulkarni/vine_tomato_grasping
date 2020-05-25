@@ -50,7 +50,7 @@ settings = {
         "name": "tomato_blue"},
     "real_blue": {
         "extension": ".png",
-        "files": 2,
+        "files": 3,
         "name": "real_blue"},
     "sim_blue": {
         "extension": ".png",
@@ -84,7 +84,7 @@ make_dirs(pwdResults)
 imMax = 255
 count = 0
 
-for iTomato in range(1, N + 1):
+for iTomato in range(N, N + 1):
 
     tomatoID = str(iTomato).zfill(nDigits)
     tomatoName = tomatoID # "tomato" + "_RGB_" + 
@@ -106,13 +106,13 @@ for iTomato in range(1, N + 1):
         ### SEGMENTATION ###
         ####################
         im1 = imHSV[:, :, 0] # hue
+        im2 = imLAB[:, :, 1] # A
  
-
         # Seperate truss from background
         data1 = im1.flatten()
         thresholdTomato, temp = cv2.threshold(data1,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
         
-        thresholdTomato = 29
+        threshPeduncle = 15
         temp, truss_1 = cv2.threshold(im1,15,imMax,cv2.THRESH_BINARY_INV)
         temp, truss_2 = cv2.threshold(im1,150,imMax,cv2.THRESH_BINARY) # circle
         truss = cv2.bitwise_or(truss_1,truss_2)
@@ -122,8 +122,8 @@ for iTomato in range(1, N + 1):
         data2 = im1[(truss == imMax)].flatten()
         threshPeduncle, temp = cv2.threshold(data2,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
    
-        threshPeduncle = 15
-        temp, peduncle_1 = cv2.threshold(im1,90,imMax,cv2.THRESH_BINARY_INV)
+
+        temp, peduncle_1 = cv2.threshold(im1,60,imMax,cv2.THRESH_BINARY_INV)
         temp, peduncle_2 = cv2.threshold(im1,15,imMax,cv2.THRESH_BINARY)
         peduncle = cv2.bitwise_and(peduncle_1, peduncle_2)
         tomato = truss # cv2.bitwise_not(peduncle)

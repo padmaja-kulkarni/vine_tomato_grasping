@@ -33,7 +33,7 @@ from detect_crop.util import rgb2hsi
 
 
 #%% init
-N = 2 #  48 #        # tomato file to load
+N = 3 #  48 #        # tomato file to load
 nDigits = 3
 
 plt.rcParams["image.cmap"] = 'plasma'
@@ -73,8 +73,8 @@ for iTomato in range(1, N + 1):
     
 
     save_img(imHSV[:,:,0], pwdResults, tomatoID + "H")
-    # save_img(imHSV[:,:,1], pwdResults, tomatoID + "S")
-    # save_img(imLAB[:,:,1], pwdResults, tomatoID + "A")
+    save_img(imHSV[:,:,1], pwdResults, tomatoID + "S")
+    save_img(imLAB[:,:,1], pwdResults, tomatoID + "A")
     # save_img(imLAB[:,:,2], pwdResults, tomatoID + "B")
     # save_img(imHSI[:,:,1], pwdResults, tomatoID + "HSI_1S")
     # save_img(imHSV[:,:,2], pwdResults, tomatoID + "HSV_2V")
