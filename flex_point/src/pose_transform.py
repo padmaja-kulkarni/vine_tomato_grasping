@@ -165,7 +165,8 @@ class PoseTransform(object):
             rospy.logwarn("[POSE TRANSFORM] Cannot transform pose, since object_features still empty!")
             return False
         else:
-                
+            success = True            
+            
             for tomato in self.object_features.tomatoes:
                 
                 tomato_point = PointStamped()
