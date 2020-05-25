@@ -399,7 +399,7 @@ class MoveRobot(object):
             
             orientation_close, position_close = pose_close(goal_pose, curr_pose, self.position_tolerance, self.orientation_tolerance)
             is_all_close = orientation_close and position_close
-            success = is_all_close
+            # success = is_all_close
             if is_all_close is False:
                 if orientation_close is False:
                     rospy.logwarn("[MOVE ROBOT] Failed to move to pose target, obtained orientation is not sufficiently close to goal oreintation (tolerance: %s). Attempts remaining: %s", self.man_group.get_goal_orientation_tolerance(), self.max_attempts - attempt)
