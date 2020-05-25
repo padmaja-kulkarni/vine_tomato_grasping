@@ -46,18 +46,21 @@ class ObjectDetection(object):
         self.trans = None
         self.init = None
 
+        self.camera_sim = rospy.get_param("camera_sim")
+        self.use_truss = rospy.get_param("use_truss")
+        self.debug_mode = rospy.get_param("object_detection/debug")
+
         self.bridge = CvBridge()
         self.camera_frame = "camera_color_optical_frame"
 
         self.patch_size = 7
 
-        self.camera_sim = rospy.get_param("camera_sim")
         pathCurrent = os.path.dirname(__file__) # path to THIS file
         self.pwdProcess = os.path.join(pathCurrent, '..', '..', 'results')
 
         rospy.loginfo("Storing visiual results in: ", self.pwdProcess)
 
-        self.debug_mode = rospy.get_param("object_detection/debug")
+
 
         if self.debug_mode:
             log_level = rospy.DEBUG
@@ -73,13 +76,13 @@ class ObjectDetection(object):
 
         self.pub_object_features = rospy.Publisher("object_features",
                                         Truss, queue_size=5, latch=True)
-                                        
+
         self.pub_segment_image = rospy.Publisher("segment_image",
                                         Image, queue_size=5, latch=True)
-                                        
+
         self.pub_tomato_image = rospy.Publisher("tomato_image",
                                         Image, queue_size=5, latch=True)
-                            
+
         self.pub_color_hue = rospy.Publisher("color_hue",
                         Image, queue_size=5, latch=True)
 
@@ -157,8 +160,9 @@ class ObjectDetection(object):
             pwd = os.path.dirname(__file__)
 
 
-            image = ProcessImage(self.color_image, 
+            image = ProcessImage(self.color_image,
                                  camera_sim = self.camera_sim,
+                                 use_truss = self.use_truss,
                                  tomatoName = 'gazebo_tomato',
                                  pwdProcess = pwd,
                                  saveIntermediate = False)
@@ -167,14 +171,14 @@ class ObjectDetection(object):
             image.color_space()
             image.segment_truss()
             image.detect_tomatoes_global()
-            
+
             # get results
             img_hue, img_saturation, img_A  = image.get_color_components()
             img_segment = image.get_segmented_image()
-            
-            img_tomato = image.get_tomato_visualization() 
+
+            img_tomato = image.get_tomato_visualization()
             tomato_features = image.get_tomatoes()
-            
+
             # get camera properties
             intrin = camera_info2intrinsics(self.depth_info)
 
@@ -207,20 +211,20 @@ class ObjectDetection(object):
             peduncle = Peduncle()
 
             truss = self.create_truss(tomatoes, cage_pose, peduncle)
-            
+
             # publish results tomato_img
             imgmsg_segment = self.bridge.cv2_to_imgmsg(img_segment, encoding="rgb8")
             imgmsg_tomato = self.bridge.cv2_to_imgmsg(img_tomato, encoding="rgb8")
             imgmsg_hue = self.bridge.cv2_to_imgmsg(img_hue)
             imgmsg_saturation = self.bridge.cv2_to_imgmsg(img_saturation)
-            imgmsg_A = self.bridge.cv2_to_imgmsg(img_A)  
-            
+            imgmsg_A = self.bridge.cv2_to_imgmsg(img_A)
+
             self.pub_segment_image.publish(imgmsg_segment)
             self.pub_tomato_image.publish(imgmsg_tomato)
             self.pub_color_hue.publish(imgmsg_hue)
             self.pub_color_saturation.publish(imgmsg_saturation)
             self.pub_color_A.publish(imgmsg_A)
-            
+
             self.pub_object_features.publish(truss)
 
             return True
@@ -241,7 +245,7 @@ class ObjectDetection(object):
 
     def deproject(self, row, col, intrin):
         # Deproject
-        
+
         depth = self.get_depth(row, col)
         # rospy.logdebug("Corresponding depth: %s", self.depth_image[index])
         # https://github.com/IntelRealSense/librealsense/wiki/Projection-in-RealSense-SDK-2.0
@@ -276,23 +280,23 @@ class ObjectDetection(object):
                 self.event = None
 
             self.pub_e_out.publish(msg)
-            
+
     def get_depth(self, row, col):
-        patch_width = (self.patch_size - 1)/2           
-        
+        patch_width = (self.patch_size - 1)/2
+
         dim = self.depth_image.shape
-        H = dim[0]        
-        W = dim[1]        
-        
+        H = dim[0]
+        W = dim[1]
+
         row_start = max([row - patch_width, 0])
-        row_end = min([row + patch_width, H])         
-        
+        row_end = min([row + patch_width, H])
+
         col_start = max([col - patch_width, 0])
-        col_end = min([col + patch_width, W])         
-        
+        col_end = min([col + patch_width, W])
+
         rows = np.arange(row_start, row_end + 1)
         cols = np.arange(col_start, col_end + 1)
-        
+
         depth_patch = self.depth_image[rows[:, np.newaxis], cols]
         return np.mean(depth_patch)
 

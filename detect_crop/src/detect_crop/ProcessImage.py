@@ -42,7 +42,13 @@ from util import plot_circles
 
 class ProcessImage(object):
 
-    def __init__(self, imRGB, camera_sim = True, tomatoName = 'tomato', saveIntermediate = False, pwdProcess = '', saveFormat = 'png'):
+    def __init__(self, imRGB, 
+                 use_truss = True,
+                 camera_sim = True, 
+                 tomatoName = 'tomato', 
+                 saveIntermediate = False, 
+                 pwdProcess = '', 
+                 saveFormat = 'png'):
 
         self.saveFormat = saveFormat
 
@@ -62,6 +68,7 @@ class ProcessImage(object):
         self.saveIntermediate = saveIntermediate
 
         self.camera_sim = camera_sim
+        self.use_truss = camera_sim
         self.imMax = 255
         self.pwdProcess = pwdProcess
         self.tomatoName = tomatoName
@@ -88,8 +95,10 @@ class ProcessImage(object):
             background, tomato, peduncle = segmentation_truss_sim(self.img_saturation, self.img_hue, self.img_A, self.imMax)
 
         else:
-            # background, tomato, peduncle = segmentation_truss_real(self.img_hue, self.imMax)
-            background, tomato, peduncle = segmentation_tomato_real(self.img_hue, self.imMax)
+            if self.use_truss:
+                background, tomato, peduncle = segmentation_truss_real(self.img_hue, self.imMax)
+            else:
+                background, tomato, peduncle = segmentation_tomato_real(self.img_hue, self.imMax)
         
         self.background = background
         self.tomato = tomato

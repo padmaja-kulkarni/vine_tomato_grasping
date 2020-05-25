@@ -43,11 +43,13 @@ class ObjectDetection(object):
         self.color_info = None
         self.trans = None
         self.init = None
-        
+
         self.color_frame = None
         self.depth_frame = None
 
         self.camera_sim = rospy.get_param("camera_sim")
+        self.use_truss = rospy.get_param("use_truss")
+        self.debug_mode = rospy.get_param("object_detection/debug")
 
         self.bridge = CvBridge()
 
@@ -56,7 +58,7 @@ class ObjectDetection(object):
 
         rospy.loginfo("Storing visiual results in: ", self.pwdProcess)
 
-        self.debug_mode = rospy.get_param("object_detection/debug")
+
 
         if self.debug_mode:
             log_level = rospy.DEBUG
@@ -72,13 +74,13 @@ class ObjectDetection(object):
 
         self.pub_object_features = rospy.Publisher("object_features",
                                         Truss, queue_size=5, latch=True)
-                                        
+
         self.pub_segment_image = rospy.Publisher("segment_image",
                                         Image, queue_size=5, latch=True)
-                                        
+
         self.pub_tomato_image = rospy.Publisher("tomato_image",
                                 Image, queue_size=5, latch=True)
-                                
+
         self.pub_color_hue = rospy.Publisher("color_hue",
                         Image, queue_size=5, latch=True)
 
@@ -159,9 +161,10 @@ class ObjectDetection(object):
             pwd = os.path.dirname(__file__)
 
 
-            image = ProcessImage(self.color_image, 
-                                 camera_sim = True,
-                                 tomatoName = 'gazebo_tomato',
+            image = ProcessImage(self.color_image,
+                                 camera_sim = self.camera_sim,
+                                 use_truss = self.use_truss
+                                 tomatoName = 'ros_tomato',
                                  pwdProcess = pwd,
                                  saveIntermediate = False)
 
@@ -169,11 +172,11 @@ class ObjectDetection(object):
 
             image.process_image()
             object_feature = image.get_object_features()
-            
+
             # get results
             img_hue, img_saturation, img_A  = image.get_color_components()
             img_segment = image.get_segmented_image()
-            img_tomato = image.get_tomato_visualization() 
+            img_tomato = image.get_tomato_visualization()
             frame = self.color_frame # "camera_color_optical_frame"
 
             #%%##################
@@ -220,14 +223,14 @@ class ObjectDetection(object):
             peduncle.length = 0.15
 
             truss = self.create_truss(tomatoes, cage_pose, peduncle)
-            
+
             # publish results tomato_img
             imgmsg_segment = self.bridge.cv2_to_imgmsg(img_segment, encoding="rgb8")
             imgmsg_tomato = self.bridge.cv2_to_imgmsg(img_tomato, encoding="rgb8")
             imgmsg_hue = self.bridge.cv2_to_imgmsg(img_hue)
             imgmsg_saturation = self.bridge.cv2_to_imgmsg(img_saturation)
-            imgmsg_A = self.bridge.cv2_to_imgmsg(img_A)  
-          
+            imgmsg_A = self.bridge.cv2_to_imgmsg(img_A)
+
             rospy.loginfo("Publishing results")
             self.pub_segment_image.publish(imgmsg_segment)
             self.pub_tomato_image.publish(imgmsg_tomato)
@@ -253,7 +256,7 @@ class ObjectDetection(object):
         angle = rospy.get_param("object_angle")
         xyz = [object_x, object_y, 0.05 + table_height]
         rpy = [3.1415, 0, angle] #3.1415/2.0
-        
+
         cage_pose =  point_to_pose_stamped(xyz, rpy, frame, rospy.Time.now())
 
         #%%#############

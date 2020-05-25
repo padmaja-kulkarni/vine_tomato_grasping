@@ -4,6 +4,9 @@
 	<arg name="robot_name" 							default="px150"/>
 	<arg name="manipulator_group_name" 	default="interbotix_arm"/>
   <arg name="ee_group_name"           default="interbotix_gripper"/>
+	<arg name="planning_frame" 					default="/world"/>
+	<arg name="use_truss" 							default="true"/>
+
 
 	<arg name="pipeline_debug"	default="false"/>
 	<arg name="object_detection_debug"	default="false"/>
@@ -22,6 +25,11 @@
 	</include>
 
 	<group ns="$(arg robot_name)">
+
+		<param name="use_truss" value="$(arg use_truss)"/>
+		<param name="planning_frame" value="$(arg planning_frame)"/>
+		<param name="manipulator_group_name" value="$(arg manipulator_group_name)"/>
+		<param name="ee_group_name" value="$(arg ee_group_name)"/>
 
 		<node name = "my_rqt_dashboard"
 			pkg = "rqt_gui"
@@ -69,8 +77,5 @@
 			<param name ="debug" value="$(arg visualize_object_debug)"/>
 		</node>
 
-		<param name="planning_frame" value="/world"/>
-		<param name="manipulator_group_name" value="$(arg manipulator_group_name)"/>
-		<param name="ee_group_name" value="$(arg ee_group_name)"/>
 	</group>
 </launch>
