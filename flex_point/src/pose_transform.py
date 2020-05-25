@@ -57,7 +57,10 @@ class PoseTransform(object):
                           String, queue_size=10, latch=False)
                           
         self.pub_tomato_point = rospy.Publisher('tomato_point',
-                                    PointStamped, queue_size=5, latch=True)                      
+                                    PointStamped, queue_size=5, latch=True)   
+                                
+        self.pub_tomato_point_trans = rospy.Publisher('tomato_point_trans',
+                            PointStamped, queue_size=5, latch=True) 
 
         self.pub_pre_grasp_pose = rospy.Publisher('pre_grasp_pose',
                                 PoseStamped, queue_size=5, latch=True)
@@ -66,6 +69,7 @@ class PoseTransform(object):
                                          String, queue_size=10, latch=True)
 
         self.planning_frame = rospy.get_param('planning_frame')
+        self.robot_base_frame =  rospy.get_param('robot_base_frame')
         self.use_iiwa = rospy.get_param('use_iiwa')
         self.use_interbotix = rospy.get_param('use_interbotix')
         self.use_sdh = rospy.get_param('use_sdh')
@@ -76,7 +80,7 @@ class PoseTransform(object):
             self.orientation_transform = [0, 0, -pi/2]
         if self.use_interbotix:
             self.grasp_position_transform =     [0, 0, 0.04] # [m]
-            self.pre_grasp_position_transform = [0.0, 0.0, 0.08] # [m] 0.08
+            self.pre_grasp_position_transform = [0.0, 0.0, 0.15] # [m] 0.08
             self.orientation_transform = [-pi, pi/2, 0]
 
 
@@ -143,16 +147,17 @@ class PoseTransform(object):
             # msg_e = String()
             # msg_e.data = "e_wait"
 
-    def get_trans(self):
-        if not (self.object_features is None):
-            try:
-                object_frame = self.object_features.tomatoes[0].header.frame_id
-                trans_time = rospy.Time.now() # rospy.get_time() # rospy.Time(0)
-                rospy.loginfo("Transform from: %s", object_frame)
-                rospy.loginfo("Transform to: %s", self.planning_frame)
-                self.trans = self.tfBuffer.lookup_transform(self.planning_frame, object_frame, trans_time)
-            except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
-                pass
+    def get_trans(self, from_frame, to_frame):
+        try:
+            trans_time = rospy.Time(0) # rospy.Time.now() # rospy.get_time() # 
+            
+            rospy.logdebug("Transform from: %s", from_frame)
+            rospy.logdebug("Transform to: %s", to_frame)
+            
+            trans = self.tfBuffer.lookup_transform(to_frame, from_frame, trans_time)
+            return trans
+        except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
+            return
             # continue
 
     def transform_pose(self):
@@ -160,11 +165,6 @@ class PoseTransform(object):
             rospy.logwarn("[POSE TRANSFORM] Cannot transform pose, since object_features still empty!")
             return False
         else:
-
-            while self.trans is None:
-                rospy.logdebug("[POSE TRANSFORM] wating for transform")
-                self.get_trans()
-                rospy.sleep(0.5)
                 
             for tomato in self.object_features.tomatoes:
                 
@@ -172,15 +172,16 @@ class PoseTransform(object):
                 tomato_point.header = tomato.header
                 tomato_point.point = tomato.position
                 
-                
-                tomato_point_trans = tf2_geometry_msgs.do_transform_point(tomato_point, self.trans)
+                trans = self.get_trans(tomato.header.frame_id, self.robot_base_frame)
+                tomato_point_trans = tf2_geometry_msgs.do_transform_point(tomato_point, trans)
                 
                 # tomato_point_trans = tomato_pose
-                tomato_point_trans.point.z = 0.05  
+                # tomato_point_trans.point.z = 0.05  
                 ai = 0.0
                 aj = 0.0
                 ak = np.arctan(tomato_point_trans.point.y/tomato_point_trans.point.x) + np.pi
                 orientation = list_to_orientation([ai, aj, ak])
+            
                 
                 tomato_pose = Pose()
                 tomato_pose.position = tomato_point_trans.point
@@ -191,15 +192,24 @@ class PoseTransform(object):
                 tomato_pose_stamped.header = tomato_point_trans.header 
                 tomato_pose_stamped.pose = tomato_pose
                 
-                pre_grasp_pose_stamped = self.object_pose_to_grasp_pose(tomato_pose_stamped, self.pre_grasp_position_transform)
+                trans = self.get_trans(tomato_pose_stamped.header.frame_id, self.planning_frame)    
+                tomato_pose_stamped_trans = tf2_geometry_msgs.do_transform_pose(tomato_pose_stamped, trans)                
+                
+                pre_grasp_pose_stamped = self.object_pose_to_grasp_pose(tomato_pose_stamped_trans, self.pre_grasp_position_transform)
 
 
                 self.pub_tomato_point.publish(tomato_point)
+                self.pub_tomato_point_trans.publish(tomato_point_trans)
                 self.pub_pre_grasp_pose.publish(pre_grasp_pose_stamped)
                 self.pub_move_robot_command.publish("move")
     
                 # get response
                 success = wait_for_success("/px150/move_robot/e_out", 5)
+                
+                if success:
+                    rospy.loginfo("[POSE TRANSFORM] Succesfully pointed at tomato")
+                else:
+                    rospy.logwarn("[POSE TRANSFORM] Failed to point at tomtao")
 
                 self.pub_move_robot_command.publish("home")
                 success = wait_for_success("/px150/move_robot/e_out", 5)

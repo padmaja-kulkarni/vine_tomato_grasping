@@ -4,7 +4,7 @@
 	<arg name="robot_name" 							default="iiwa"/>
 	<arg name="manipulator_group_name" 	default="manipulator"/>
   <arg name="ee_group_name"           default="gripper"/>
-	<arg name="planning_frame" 					default="world"/>
+	<arg name="planning_frame" 					default="world"/> <!-- world -->
 	<arg name="use_truss" 							default="true"/>
 
 

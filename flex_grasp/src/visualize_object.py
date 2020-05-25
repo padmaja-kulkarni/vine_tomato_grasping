@@ -72,6 +72,7 @@ class VisualizeObject(object):
 
         for tomato in self.object_feature.tomatoes:
             box_pose.header.frame_id =  tomato.header.frame_id
+            rospy.logdebug("[Visualize Object] frame ID: %s", tomato.header.frame_id)
             box_pose.pose.orientation.w = 1.0
             box_pose.pose.position = tomato.position
             radius = tomato.radius

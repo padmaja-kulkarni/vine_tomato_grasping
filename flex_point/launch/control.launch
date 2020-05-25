@@ -4,6 +4,9 @@
 	<arg name="robot_name" 							default="px150"/>
 	<arg name="manipulator_group_name" 	default="interbotix_arm"/>
   <arg name="ee_group_name"           default="interbotix_gripper"/>
+
+
+	<arg name="robot_base_frame" 					default="px150/base_link"/>
 	<arg name="planning_frame" 					default="world"/>
 	<arg name="use_truss" 							default="true"/>
 
@@ -28,6 +31,7 @@
 
 		<param name="use_truss" value="$(arg use_truss)"/>
 		<param name="planning_frame" value="$(arg planning_frame)"/>
+		<param name="robot_base_frame" value="$(arg robot_base_frame)"/>
 		<param name="manipulator_group_name" value="$(arg manipulator_group_name)"/>
 		<param name="ee_group_name" value="$(arg ee_group_name)"/>
 
