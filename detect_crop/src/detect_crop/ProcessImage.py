@@ -185,15 +185,19 @@ class ProcessImage(object):
 
     def detect_tomatoes_global(self):
         tomatoFilteredLBlurred = cv2.GaussianBlur(self.tomato, (3, 3), 0)
-        minR = self.W/15 # 6
+        minR = self.W/20 # 6
         maxR = self.W/8
         minDist = self.W/10
 
         circles = cv2.HoughCircles(tomatoFilteredLBlurred, cv2.HOUGH_GRADIENT, 5, minDist,
                                    param1=50,param2=100, minRadius=minR, maxRadius=maxR)
 
-        centersO = np.matrix(circles[0][:,0:2])
-        radii = circles[0][:,2]
+        if circles is None:
+            centersO = None
+            radii = None
+        else:
+            centersO = np.matrix(circles[0][:,0:2])
+            radii = circles[0][:,2]
 
         self.centersO = centersO
         self.radii = radii
@@ -328,11 +332,16 @@ class ProcessImage(object):
             plot_circles(self.imRGB, graspL, [10], savePath = self.pwdProcess, saveName = '06')
 
     def get_tomatoes(self):
-        tomatoPixel = np.around(self.centersO/self.scale).astype(int)
-        radii = self.radii/self.scale
-        
-        tomatoRow = tomatoPixel[:, 1]
-        tomatoCol = tomatoPixel[:, 0]
+        if self.centersO is None:
+            tomatoRow = []
+            tomatoCol = []
+            radii = []
+        else:
+            tomatoPixel = np.around(self.centersO/self.scale).astype(int)
+            radii = self.radii/self.scale
+            
+            tomatoRow = tomatoPixel[:, 1]
+            tomatoCol = tomatoPixel[:, 0]
         
         tomato= {"row": tomatoRow, "col": tomatoCol, "radii": radii}
         return tomato

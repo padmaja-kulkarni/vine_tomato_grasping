@@ -163,7 +163,7 @@ class ObjectDetection(object):
 
             image = ProcessImage(self.color_image,
                                  camera_sim = self.camera_sim,
-                                 use_truss = self.use_truss
+                                 use_truss = self.use_truss,
                                  tomatoName = 'ros_tomato',
                                  pwdProcess = pwd,
                                  saveIntermediate = False)

@@ -14,7 +14,7 @@ import numpy as np
 import rospy
 
 from std_msgs.msg import String
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, PointStamped, Pose
 from flex_grasp.msg import Truss
 from std_msgs.msg       import Float64
 
@@ -55,6 +55,9 @@ class PoseTransform(object):
         # Initialize Publishers
         self.pub_move_robot_command = rospy.Publisher("/px150/move_robot/e_in",
                           String, queue_size=10, latch=False)
+                          
+        self.pub_tomato_point = rospy.Publisher('tomato_point',
+                                    PointStamped, queue_size=5, latch=True)                      
 
         self.pub_pre_grasp_pose = rospy.Publisher('pre_grasp_pose',
                                 PoseStamped, queue_size=5, latch=True)
@@ -73,7 +76,7 @@ class PoseTransform(object):
             self.orientation_transform = [0, 0, -pi/2]
         if self.use_interbotix:
             self.grasp_position_transform =     [0, 0, 0.04] # [m]
-            self.pre_grasp_position_transform = [0, 0, 0.12] # [m] 0.08
+            self.pre_grasp_position_transform = [0.0, 0.0, 0.08] # [m] 0.08
             self.orientation_transform = [-pi, pi/2, 0]
 
 
@@ -144,7 +147,10 @@ class PoseTransform(object):
         if not (self.object_features is None):
             try:
                 object_frame = self.object_features.tomatoes[0].header.frame_id
-                self.trans = self.tfBuffer.lookup_transform(self.planning_frame, object_frame, rospy.Time(0))
+                trans_time = rospy.Time.now() # rospy.get_time() # rospy.Time(0)
+                rospy.loginfo("Transform from: %s", object_frame)
+                rospy.loginfo("Transform to: %s", self.planning_frame)
+                self.trans = self.tfBuffer.lookup_transform(self.planning_frame, object_frame, trans_time)
             except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
                 pass
             # continue
@@ -162,22 +168,34 @@ class PoseTransform(object):
                 
             for tomato in self.object_features.tomatoes:
                 
-                tomato_pose = PoseStamped()
-                tomato_pose.header = tomato.header
-                tomato_pose.pose.position = tomato.position
-                tomato_pose.pose.orientation = list_to_orientation([0,0,0])
+                tomato_point = PointStamped()
+                tomato_point.header = tomato.header
+                tomato_point.point = tomato.position
                 
-                tomato_pose_world = tf2_geometry_msgs.do_transform_pose(tomato_pose, self.trans)
-                # tomato_pose_world.pose.position.z = 0.05  
+                
+                tomato_point_trans = tf2_geometry_msgs.do_transform_point(tomato_point, self.trans)
+                
+                # tomato_point_trans = tomato_pose
+                tomato_point_trans.point.z = 0.05  
                 ai = 0.0
                 aj = 0.0
-                ak = np.arctan(tomato_pose_world.pose.position.y/tomato_pose_world.pose.position.x) + np.pi
-                tomato_pose_world.pose.orientation = list_to_orientation([ai, aj, ak])
+                ak = np.arctan(tomato_point_trans.point.y/tomato_point_trans.point.x) + np.pi
+                orientation = list_to_orientation([ai, aj, ak])
                 
-                pre_grasp_pose = self.object_pose_to_grasp_pose(tomato_pose_world, self.pre_grasp_position_transform)
-                # pre_grasp_pose = tomato_pose_world
+                tomato_pose = Pose()
+                tomato_pose.position = tomato_point_trans.point
+                tomato_pose.orientation = orientation
+                
+                tomato_pose_stamped = PoseStamped()
+                
+                tomato_pose_stamped.header = tomato_point_trans.header 
+                tomato_pose_stamped.pose = tomato_pose
+                
+                pre_grasp_pose_stamped = self.object_pose_to_grasp_pose(tomato_pose_stamped, self.pre_grasp_position_transform)
 
-                self.pub_pre_grasp_pose.publish(pre_grasp_pose)
+
+                self.pub_tomato_point.publish(tomato_point)
+                self.pub_pre_grasp_pose.publish(pre_grasp_pose_stamped)
                 self.pub_move_robot_command.publish("move")
     
                 # get response
