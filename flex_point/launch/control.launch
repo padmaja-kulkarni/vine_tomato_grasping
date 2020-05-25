@@ -4,7 +4,7 @@
 	<arg name="robot_name" 							default="px150"/>
 	<arg name="manipulator_group_name" 	default="interbotix_arm"/>
   <arg name="ee_group_name"           default="interbotix_gripper"/>
-	<arg name="planning_frame" 					default="/world"/>
+	<arg name="planning_frame" 					default="world"/>
 	<arg name="use_truss" 							default="true"/>
 
 

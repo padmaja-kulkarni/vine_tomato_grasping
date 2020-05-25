@@ -59,10 +59,10 @@ class PoseTransform(object):
         self.pub_pre_grasp_pose = rospy.Publisher('pre_grasp_pose',
                                 PoseStamped, queue_size=5, latch=True)
 
-        latch = True
         self.pub_e_out = rospy.Publisher("~e_out",
-                                         String, queue_size=10, latch=latch)
+                                         String, queue_size=10, latch=True)
 
+        self.planning_frame = rospy.get_param('planning_frame')
         self.use_iiwa = rospy.get_param('use_iiwa')
         self.use_interbotix = rospy.get_param('use_interbotix')
         self.use_sdh = rospy.get_param('use_sdh')
@@ -143,8 +143,8 @@ class PoseTransform(object):
     def get_trans(self):
         if not (self.object_features is None):
             try:
-                frame = self.object_features.tomatoes[0].header.frame_id
-                self.trans = self.tfBuffer.lookup_transform('world',frame, rospy.Time(0))
+                object_frame = self.object_features.tomatoes[0].header.frame_id
+                self.trans = self.tfBuffer.lookup_transform(self.planning_frame, object_frame, rospy.Time(0))
             except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
                 pass
             # continue
@@ -168,7 +168,7 @@ class PoseTransform(object):
                 tomato_pose.pose.orientation = list_to_orientation([0,0,0])
                 
                 tomato_pose_world = tf2_geometry_msgs.do_transform_pose(tomato_pose, self.trans)
-                tomato_pose_world.pose.position.z = 0.05  
+                # tomato_pose_world.pose.position.z = 0.05  
                 ai = 0.0
                 aj = 0.0
                 ak = np.arctan(tomato_pose_world.pose.position.y/tomato_pose_world.pose.position.x) + np.pi
