@@ -217,8 +217,7 @@ class PickPlace(object):
             self.state = "init"
             self.log_state_update()                  
                   
-                  
-                  
+                        
     def take_action(self):
 
         success = None

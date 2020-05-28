@@ -12,7 +12,7 @@ import rospy
 from std_msgs.msg import String
 
 
-def wait_for_success(topic, timeout):
+def wait_for_success(topic, timeout, node_name = ""):
 
 
     start_time = rospy.get_time()
@@ -45,3 +45,16 @@ def wait_for_success(topic, timeout):
     else:
         rospy.logwarn("Command failed: node did not return success within timeout on topic %s", topic)
     return False
+    
+    
+def wait_for_param(param, timeout):
+
+    start_time = rospy.get_time()
+
+    while (rospy.get_time() - start_time < timeout):
+
+        if rospy.has_param(param):
+            return rospy.get_param(param)
+
+    rospy.logwarn("[MOVE ROBOT] Parameter %s can not be loaded from parameter server: timeout passed", param)
+    return None

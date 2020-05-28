@@ -22,8 +22,10 @@ from std_msgs.msg import String
 from geometry_msgs.msg import PoseStamped
 from moveit_msgs.msg import MoveItErrorCodes
 
+
 # custom functions
 from func.utils import pose_close, joint_close, deg2rad
+from func.ros_utils import wait_for_param
 
 class MoveRobot(object):
     """MoveRobot"""
@@ -422,19 +424,6 @@ class MoveRobot(object):
                 self.command = None
 
             self.pub_e_out.publish(msg)
-
-
-def wait_for_param(param_name, timeout):
-
-    start_time = rospy.get_time()
-
-    while (rospy.get_time() - start_time < timeout):
-
-        if rospy.has_param(param_name):
-            return rospy.get_param(param_name)
-
-    rospy.logwarn("[MOVE ROBOT] Parameter %s can not be loaded from parameter server: timeout passed", param_name)
-    return None
 
 
 def main():
