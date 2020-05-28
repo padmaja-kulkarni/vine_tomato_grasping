@@ -48,8 +48,6 @@ class MoveRobot(object):
         while rospy.get_time() < 0.1:
             pass
 
-
-
         self.state = "idle"
         self.prev_state = None
         self.command = None
@@ -79,11 +77,6 @@ class MoveRobot(object):
         latch = True
         self.pub_e_out = rospy.Publisher("~e_out",
                                    String, queue_size=10, latch=latch)
-
-    def load_param(self, timeout):
-        self.pre_grasp_ee =  wait_for_param('pre_grasp_ee', timeout)
-        self.grasp_ee =  wait_for_param('grasp_ee', timeout)
-            
             
     def robot_pose_cb(self, msg):
         if self.robot_pose is None:
@@ -100,6 +93,12 @@ class MoveRobot(object):
             msg = String()
             msg.data = ""
             self.pub_e_out.publish(msg)
+
+
+    def load_param(self, timeout):
+        self.pre_grasp_ee =  wait_for_param('pre_grasp_ee', timeout)
+        self.grasp_ee =  wait_for_param('grasp_ee', timeout)
+            
 
     def initialise_robot(self):
         rospy.logdebug("===INITIALIZING ROBOT====")
@@ -259,9 +258,11 @@ class MoveRobot(object):
         success = self.go_to_pose(goal_pose)
         # self.grasp_pose = None
         return success
-        
-        
-       # self.load_param(1.0) 
+
+    def home_man(self):
+        rospy.logdebug("[MOVE ROBOT] Homeing manipulator")
+        return self.move_to_joint_target(self.man_group, 'Upright')
+
     def open_ee(self):
         rospy.logdebug("[MOVE ROBOT] Opening end effector")
         return self.move_to_joint_target(self.ee_group, "Open")
@@ -269,10 +270,6 @@ class MoveRobot(object):
     def close_ee(self):
         rospy.logdebug("[MOVE ROBOT] Closing end effector")
         return self.move_to_joint_target(self.ee_group, "Closed")
-
-    def home_man(self):
-        rospy.logdebug("[MOVE ROBOT] Homeing manipulator")
-        return self.move_to_joint_target(self.man_group, 'Upright')
 
     def apply_release_ee(self):
         rospy.logdebug("[MOVE ROBOT] Aplying release with end effector")
@@ -390,27 +387,29 @@ class MoveRobot(object):
         elif self.command == "home":
             success = self.home_man()
             
-        elif self.command == "ee_pre_grasp":
-            success = self.open_ee()
-            
         elif self.command == "ee_grasp":
             success = self.apply_grasp_ee()
 
         elif self.command == "ee_release":
             success = self.apply_release_ee()
 
-        elif self.command == "open":
+        elif self.command == "ee_open":
             success = self.apply_release_ee()
 
-        elif self.command == "close":
+        elif self.command == "ee_close":
             success = self.close_ee()
-            
             
         elif self.command == "reset":
             success = self.reset()
 
         elif self.command == "e_init":
             success = True
+            
+        elif self.command == None:
+            pass
+            
+        else:
+            rospy.logwarn("Received unknwon command: %s", self.command)
 
         # publish success
         if success is not None:

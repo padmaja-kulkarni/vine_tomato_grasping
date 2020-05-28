@@ -6,6 +6,7 @@ Created on Mon Mar  9 15:30:31 2020
 @author: jelle
 """
 
+import numpy as np
 import rospy
 import math
 
@@ -44,12 +45,15 @@ class ObjectDetection(object):
         self.trans = None
         self.init = None
 
-        self.color_frame = None
-        self.depth_frame = None
+        # self.color_frame = None
+        # self.depth_frame = None
+        self.camera_frame = "camera_color_optical_frame"
 
         self.camera_sim = rospy.get_param("camera_sim")
         self.use_truss = rospy.get_param("use_truss")
         self.debug_mode = rospy.get_param("object_detection/debug")
+
+        self.patch_size = 7
 
         self.bridge = CvBridge()
 
@@ -168,61 +172,34 @@ class ObjectDetection(object):
                                  pwdProcess = pwd,
                                  saveIntermediate = False)
 
-            # rospy.logdebug("Image dimensions: %s", image.DIM)
 
-            image.process_image()
-            object_feature = image.get_object_features()
+            self.intrin = camera_info2intrinsics(self.depth_info)
 
-            # get results
+            # process image
+            if self.use_truss:
+                image.process_image()
+                object_features = image.get_object_features()
+
+                cage_pose = self.generate_cage_pose(object_features['grasp'])
+                tomatoes = self.generate_tomatoes(object_features['tomato'])
+                peduncle = self.generate_peduncle(cage_pose)
+
+            elif not self.use_truss:
+                image.color_space()
+                image.segment_truss()
+                image.detect_tomatoes_global()
+                tomato_features = image.get_tomatoes()
+
+                cage_pose = PoseStamped()
+                tomatoes = self.generate_tomatoes(tomato_features)
+                peduncle = Peduncle()
+
+            truss = self.create_truss(tomatoes, cage_pose, peduncle)
+
+            # get images
             img_hue, img_saturation, img_A  = image.get_color_components()
             img_segment = image.get_segmented_image()
             img_tomato = image.get_tomato_visualization()
-            frame = self.color_frame # "camera_color_optical_frame"
-
-            #%%##################
-            ### Cage location ###
-            #####################
-
-            row = object_feature['grasp']['row']
-            col = object_feature['grasp']['col']
-            angle = -object_feature['grasp']['angle'] # minus since camera frame is upside down...
-            rpy = [0, 0, angle]
-
-            intrin = camera_info2intrinsics(self.depth_info)
-            xyz = self.deproject(row, col, intrin)
-            cage_pose =  point_to_pose_stamped(xyz, rpy, frame, rospy.Time.now())
-
-            #%%#############
-            ### tomatoes ###
-            ################
-            tomatoes = []
-
-            # rospy.logdebug("cols: %s [px]", col)
-            for i in range(0, len(object_feature['tomato']['col'])):
-
-                # Load from struct
-                col = object_feature['tomato']['col'][i]
-                row = object_feature['tomato']['row'][i]
-                radius = object_feature['tomato']['radii'][i]
-
-                point = self.deproject(row, col, intrin)
-
-                depth = self.depth_image[(row, col)]
-                point1 = rs.rs2_deproject_pixel_to_point(intrin, [0,0], depth)
-                point2 = rs.rs2_deproject_pixel_to_point(intrin, [0,radius], depth)
-                radius_m = euclidean(point1, point2)
-
-                tomatoes.append(point_to_tomato(point, radius_m, frame))
-
-            #%%#############
-            ### Peduncle ###
-            ################
-            peduncle = Peduncle()
-            peduncle.pose = cage_pose
-            peduncle.radius = 0.01
-            peduncle.length = 0.15
-
-            truss = self.create_truss(tomatoes, cage_pose, peduncle)
 
             # publish results tomato_img
             imgmsg_segment = self.bridge.cv2_to_imgmsg(img_segment, encoding="rgb8")
@@ -243,6 +220,48 @@ class ObjectDetection(object):
         else:
             rospy.logwarn("Did not receive all data")
             return False
+
+
+    def generate_cage_pose(self, grasp_features):
+        row = grasp_features['row']
+        col = grasp_features['col']
+        angle = -grasp_features['angle'] # minus since camera frame is upside down...
+        rpy = [0, 0, angle]
+
+
+        xyz = self.deproject(row, col, self.intrin)
+        cage_pose =  point_to_pose_stamped(xyz, rpy, self.camera_frame, rospy.Time.now())
+
+        return cage_pose
+
+    def generate_tomatoes(self, tomato_features):
+        tomatoes = []
+
+        # rospy.logdebug("cols: %s [px]", col)
+        for i in range(0, len(tomato_features['col'])):
+
+            # Load from struct
+            col = tomato_features['col'][i]
+            row = tomato_features['row'][i]
+            radius = tomato_features['radii'][i]
+
+            point = self.deproject(row, col, self.intrin)
+
+            depth = self.get_depth(row, col) # depth = self.depth_image[(row, col)]
+            point1 = rs.rs2_deproject_pixel_to_point(self.intrin, [0,0], depth)
+            point2 = rs.rs2_deproject_pixel_to_point(self.intrin, [0,radius], depth)
+            radius_m = euclidean(point1, point2)
+
+            tomatoes.append(point_to_tomato(point, radius_m, self.camera_frame))
+
+        return tomatoes
+
+    def generate_peduncle(self, cage_pose):
+        peduncle = Peduncle()
+        peduncle.pose = cage_pose
+        peduncle.radius = 0.01
+        peduncle.length = 0.15
+        return peduncle
 
     def generate_object(self):
 
@@ -290,9 +309,7 @@ class ObjectDetection(object):
         return True
 
     def create_truss(self, tomatoes, cage_pose, peduncle):
-        #%%##########
-        ### Truss ###
-        #############
+
         truss = Truss()
         truss.tomatoes = tomatoes
         truss.cage_location = cage_pose
@@ -303,7 +320,7 @@ class ObjectDetection(object):
     def deproject(self, row, col, intrin):
         # Deproject
         index = (row, col)
-        depth = self.depth_image[index]
+        depth = self.get_depth(row, col)
         # rospy.logdebug("Corresponding depth: %s", self.depth_image[index])
         # https://github.com/IntelRealSense/librealsense/wiki/Projection-in-RealSense-SDK-2.0
 
@@ -312,6 +329,25 @@ class ObjectDetection(object):
 
         point = rs.rs2_deproject_pixel_to_point(intrin, pixel, depth)
         return point
+
+    def get_depth(self, row, col):
+        patch_width = (self.patch_size - 1)/2
+
+        dim = self.depth_image.shape
+        H = dim[0]
+        W = dim[1]
+
+        row_start = max([row - patch_width, 0])
+        row_end = min([row + patch_width, H])
+
+        col_start = max([col - patch_width, 0])
+        col_end = min([col + patch_width, W])
+
+        rows = np.arange(row_start, row_end + 1)
+        cols = np.arange(col_start, col_end + 1)
+
+        depth_patch = self.depth_image[rows[:, np.newaxis], cols]
+        return np.mean(depth_patch)
 
     def take_action(self):
         success = None
