@@ -97,8 +97,8 @@ class PickPlace(object):
         
         return success
         
-    def command_to_home(self, pose):
-        rospy.logdebug("[PICK PLACE] Commanding move robot to pose")
+    def command_to_home(self):
+        rospy.logdebug("[PICK PLACE] Commanding move robot to home")
         self.pub_move_robot_command.publish("home")
         success = wait_for_success("move_robot/e_out", 5) 
         
@@ -106,7 +106,7 @@ class PickPlace(object):
                 
 
     def apply_pre_grasp_ee(self):
-        rospy.logdebug("[PICK PLACE] Aplying pre grasping with end effector")
+        rospy.logdebug("[PICK PLACE] Aplying pre-grasp with end effector")
         
         self.pub_move_robot_command.publish("ee_pre_grasp")
         success = wait_for_success("move_robot/e_out", 5)        
@@ -115,7 +115,7 @@ class PickPlace(object):
                       
                       
     def apply_grasp_ee(self):
-        rospy.logdebug("[PICK PLACE] Aplying pre grasping with end effector")
+        rospy.logdebug("[PICK PLACE] Aplying grasp with end effector")
 
         self.pub_move_robot_command.publish("ee_grasp")
         success = wait_for_success("move_robot/e_out", 5)        
@@ -166,7 +166,7 @@ class PickPlace(object):
             success = self.command_to_pose(self.pre_place_pose)
 
         if success:
-            success = self.home_man()
+            success = self.command_to_home()
 
         self.reset_msg()
         return success
@@ -247,6 +247,9 @@ class PickPlace(object):
             success = self.reset_msg()
 
         self.update_state(success)
+
+        if self.command == "pick_place" and self.state == "picked":
+            success = None
 
         # publish success
         if success is not None:

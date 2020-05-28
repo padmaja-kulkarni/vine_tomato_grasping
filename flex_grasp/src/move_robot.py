@@ -410,11 +410,6 @@ class MoveRobot(object):
         elif self.command == "e_init":
             success = True
 
-        # self.update_state(success)
-
-        if self.command == "pick_place" and self.state == "picked":
-            success = None
-
         # publish success
         if success is not None:
             if success == True:
