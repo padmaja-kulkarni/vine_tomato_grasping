@@ -344,7 +344,6 @@ class MoveRobot(object):
                 to_check = False
             target = group.get_named_target_values(target)
 
-        print(target)
         group.set_joint_value_target(target)
 
         plan = group.plan()
