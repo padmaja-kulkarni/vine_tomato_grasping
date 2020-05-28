@@ -105,14 +105,14 @@ class PickPlace(object):
 
     def apply_pre_grasp_ee(self):
         rospy.logdebug("[PICK PLACE] Aplying pre-grasp with end effector")
-        self.pub_move_robot_command.publish("ee_open")
+        self.pub_move_robot_command.publish("open")
         success = wait_for_success("move_robot/e_out", 5)        
         return success
                       
                       
     def apply_grasp_ee(self):
         rospy.logdebug("[PICK PLACE] Aplying grasp with end effector")
-        self.pub_move_robot_command.publish("ee_grasp")
+        self.pub_move_robot_command.publish("grasp")
         success = wait_for_success("move_robot/e_out", 5)        
         return success
         

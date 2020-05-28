@@ -48,14 +48,14 @@ class Initializing(smach.State):
 
 class Idle(smach.State):
     def __init__(self):
-        smach.State.__init__(self, outcomes=['calibrate', 'detect', 'move', "pick_place", 'failure'], output_keys=['command'])
+        smach.State.__init__(self, outcomes=['calibrate', 'detect', 'move', "pick_place", "point", 'failure'], output_keys=['command'])
         self.command_op_topic = "pipelineState"
 
         self.detect_commands =  ["detect"]
         self.calibrate_commands =  ["calibrate"]
         self.move_commands =  ["home", "open", "close"]
-        self.pick_place = ["pick", "place", "pick_place"]
-
+        self.pick_place_commands = ["pick", "place", "pick_place"]
+        self.point_commands = ["point"]
 
     def execute(self, userdata):
         rospy.logdebug('Executing state Idle')
@@ -70,9 +70,12 @@ class Idle(smach.State):
         elif command in self.calibrate_commands:
             userdata.command = command
             return "calibrate"
-        elif command in self.pick_place:
+        elif command in self.pick_place_commands:
             userdata.command = command
             return "pick_place"
+        elif command in self.point_commands:
+            userdata.command = command
+            return "point"
         else:
             rospy.logwarn('Unknown command: %s', command)
             return "failure"
@@ -219,6 +222,34 @@ class PickPlace(smach.State):
             return 'retry'
 
 
+class Point(smach.State):
+    def __init__(self):
+        smach.State.__init__(self, outcomes=['success', 'failure', 'retry'], input_keys=['command'])
+        self.point_op_topic = "point/e_out"
+        self.pub_point = rospy.Publisher("point/e_in",
+                                      String, queue_size=10, latch=True)
+        self.timeout = 30.0
+        self.counter = 3
+        self.mv_robot_result = String()
+
+    def execute(self, userdata):
+        rospy.logdebug('Executing state Point')
+
+        # command node
+        self.pub_point.publish("e_start")
+
+        # get response
+        success = wait_for_success(self.point_op_topic, self.timeout)
+
+        # determine success
+        if success:
+            return 'success'
+        else:
+            self.counter = self.counter - 1
+            if self.counter <=0:
+                return 'failure'
+            return 'retry'
+
 # main
 def main():
     debug_mode = rospy.get_param("pipeline/debug")
@@ -250,6 +281,7 @@ def main():
                                             'move': 'MoveRobot',
                                             'calibrate': 'CalibrateRobot',
                                             'pick_place': 'PickPlace',
+                                            'point': 'Point',
                                             'failure': 'Idle'})
 
         smach.StateMachine.add('CalibrateRobot', CalibrateRobot(),
@@ -258,6 +290,11 @@ def main():
                                         'complete_failure':'Idle'})
                                         
         smach.StateMachine.add('PickPlace', PickPlace(),
+                           transitions={'success':'Idle',
+                                        'failure': 'Idle',
+                                        'retry':'Idle'})
+                                        
+        smach.StateMachine.add('Point', Point(),
                            transitions={'success':'Idle',
                                         'failure': 'Idle',
                                         'retry':'Idle'})

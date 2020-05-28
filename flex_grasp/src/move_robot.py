@@ -386,16 +386,16 @@ class MoveRobot(object):
         elif self.command == "home":
             success = self.home_man()
             
-        elif self.command == "ee_grasp":
+        elif self.command == "grasp":
             success = self.apply_grasp_ee()
 
-        elif self.command == "ee_release":
+        elif self.command == "release":
             success = self.apply_release_ee()
 
-        elif self.command == "ee_open":
+        elif self.command == "open":
             success = self.apply_release_ee()
 
-        elif self.command == "ee_close":
+        elif self.command == "close":
             success = self.close_ee()
             
         elif self.command == "reset":
@@ -409,6 +409,7 @@ class MoveRobot(object):
             
         else:
             rospy.logwarn("Received unknwon command: %s", self.command)
+            success = False
 
         # publish success
         if success is not None:
