@@ -25,7 +25,7 @@
     <arg name="marker_frame" default="tracking_marker" />
 
 
-    <arg name="calibrate_debug" value="false"/>
+    <arg name="calibrate_debug" default="false"/>
 
     <!-- start the simulated tracking -->
     <node unless="$(arg use_aruco)"  name="tracking_simulator" pkg="flex_grasp" type="tracking_simulator.py" output="screen">

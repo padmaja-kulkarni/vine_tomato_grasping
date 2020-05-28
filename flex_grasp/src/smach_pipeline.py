@@ -306,7 +306,7 @@ def main():
                                             'retry': 'MoveRobot'})
 
     # Execute SMACH plan
-    outcome = sm.execute()
+    sm.execute()
 
 
 if __name__ == '__main__':
