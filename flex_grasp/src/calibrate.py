@@ -34,7 +34,7 @@ class Calibration(object):
         else:
             log_level = rospy.INFO
 
-        rospy.init_node("move_robot",
+        rospy.init_node("calibrate",
                 anonymous=True,
                 log_level=log_level)
 
@@ -69,7 +69,7 @@ class Calibration(object):
         self.pub_move_robot_command = rospy.Publisher("/px150/move_robot/e_in",
                                   String, queue_size=10, latch=False)
 
-        self.pub_move_robot_pose = rospy.Publisher("/px150/pre_grasp_pose",
+        self.pub_move_robot_pose = rospy.Publisher("/px150/robot_pose",
                                   PoseStamped, queue_size=10, latch=False)
 
         self.pub_pose_array = rospy.Publisher("/px150/pose_array",
@@ -81,7 +81,7 @@ class Calibration(object):
     def e_in_cb(self, msg):
         if self.event is None:
             self.event = msg.data
-            rospy.logdebug("[CALIBTRATION] Received object detection event message: %s", self.event)
+            rospy.logdebug("[CALIBTRATION] Received event message: %s", self.event)
 
             msg = String()
             msg.data = ""
@@ -172,7 +172,7 @@ class Calibration(object):
             pose_trans = tf2_geometry_msgs.do_transform_pose(pose_stamped, trans)
         
             self.pub_move_robot_pose.publish(pose_trans)
-            self.pub_move_robot_command.publish("move")
+            self.pub_move_robot_command.publish("move_manipulator")
 
             # get response
             success = wait_for_success("/px150/move_robot/e_out", 5)
@@ -192,7 +192,7 @@ class Calibration(object):
 
         # reset
         self.pub_move_robot_command.publish("home")
-        success = wait_for_success("/px150/move_robot/e_out", 5) 
+        success = wait_for_success("move_robot/e_out", 5) 
         
         # compute result
         result = self.client.compute_calibration()

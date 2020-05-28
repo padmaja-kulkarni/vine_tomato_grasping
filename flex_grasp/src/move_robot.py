@@ -52,12 +52,9 @@ class MoveRobot(object):
         self.prev_state = None
         self.command = None
 
-        self.pre_grasp_pose = None
+        self.robot_pose = None
         self.pre_grasp_ee = None
-        self.grasp_pose = None
         self.grasp_ee = None
-        self.pre_place_pose = None
-        self.place_pose = None
 
         # tolerance
         self.position_tolerance = 0.01 # [m]
@@ -71,10 +68,8 @@ class MoveRobot(object):
         self._compute_ik = rospy.ServiceProxy('compute_ik', GetPositionIK)
 
         # Subscribers
-        rospy.Subscriber("pre_grasp_pose", PoseStamped, self.pre_grasp_pose_cb)
-        rospy.Subscriber("grasp_pose", PoseStamped, self.grasp_pose_cb)
-        rospy.Subscriber("pre_place_pose", PoseStamped, self.pre_place_pose_cb)
-        rospy.Subscriber("place_pose", PoseStamped, self.place_pose_cb)
+        rospy.Subscriber("robot_pose", PoseStamped, self.robot_pose_cb)
+        
         # rospy.Subscriber("endEffectorDistance", Float64, self.ee_distance_cb)
         rospy.Subscriber("~e_in", String, self.e_in_cb)
 
@@ -86,27 +81,13 @@ class MoveRobot(object):
     def load_param(self, timeout):
         self.pre_grasp_ee =  wait_for_param('pre_grasp_ee', timeout)
         self.grasp_ee =  wait_for_param('grasp_ee', timeout)
+            
+            
+    def robot_pose_cb(self, msg):
+        if self.robot_pose is None:
+            self.robot_pose = msg
+            rospy.logdebug("[MOVE ROBOT] Received new robot pose massage")
 
-    def grasp_pose_cb(self, msg):
-        if self.grasp_pose is None:
-            self.grasp_pose = msg
-            rospy.logdebug("[MOVE ROBOT] Received new grasp pose massage")
-            self.load_param(1.0)
-
-    def pre_grasp_pose_cb(self, msg):
-        if self.pre_grasp_pose is None:
-            self.pre_grasp_pose = msg
-            rospy.logdebug("[MOVE ROBOT] Received new pre grasp pose massage")
-
-    def pre_place_pose_cb(self, msg):
-        if self.pre_place_pose is None:
-            self.pre_place_pose = msg
-            rospy.logdebug("[MOVE ROBOT] Received new pre place pose message")
-
-    def place_pose_cb(self, msg):
-        if self.place_pose is None:
-            self.place_pose = msg
-            rospy.logdebug("[MOVE ROBOT] Received new placing pose message")
 
     def e_in_cb(self, msg):
         if self.command is None:
@@ -246,45 +227,6 @@ class MoveRobot(object):
             rospy.logwarn("[MOVE ROBOT] Goal pose specified with respect to wrong frame: sould be specified with respect to %s, but is be specified with respect to %s", planning_frame, goal_frame)
             return False
 
-
-    def pick(self):
-        rospy.logdebug("[MOVE ROBOT] Picking object")
-        success =  self.go_to_pre_grasp_pose()
-
-        if success:
-            success = self.apply_pre_grasp_ee()
-
-        if success:
-            success = self.go_to_grasp_pose()
-
-        if success:
-            success = self.apply_grasp_ee()
-
-        if success:
-            success = self.go_to_pre_grasp_pose()
-
-        return success
-
-    def place(self):
-        rospy.logdebug("[MOVE ROBOT] Placing object")
-        success = self.go_to_pre_place_pose()
-
-        if success:
-            success = self.go_to_place_pose()
-
-        if success:
-            success = self.apply_release_ee()
-
-        if success:
-            success = self.go_to_pre_place_pose()
-
-        if success:
-            success = self.home_man()
-
-
-        self.reset_msg()
-        return success
-
     def remove_attached_target_object(self):
         attached_objects = self.scene.get_attached_objects(object_ids=[self.target_object_name])
 
@@ -315,28 +257,9 @@ class MoveRobot(object):
         success = self.go_to_pose(goal_pose)
         # self.grasp_pose = None
         return success
-
-    def go_to_grasp_pose(self):
-        rospy.logdebug("[MOVE ROBOT] Going to grasp pose")
-        success = self.go_to_pose(self.grasp_pose)
-        # self.grasp_pose = None
-        return success
-
-    def go_to_pre_grasp_pose(self):
-        rospy.logdebug("[MOVE ROBOT] Going to pre grasp pose")
-        success = self.go_to_pose(self.pre_grasp_pose)
-        return success
-
-    def go_to_pre_place_pose(self):
-        rospy.logdebug("[MOVE ROBOT] Going to pre place pose")
-        success = self.go_to_pose(self.pre_place_pose)
-        return success
-
-    def go_to_place_pose(self):
-        rospy.logdebug("[MOVE ROBOT] Going to place pose")
-        success = self.go_to_pose(self.place_pose)
-        return success
         
+        
+       # self.load_param(1.0) 
     def open_ee(self):
         rospy.logdebug("[MOVE ROBOT] Opening end effector")
         return self.move_to_joint_target(self.ee_group, "Open")
@@ -362,13 +285,10 @@ class MoveRobot(object):
 
         success = self.attach_object()
         if success:
-            success = self.move_to_joint_target(self.ee_group, self.grasp_ee)
+            success = self.close_ee() # move_to_joint_target(self.ee_group, self.grasp_ee)
         return success
 
-    def apply_pre_grasp_ee(self):
-        rospy.logdebug("[MOVE ROBOT] Aplying pre grasping with end effector")
-        return self.move_to_joint_target(self.ee_group, self.pre_grasp_ee)
-        
+
     def go_to_pose(self, goal_pose):
         if goal_pose is None:
             rospy.logwarn("goal pose is empty!")
@@ -425,6 +345,7 @@ class MoveRobot(object):
                 to_check = False
             target = group.get_named_target_values(target)
 
+        print(target)
         group.set_joint_value_target(target)
 
         plan = group.plan()
@@ -451,76 +372,30 @@ class MoveRobot(object):
         # rospy.logdebug("[MOVE ROBOT] Moving to joint target success: %s", success)
         return True # success
 
-
-
-    def received_all_data(self):
-        success = (self.pre_grasp_ee != None) and (self.grasp_ee != None) and (self.grasp_pose != None) and (self.pre_grasp_pose != None) and (self.pre_place_pose != None) and (self.place_pose != None)
-        return success
-
-    def reset_msg(self):
-        rospy.logdebug("[MOVE ROBOT] Resetting for next grasp")
-        self.pre_grasp_ee = None
-        self.grasp_ee = None
-        self.grasp_pose = None
-        self.pre_grasp_pose = None
-        self.pre_place_pose = None
-        self.place_pose = None
+    def reset(self):
+        self.robot_pose = None
         return True
-
-    ### Log state update
-    def log_state_update(self):
-        rospy.loginfo("[MOVE ROBOT] updated move robot state, from %s to %s",
-                      self.prev_state, self.state)
-
-    def update_state(self, success):
-
-        if (self.state == "idle") and not self.received_all_data():
-            self.prev_state = self.state
-            self.state = "init"
-            self.log_state_update()
-
-        elif self.state == "init" and self.received_all_data():
-            self.prev_state = self.state
-            self.state = "idle"
-            self.log_state_update()
-
-        elif (self.state == "idle") and ((self.command == "pick") or (self.command == "pick_place")) and success:
-            self.prev_state = self.state
-            self.state = "picked"
-            self.log_state_update()
-
-        elif (self.state == "picked") and success:
-            self.prev_state = self.state
-            self.state = "init"
-            self.log_state_update()
-
 
     def take_action(self):
         msg = String()
         success = None
 
-        # State dependent actions
-        if self.state == "init":
-            if self.command == "pick" or self.command == "pick_place":
-                rospy.logwarn("[Move Robot] Cannot pick object, it still needs to be detected!")
-                # rospy.sleep(3.0)
-                success = False
-
-        if self.state == "idle":
-            if self.command == "pick" or self.command == "pick_place":
-                success = self.pick()
-
-        elif self.state == "picked":
-            if self.command == "place" or self.command == "pick_place":
-                success = self.place()
-
         # General actions, non state dependent
-        if self.command == "move":
-            success = self.go_to_pre_grasp_pose()
-            self.pre_grasp_pose = None
+        if self.command == "move_manipulator":
+            success = self.go_to_pose(self.robot_pose)
+            self.robot_pose = None
 
         elif self.command == "home":
             success = self.home_man()
+            
+        elif self.command == "ee_pre_grasp":
+            success = self.open_ee()
+            
+        elif self.command == "ee_grasp":
+            success = self.apply_grasp_ee()
+
+        elif self.command == "ee_release":
+            success = self.apply_release_ee()
 
         elif self.command == "open":
             success = self.apply_release_ee()
@@ -528,13 +403,14 @@ class MoveRobot(object):
         elif self.command == "close":
             success = self.close_ee()
             
+            
         elif self.command == "reset":
-            success = self.reset_msg()
+            success = self.reset()
 
         elif self.command == "e_init":
             success = True
 
-        self.update_state(success)
+        # self.update_state(success)
 
         if self.command == "pick_place" and self.state == "picked":
             success = None

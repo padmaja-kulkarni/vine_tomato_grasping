@@ -46,12 +46,14 @@ class Initializing(smach.State):
 
 class Idle(smach.State):
     def __init__(self):
-        smach.State.__init__(self, outcomes=['calibrate', 'detect', 'move', 'failure'], output_keys=['command'])
+        smach.State.__init__(self, outcomes=['calibrate', 'detect', 'move', "pick_place", 'failure'], output_keys=['command'])
         self.command_op_topic = "pipelineState"
 
         self.detect_commands =  ["detect"]
         self.calibrate_commands =  ["calibrate"]
-        self.move_commands =  ["home", "open", "close", "pick", "place", "pick_place"]
+        self.move_commands =  ["home", "open", "close"]
+        self.pick_place = ["pick", "place", "pick_place"]
+
 
     def execute(self, userdata):
         rospy.logdebug('Executing state Idle')
@@ -66,6 +68,9 @@ class Idle(smach.State):
         elif command in self.calibrate_commands:
             userdata.command = command
             return "calibrate"
+        elif command in self.pick_place:
+            userdata.command = command
+            return "pick_place"
         else:
             rospy.logwarn('Unknown command: %s', command)
             return "failure"
@@ -181,6 +186,35 @@ class MoveRobot(smach.State):
             if self.counter <=0:
                 return 'failure'
             return 'retry'
+            
+            
+class PickPlace(smach.State):
+    def __init__(self):
+        smach.State.__init__(self, outcomes=['success', 'failure', 'retry'], input_keys=['command'])
+        self.pick_place_op_topic = "pick_place/e_out"
+        self.pub_pick_place = rospy.Publisher("pick_place/e_in",
+                                      String, queue_size=10, latch=True)
+        self.timeout = 30.0
+        self.counter = 3
+        self.mv_robot_result = String()
+
+    def execute(self, userdata):
+        rospy.logdebug('Executing state Pick Place')
+
+        # command node
+        self.pub_pick_place.publish(userdata.command)
+
+        # get response
+        success = wait_for_success(self.pick_place_op_topic, self.timeout)
+
+        # determine success
+        if success:
+            return 'success'
+        else:
+            self.counter = self.counter - 1
+            if self.counter <=0:
+                return 'failure'
+            return 'retry'
 
 def wait_for_success(topic, timeout):
 
@@ -243,12 +277,18 @@ def main():
                                transitions={'detect':'DetectObject',
                                             'move': 'MoveRobot',
                                             'calibrate': 'CalibrateRobot',
+                                            'pick_place': 'PickPlace',
                                             'failure': 'Idle'})
 
         smach.StateMachine.add('CalibrateRobot', CalibrateRobot(),
                            transitions={'success':'Idle',
                                         'failure': 'Idle',
                                         'complete_failure':'Idle'})
+                                        
+        smach.StateMachine.add('PickPlace', PickPlace(),
+                           transitions={'success':'Idle',
+                                        'failure': 'Idle',
+                                        'retry':'Idle'})
 
         smach.StateMachine.add('DetectObject', DetectObject(),
                                transitions={'success':'PoseTransform',
