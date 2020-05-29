@@ -168,7 +168,7 @@ class PoseTransform(smach.State):
 
 class MoveRobot(smach.State):
     def __init__(self):
-        smach.State.__init__(self, outcomes=['success', 'failure', 'retry'], input_keys=['command'])
+        smach.State.__init__(self, outcomes=['success', 'failure', 'complete_failure'], input_keys=['command'])
         self.mv_robot_op_topic = "move_robot/e_out"
         self.pub_move_robot = rospy.Publisher("move_robot/e_in",
                                       String, queue_size=10, latch=True)
@@ -191,13 +191,13 @@ class MoveRobot(smach.State):
         else:
             self.counter = self.counter - 1
             if self.counter <=0:
-                return 'failure'
-            return 'retry'
+                return 'complete_failure'
+            return 'failure'
             
             
 class PickPlace(smach.State):
     def __init__(self):
-        smach.State.__init__(self, outcomes=['success', 'failure', 'retry'], input_keys=['command'])
+        smach.State.__init__(self, outcomes=['success', 'failure', 'complete_failure'], input_keys=['command'])
         self.pick_place_op_topic = "pick_place/e_out"
         self.pub_pick_place = rospy.Publisher("pick_place/e_in",
                                       String, queue_size=10, latch=True)
@@ -220,13 +220,13 @@ class PickPlace(smach.State):
         else:
             self.counter = self.counter - 1
             if self.counter <=0:
-                return 'failure'
-            return 'retry'
+                return 'complete_failure'
+            return 'failure'
 
 
 class Point(smach.State):
     def __init__(self):
-        smach.State.__init__(self, outcomes=['success', 'failure', 'retry'], input_keys=['command'])
+        smach.State.__init__(self, outcomes=['success', 'failure', 'complete_failure'], input_keys=['command'])
         self.point_op_topic = "point/e_out"
         self.pub_point = rospy.Publisher("point/e_in",
                                       String, queue_size=10, latch=True)
@@ -249,8 +249,8 @@ class Point(smach.State):
         else:
             self.counter = self.counter - 1
             if self.counter <=0:
-                return 'failure'
-            return 'retry'
+                return 'complete_failure'
+            return 'failure'
 
 # main
 def main():
@@ -293,13 +293,13 @@ def main():
                                         
         smach.StateMachine.add('PickPlace', PickPlace(),
                            transitions={'success':'Idle',
-                                        'failure': 'Idle',
-                                        'retry':'Idle'})
+                                        'failure': 'PickPlace',
+                                        'complete_failure':'Idle'})
                                         
         smach.StateMachine.add('Point', Point(),
                            transitions={'success':'Idle',
-                                        'failure': 'Idle',
-                                        'retry':'Idle'})
+                                        'failure': 'Point',
+                                        'complete_failure':'Idle'})
 
         smach.StateMachine.add('DetectObject', DetectObject(),
                                transitions={'success':'PoseTransform',
@@ -313,8 +313,8 @@ def main():
 
         smach.StateMachine.add('MoveRobot', MoveRobot(),
                                transitions={'success':'Idle',
-                                            'failure':'Idle',
-                                            'retry': 'MoveRobot'})
+                                            'failure':'MoveRobot',
+                                            'complete_failure': 'Idle'})
 
     # Execute SMACH plan
     sm.execute()

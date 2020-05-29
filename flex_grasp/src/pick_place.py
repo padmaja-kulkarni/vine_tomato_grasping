@@ -119,7 +119,7 @@ class PickPlace(object):
         
     def apply_release_ee(self):
         rospy.logdebug("[PICK PLACE] Aplying release with end effector")
-        self.pub_move_robot_command.publish("ee_release")
+        self.pub_move_robot_command.publish("release")
         success = wait_for_success("move_robot/e_out", 5)        
         return success
         
