@@ -207,17 +207,15 @@ def segmentation_truss_real(img_hue, imMax):
         
         return background, truss, peduncle
         
-def segmentation_tomato_real(img_hue, imMax):
-        im1 = img_hue # hue
+def segmentation_tomato_real(img_a, imMax):
+        im1 = img_a # hue
  
         # Seperate truss from background
         data1 = im1.flatten()
         thresholdTomato, temp = cv2.threshold(data1,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
         
-        threshPeduncle = 15
-        temp, truss_1 = cv2.threshold(im1,threshPeduncle,imMax,cv2.THRESH_BINARY_INV)
-        temp, truss_2 = cv2.threshold(im1,150,imMax,cv2.THRESH_BINARY) # circle
-        truss = cv2.bitwise_or(truss_1,truss_2)
+
+        temp, truss = cv2.threshold(im1,thresholdTomato,imMax,cv2.THRESH_BINARY_INV)
         background = cv2.bitwise_not(truss)
         
         peduncle = np.zeros(truss.shape, dtype = np.uint8)

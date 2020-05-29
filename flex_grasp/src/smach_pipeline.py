@@ -84,7 +84,7 @@ class Idle(smach.State):
 
 class DetectObject(smach.State):
     def __init__(self):
-        smach.State.__init__(self, outcomes=['success','failure', 'complete_failure'], input_keys=['command'])
+        smach.State.__init__(self, outcomes=['success', 'transform_pose', 'failure', 'complete_failure'], input_keys=['command'])
         self.detection_op_topic = "object_detection/e_out"
 
         self.pub_obj_detection = rospy.Publisher("object_detection/e_in",
@@ -102,9 +102,13 @@ class DetectObject(smach.State):
 
         # get response
         success = wait_for_success(self.detection_op_topic, self.timeout)
-
         if success:
-            return 'success'
+            
+            if userdata.command == 'detect_tomato':
+                return 'success'
+                
+            if userdata.command == 'detect_truss':
+                return 'transform_pose'
         else:
             self.counter = self.counter - 1
             if self.counter <=0:
@@ -302,7 +306,8 @@ def main():
                                         'complete_failure':'Idle'})
 
         smach.StateMachine.add('DetectObject', DetectObject(),
-                               transitions={'success':'PoseTransform',
+                               transitions={'success': 'Idle',
+                                           'transform_pose':'PoseTransform',
                                             'failure':'DetectObject',
                                             'complete_failure':'Idle'})
 

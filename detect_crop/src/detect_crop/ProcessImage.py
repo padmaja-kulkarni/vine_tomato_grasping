@@ -98,7 +98,7 @@ class ProcessImage(object):
             if self.use_truss:
                 background, tomato, peduncle = segmentation_truss_real(self.img_hue, self.imMax)
             else:
-                background, tomato, peduncle = segmentation_tomato_real(self.img_hue, self.imMax)
+                background, tomato, peduncle = segmentation_tomato_real(self.img_A, self.imMax)
         
         self.background = background
         self.tomato = tomato

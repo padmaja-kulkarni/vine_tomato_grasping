@@ -101,9 +101,10 @@ class ObjectDetection(object):
 
         # if not self.debug_mode:i
         rospy.Subscriber("camera/color/image_raw", Image, self.color_image_cb)
-        rospy.Subscriber("camera/depth/image_rect_raw", Image, self.depth_image_cb)
+        rospy.Subscriber("camera/aligned_depth_to_color/image_raw", Image, self.depth_image_cb)
+        # rospy.Subscriber("camera/aligned_depth_to_color/camera_info", CameraInfo, self.color_info_cb)
         rospy.Subscriber("camera/color/camera_info", CameraInfo, self.color_info_cb)
-        rospy.Subscriber("camera/color/camera_info", CameraInfo, self.depth_info_cb)
+        rospy.Subscriber("camera/depth/camera_info", CameraInfo, self.depth_info_cb)
 
     def e_in_cb(self, msg):
         if self.event is None:
@@ -185,7 +186,7 @@ class ObjectDetection(object):
                                  saveIntermediate = False)
 
 
-            self.intrin = camera_info2intrinsics(self.depth_info)
+            self.intrin = camera_info2intrinsics(self.color_info)
 
             # process image
             if self.use_truss:
@@ -330,12 +331,11 @@ class ObjectDetection(object):
 
     def deproject(self, row, col, intrin):
         # Deproject
-        index = (row, col)
         depth = self.get_depth(row, col)
         # rospy.logdebug("Corresponding depth: %s", self.depth_image[index])
         # https://github.com/IntelRealSense/librealsense/wiki/Projection-in-RealSense-SDK-2.0
 
-        pixel = [float(col), float(row)]
+        pixel = [float(col), float(row)] # [x, y]
         depth = float(depth)
 
         point = rs.rs2_deproject_pixel_to_point(intrin, pixel, depth)
@@ -349,16 +349,20 @@ class ObjectDetection(object):
         W = dim[1]
 
         row_start = max([row - patch_width, 0])
-        row_end = min([row + patch_width, H])
+        row_end = min([row + patch_width, H - 1])
 
         col_start = max([col - patch_width, 0])
-        col_end = min([col + patch_width, W])
+        col_end = min([col + patch_width, W - 1])
 
         rows = np.arange(row_start, row_end + 1)
         cols = np.arange(col_start, col_end + 1)
 
         depth_patch = self.depth_image[rows[:, np.newaxis], cols]
-        return np.mean(depth_patch)
+        
+        non_zero = np.nonzero(depth_patch)      
+        depth_patch_non_zero = depth_patch[non_zero]
+        
+        return np.mean(depth_patch_non_zero)
 
     def take_action(self):
         success = None
