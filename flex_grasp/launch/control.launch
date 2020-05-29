@@ -5,6 +5,8 @@
 	<arg name="manipulator_group_name" 	default="manipulator"/>
   <arg name="ee_group_name"           default="gripper"/>
 	<arg name="planning_frame" 					default="world"/> <!-- world -->
+	<arg name="robot_base_frame" 					default="px150/base_link"/>
+
 	<arg name="use_truss" 							default="true"/>
 
 
@@ -16,6 +18,7 @@
 	<arg name="visualize_object_debug"	default="false"/>
 	<arg name="pick_place_debug" default="true"/>
 	<arg name="calibrate_debug" default="false"/>
+	<arg name="point_debug" default="true"/>
 
 	<include file="$(find flex_grasp)/launch/calibrate.launch">
 		<arg name="calibrate_debug" value="$(arg calibrate_debug)"/>
@@ -33,7 +36,7 @@
 		<param name="planning_frame" value="$(arg planning_frame)"/>
 		<param name="manipulator_group_name" value="$(arg manipulator_group_name)"/>
 		<param name="ee_group_name" value="$(arg ee_group_name)"/>
-
+		<param name="robot_base_frame" value="$(arg robot_base_frame)"/>
 
 		<node name = "my_rqt_dashboard"
 			pkg = "rqt_gui"
@@ -69,6 +72,13 @@
 			type="pick_place.py"
 			output="screen">
 			<param name ="debug" value="$(arg pick_place_debug)"/>
+		</node>
+
+		<node name="point"
+			pkg="flex_grasp"
+			type="point.py"
+			output="screen">
+			<param name ="debug" value="$(arg point_debug)"/>
 		</node>
 
     <node name="move_robot"
