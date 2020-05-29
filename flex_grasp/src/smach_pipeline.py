@@ -51,7 +51,7 @@ class Idle(smach.State):
         smach.State.__init__(self, outcomes=['calibrate', 'detect', 'move', "pick_place", "point", 'failure'], output_keys=['command'])
         self.command_op_topic = "pipelineState"
 
-        self.detect_commands =  ["detect"]
+        self.detect_commands =  ["detect_tomato", "detect_truss"]
         self.calibrate_commands =  ["calibrate"]
         self.move_commands =  ["home", "open", "close"]
         self.pick_place_commands = ["pick", "place", "pick_place"]
@@ -63,6 +63,7 @@ class Idle(smach.State):
         command = rospy.wait_for_message(self.command_op_topic, String).data
 
         if command in self.detect_commands:
+            userdata.command = command            
             return "detect"
         elif command in self.move_commands:
             userdata.command = command
@@ -83,7 +84,7 @@ class Idle(smach.State):
 
 class DetectObject(smach.State):
     def __init__(self):
-        smach.State.__init__(self, outcomes=['success','failure', 'complete_failure'])
+        smach.State.__init__(self, outcomes=['success','failure', 'complete_failure'], input_keys=['command'])
         self.detection_op_topic = "object_detection/e_out"
 
         self.pub_obj_detection = rospy.Publisher("object_detection/e_in",
@@ -96,7 +97,8 @@ class DetectObject(smach.State):
         rospy.logdebug('Executing state Detect')
 
         # command node
-        self.pub_obj_detection.publish("e_start")
+        rospy.logdebug("Publishing command: %s", userdata.command)
+        self.pub_obj_detection.publish(userdata.command)
 
         # get response
         success = wait_for_success(self.detection_op_topic, self.timeout)

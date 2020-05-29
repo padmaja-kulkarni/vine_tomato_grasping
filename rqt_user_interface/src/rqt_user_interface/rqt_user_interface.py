@@ -54,7 +54,10 @@ class RqtSdhGrasp(Plugin):
         self._widget.CalibrateButton.clicked[bool].connect(self.handle_calibrate)
 
         # tasks
-        self._widget.DetectButton.clicked[bool].connect(self.handle_detect)
+        self._widget.DetectTomatoButton.clicked[bool].connect(self.handle_detect_tomato)
+        self._widget.DetectTrussButton.clicked[bool].connect(self.handle_detect_truss)        
+
+        self._widget.PointButton.clicked[bool].connect(self.handle_point)        
         self._widget.PickPlaceButton.clicked[bool].connect(self.handle_pick_place)
         self._widget.PickButton.clicked[bool].connect(self.handle_pick)
         self._widget.PlaceButton.clicked[bool].connect(self.handle_place)
@@ -89,8 +92,14 @@ class RqtSdhGrasp(Plugin):
     def handle_close(self):
         self.pub_grasp.publish("close")
 
-    def handle_detect(self):
-        self.pub_grasp.publish("detect")
+    def handle_detect_tomato(self):
+        self.pub_grasp.publish("detect_tomato")
+
+    def handle_detect_truss(self):
+        self.pub_grasp.publish("detect_truss")
+        
+    def handle_point(self):
+        self.pub_grasp.publish("point")
 
     def handle_pick_place(self):
         self.pub_grasp.publish("pick_place")

@@ -16,6 +16,7 @@ from cv_bridge import CvBridge, CvBridgeError
 from std_msgs.msg import String
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import CameraInfo
+from geometry_msgs.msg import PoseStamped
 
 from flex_grasp.msg import Tomato
 from flex_grasp.msg import Truss
@@ -45,12 +46,13 @@ class ObjectDetection(object):
         self.trans = None
         self.init = None
 
+        self.take_picture = False
+
         # self.color_frame = None
         # self.depth_frame = None
         self.camera_frame = "camera_color_optical_frame"
 
         self.camera_sim = rospy.get_param("camera_sim")
-        self.use_truss = rospy.get_param("use_truss")
         self.debug_mode = rospy.get_param("object_detection/debug")
 
         self.patch_size = 7
@@ -97,11 +99,11 @@ class ObjectDetection(object):
         # Subscribe
         rospy.Subscriber("~e_in", String, self.e_in_cb)
 
-        if not self.debug_mode:
-            rospy.Subscriber("camera/color/image_raw", Image, self.color_image_cb)
-            rospy.Subscriber("camera/depth/image_rect_raw", Image, self.depth_image_cb)
-            rospy.Subscriber("camera/color/camera_info", CameraInfo, self.color_info_cb)
-            rospy.Subscriber("camera/color/camera_info", CameraInfo, self.depth_info_cb)
+        # if not self.debug_mode:i
+        rospy.Subscriber("camera/color/image_raw", Image, self.color_image_cb)
+        rospy.Subscriber("camera/depth/image_rect_raw", Image, self.depth_image_cb)
+        rospy.Subscriber("camera/color/camera_info", CameraInfo, self.color_info_cb)
+        rospy.Subscriber("camera/color/camera_info", CameraInfo, self.depth_info_cb)
 
     def e_in_cb(self, msg):
         if self.event is None:
@@ -113,7 +115,7 @@ class ObjectDetection(object):
             self.pub_e_out.publish(msg)
 
     def color_image_cb(self, msg):
-        if (self.color_image is None) and (self.event == "e_start"):
+        if (self.color_image is None) and (self.take_picture):
             rospy.logdebug("[OBJECT DETECTION] Received color image message")
             try:
                 self.color_image = self.bridge.imgmsg_to_cv2(msg, "rgb8")
@@ -122,7 +124,7 @@ class ObjectDetection(object):
                 print(e)
 
     def depth_image_cb(self, msg):
-        if (self.depth_image is None) and (self.event == "e_start"):
+        if (self.depth_image is None) and (self.take_picture):
             rospy.logdebug("[OBJECT DETECTION] Received depth image message")
             try:
                 if self.camera_sim:
@@ -134,12 +136,12 @@ class ObjectDetection(object):
                 print(e)
 
     def color_info_cb(self, msg):
-        if (self.color_info is None) and (self.event == "e_start"):
+        if (self.color_info is None) and (self.take_picture):
             rospy.logdebug("[OBJECT DETECTION] Received color info message")
             self.color_info = msg
 
     def depth_info_cb(self, msg):
-        if (self.depth_info is None) and (self.event == "e_start"):
+        if (self.depth_info is None) and (self.take_picture):
             rospy.logdebug("[OBJECT DETECTION] Received depth info message")
             self.depth_info = msg
 
@@ -152,10 +154,20 @@ class ObjectDetection(object):
         self.depth_info = None
         self.color_info = None
 
-    def wait_for_data(self, time_out):
-        while not self.received_all_data():
+    def wait_for_data(self, timeout):
+        start_time = rospy.get_time()
+
+        while (rospy.get_time() - start_time < timeout):   
+            
+            if self.received_all_data():
+                self.take_picture = False
+                rospy.logdebug("[OBJECT DETECTION] Received all data")        
+                return True
+                
             rospy.sleep(0.1)
-        return True
+        
+        rospy.logwarn("[OBJECT DETECTION] Did not receive all data")
+        return False
 
 
     def detect_object(self):
@@ -218,7 +230,6 @@ class ObjectDetection(object):
 
             return True
         else:
-            rospy.logwarn("Did not receive all data")
             return False
 
 
@@ -353,11 +364,20 @@ class ObjectDetection(object):
         success = None
         msg = String()
 
-        if (self.event == "e_start"):
-            if not self.debug_mode:
-                success = self.detect_object()
-            if self.debug_mode:
-                success = self.generate_object()
+        if (self.event == "detect_tomato"):
+            rospy.logdebug("[OBEJCT DETECTION] Detect tomato")
+            # if not self.debug_mode:
+            #     success = self.generate_object() 
+            # if self.debug_mode:
+            self.use_truss = False
+            self.take_picture = True
+            success = self.detect_object()
+            
+        elif (self.event == "detect_truss"):
+            rospy.logdebug("[OBEJCT DETECTION] Detect truss")
+            self.use_truss = True
+            self.take_picture = True
+            success = self.detect_object()
 
         elif (self.event == "e_init"):
             self.init = True
@@ -372,7 +392,7 @@ class ObjectDetection(object):
 
             elif success == False:
                 msg.data = "e_failure"
-                rospy.logwarn("Object detection failed to execute %s", self.event)
+                rospy.logwarn("[OBEJCT DETECTION] failed to execute command %s", self.event)
                 self.event = None
 
             self.pub_e_out.publish(msg)
