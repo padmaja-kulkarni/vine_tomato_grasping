@@ -190,7 +190,12 @@ class ObjectDetection(object):
 
             # process image
             if self.use_truss:
-                image.process_image()
+                success = image.process_image()
+                if success == False:
+                    rospy.logwarn("[OBJECT DETECTION] Failed to process image")
+                    return False
+                
+                
                 object_features = image.get_object_features()
 
                 cage_pose = self.generate_cage_pose(object_features['grasp'])
@@ -389,8 +394,8 @@ class ObjectDetection(object):
 
         # publish success
         if success is not None:
+            self.clear_all_data()
             if success == True:
-                self.clear_all_data()
                 msg.data = "e_success"
                 self.event = None
 

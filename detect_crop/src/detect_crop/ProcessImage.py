@@ -54,10 +54,10 @@ class ProcessImage(object):
 
         DIM = imRGB.shape[:2]
         width_desired = 1920.0
-        scale = int(width_desired/DIM[1])
-        width = DIM[1] * scale
-        height = DIM[0] * scale
-
+        scale = width_desired/DIM[1]
+        width = int(DIM[1] * scale)
+        height = int(DIM[0] * scale)
+        
         imRGB = cv2.resize(imRGB, (width, height), interpolation = cv2.INTER_AREA)
         self.scale = scale
         self.DIM = imRGB.shape[:2]
@@ -91,6 +91,7 @@ class ProcessImage(object):
         
     def segment_truss(self):
 
+        success = True
         if self.camera_sim:
             background, tomato, peduncle = segmentation_truss_sim(self.img_saturation, self.img_hue, self.img_A, self.imMax)
 
@@ -103,15 +104,22 @@ class ProcessImage(object):
         self.background = background
         self.tomato = tomato
         self.peduncle = peduncle
+        
+
+        if np.all((tomato == 0)):
+            warnings.warn("Segment truss: no pixel has been classified as tomato")
+            success = False
 
         if self.saveIntermediate:
             self.save_results('02')
 
+        return success
 
     def filter_img(self):
         #%%###########
         ### Filter ###
         ##############
+        success = True
 
         # tomato
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (self.filterDiameterTom, self.filterDiameterTom))
@@ -128,17 +136,29 @@ class ProcessImage(object):
         self.background = backgroundFiltered
         self.tomato = tomatoFiltered
         self.peduncle = peduncleFiltered
+        
+        if np.all((tomatoFiltered == 0)):
+            warnings.warn("filter segments: no pixel has been classified as tomato")
+            success = False
 
         if self.saveIntermediate:
             self.save_results('03')
+            
+        return success
 
     def rotate_cut_img(self):
         #%%###################
         ### rotate and cut ###
         ######################
+    
+        if np.all((self.peduncle == 0)):
+            warnings.warn("Cannot rotate based on peduncle, since it does not exist!")
+    
         label_img = label(self.peduncle)
         regions = regionprops(label_img , coordinates='xy')
-        if len(regions) > 1: warnings.warn("Multiple regions found!")
+            
+        if len(regions) > 1: 
+            warnings.warn("Multiple regions found!")
         angle = regions[0].orientation*180/np.pi # + 90
         # print('angle: ', angle)
 
@@ -147,6 +167,10 @@ class ProcessImage(object):
         peduncleFilteredR = np.uint8(self.imMax*rotate(self.peduncle, -angle, resize=True))
         backgroundFilteredR = np.uint8(self.imMax*rotate(self.background, -angle, resize=True))
         imRGBR  = np.uint8(self.imMax*rotate(self.imRGB, -angle, resize=True))
+
+        if np.all((tomatoFilteredR == 0)):
+            warnings.warn("Cannot crop based on tomato, since it does not exist!")
+
 
         # get bounding box
         box = cv2.boundingRect(tomatoFilteredR)
@@ -193,6 +217,7 @@ class ProcessImage(object):
                                    param1=50,param2=100, minRadius=minR, maxRadius=maxR)
 
         if circles is None:
+            warnings.warn("Failed to detect any circle!")
             centersO = None
             radii = None
         else:
@@ -206,6 +231,8 @@ class ProcessImage(object):
         #%%##################
         ## Detect tomatoes ##
         #####################
+        success = True
+    
         tomatoFilteredLBlurred = cv2.GaussianBlur(self.tomato, (1, 1), 0)
         minR = self.w/8 # 6
         maxR = self.w/4
@@ -214,16 +241,24 @@ class ProcessImage(object):
         circles = cv2.HoughCircles(tomatoFilteredLBlurred, cv2.HOUGH_GRADIENT, 5, minDist,
                                    param1=50,param2=100, minRadius=minR, maxRadius=maxR)
 
-        centersL = np.matrix(circles[0][:,0:2])
-        radii = circles[0][:,2]
+        if circles is None:
+            warnings.warn("Failed to detect any circle!")
+            comL = None
+            comO = None
+            centersO = None
+            radii = None
+            success = False
+        else:
+            centersL = np.matrix(circles[0][:,0:2])
+            radii = circles[0][:,2]
 
-        # find CoM
-        comL = (radii**2) * centersL/(np.sum(radii**2))
-        comR = comL + self.box[0:2]
-        comO = rot2or(comR, self.DIM, -self.angle/180*np.pi)
-
-        centersR = centersL + self.box[0:2]
-        centersO = rot2or(centersR, self.DIM, -self.angle/180*np.pi)
+            # find CoM
+            comL = (radii**2) * centersL/(np.sum(radii**2))
+            comR = comL + self.box[0:2]
+            comO = rot2or(comR, self.DIM, -self.angle/180*np.pi)
+    
+            centersR = centersL + self.box[0:2]
+            centersO = rot2or(centersR, self.DIM, -self.angle/180*np.pi)
 
         self.comL = comL
         self.comO = comO
@@ -232,11 +267,16 @@ class ProcessImage(object):
 
         if self.saveIntermediate:
              plot_circles(self.imRGB, centersL, radii, savePath = self.pwdProcess, saveName = '05_a')
+             
+        return success
 
     def detect_peduncle(self):
         #%%##################
         ## DETECT PEDUNCLE ##
         #####################
+    
+        success = True    
+    
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (20, 2))
         # penduncleMain = cv2.morphologyEx(cv2.morphologyEx(self.peduncle, cv2.MORPH_OPEN, kernel),cv2.MORPH_CLOSE, kernel)
         penduncleMain = cv2.morphologyEx(self.peduncle, cv2.MORPH_OPEN, kernel)
@@ -257,6 +297,8 @@ class ProcessImage(object):
 
             penduncleMain = cv2.dilate(penduncleMain,kernel,iterations = 1)
             save_img(penduncleMain, self.pwdProcess, '05_b2', saveFormat = self.saveFormat)
+            
+        return success
 
     def detect_junction(self):
         skeleton = skeletonize(self.peduncle/self.imMax)
@@ -308,7 +350,8 @@ class ProcessImage(object):
             plot_circles(self.imRGB, locMat, radiiJunction, savePath = self.pwdProcess, saveName = '05_c')
 
     def detect_grasp_location(self):
-
+        success = True        
+        
         #%%###################
         ### GRASP LOCATION ###
         ######################
@@ -330,6 +373,8 @@ class ProcessImage(object):
 
         if self.saveIntermediate:
             plot_circles(self.imRGB, graspL, [10], savePath = self.pwdProcess, saveName = '06')
+            
+        return success
 
     def get_tomatoes(self):
         if self.centersO is None:
@@ -454,14 +499,29 @@ class ProcessImage(object):
     def process_image(self):
 
         self.color_space()
-        self.segment_truss()
-        self.filter_img()
-        self.rotate_cut_img()
-        self.detect_tomatoes()
-        self.detect_peduncle()
+        
+        success = self.segment_truss()
+        if success is False:
+            return success        
+        
+        success = self.filter_img()
+        if success is False:
+            return success        
+        
+        success = self.rotate_cut_img()
+        if success is False:
+            return success
+        
+        success1 = self.detect_tomatoes()
+        success2 = self.detect_peduncle()
         # self.detect_junction()
 
-        self.detect_grasp_location()
+        success = success1 and success2
+        if success is False:
+            return success
+            
+        success = self.detect_grasp_location()
+        return success
 
 def main():
     #%%########
@@ -470,12 +530,12 @@ def main():
 
     ## params ##
     # params
-    N = 3               # tomato file to load
+    N = 1               # tomato file to load
     nDigits = 3
     saveIntermediate = True
 
     pathCurrent = os.path.dirname(__file__)
-    dataSet = "real_blue" # "tomato_rot"
+    dataSet = "empty" # "tomato_rot"
 
     pwdTest = os.path.join("..") # "..", "..", ,  "taeke"
 
@@ -497,7 +557,7 @@ def main():
     for iTomato in range(N, N + 1, 1):
 
         tomatoName = str(iTomato).zfill(nDigits)
-        fileName = tomatoName + ".png" # png
+        fileName = tomatoName + ".jpg" # png
 
         imRGB, DIM = load_rgb(pwdData, fileName, horizontal = True)
 
@@ -512,18 +572,20 @@ def main():
                              tomatoName = tomatoName, 
                              pwdProcess = pwdResults, 
                              saveIntermediate = saveIntermediate)
-        image.process_image()
+        success = image.process_image()
 
         # plot_circles(image.imRGB, image.graspL, [10], savePath = pwdDataProc, saveName = str(iTomato), fileFormat = 'png')
         # plot_circles(image.imRGB, image.graspL, [10], savePath = pwdProcess, saveName = '06')
         # plot_circles(image.imRGBR, image.graspR, [10], savePath = pwdProcess, saveName = '06')
-        plot_circles(imRGB, image.graspO, [10], savePath = pwdResults, saveName = '06')
-
-        row, col, angle = image.get_grasp_info()
-
-        print('row: ', row)
-        print('col: ', col)
-        print('angle: ', angle)
+        
+        if success:         
+            plot_circles(imRGB, image.graspO, [10], savePath = pwdResults, saveName = '06')
+    
+            row, col, angle = image.get_grasp_info()
+    
+            print('row: ', row)
+            print('col: ', col)
+            print('angle: ', angle)
 
 if __name__ == '__main__':
     main()

@@ -84,12 +84,17 @@ def romove_blobs(imgIn, imMax):
     
     # the extra [-2:] is essential to make it work with varios cv2 ersions
     contours, _ = cv2.findContours(imgIn, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)[-2:]
-    cnt = max(contours, key=cv2.contourArea)
     
-    imgOut = np.zeros((H,W), np.uint8)
-    cv2.drawContours(imgOut, [cnt], -1, imMax, cv2.FILLED)
-    imgOut = cv2.bitwise_and(imgIn, imgOut)
-    return imgOut
+    if contours == []:
+        return imgIn
+
+    else:
+        cnt = max(contours, key=cv2.contourArea)
+        
+        imgOut = np.zeros((H,W), np.uint8)
+        cv2.drawContours(imgOut, [cnt], -1, imMax, cv2.FILLED)
+        imgOut = cv2.bitwise_and(imgIn, imgOut)
+        return imgOut
 
 
 def romove_blobs_2(imgIn, imMax):
