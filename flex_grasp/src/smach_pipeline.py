@@ -211,6 +211,7 @@ class PickPlace(smach.State):
 
     def execute(self, userdata):
         rospy.logdebug('Executing state Pick Place')
+        rospy.loginfo("Statemachine publishing command %s", userdata.command)
 
         # command node
         self.pub_pick_place.publish(userdata.command)

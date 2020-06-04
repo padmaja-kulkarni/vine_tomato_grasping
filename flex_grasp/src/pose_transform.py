@@ -143,8 +143,24 @@ class PoseTransform(object):
             except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
                 return
 
+
+    def wait_for_object(self, timeout):
+        start_time = rospy.get_time()
+
+        while (rospy.get_time() - start_time < timeout):   
+            
+            if self.object_features is not None:
+                rospy.logdebug("[POSE TRANSFORM] Received all data")        
+                return True
+                
+            rospy.sleep(0.1)
+        
+        rospy.logwarn("[POSE TRANSFORM] Did not receive all data")
+        return False
+
+
     def transform_pose(self):
-        if self.object_features is None:
+        if not self.wait_for_object(1):
             rospy.logwarn("[POSE TRANSFORM] Cannot transform pose, since object_features still empty!")
             return False
         else:

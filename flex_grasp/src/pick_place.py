@@ -218,7 +218,7 @@ class PickPlace(object):
         # State dependent actions
         if self.state == "init":
             if self.command == "pick" or self.command == "pick_place":
-                rospy.logwarn("[PICK PLACE] Cannot pick object, it still needs to be detected!")
+                rospy.logwarn("[PICK PLACE] Can not pick object, it still needs to be detected!")
                 # rospy.sleep(3.0)
                 success = False
 
@@ -233,6 +233,8 @@ class PickPlace(object):
         elif self.state == "picked":
             if self.command == "place" or self.command == "pick_place":
                 success = self.place()
+            if self.command == "pick":
+                rospy.logwarn("[PICK PLACE] Can not pick object, it still needs to be placed!")
             
         elif self.command == "reset":
             success = self.reset_msg()
