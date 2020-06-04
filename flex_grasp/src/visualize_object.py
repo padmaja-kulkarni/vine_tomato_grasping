@@ -70,20 +70,20 @@ class VisualizeObject(object):
         i = 0
         succes = True
 
-        for tomato in self.object_feature.tomatoes:
-            box_pose.header.frame_id =  tomato.header.frame_id
-            rospy.logdebug("[Visualize Object] frame ID: %s", tomato.header.frame_id)
-            box_pose.pose.orientation.w = 1.0
-            box_pose.pose.position = tomato.position
-            radius = tomato.radius
-            current_name = name + "_" + str(i)
-
-            self.scene.add_sphere(current_name, box_pose, radius = radius)
-            i = i + 1
-
-            # Check if box has been added
-            if not self.wait_for_state_update(box_is_known=True, timeout=timeout, box_name = current_name):
-                succes = False
+#        for tomato in self.object_feature.tomatoes:
+#            box_pose.header.frame_id =  tomato.header.frame_id
+#            rospy.logdebug("[Visualize Object] frame ID: %s", tomato.header.frame_id)
+#            box_pose.pose.orientation.w = 1.0
+#            box_pose.pose.position = tomato.position
+#            radius = tomato.radius
+#            current_name = name + "_" + str(i)
+#
+#            self.scene.add_sphere(current_name, box_pose, radius = radius)
+#            i = i + 1
+#
+#            # Check if box has been added
+#            if not self.wait_for_state_update(box_is_known=True, timeout=timeout, box_name = current_name):
+#                succes = False
 
 
         return succes

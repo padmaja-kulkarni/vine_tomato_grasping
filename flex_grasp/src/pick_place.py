@@ -93,7 +93,7 @@ class PickPlace(object):
         rospy.logdebug("[PICK PLACE] Commanding move robot to pose")
         self.pub_move_robot_pose.publish(pose)
         self.pub_move_robot_command.publish("move_manipulator")
-        success = wait_for_success("move_robot/e_out", 5)
+        success = wait_for_success("move_robot/e_out", 10)
         return success
         
     def command_to_home(self):

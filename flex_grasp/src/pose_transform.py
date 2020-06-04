@@ -200,6 +200,8 @@ class PoseTransform(object):
 
         # position
         object_position, object_orientation = pose_to_lists(object_pose.pose, 'euler')
+        object_orientation = (0, 0, object_orientation[2])
+                
         grasp_position = add_lists(object_position, position_transform)
         grasp_orientation = add_lists(object_orientation, self.orientation_transform)
 

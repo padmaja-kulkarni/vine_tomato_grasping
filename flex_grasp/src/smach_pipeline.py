@@ -122,7 +122,7 @@ class CalibrateRobot(smach.State):
 
         self.pub_calibrate = rospy.Publisher("calibration_eye_on_base/calibrate/e_in",
                                       String, queue_size=10, latch=True)
-        self.counter = 3
+        self.counter = 1
         self.timeout = 60.0
 
     def execute(self, userdata):
@@ -206,7 +206,7 @@ class PickPlace(smach.State):
         self.pub_pick_place = rospy.Publisher("pick_place/e_in",
                                       String, queue_size=10, latch=True)
         self.timeout = 30.0
-        self.counter = 3
+        self.counter = 1
         self.mv_robot_result = String()
 
     def execute(self, userdata):

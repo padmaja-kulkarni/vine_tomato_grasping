@@ -58,8 +58,8 @@ class MoveRobot(object):
 
         # tolerance
         self.position_tolerance = 0.01 # [m]
-        self.orientation_tolerance = deg2rad(1.0) # [rad]
-        self.man_joint_tolerance = deg2rad(1.0) # [rad]
+        self.orientation_tolerance = deg2rad(5.0) # [rad]
+        self.man_joint_tolerance = deg2rad(5.0) # [rad]
         self.ee_joint_tolerance = 0.0005 # [m]
 
         self.initialise_robot()
