@@ -16,7 +16,7 @@
 	<arg name="pose_transform_debug"		default="false"/>
 	<arg name="move_robot_debug"				default="false"/>
 	<arg name="visualize_object_debug"	default="false"/>
-	<arg name="pick_place_debug" 				default="true"/>
+	<arg name="pick_place_debug" 				default="false"/>
 	<arg name="calibrate_debug" 				default="false"/>
 	<arg name="point_debug" 						default="false"/>
 

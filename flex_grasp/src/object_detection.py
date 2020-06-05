@@ -104,7 +104,8 @@ class ObjectDetection(object):
         rospy.Subscriber("camera/aligned_depth_to_color/image_raw", Image, self.depth_image_cb)
         # rospy.Subscriber("camera/aligned_depth_to_color/camera_info", CameraInfo, self.color_info_cb)
         rospy.Subscriber("camera/color/camera_info", CameraInfo, self.color_info_cb)
-        rospy.Subscriber("camera/depth/camera_info", CameraInfo, self.depth_info_cb)
+        # rospy.Subscriber("camera/depth/camera_info", CameraInfo, self.depth_info_cb)
+        rospy.Subscriber("camera/aligned_depth_to_color/depth/camera_info", CameraInfo, self.depth_info_cb)
 
     def e_in_cb(self, msg):
         if self.event is None:
@@ -158,15 +159,15 @@ class ObjectDetection(object):
     def wait_for_data(self, timeout):
         start_time = rospy.get_time()
 
-        while (rospy.get_time() - start_time < timeout):   
-            
+        while (rospy.get_time() - start_time < timeout):
+
             if self.received_all_data():
                 self.take_picture = False
-                rospy.logdebug("[OBJECT DETECTION] Received all data")        
+                rospy.logdebug("[OBJECT DETECTION] Received all data")
                 return True
-                
+
             rospy.sleep(0.1)
-        
+
         rospy.logwarn("[OBJECT DETECTION] Did not receive all data")
         return False
 
@@ -194,8 +195,8 @@ class ObjectDetection(object):
                 if success == False:
                     rospy.logwarn("[OBJECT DETECTION] Failed to process image")
                     return False
-                
-                
+
+
                 object_features = image.get_object_features()
 
                 cage_pose = self.generate_cage_pose(object_features['grasp'])
@@ -363,10 +364,10 @@ class ObjectDetection(object):
         cols = np.arange(col_start, col_end + 1)
 
         depth_patch = self.depth_image[rows[:, np.newaxis], cols]
-        
-        non_zero = np.nonzero(depth_patch)      
+
+        non_zero = np.nonzero(depth_patch)
         depth_patch_non_zero = depth_patch[non_zero]
-        
+
         return np.mean(depth_patch_non_zero)
 
     def take_action(self):
@@ -376,12 +377,12 @@ class ObjectDetection(object):
         if (self.event == "detect_tomato"):
             rospy.logdebug("[OBEJCT DETECTION] Detect tomato")
             # if not self.debug_mode:
-            #     success = self.generate_object() 
+            #     success = self.generate_object()
             # if self.debug_mode:
             self.use_truss = False
             self.take_picture = True
             success = self.detect_object()
-            
+
         elif (self.event == "detect_truss"):
             rospy.logdebug("[OBEJCT DETECTION] Detect truss")
             self.use_truss = True
