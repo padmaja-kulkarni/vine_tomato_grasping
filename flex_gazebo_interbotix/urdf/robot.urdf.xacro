@@ -1,0 +1,82 @@
+<?xml version="1.0"?>
+<robot name="$(arg robot_model)" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+
+
+
+  <!-- Impoprt the aruco marker -->
+  <xacro:include filename="$(find flex_gazebo)/urdf/marker/marker.xacro"/>
+
+  <!-- import the camera -->
+  <xacro:include filename="$(find realsense2_description)/urdf/_d435.urdf.xacro" />
+  <xacro:include filename="$(find flex_gazebo)/urdf/camera/camera.gazebo.xacro" />
+
+  <!-- end-effector -->
+  <xacro:arg name="ee" default="sdh"/>
+  <xacro:property name="ee" value="$(arg ee)"/>
+
+  <!-- General parameters -->
+  <xacro:arg name="use_sdh" default="false"/>
+  <xacro:arg name="use_iiwa" default="false"/>
+  <xacro:arg name="use_interbotix" default="false"/>
+
+  <!-- iiwa params-->
+  <xacro:arg name="hardware_interface" default="PositionJointInterface"/>
+  <xacro:arg name="robot_name" default="iiwa"/>
+  <xacro:arg name="robot_model" default="iiwa7"/>
+
+  <!-- camera params-->
+  <xacro:arg name="camera_name" default="rs_d435"/>
+  <xacro:arg name="camera_sim" default="true"/>
+
+
+  <xacro:arg name="camera_origin_xyz" default="0.1 0.45 0.9"/>
+
+  <xacro:arg name="camera_origin_rpy" default="3.1415 1.57 -1.57"/>
+
+  <xacro:arg name="iiwa_origin_xyz" default="0.0 0.0 0.0"/>
+  <xacro:arg name="iiwa_origin_rpy" default="0.0 0.0 0.0"/>
+
+  <xacro:arg name="interbotix_origin_xyz" default="-0.2 0.45 0.23"/>
+  <xacro:arg name="interbotix_origin_rpy" default="0.0 0.0 0.0"/>
+
+    <!-- end-effector params-->
+  <xacro:arg name="endeffector_name" default="sdh"/>
+  <xacro:arg name="endeffector_origin_xyz" default="0 0 0"/>
+  <xacro:arg name="endeffector_origin_rpy" default="0 0 0"/>
+  <xacro:arg name="use_nominal_extrinsics" default="$(arg camera_sim)"/>
+
+  <xacro:arg name="marker_origin_xyz" default="-0.02 0 0.036"/>
+  <xacro:arg name="marker_origin_rpy" default="0 0 0"/>
+
+
+  <!-- Fix to world -->
+  <link name="world"/>
+
+  <!--interbotix -->
+  <joint name="fixed" type="fixed">
+    <parent link="world"/>
+    <child link="$(arg robot_name)/base_link"/>
+    <origin xyz="$(arg interbotix_origin_xyz)" rpy="$(arg interbotix_origin_rpy)"/>
+  </joint>
+
+  <xacro:include filename="$(find flex_gazebo)/urdf/px150.xacro"/>
+
+  <xacro:px150>
+  </xacro:px150>
+
+
+  <xacro:marker parent_link="px150/ee_arm_link" size="0.04" ID ="26" >
+    <origin xyz="$(arg marker_origin_xyz)" rpy="$(arg marker_origin_rpy)" />
+  </xacro:marker>
+
+  <!-- camera -->
+  <xacro:sensor_d435 parent="world" name="$(arg camera_name)" use_nominal_extrinsics="$(arg use_nominal_extrinsics)">
+    <origin xyz="$(arg camera_origin_xyz)" rpy="$(arg camera_origin_rpy)" />
+  </xacro:sensor_d435>
+
+  <xacro:if value="$(arg camera_sim)">
+    <xacro:my_camera name="$(arg camera_name)"/>
+  </xacro:if>
+
+</robot>

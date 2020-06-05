@@ -63,16 +63,12 @@
     <group if="$(eval arg('robot_sim') or arg('camera_sim'))">
 
         <!-- Load Gazebo with given values -->
-        <include file="$(find flex_gazebo)/launch/flex_gazebo.launch">
+        <include file="$(find flex_gazebo_interbotix)/launch/gazebo.launch">
             <arg name="hardware_interface" value="$(arg hardware_interface)"/>
             <arg name="robot_name" value="$(arg robot_name)" />
             <arg name="ee" value="$(arg ee)" />
 
             <arg name="robot_model" value="$(arg robot_model)"/>
-
-            <arg name="use_sdh" value="$(arg use_sdh)"/>
-            <arg name="use_iiwa" default="$(arg use_iiwa)"/>
-            <arg name="use_interbotix" default="$(arg use_interbotix)"/>
 
             <arg name="camera_sim" value="$(arg camera_sim)"/>
             <arg name="robot_sim" value="$(arg robot_sim)"/>

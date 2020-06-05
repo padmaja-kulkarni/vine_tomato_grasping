@@ -1,0 +1,28 @@
+<?xml version='1.0'?>
+<sdf version="1.4">
+  <model name="tomato">
+    <static>false</static>
+    <link name="link">
+      <collision name="collision">
+        <geometry>
+          <box>
+            <size>0.15 0.18 0.001</size>
+          </box>
+        </geometry>
+      </collision>
+      <visual name="visual">
+        <geometry>
+          <box>
+            <size>0.15 0.18 0.001</size>
+          </box>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/custom.material</uri> <!-- file://models/tomato/materials/scripts/custom.material -->
+            <name>Custom/Tomato</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+  </model>
+</sdf>
