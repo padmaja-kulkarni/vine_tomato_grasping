@@ -102,10 +102,9 @@ class ObjectDetection(object):
         # if not self.debug_mode:i
         rospy.Subscriber("camera/color/image_raw", Image, self.color_image_cb)
         rospy.Subscriber("camera/aligned_depth_to_color/image_raw", Image, self.depth_image_cb)
-        # rospy.Subscriber("camera/aligned_depth_to_color/camera_info", CameraInfo, self.color_info_cb)
         rospy.Subscriber("camera/color/camera_info", CameraInfo, self.color_info_cb)
         # rospy.Subscriber("camera/depth/camera_info", CameraInfo, self.depth_info_cb)
-        rospy.Subscriber("camera/aligned_depth_to_color/depth/camera_info", CameraInfo, self.depth_info_cb)
+        rospy.Subscriber("camera/aligned_depth_to_color/camera_info", CameraInfo, self.depth_info_cb)
 
     def e_in_cb(self, msg):
         if self.event is None:

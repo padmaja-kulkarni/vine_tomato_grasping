@@ -79,11 +79,11 @@
           <baseline>0.2</baseline>
           <alwaysOn>true</alwaysOn>
           <updateRate>1.0</updateRate>
-          <cameraName>camera/aligned_depth_to_color</cameraName>
+          <cameraName>camera</cameraName>
           <imageTopicName>ignore/image_raw</imageTopicName>
-          <cameraInfoTopicName>ignore/camera_info</cameraInfoTopicName>
-          <depthImageTopicName>image_raw</depthImageTopicName>
-          <depthImageInfoTopicName>camera_info</depthImageInfoTopicName>
+          <cameraInfoTopicName>aligned_depth_to_color/camera_info</cameraInfoTopicName>
+          <depthImageTopicName>aligned_depth_to_color/image_raw</depthImageTopicName>
+          <depthImageInfoTopicName>??</depthImageInfoTopicName>
           <pointCloudTopicName>points</pointCloudTopicName>
           <frameName>camera_color_optical_frame</frameName>
           <pointCloudCutoff>0.5</pointCloudCutoff>
