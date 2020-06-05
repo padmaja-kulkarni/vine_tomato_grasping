@@ -42,7 +42,7 @@
     <origin xyz="$(arg interbotix_origin_xyz)" rpy="$(arg interbotix_origin_rpy)"/>
   </joint>
 
-  <xacro:include filename="$(find flex_gazebo)/urdf/px150.xacro"/>
+  <xacro:include filename="$(find flex_gazebo_interbotix)/urdf/px150.xacro"/>
 
   <xacro:px150>
   </xacro:px150>

@@ -26,8 +26,6 @@
   <arg name="object_name" default="truss"/>
   <arg name="object_dimension" default="3d"/>
 
-  <arg name="image_width" default="848"/>
-  <arg name="image_height" default="480"/>
 
   <include file="$(find flex_grasp)/launch/enviroment.launch">
     <arg name="robot_sim"               value="$(arg robot_sim)"/>
@@ -46,9 +44,6 @@
     <arg name="object_angle"            default="$(arg object_angle)"/>
     <arg name="object_name"             default="$(arg object_name)"/>
     <arg name="object_dimension"        default="$(arg object_dimension)"/>
-
-    <arg name="image_width"             default="$(arg image_width)"/>
-    <arg name="image_height"            default="$(arg image_height)"/>
 
     <arg name="hardware_interface"      value="$(arg hardware_interface)"/>
   </include>

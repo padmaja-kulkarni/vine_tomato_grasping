@@ -10,16 +10,13 @@
     <arg name="headless" default="false"/>
     <arg name="debug" default="false"/>
     <arg name="hardware_interface" default="PositionJointInterface"/>
-    <arg name="robot_name" default="iiwa" />
 
-    <arg name="ee" default="sdh"/>
+    <arg name="robot_name" default="iiwa" />
     <arg name="robot_model" default="iiwa7"/>
 
     <arg name="camera_sim" default="true"/>
 
-    <arg name="use_sdh" default="false"/>
-    <arg name="use_iiwa" default="false"/>
-    <arg name="use_interbotix" default="false"/>
+    <arg name="use_sdh" default="true"/>
 
     <arg name="camera_name" default="camera"/>
     <arg name="camera_model" default="rs_d435"/>
@@ -43,10 +40,8 @@
 
 
     <!-- Load the URDF with the given hardware interface into the ROS Parameter Server -->
-    <include file="$(find flex_gazebo)/launch/upload.launch">
+    <include file="$(find flex_gazebo_iiwa)/launch/upload.launch">
         <arg name="hardware_interface" value="$(arg hardware_interface)"/>
-
-        <arg name="ee" value="$(arg ee)" />
 
         <arg name="robot_name"          value="$(arg robot_name)" />
         <arg name="robot_model"         value="$(arg robot_model)" />
@@ -54,8 +49,6 @@
         <arg name="camera_name"         value="$(arg camera_name)"/>
 
         <arg name="use_sdh"             value="$(arg use_sdh)"/>
-        <arg name="use_iiwa"            default="$(arg use_iiwa)"/>
-        <arg name="use_interbotix"      default="$(arg use_interbotix)"/>
 
         <arg name="object_origin_xyz"   value="'$(arg object_x) $(arg object_y) 0.26'"/>
         <arg name="object_origin_rpy"   value="'0 0 $(arg object_angle)'"/>
@@ -66,6 +59,7 @@
 
     <!-- Run a python script to send a service call to gazebo_ros to spawn a URDF robot -->
 
+    <!-- rosrun gazebo_ros spawn_model -urdf -model iiwa -param iiwa/robot_description -->
     <node
       name="robot_urdf_spawner"
       pkg="gazebo_ros"

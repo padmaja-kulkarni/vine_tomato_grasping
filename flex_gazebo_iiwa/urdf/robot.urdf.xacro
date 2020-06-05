@@ -17,14 +17,8 @@
   <xacro:include filename="$(find realsense2_description)/urdf/_d435.urdf.xacro" />
   <xacro:include filename="$(find flex_gazebo)/urdf/camera/camera.gazebo.xacro" />
 
-  <!-- end-effector -->
-  <xacro:arg name="ee" default="sdh"/>
-  <xacro:property name="ee" value="$(arg ee)"/>
-
   <!-- General parameters -->
   <xacro:arg name="use_sdh" default="false"/>
-  <xacro:arg name="use_iiwa" default="false"/>
-  <xacro:arg name="use_interbotix" default="false"/>
 
   <!-- iiwa params-->
   <xacro:arg name="hardware_interface" default="PositionJointInterface"/>
@@ -35,20 +29,12 @@
   <xacro:arg name="camera_name" default="rs_d435"/>
   <xacro:arg name="camera_sim" default="true"/>
 
-  <xacro:if value="$(arg use_iiwa)">
-    <xacro:arg name="camera_origin_xyz" default="0 0.5 1.2"/>
-  </xacro:if>
-  <xacro:if value="$(arg use_interbotix)">
-    <xacro:arg name="camera_origin_xyz" default="0.1 0.45 0.9"/>
-  </xacro:if>
-
+  <xacro:arg name="camera_origin_xyz" default="0 0.5 1.2"/>
   <xacro:arg name="camera_origin_rpy" default="3.1415 1.57 -1.57"/>
 
   <xacro:arg name="iiwa_origin_xyz" default="0.0 0.0 0.0"/>
   <xacro:arg name="iiwa_origin_rpy" default="0.0 0.0 0.0"/>
 
-  <xacro:arg name="interbotix_origin_xyz" default="-0.2 0.45 0.23"/>
-  <xacro:arg name="interbotix_origin_rpy" default="0.0 0.0 0.0"/>
 
     <!-- end-effector params-->
   <xacro:arg name="endeffector_name" default="sdh"/>
@@ -64,42 +50,28 @@
   <link name="world"/>
 
   <!--iiwa -->
-  <xacro:if value="$(arg use_iiwa)">
+  <xacro:iiwa7 hardware_interface="$(arg hardware_interface)" robot_name="$(arg robot_name)" parent="world">
+    <origin xyz="$(arg iiwa_origin_xyz)" rpy="$(arg iiwa_origin_rpy)" />
+  </xacro:iiwa7>
 
-    <xacro:iiwa7 hardware_interface="$(arg hardware_interface)" robot_name="$(arg robot_name)" parent="world">
-      <origin xyz="$(arg iiwa_origin_xyz)" rpy="$(arg iiwa_origin_rpy)" />
-    </xacro:iiwa7>
+  <!-- end-effector -->
+  <xacro:if value="$(arg use_sdh)">
 
-    <!-- end-effector -->
-    <xacro:if value="$(arg use_sdh)">
+    <!-- import the end-effector -->
+    <xacro:include filename="$(find schunk_description)/urdf/sdh/sdh.urdf.xacro" />
 
-      <!-- import the end-effector -->
-      <xacro:include filename="$(find schunk_description)/urdf/sdh/sdh.urdf.xacro" />
-
-      <xacro:schunk_sdh parent="$(arg robot_name)_link_ee" name="$(arg endeffector_name)">
-        <origin xyz="$(arg endeffector_origin_xyz)" rpy="$(arg endeffector_origin_rpy)" />
-      </xacro:schunk_sdh>
-    </xacro:if>
-  </xacro:if>
-
-  <!--interbotix -->
-  <xacro:if value="$(arg use_interbotix)">
-    <joint name="fixed" type="fixed">
-      <parent link="world"/>
-      <child link="$(arg robot_name)/base_link"/>
-      <origin xyz="$(arg interbotix_origin_xyz)" rpy="$(arg interbotix_origin_rpy)"/>
-    </joint>
-
-    <xacro:include filename="$(find flex_gazebo)/urdf/px150.xacro"/>
-
-    <xacro:px150>
-    </xacro:px150>
+    <xacro:schunk_sdh parent="$(arg robot_name)_link_ee" name="$(arg endeffector_name)">
+      <origin xyz="$(arg endeffector_origin_xyz)" rpy="$(arg endeffector_origin_rpy)" />
+    </xacro:schunk_sdh>
   </xacro:if>
 
 
+  <!-- Where to place the marker? -->
+  <!--
   <xacro:marker parent_link="px150/ee_arm_link" size="0.04" ID ="26" >
     <origin xyz="$(arg marker_origin_xyz)" rpy="$(arg marker_origin_rpy)" />
   </xacro:marker>
+  -->
 
   <!-- camera -->
   <xacro:sensor_d435 parent="world" name="$(arg camera_name)" use_nominal_extrinsics="$(arg use_nominal_extrinsics)">
@@ -111,10 +83,3 @@
   </xacro:if>
 
 </robot>
-
-<!-- This does not belong here! -->
-<!--
-<robot name="realsense2_camera" xmlns:xacro="http://ros.org/wiki/xacro">
-
-</robot>
- -->

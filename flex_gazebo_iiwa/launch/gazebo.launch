@@ -13,15 +13,11 @@
 
     <arg name="hardware_interface" default="PositionJointInterface" />
 
-    <arg name="ee" default="sdh"/>
-
-    <arg name="robot_model" default="px150"/>
-    <arg name="robot_name" default="$(arg robot_model)"/>
+    <arg name="robot_model" default="iiwa7"/>
+    <arg name="robot_name" default="iiwa"/>
     <arg name="trajectory" default="true"/>
 
-    <arg name="use_sdh" default="false"/>
-    <arg name="use_iiwa" default="false"/>
-    <arg name="use_interbotix" default="true"/>
+    <arg name="use_sdh" default="true"/>
 
     <arg name="camera_sim" default="true"/>
     <arg name="robot_sim" default="true"/>
@@ -34,22 +30,15 @@
     <arg name="object_name" default="truss"/>
     <arg name="object_dimension" default="3d"/>
 
-    <env name="GAZEBO_RESOURCE_PATH" value="$(find interbotix_gazebo)"/>
-
     <!-- Loads the Gazebo world. -->
-    <include file="$(find flex_gazebo)/launch/flex_world.launch">
+    <include file="$(find flex_gazebo_iiwa)/launch/world.launch">
         <arg name="hardware_interface" value="$(arg hardware_interface)" />
         <arg name="robot_name" value="$(arg robot_name)" />
-        <arg name="ee" value="$(arg ee)" />
-
         <arg name="robot_model" value="$(arg robot_model)" />
 
         <arg name="camera_sim" value="$(arg camera_sim)"/>
         <arg name="camera_name" value="$(arg camera_name)"/>
-
         <arg name="use_sdh" value="$(arg use_sdh)"/>
-        <arg name="use_iiwa" default="$(arg use_iiwa)"/>
-        <arg name="use_interbotix" default="$(arg use_interbotix)"/>
 
         <arg name="object_x" value="$(arg object_x)"/>
         <arg name="object_y" value="$(arg object_y)"/>
@@ -58,18 +47,11 @@
         <arg name="object_dimension" value="$(arg object_dimension)"/>
     </include>
 
-    <!--
-    <include file="$(find flex_gazebo)/launch/camera_world.launch">
-      <arg name="robot_name" value="$(arg robot_name)" />
-    </include>
-  -->
-
 
   <group if="$(arg robot_sim)">
 
     <!-- Spawn controllers - it uses a JointTrajectoryController -->
-    <group ns="$(arg robot_name)" if="$(arg use_iiwa)">
-      <group if="$(arg use_sdh)">
+      <group ns="$(arg robot_name)" if="$(arg use_sdh)">
 
         <include file="$(find flex_sdh_moveit)/launch/ros_controllers.launch"> <!-- if="$(eval arg('ee') == 'sdh')" -->
           <arg name="controllers" value="gripper_controller"/>
@@ -78,7 +60,7 @@
       </group>
 
       <!--<group unless="$(arg use_sdh)">-->
-      <group if="$(arg trajectory)">
+      <group ns="$(arg robot_name)" if="$(arg trajectory)">
 
         <!-- Spawn controllers - it uses a JointTrajectoryController -->
         <!-- <rosparam file="$(find flex_gazebo)/config/iiwa_control.yaml" command="load" /> -->
@@ -92,7 +74,7 @@
 
 
       <!-- Spawn controllers - it uses an Effort Controller for each joint -->
-      <group unless="$(arg trajectory)">
+      <group ns="$(arg robot_name)" unless="$(arg trajectory)">
 
         <include file="$(find iiwa_control)/launch/iiwa_control.launch">
           <arg name="hardware_interface" value="$(arg hardware_interface)" />
@@ -108,32 +90,6 @@
           <arg name="model" value="$(arg robot_model)" />
         </include>
       </group>
-
-      <!-- </group> -->
-    </group>
-
-    <group if="$(arg use_interbotix)">
-      <rosparam
-        file="$(find interbotix_gazebo)/config/$(arg robot_model)_gazebo_controllers.yaml"
-        command="load"
-        ns="$(arg robot_name)"/>
-
-      <node
-        name="controller_spawner"
-        pkg="controller_manager"
-        type="spawner"
-        respawn="false"
-        output="screen"
-        ns="$(arg robot_name)"
-        args="arm_controller gripper_controller joint_state_controller"/>
-      <node
-        name="robot_state_publisher"
-        pkg="robot_state_publisher"
-        type="robot_state_publisher"
-        ns="$(arg robot_name)">
-      </node>
-
-    </group>
   </group>
 
 </launch>
