@@ -3,7 +3,6 @@
 
 
 
-
   <!-- Impoprt the aruco marker -->
   <xacro:include filename="$(find flex_gazebo)/urdf/marker/marker.xacro"/>
 
@@ -11,44 +10,27 @@
   <xacro:include filename="$(find realsense2_description)/urdf/_d435.urdf.xacro" />
   <xacro:include filename="$(find flex_gazebo)/urdf/camera/camera.gazebo.xacro" />
 
-  <!-- end-effector -->
-  <xacro:arg name="ee" default="sdh"/>
-  <xacro:property name="ee" value="$(arg ee)"/>
 
-  <!-- General parameters -->
-  <xacro:arg name="use_sdh" default="false"/>
-  <xacro:arg name="use_iiwa" default="false"/>
-  <xacro:arg name="use_interbotix" default="false"/>
-
-  <!-- iiwa params-->
+  <!-- px150 params-->
   <xacro:arg name="hardware_interface" default="PositionJointInterface"/>
-  <xacro:arg name="robot_name" default="iiwa"/>
-  <xacro:arg name="robot_model" default="iiwa7"/>
-
-  <!-- camera params-->
-  <xacro:arg name="camera_name" default="rs_d435"/>
-  <xacro:arg name="camera_sim" default="true"/>
-
-
-  <xacro:arg name="camera_origin_xyz" default="0.1 0.45 0.9"/>
-
-  <xacro:arg name="camera_origin_rpy" default="3.1415 1.57 -1.57"/>
-
-  <xacro:arg name="iiwa_origin_xyz" default="0.0 0.0 0.0"/>
-  <xacro:arg name="iiwa_origin_rpy" default="0.0 0.0 0.0"/>
+  <xacro:arg name="robot_name" default="px150"/>
+  <xacro:arg name="robot_model" default="px150"/>
 
   <xacro:arg name="interbotix_origin_xyz" default="-0.2 0.45 0.23"/>
   <xacro:arg name="interbotix_origin_rpy" default="0.0 0.0 0.0"/>
 
-    <!-- end-effector params-->
-  <xacro:arg name="endeffector_name" default="sdh"/>
-  <xacro:arg name="endeffector_origin_xyz" default="0 0 0"/>
-  <xacro:arg name="endeffector_origin_rpy" default="0 0 0"/>
+  <!-- camera params-->
+  <xacro:arg name="camera_name" default="rs_d435"/>
+  <xacro:arg name="camera_sim" default="true"/>
   <xacro:arg name="use_nominal_extrinsics" default="$(arg camera_sim)"/>
 
+  <xacro:arg name="camera_origin_xyz" default="0.1 0.45 0.9"/>
+  <xacro:arg name="camera_origin_rpy" default="3.1415 1.57 -1.57"/>
+
+
+  <!-- marker -->
   <xacro:arg name="marker_origin_xyz" default="-0.02 0 0.036"/>
   <xacro:arg name="marker_origin_rpy" default="0 0 0"/>
-
 
   <!-- Fix to world -->
   <link name="world"/>
