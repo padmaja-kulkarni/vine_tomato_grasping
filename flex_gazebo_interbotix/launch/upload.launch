@@ -11,9 +11,6 @@
   <!-- camera -->
   <arg name="camera_name" default="camera"/>
 
-  <!-- end_effector -->
-  <arg name="ee" default="sdh"/>
-
   <arg name="camera_sim" default="false"/>
 
   <!-- world -->

@@ -64,22 +64,26 @@
 
         <!-- Load Gazebo with given values -->
         <include if="$(arg use_interbotix)" file="$(find flex_gazebo_interbotix)/launch/gazebo.launch">
-            <arg name="hardware_interface" value="$(arg hardware_interface)"/>
-            <arg name="robot_name" value="$(arg robot_name)" />
-            <arg name="ee" value="$(arg ee)" />
+            <arg name="hardware_interface"  value="$(arg hardware_interface)"/>
+            <arg name="robot_name"          value="$(arg robot_name)" />
 
-            <arg name="robot_model" value="$(arg robot_model)"/>
+            <arg name="robot_model"         value="$(arg robot_model)"/>
 
-            <arg name="camera_sim" value="$(arg camera_sim)"/>
-            <arg name="robot_sim" value="$(arg robot_sim)"/>
+            <arg name="camera_sim"          value="$(arg camera_sim)"/>
+            <arg name="robot_sim"           value="$(arg robot_sim)"/>
 
-            <arg name="camera_name" value="$(arg camera_name)"/>
+            <arg name="camera_name"         value="$(arg camera_name)"/>
 
-            <arg name="object_x" value="$(arg object_x)"/>
-            <arg name="object_y" value="$(arg object_y)"/>
-            <arg name="object_angle" value="$(arg object_angle)"/>
-            <arg name="object_name" value="$(arg object_name)"/>
-            <arg name="object_dimension" value="$(arg object_dimension)"/>
+            <arg name="depth_width"         value="$(arg depth_width)"/>
+            <arg name="depth_height"        value="$(arg depth_height)"/>
+            <arg name="color_width"         value="$(arg color_width)"/>
+            <arg name="color_height"        value="$(arg color_height)"/>
+
+            <arg name="object_x"            value="$(arg object_x)"/>
+            <arg name="object_y"            value="$(arg object_y)"/>
+            <arg name="object_angle"        value="$(arg object_angle)"/>
+            <arg name="object_name"         value="$(arg object_name)"/>
+            <arg name="object_dimension"    value="$(arg object_dimension)"/>
         </include>
 
 
@@ -93,6 +97,11 @@
 
             <arg name="camera_sim"          value="$(arg camera_sim)"/>
             <arg name="robot_sim"           value="$(arg robot_sim)"/>
+
+            <arg name="depth_width"         value="$(arg depth_width)"/>
+            <arg name="depth_height"        value="$(arg depth_height)"/>
+            <arg name="color_width"         value="$(arg color_width)"/>
+            <arg name="color_height"        value="$(arg color_height)"/>
 
             <arg name="object_x"            value="$(arg object_x)"/>
             <arg name="object_y"            value="$(arg object_y)"/>
