@@ -53,8 +53,6 @@ class MoveRobot(object):
         self.command = None
 
         self.robot_pose = None
-        self.pre_grasp_ee = None
-        self.grasp_ee = None
 
         # tolerance
         self.position_tolerance = 0.01 # [m]
@@ -93,11 +91,6 @@ class MoveRobot(object):
             msg = String()
             msg.data = ""
             self.pub_e_out.publish(msg)
-
-
-    def load_param(self, timeout):
-        self.pre_grasp_ee =  wait_for_param('pre_grasp_ee', timeout)
-        self.grasp_ee =  wait_for_param('grasp_ee', timeout)
             
 
     def initialise_robot(self):

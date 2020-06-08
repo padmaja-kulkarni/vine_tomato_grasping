@@ -78,16 +78,6 @@ class PickPlace(object):
         self.place_orientation_transform = [1.0, 1.0, -1.0]
         self.place_position_transform = [0.0, 0.0, 0.0]
 
-        if self.use_interbotix:
-
-            self.pre_grasp_ee = {
-                "left_finger"   :0.03,
-                "right_finger"  :-0.03}
-
-            self.grasp_ee = {
-                "left_finger"   :0.015,
-                "right_finger"  :-0.015}
-
 
         # Tranform
         self.tfBuffer = tf2_ros.Buffer()
@@ -114,18 +104,17 @@ class PickPlace(object):
         if not (self.object_features is None):
             try:
                 self.trans = self.tfBuffer.lookup_transform('world',self.object_features.cage_location.header.frame_id,  rospy.Time(0))
+                return True
             except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
-                return
+                return False
 
     def transform_pose(self):
         if not wait_for_variable(3, self.object_features):
             rospy.logwarn("[PICK PLACE] Cannot transform pose, since object_features still empty!")
             return False
             
-        self.get_trans()
-            
-        if not wait_for_variable(3, self.trans):
-            rospy.logwarn("[PICK PLACE] Cannot transform pose, since the transform is still empty!")
+        if not self.get_trans():
+            rospy.logwarn("[PICK PLACE] Cannot transform pose, failed to lookup transform!!")
             return False
 
         self.object_pose = tf2_geometry_msgs.do_transform_pose(self.object_features.cage_location, self.trans)
@@ -134,9 +123,6 @@ class PickPlace(object):
         self.grasp_pose = self.object_pose_to_grasp_pose(self.grasp_position_transform)
         self.pre_place_pose = self.object_pose_to_place_pose(self.pre_grasp_pose)
         self.place_pose = self.object_pose_to_place_pose(self.grasp_pose)
-
-        rospy.set_param('pre_grasp_ee', self.pre_grasp_ee)
-        rospy.set_param('grasp_ee', self.grasp_ee)
 
         # reset
         self.object_features = None
@@ -250,8 +236,6 @@ class PickPlace(object):
             
     def reset_msg(self):
         rospy.logdebug("[PICK PLACE] Resetting for next grasp")
-        # self.pre_grasp_ee = None
-        # self.grasp_ee = None
         self.grasp_pose = None
         self.pre_grasp_pose = None
         self.pre_place_pose = None
