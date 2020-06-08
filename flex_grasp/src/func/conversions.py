@@ -62,6 +62,7 @@ def orientation_to_list(orientation_msg):
     return orientation
 
 def list_to_orientation(orientation_list):
+          
     if len(orientation_list) == 3:
         quat_list = quaternion_from_euler(orientation_list[0], orientation_list[1], orientation_list[2])
     elif len(orientation_list) == 4:

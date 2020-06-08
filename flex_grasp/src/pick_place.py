@@ -13,12 +13,11 @@ from std_msgs.msg import String
 from geometry_msgs.msg import PoseStamped
 from flex_grasp.msg import Truss
 
-from func.ros_utils import wait_for_success
-from func.ros_utils import wait_for_variable
+from func.ros_utils import wait_for_success, wait_for_variable
+from func.utils import add_lists, multiply_lists, add_pose_stamped
+from func.conversions import pose_to_lists, point_to_pose_stamped, list_to_orientation
 
-from func.conversions import pose_to_lists
 from moveit_commander.conversions import list_to_pose
-from func.utils import add_lists, multiply_lists
 
 import tf2_ros
 import tf2_geometry_msgs
@@ -83,14 +82,19 @@ class PickPlace(object):
 
         if self.use_iiwa:
             rospy.logwarn("No pose trnaform for iiwa available...")
-        if self.use_interbotix:
-            self.grasp_position_transform =     [0, 0, 0.04] # [m]
-            self.pre_grasp_position_transform = [0, 0, 0.10] # [m]
-            self.orientation_transform = [-pi, pi/2, 0]
+        
+        grasp_xyz =     [0, 0, 0.04] # [m]
+        pre_grasp_xyz = [0, 0, 0.10] # [m]
+        grasp_rpy = [-pi, pi/2, 0]
+        place_rpy = [-pi, pi/2, 0.5]
+        
+        frame = 'world'
+        time = rospy.Time.now()
 
-
-        self.place_orientation_transform = [1.0, 1.0, -1.0]
-        self.place_position_transform = [0.0, 0.0, 0.0]
+        self.pre_grasp_trans =  point_to_pose_stamped(pre_grasp_xyz,    grasp_rpy, frame, time)
+        self.grasp_trans =      point_to_pose_stamped(grasp_xyz,        grasp_rpy, frame, time)
+        self.pre_place_trans =  point_to_pose_stamped(pre_grasp_xyz,    place_rpy, frame, time)
+        self.place_trans =      point_to_pose_stamped(grasp_xyz,        place_rpy, frame, time)
 
 
         # Tranform
@@ -131,12 +135,15 @@ class PickPlace(object):
             rospy.logwarn("[PICK PLACE] Cannot transform pose, failed to lookup transform!!")
             return False
 
-        self.object_pose = tf2_geometry_msgs.do_transform_pose(self.object_features.cage_location, self.trans)
+        object_pose = tf2_geometry_msgs.do_transform_pose(self.object_features.cage_location, self.trans)
+        object_position, object_orientation = pose_to_lists(object_pose.pose, 'euler')
+        object_pose.pose.orientation = list_to_orientation((0, 0, object_orientation[2]))
 
-        self.pre_grasp_pose = self.object_pose_to_grasp_pose(self.pre_grasp_position_transform)
-        self.grasp_pose = self.object_pose_to_grasp_pose(self.grasp_position_transform)
-        self.pre_place_pose = self.object_pose_to_place_pose(self.pre_grasp_pose)
-        self.place_pose = self.object_pose_to_place_pose(self.grasp_pose)
+
+        self.pre_grasp_pose = add_pose_stamped(self.pre_grasp_trans, object_pose) # self.object_pose_to_grasp_pose(self.pre_grasp_position_transform)
+        self.grasp_pose = add_pose_stamped(self.grasp_trans, object_pose) # self.object_pose_to_grasp_pose(self.grasp_position_transform)
+        self.pre_place_pose = add_pose_stamped(self.pre_place_trans, object_pose) # self.object_pose_to_place_pose(self.pre_grasp_pose)
+        self.place_pose = add_pose_stamped(self.place_trans, object_pose) # self.object_pose_to_place_pose(self.grasp_pose)
         
         self.pub_all_pose()
         
@@ -149,38 +156,6 @@ class PickPlace(object):
         self.pub_grasp_pose.publish(self.grasp_pose)
         self.pub_pre_place_pose.publish(self.pre_place_pose)
         self.pub_place_pose.publish(self.place_pose)
-
-
-    def object_pose_to_grasp_pose(self, position_transform):
-
-        object_pose = self.object_pose
-        grasp_pose = PoseStamped()
-        grasp_pose.header = object_pose.header
-
-        # position
-        object_position, object_orientation = pose_to_lists(object_pose.pose, 'euler')
-        object_orientation = (0, 0, object_orientation[2])
-                
-        grasp_position = add_lists(object_position, position_transform)
-        grasp_orientation = add_lists(object_orientation, self.orientation_transform)
-
-        grasp_pose.pose = list_to_pose(grasp_position + grasp_orientation)
-
-        return grasp_pose
-
-    def object_pose_to_place_pose(self, grasp_pose):
-
-        place_pose = PoseStamped()
-        place_pose.header = grasp_pose.header
-
-        # position
-        grasp_position, grasp_orientation = pose_to_lists(grasp_pose.pose, 'euler')
-        place_position = add_lists(grasp_position, self.place_position_transform)
-        place_orientation = multiply_lists(grasp_orientation, self.place_orientation_transform)
-
-        place_pose.pose = list_to_pose(place_position + place_orientation)
-
-        return place_pose
     
     def command_to_pose(self, pose):
         rospy.logdebug("[PICK PLACE] Commanding move robot to pose")
@@ -329,7 +304,9 @@ class PickPlace(object):
         if self.state == "idle":
             if self.command == "pick" or self.command == "pick_place":
                 success = self.pick()
-
+            elif self.command == "place":
+                rospy.logwarn("Can not place object, it is not picked!")
+                success = False
         elif self.state == "picked":
             if self.command == "place" or self.command == "pick_place":
                 success = self.place()

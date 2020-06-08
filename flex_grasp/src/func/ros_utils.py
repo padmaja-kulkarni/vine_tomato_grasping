@@ -11,7 +11,6 @@ import rospy
 # messages
 from std_msgs.msg import String
 
-
 def wait_for_variable(timeout, variable):
     start_time = rospy.get_time()
 

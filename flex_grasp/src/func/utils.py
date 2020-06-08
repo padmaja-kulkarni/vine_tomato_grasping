@@ -10,7 +10,8 @@ from geometry_msgs.msg import PoseStamped
 from moveit_commander.conversions import pose_to_list
 from geometry_msgs.msg import Pose
 
-from tf.transformations import euler_from_quaternion
+from func.conversions import pose_to_lists
+from moveit_commander.conversions import list_to_pose
 import pyrealsense2 as rs
 
 def camera_info2intrinsics(camera_info):
@@ -93,6 +94,24 @@ def joint_close(goal, actual, angle_tolerance):
 
     return is_close
 
+def add_pose_stamped(pose_stamp_a, pose_stamp_b):
+    pose_stamp_c = PoseStamped()
+    
+    if pose_stamp_a.header.frame_id == pose_stamp_b.header.frame_id:
+        pose_stamp_c.header.frame_id = pose_stamp_a.header.frame_id
+    else:
+        return None
+    
+    position_a, orientation_a = pose_to_lists(pose_stamp_a.pose, 'euler')
+    position_b, orientation_b = pose_to_lists(pose_stamp_b.pose, 'euler')
+    
+    position_c = add_lists(position_a, position_b)
+    orientation_c = add_lists(orientation_a, orientation_b)
+    
+    pose_c = list_to_pose(position_c + orientation_c)
+    pose_stamp_c.pose = pose_c
+    
+    return pose_stamp_c
 
 def add_lists(list1, list2):
     return [sum(x) for x in zip(list1, list2)]
