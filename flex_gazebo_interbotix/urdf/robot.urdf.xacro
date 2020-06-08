@@ -11,7 +11,7 @@
   <xacro:include filename="$(find flex_gazebo)/urdf/camera/camera.gazebo.xacro" />
 
 
-  <!-- px150 params-->
+  <!-- interbotix params-->
   <xacro:arg name="hardware_interface"      default="PositionJointInterface"/>
   <xacro:arg name="robot_name"              default="px150"/>
   <xacro:arg name="robot_model"             default="px150"/>
@@ -47,13 +47,13 @@
     <origin xyz="$(arg interbotix_origin_xyz)" rpy="$(arg interbotix_origin_rpy)"/>
   </joint>
 
-  <!-- xacro arguments are global, these are required for the px150.urdf.xacro-->
+  <!-- xacro arguments are global, these are required for the interbotix urdf.xacro-->
   <xacro:arg name="load_gazebo_configs" default="true"/>
   <xacro:arg name="robot_name" default="$(arg robot_name)"/>
-  <xacro:include filename="$(find interbotix_descriptions)/urdf/px150.urdf.xacro"/>
+  <xacro:include filename="$(find interbotix_descriptions)/urdf/$(arg robot_name).urdf.xacro"/>
   <!--  load_gazebo_configs:=true"/> -->
 
-  <xacro:marker parent_link="px150/ee_arm_link" size="0.04" ID ="26" >
+  <xacro:marker parent_link="$(arg robot_name)/ee_arm_link" size="0.04" ID ="26" >
     <origin xyz="$(arg marker_origin_xyz)" rpy="$(arg marker_origin_rpy)" />
   </xacro:marker>
 
