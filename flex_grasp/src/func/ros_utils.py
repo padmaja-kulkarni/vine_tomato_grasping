@@ -72,3 +72,27 @@ def wait_for_param(param, timeout):
 
     rospy.logwarn("[MOVE ROBOT] Parameter %s can not be loaded from parameter server: timeout passed", param)
     return None
+
+
+def get_transform(to_frame, from_frame, tfBuffer):
+    try:
+        
+        if (from_frame is None) and (to_frame is None):      
+            rospy.logwarn("Cannot find transform, both frames are not defined!")
+            return None  
+        
+        if from_frame is None:
+            rospy.logwarn("Cannot find transform to %s, no header is defined!", to_frame)
+            return None        
+        
+        if to_frame is None:
+            rospy.logwarn("Cannot find transform from %s, no frame is defined!", from_frame)
+            return None
+            
+
+            
+        trans = tfBuffer.lookup_transform(to_frame, from_frame, time = rospy.Time.now())
+        return trans
+        
+    except:
+        return None

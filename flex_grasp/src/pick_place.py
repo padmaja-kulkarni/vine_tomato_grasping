@@ -13,11 +13,9 @@ from std_msgs.msg import String
 from geometry_msgs.msg import PoseStamped
 from flex_grasp.msg import Truss
 
-from func.ros_utils import wait_for_success, wait_for_variable
-from func.utils import add_lists, multiply_lists, add_pose_stamped
+from func.ros_utils import wait_for_success, wait_for_variable, get_transform
+from func.utils import add_pose_stamped
 from func.conversions import pose_to_lists, point_to_pose_stamped, list_to_orientation
-
-from moveit_commander.conversions import list_to_pose
 
 import tf2_ros
 import tf2_geometry_msgs
@@ -79,6 +77,8 @@ class PickPlace(object):
         self.use_iiwa = rospy.get_param('use_iiwa')
         self.use_interbotix = rospy.get_param('use_interbotix')
         self.use_sdh = rospy.get_param('use_sdh')
+        self.planning_frame = rospy.get_param('planning_frame')
+
 
         if self.use_iiwa:
             rospy.logwarn("No pose trnaform for iiwa available...")
@@ -88,14 +88,13 @@ class PickPlace(object):
         grasp_rpy = [-pi, pi/2, 0]
         place_rpy = [-pi, pi/2, 0.5]
         
-        frame = 'world'
+        
         time = rospy.Time.now()
 
-        self.pre_grasp_trans =  point_to_pose_stamped(pre_grasp_xyz,    grasp_rpy, frame, time)
-        self.grasp_trans =      point_to_pose_stamped(grasp_xyz,        grasp_rpy, frame, time)
-        self.pre_place_trans =  point_to_pose_stamped(pre_grasp_xyz,    place_rpy, frame, time)
-        self.place_trans =      point_to_pose_stamped(grasp_xyz,        place_rpy, frame, time)
-
+        self.pre_grasp_trans = point_to_pose_stamped(pre_grasp_xyz, grasp_rpy, self.planning_frame, time)
+        self.grasp_trans = point_to_pose_stamped(grasp_xyz, grasp_rpy, self.planning_frame, time)
+        self.pre_place_trans = point_to_pose_stamped(pre_grasp_xyz, place_rpy, self.planning_frame, time)
+        self.place_trans = point_to_pose_stamped(grasp_xyz, place_rpy, self.planning_frame, time)
 
         # Tranform
         self.tfBuffer = tf2_ros.Buffer()
@@ -121,8 +120,15 @@ class PickPlace(object):
     def get_trans(self):
         if not (self.object_features is None):
             try:
-                self.trans = self.tfBuffer.lookup_transform('world',self.object_features.cage_location.header.frame_id,  rospy.Time(0))
+                to_frame = self.planning_frame
+                from_frame = self.object_features.cage_location.header.frame_id
+                if to_frame is None:
+                    rospy.logwarn("Cannot find transform from cage location frame to %s, no header is defined!", to_frame)
+                    return False
+                    
+                self.trans = self.tfBuffer.lookup_transform(to_frame, from_frame, time = rospy.Time.now())
                 return True
+                
             except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
                 return False
 
@@ -131,27 +137,29 @@ class PickPlace(object):
             rospy.logwarn("[PICK PLACE] Cannot transform pose, since object_features still empty!")
             return False
             
-        if not self.get_trans():
+        transform = get_transform(self.planning_frame, self.object_features.cage_location.header.frame_id, self.tfBuffer)            
+            
+        if transform is None:
             rospy.logwarn("[PICK PLACE] Cannot transform pose, failed to lookup transform!!")
             return False
 
-        object_pose = tf2_geometry_msgs.do_transform_pose(self.object_features.cage_location, self.trans)
+        object_pose = tf2_geometry_msgs.do_transform_pose(self.object_features.cage_location, transform)
         object_position, object_orientation = pose_to_lists(object_pose.pose, 'euler')
         object_pose.pose.orientation = list_to_orientation((0, 0, object_orientation[2]))
 
-
-        self.pre_grasp_pose = add_pose_stamped(self.pre_grasp_trans, object_pose) # self.object_pose_to_grasp_pose(self.pre_grasp_position_transform)
-        self.grasp_pose = add_pose_stamped(self.grasp_trans, object_pose) # self.object_pose_to_grasp_pose(self.grasp_position_transform)
-        self.pre_place_pose = add_pose_stamped(self.pre_place_trans, object_pose) # self.object_pose_to_place_pose(self.pre_grasp_pose)
-        self.place_pose = add_pose_stamped(self.place_trans, object_pose) # self.object_pose_to_place_pose(self.grasp_pose)
+        # add offsets
+        self.pre_grasp_pose = add_pose_stamped(self.pre_grasp_trans, object_pose) 
+        self.grasp_pose = add_pose_stamped(self.grasp_trans, object_pose) 
+        self.pre_place_pose = add_pose_stamped(self.pre_place_trans, object_pose)
+        self.place_pose = add_pose_stamped(self.place_trans, object_pose)
         
-        self.pub_all_pose()
+        self.pub_all_poses()
         
         # reset
         self.object_features = None
         return True
 
-    def pub_all_pose(self):
+    def pub_all_poses(self):
         self.pub_pre_grasp_pose.publish(self.pre_grasp_pose)
         self.pub_grasp_pose.publish(self.grasp_pose)
         self.pub_pre_place_pose.publish(self.pre_place_pose)
