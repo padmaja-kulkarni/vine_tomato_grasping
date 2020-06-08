@@ -2,7 +2,7 @@
 
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
 
-  <xacro:macro name="my_camera" params="name">
+  <xacro:macro name="my_camera" params="name depth_width depth_height color_width color_height">
 
     <!-- Link1 -->
     <gazebo reference="${name}_color_frame"> <!--  -->
@@ -11,8 +11,8 @@
         <camera name="__default__">
           <horizontal_fov>1.047</horizontal_fov>
           <image>
-            <width>1920</width>
-            <height>1080</height>
+            <width>${color_width}</width>
+            <height>${color_height}</height>
             <format>RGB_INT8</format>
           </image>
           <clip>
@@ -51,15 +51,15 @@
     </gazebo>
 
     <!-- Depth frame-->
-    <!-- TODO: reference frame is incorrect -->
+    <!-- TODO: if aligned_depth_to_color == true: camera_color_frame, else: camera_depth_frame  -->
     <gazebo reference="${name}_color_frame">
       <sensor name="depth" type="depth">
         <pose frame="">0 -0.03 0.004 0 0 0</pose>
         <camera name="__default__">
           <horizontal_fov>1.047</horizontal_fov>
           <image>
-            <width>1920</width>
-            <height>1080</height>
+            <width>${depth_width}</width>
+            <height>${depth_height}</height>
           </image>
           <clip>
             <near>0.1</near>
