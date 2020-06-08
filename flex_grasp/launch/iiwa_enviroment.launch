@@ -44,7 +44,6 @@
     <arg name="object_angle"            default="$(arg object_angle)"/>
     <arg name="object_name"             default="$(arg object_name)"/>
     <arg name="object_dimension"        default="$(arg object_dimension)"/>
-
     <arg name="hardware_interface"      value="$(arg hardware_interface)"/>
   </include>
 
