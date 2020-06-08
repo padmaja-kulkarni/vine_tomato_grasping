@@ -101,9 +101,6 @@ class PoseTransform(object):
             msg = String()
             msg.data = ""
             self.pub_e_out.publish(msg)
-            # self.pub_e_out.publish(msg_e)
-            # msg_e = String()
-            # msg_e.data = "e_wait"
 
     def get_trans(self, from_frame, to_frame):
         try:
