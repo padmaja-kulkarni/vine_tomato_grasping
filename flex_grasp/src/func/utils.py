@@ -13,6 +13,7 @@ from geometry_msgs.msg import Pose
 from func.conversions import pose_to_lists
 from moveit_commander.conversions import list_to_pose
 import pyrealsense2 as rs
+from math import pi
 
 def camera_info2intrinsics(camera_info):
 
@@ -125,5 +126,4 @@ def neg_list(list1):
     return [ -x for x in list1]
 
 def deg2rad(deg):
-    rad =  float(deg)/180.0*3.1415
-    return rad
+    return float(deg)/180.0*pi
