@@ -12,6 +12,21 @@ import rospy
 from std_msgs.msg import String
 
 
+def wait_for_variable(timeout, variable):
+    start_time = rospy.get_time()
+
+    while (rospy.get_time() - start_time < timeout):   
+        
+        if variable is not None:
+            rospy.logdebug("Received variable")        
+            return True
+            
+        rospy.sleep(0.1)
+    
+    rospy.logwarn("[POSE TRANSFORM] Did not receive variable")
+    return False  
+
+
 def wait_for_success(topic, timeout, node_name = ""):
 
 

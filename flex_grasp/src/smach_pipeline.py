@@ -15,7 +15,7 @@ class Initializing(smach.State):
 
         self.pub_object_detection = rospy.Publisher("object_detection/e_in",
                                       String, queue_size=10, latch=True)
-        self.pub_pose_transform = rospy.Publisher("pose_transform/e_in",
+        self.pub_pose_transform = rospy.Publisher("pick_place/e_in",
                                     String, queue_size=10, latch=True)
         self.pub_move_robot = rospy.Publisher("move_robot/e_in",
                                       String, queue_size=10, latch=True)
@@ -26,7 +26,7 @@ class Initializing(smach.State):
         rospy.logdebug('Executing state Initializing')
 
         init_object_detection = self.is_initialized("object_detection/e_out", self.pub_object_detection)
-        init_pose_transform = self.is_initialized("pose_transform/e_out", self.pub_pose_transform)
+        init_pose_transform = self.is_initialized("pick_place/e_out", self.pub_pose_transform)
         init_move_robot = self.is_initialized("move_robot/e_out", self.pub_move_robot)
         init_calibrate = self.is_initialized("calibration_eye_on_base/calibrate/e_out", self.pub_calibrate)
 
@@ -145,8 +145,8 @@ class CalibrateRobot(smach.State):
 class PoseTransform(smach.State):
     def __init__(self):
         smach.State.__init__(self, outcomes=['success','failure','complete_failure'])
-        self.tf_op_topic = "pose_transform/e_out"
-        self.pub_pose_transform = rospy.Publisher("pose_transform/e_in",
+        self.tf_op_topic = "pick_place/e_out"
+        self.pub_pose_transform = rospy.Publisher("pick_place/e_in",
                                       String, queue_size=10, latch=True)
         self.timeout = 40.0
         self.counter = 3
@@ -156,7 +156,7 @@ class PoseTransform(smach.State):
         rospy.logdebug('Executing state Transform')
 
         # command node
-        self.pub_pose_transform.publish("e_start")
+        self.pub_pose_transform.publish("transform")
 
         # get response
         success = wait_for_success(self.tf_op_topic, self.timeout)

@@ -19,7 +19,6 @@ from moveit_commander.conversions import list_to_pose
 from math import pi
 
 import tf2_ros
-import tf
 import tf2_geometry_msgs
 
 class PoseTransform(object):

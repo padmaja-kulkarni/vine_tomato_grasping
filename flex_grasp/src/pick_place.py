@@ -11,8 +11,19 @@ import rospy
 # messages
 from std_msgs.msg import String
 from geometry_msgs.msg import PoseStamped
+from flex_grasp.msg import Truss
 
 from func.ros_utils import wait_for_success
+from func.ros_utils import wait_for_variable
+
+from func.conversions import pose_to_lists
+from moveit_commander.conversions import list_to_pose
+from func.utils import add_lists, multiply_lists
+
+import tf2_ros
+import tf2_geometry_msgs
+
+from math import pi
 
 class PickPlace(object):
     
@@ -31,11 +42,12 @@ class PickPlace(object):
         
         self.object_features = None
         
+        
         self.debug_mode = rospy.get_param("pick_place/debug")
         
         if self.debug_mode:
             log_level = rospy.DEBUG
-            rospy.loginfo("[POSE TRANSFORM] Launching object detection node in debug mode")
+            rospy.loginfo("[PICK PLACE] Launching pick place node in debug mode")
         else:
             log_level = rospy.INFO
         
@@ -49,12 +61,38 @@ class PickPlace(object):
                                      
          # Subscribe
         rospy.Subscriber("~e_in", String, self.e_in_cb)
+        rospy.Subscriber("object_features", Truss, self.object_features_cb)
 
-        rospy.Subscriber("pre_grasp_pose", PoseStamped, self.pre_grasp_pose_cb)
-        rospy.Subscriber("grasp_pose", PoseStamped, self.grasp_pose_cb)
-        rospy.Subscriber("pre_place_pose", PoseStamped, self.pre_place_pose_cb)
-        rospy.Subscriber("place_pose", PoseStamped, self.place_pose_cb)
-    
+        self.use_iiwa = rospy.get_param('use_iiwa')
+        self.use_interbotix = rospy.get_param('use_interbotix')
+        self.use_sdh = rospy.get_param('use_sdh')
+
+        if self.use_iiwa:
+            rospy.logwarn("No pose trnaform for iiwa available...")
+        if self.use_interbotix:
+            self.grasp_position_transform =     [0, 0, 0.04] # [m]
+            self.pre_grasp_position_transform = [0, 0, 0.10] # [m]
+            self.orientation_transform = [-pi, pi/2, 0]
+
+
+        self.place_orientation_transform = [1.0, 1.0, -1.0]
+        self.place_position_transform = [0.0, 0.0, 0.0]
+
+        if self.use_interbotix:
+
+            self.pre_grasp_ee = {
+                "left_finger"   :0.03,
+                "right_finger"  :-0.03}
+
+            self.grasp_ee = {
+                "left_finger"   :0.015,
+                "right_finger"  :-0.015}
+
+
+        # Tranform
+        self.tfBuffer = tf2_ros.Buffer()
+        self.listener = tf2_ros.TransformListener(self.tfBuffer)
+        self.trans = None
     
     def e_in_cb(self, msg):
         if self.command is None:
@@ -66,28 +104,74 @@ class PickPlace(object):
             msg.data = ""
             self.pub_e_out.publish(msg)    
     
+    def object_features_cb(self, msg):
+        if self.object_features is None:
+            self.object_features = msg
+            rospy.logdebug("[PICK PLACE] Received new object feature message")    
     
-    def grasp_pose_cb(self, msg):
-        if self.grasp_pose is None:
-            self.grasp_pose = msg
-            rospy.logdebug("[PICK PLACE] Received new grasp pose massage")
-            # self.load_param(1.0)
-
-    def pre_grasp_pose_cb(self, msg):
-        if self.pre_grasp_pose is None:
-            self.pre_grasp_pose = msg
-            rospy.logdebug("[PICK PLACE] Received new pre grasp pose massage")
-
-    def pre_place_pose_cb(self, msg):
-        if self.pre_place_pose is None:
-            self.pre_place_pose = msg
-            rospy.logdebug("[PICK PLACE] Received new pre place pose message")
-
-    def place_pose_cb(self, msg):
-        if self.place_pose is None:
-            self.place_pose = msg
-            rospy.logdebug("[PICK PLACE] Received new placing pose message")    
     
+    def get_trans(self):
+        if not (self.object_features is None):
+            try:
+                self.trans = self.tfBuffer.lookup_transform('world',self.object_features.cage_location.header.frame_id,  rospy.Time(0))
+            except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
+                return
+
+    def transform_pose(self):
+        if not wait_for_variable(3, self.object_features):
+            rospy.logwarn("[PICK PLACE] Cannot transform pose, since object_features still empty!")
+            return False
+            
+        self.get_trans()
+            
+        if not wait_for_variable(3, self.trans):
+            rospy.logwarn("[PICK PLACE] Cannot transform pose, since the transform is still empty!")
+            return False
+
+        self.object_pose = tf2_geometry_msgs.do_transform_pose(self.object_features.cage_location, self.trans)
+
+        self.pre_grasp_pose = self.object_pose_to_grasp_pose(self.pre_grasp_position_transform)
+        self.grasp_pose = self.object_pose_to_grasp_pose(self.grasp_position_transform)
+        self.pre_place_pose = self.object_pose_to_place_pose(self.pre_grasp_pose)
+        self.place_pose = self.object_pose_to_place_pose(self.grasp_pose)
+
+        rospy.set_param('pre_grasp_ee', self.pre_grasp_ee)
+        rospy.set_param('grasp_ee', self.grasp_ee)
+
+        # reset
+        self.object_features = None
+        return True
+
+    def object_pose_to_grasp_pose(self, position_transform):
+
+        object_pose = self.object_pose
+        grasp_pose = PoseStamped()
+        grasp_pose.header = object_pose.header
+
+        # position
+        object_position, object_orientation = pose_to_lists(object_pose.pose, 'euler')
+        object_orientation = (0, 0, object_orientation[2])
+                
+        grasp_position = add_lists(object_position, position_transform)
+        grasp_orientation = add_lists(object_orientation, self.orientation_transform)
+
+        grasp_pose.pose = list_to_pose(grasp_position + grasp_orientation)
+
+        return grasp_pose
+
+    def object_pose_to_place_pose(self, grasp_pose):
+
+        place_pose = PoseStamped()
+        place_pose.header = grasp_pose.header
+
+        # position
+        grasp_position, grasp_orientation = pose_to_lists(grasp_pose.pose, 'euler')
+        place_position = add_lists(grasp_position, self.place_position_transform)
+        place_orientation = multiply_lists(grasp_orientation, self.place_orientation_transform)
+
+        place_pose.pose = list_to_pose(place_position + place_orientation)
+
+        return place_pose
     
     def command_to_pose(self, pose):
         rospy.logdebug("[PICK PLACE] Commanding move robot to pose")
@@ -166,8 +250,8 @@ class PickPlace(object):
             
     def reset_msg(self):
         rospy.logdebug("[PICK PLACE] Resetting for next grasp")
-        self.pre_grasp_ee = None
-        self.grasp_ee = None
+        # self.pre_grasp_ee = None
+        # self.grasp_ee = None
         self.grasp_pose = None
         self.pre_grasp_pose = None
         self.pre_place_pose = None
@@ -199,6 +283,11 @@ class PickPlace(object):
             self.state = "idle"
             self.log_state_update()
 
+        elif (self.state == "idle") and (self.command == "transform") and success:
+            self.prev_state = self.state
+            self.state = "idle"
+            self.log_state_update()            
+
         elif (self.state == "idle") and ((self.command == "pick") or (self.command == "pick_place")) and success:
             self.prev_state = self.state
             self.state = "picked"
@@ -225,6 +314,10 @@ class PickPlace(object):
         if self.command == "e_init":
             rospy.logdebug("[PICK PLACE] executing e_init command")
             success = True
+            
+        if self.command == "transform":
+            rospy.logdebug("[PICK PLACE] executing transform command")
+            success = self.transform_pose()
             
         if self.state == "idle":
             if self.command == "pick" or self.command == "pick_place":

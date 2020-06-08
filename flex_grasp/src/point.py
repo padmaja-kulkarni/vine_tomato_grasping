@@ -34,11 +34,11 @@ class PoseTransform(object):
         self.event = None
         self.object_features = None
 
-        self.debug_mode = rospy.get_param("pose_transform/debug")
+        self.debug_mode = rospy.get_param("point/debug")
 
         if self.debug_mode:
             log_level = rospy.DEBUG
-            rospy.loginfo("[POINT] Luanching object detection node in debug mode")
+            rospy.loginfo("[POINT] Luanching point node in debug mode")
         else:
             log_level = rospy.INFO
 
