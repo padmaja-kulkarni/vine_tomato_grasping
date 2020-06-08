@@ -58,6 +58,20 @@ class PickPlace(object):
         self.pub_move_robot_command = rospy.Publisher("move_robot/e_in", String, queue_size=10, latch=False)
         
         self.pub_move_robot_pose = rospy.Publisher("robot_pose", PoseStamped, queue_size=10, latch=False)
+        
+        # Initialize Publishers
+        self.pub_pre_grasp_pose = rospy.Publisher('pre_grasp_pose',
+                                        PoseStamped, queue_size=5, latch=True)
+
+        self.pub_grasp_pose = rospy.Publisher('grasp_pose',
+                                        PoseStamped, queue_size=5, latch=True)
+
+        self.pub_pre_place_pose = rospy.Publisher('pre_place_pose',
+                                        PoseStamped, queue_size=5, latch=True)
+
+        self.pub_place_pose = rospy.Publisher('place_pose',
+                                        PoseStamped, queue_size=5, latch=True)
+
                                      
          # Subscribe
         rospy.Subscriber("~e_in", String, self.e_in_cb)
@@ -123,10 +137,19 @@ class PickPlace(object):
         self.grasp_pose = self.object_pose_to_grasp_pose(self.grasp_position_transform)
         self.pre_place_pose = self.object_pose_to_place_pose(self.pre_grasp_pose)
         self.place_pose = self.object_pose_to_place_pose(self.grasp_pose)
-
+        
+        self.pub_all_pose()
+        
         # reset
         self.object_features = None
         return True
+
+    def pub_all_pose(self):
+        self.pub_pre_grasp_pose.publish(self.pre_grasp_pose)
+        self.pub_grasp_pose.publish(self.grasp_pose)
+        self.pub_pre_place_pose.publish(self.pre_place_pose)
+        self.pub_place_pose.publish(self.place_pose)
+
 
     def object_pose_to_grasp_pose(self, position_transform):
 
