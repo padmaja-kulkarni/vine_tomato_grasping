@@ -47,11 +47,11 @@
     <origin xyz="$(arg interbotix_origin_xyz)" rpy="$(arg interbotix_origin_rpy)"/>
   </joint>
 
-  <xacro:include filename="$(find flex_gazebo_interbotix)/urdf/px150.xacro"/>
-
-  <xacro:px150>
-  </xacro:px150>
-
+  <!-- xacro arguments are global, these are required for the px150.urdf.xacro-->
+  <xacro:arg name="load_gazebo_configs" default="true"/>
+  <xacro:arg name="robot_name" default="$(arg robot_name)"/>
+  <xacro:include filename="$(find interbotix_descriptions)/urdf/px150.urdf.xacro"/>
+  <!--  load_gazebo_configs:=true"/> -->
 
   <xacro:marker parent_link="px150/ee_arm_link" size="0.04" ID ="26" >
     <origin xyz="$(arg marker_origin_xyz)" rpy="$(arg marker_origin_rpy)" />
