@@ -632,20 +632,20 @@ def load_rgb(pwd, name, horizontal = True):
     return imRGB, DIM
 
 
-def add_circles(imRGB, centers, radii):
+def add_circles(imRGB, centers, radii, color = (255,255,255), thickness = 5):
     if radii is not None:
         for i in range(0, len(radii), 1):
             col = int(centers[i, 0])
             row = int(centers[i, 1])
             r = int(radii[i])
-            cv2.circle(imRGB,(col, row), r, (0,255,0))
+            cv2.circle(imRGB,(col, row), r, color, thickness)
             
     return imRGB
 
-def add_contour(imRGB, mask):
+def add_contour(imRGB, mask, color = (255,255,255), thickness = 5):
     contours, hierarchy= cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
     # segmentPeduncle = self.imRGB.copy()
-    cv2.drawContours(imRGB, contours, -1, (0,255,0), 3)
+    cv2.drawContours(imRGB, contours, -1, color, thickness)
     return imRGB
 
 def plot_circles(imRGB, centers, radii, savePath = None, saveName = None, 

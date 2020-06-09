@@ -200,7 +200,9 @@ class ObjectDetection(object):
                 cage_pose = self.generate_cage_pose(object_features['grasp'])
                 tomatoes = self.generate_tomatoes(object_features['tomato'])
                 peduncle = self.generate_peduncle(cage_pose)
+                
                 img_tomato = image.get_truss_visualization()
+                img_segment = image.get_segmented_image(local = True)
 
             elif not self.use_truss:
                 image.color_space()
@@ -213,12 +215,12 @@ class ObjectDetection(object):
                 peduncle = Peduncle()
                 
                 img_tomato = image.get_tomato_visualization()
+                img_segment = image.get_segmented_image()
 
             truss = self.create_truss(tomatoes, cage_pose, peduncle)
 
             # get images
             img_hue, img_saturation, img_A  = image.get_color_components()
-            img_segment = image.get_segmented_image()
             
 
             # publish results tomato_img

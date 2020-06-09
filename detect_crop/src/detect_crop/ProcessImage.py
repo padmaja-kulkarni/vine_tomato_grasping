@@ -13,7 +13,7 @@ import warnings
 import numpy as np
 
 import cv2
-from matplotlib import pyplot as plt
+
 from skimage.measure import label, regionprops
 from skimage.transform import rotate
 from skimage.morphology import skeletonize
@@ -426,7 +426,7 @@ class ProcessImage(object):
         
     def get_truss_visualization(self):
         img = add_circles(self.imRGB, self.centersO, self.radii)
-        img = add_contour(img, self.rescale(self.penduncleMain))
+        img = add_contour(img, self.rescale(self.penduncleMain))        
         return img       
         
         
@@ -444,29 +444,7 @@ class ProcessImage(object):
         
         # tomatoFilteredR= np.uint8(self.imMax*rotate(self.tomato, -angle, resize=True))
         imgR = np.uint8(self.imMax*rotate(img, self.angle, resize=True))
-        return add_border(imgR, self.originO - self.originL, self.DIM);
-
-#    def rescale(self):
-#        #%%############
-#        ### RESCALE ###
-#        ###############
-#        originL = or2rot(np.matrix((1,1)), self.dim, self.angle/180*np.pi)
-#
-#        # rotate
-#        tomatoFilteredR = np.uint8(self.imMax*rotate(self.tomato, self.angle, resize=True))
-#        peduncleFilteredR = np.uint8(self.imMax*rotate(self.peduncle, self.angle, resize=True))
-#        penduncleMainR = np.uint8(self.imMax*rotate(self.penduncleMain, self.angle, resize=True))
-#
-#        tomatoOriginal = add_border(tomatoFilteredR, self.originO - originL , self.DIM)
-#        peduncleOriginal = add_border(peduncleFilteredR, self.originO - originL, self.DIM)
-#        penduncleMainOriginal = add_border(penduncleMainR, self.originO - originL, self.DIM)
-#
-#        image =cv2.merge((tomatoOriginal, peduncleOriginal, penduncleMainOriginal))
-#
-#        self.tomato = tomatoOriginal
-#        self.peduncle = peduncleOriginal
-#        self.peduncleMian = penduncleMainOriginal
-#        self.imRGB = image
+        return add_border(imgR, self.originO - self.originL, self.DIM)
 
 
     def save_results(self, step, local = False):
