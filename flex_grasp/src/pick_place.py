@@ -76,7 +76,6 @@ class PickPlace(object):
 
         self.use_iiwa = rospy.get_param('use_iiwa')
         self.use_interbotix = rospy.get_param('use_interbotix')
-        self.use_sdh = rospy.get_param('use_sdh')
         self.planning_frame = rospy.get_param('planning_frame')
 
 
@@ -87,14 +86,13 @@ class PickPlace(object):
         pre_grasp_xyz = [0, 0, 0.10] # [m]
         grasp_rpy = [-pi, pi/2, 0]
         place_rpy = [-pi, pi/2, 0.5]
-        
-        
+        frame = self.planning_frame
         time = rospy.Time.now()
 
-        self.pre_grasp_trans = point_to_pose_stamped(pre_grasp_xyz, grasp_rpy, self.planning_frame, time)
-        self.grasp_trans = point_to_pose_stamped(grasp_xyz, grasp_rpy, self.planning_frame, time)
-        self.pre_place_trans = point_to_pose_stamped(pre_grasp_xyz, place_rpy, self.planning_frame, time)
-        self.place_trans = point_to_pose_stamped(grasp_xyz, place_rpy, self.planning_frame, time)
+        self.pre_grasp_trans = point_to_pose_stamped(pre_grasp_xyz, grasp_rpy, frame, time)
+        self.grasp_trans = point_to_pose_stamped(grasp_xyz, grasp_rpy, frame, time)
+        self.pre_place_trans = point_to_pose_stamped(pre_grasp_xyz, place_rpy, frame, time)
+        self.place_trans = point_to_pose_stamped(grasp_xyz, place_rpy, frame, time)
 
         # Tranform
         self.tfBuffer = tf2_ros.Buffer()
@@ -112,10 +110,11 @@ class PickPlace(object):
             self.pub_e_out.publish(msg)    
     
     def object_features_cb(self, msg):
-        if self.object_features is None:
-            self.object_features = msg
-            rospy.logdebug("[PICK PLACE] Received new object feature message")    
-    
+        # if self.object_features is None:
+        # if self.command == "transform":
+        self.object_features = msg
+        rospy.logdebug("[PICK PLACE] Received new object feature message")    
+
     
     def get_trans(self):
         if not (self.object_features is None):
