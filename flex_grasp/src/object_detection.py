@@ -19,6 +19,7 @@ from sensor_msgs.msg import CameraInfo
 from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import PointCloud2
 
+from sensor_msgs.msg import PointCloud2
 import sensor_msgs.point_cloud2 as pc2
 
 from flex_grasp.msg import Tomato
@@ -46,7 +47,7 @@ class ObjectDetection(object):
         self.depth_image = None
         self.depth_info = None
         self.color_info = None
-        self.point_cloud = None
+        self.pcl = None
         self.trans = None
         self.init = None
 
@@ -153,20 +154,19 @@ class ObjectDetection(object):
             self.depth_info = msg
             
     def point_cloud_cb(self, msg):
-        if (self.point_cloud is None) and (self.take_picture):
+        if (self.pcl is None) and (self.take_picture):
             rospy.logdebug("[OBJECT DETECTION] Received point_ cloud info message")
-            self.point_cloud = msg
-            print(self.point_cloud.data[0])   
-            
+            self.pcl = msg
 
     def received_all_data(self):
-        return (self.color_image is not None) and (self.depth_image is not None) and (self.depth_info is not None) and (self.color_info is not None)
+        return (self.color_image is not None) and (self.depth_image is not None) and (self.depth_info is not None) and (self.color_info is not None) and (self.pcl is not None)
 
     def clear_all_data(self):
         self.color_image = None
         self.depth_image = None
         self.depth_info = None
         self.color_info = None
+        self.pcl = None
 
     def wait_for_data(self, timeout):
         start_time = rospy.get_time()
@@ -263,7 +263,7 @@ class ObjectDetection(object):
         rpy = [0, 0, angle]
 
 
-        xyz = self.deproject(row, col, self.intrin)
+        xyz = self.deproject(row, col)
         cage_pose =  point_to_pose_stamped(xyz, rpy, self.camera_frame, rospy.Time.now())
 
         return cage_pose
@@ -279,7 +279,7 @@ class ObjectDetection(object):
             row = tomato_features['row'][i]
             radius = tomato_features['radii'][i]
 
-            point = self.deproject(row, col, self.intrin)
+            point = self.deproject(row, col)
 
             depth = self.get_depth(row, col) # depth = self.depth_image[(row, col)]
             point1 = rs.rs2_deproject_pixel_to_point(self.intrin, [0,0], depth)
@@ -353,7 +353,18 @@ class ObjectDetection(object):
 
         return truss
 
-    def deproject(self, row, col, intrin):
+    def get_point(self, uvs):
+        points = self.get_points(uvs=uvs)
+        point = np.mean(points, axis = 0)
+
+           
+        return point
+           
+    def get_points(self, uvs=[]):
+        points = list(pc2.read_points(self.pcl, skip_nans=False, field_names = ("x", "y", "z"), uvs=uvs))   
+        return points
+
+    def deproject(self, row, col):
         # Deproject
         depth = self.get_depth(row, col)
         # rospy.logdebug("Corresponding depth: %s", self.depth_image[index])
@@ -362,8 +373,40 @@ class ObjectDetection(object):
         pixel = [float(col), float(row)] # [x, y]
         depth = float(depth)
 
-        point = rs.rs2_deproject_pixel_to_point(intrin, pixel, depth)
+        point_depth = rs.rs2_deproject_pixel_to_point(self.intrin, pixel, depth)
+        
+        uvs = self.gen_patch(row, col)
+        point_pcl = self.get_point(uvs)        
+        rospy.logdebug("Point based on deprojection: %s", point_depth)
+        rospy.logdebug("Point obtained from point cloud: %s", point_pcl)        
+        
+        
+        point = point_depth
         return point
+
+    def gen_patch(self, row, col):
+        patch_width = (self.patch_size - 1)/2
+
+        dim = self.depth_image.shape
+        H = dim[0]
+        W = dim[1]
+
+        row_start = max([row - patch_width, 0])
+        row_end = min([row + patch_width, H - 1])
+
+        col_start = max([col - patch_width, 0])
+        col_end = min([col + patch_width, W - 1])
+
+        rows = np.arange(row_start, row_end + 1)
+        cols = np.arange(col_start, col_end + 1)
+        
+        uvs = list() # [col, row]
+        
+        for col in cols:
+            for row in rows:
+                uvs.append([col, row])
+                
+        return uvs
 
     def get_depth(self, row, col):
         patch_width = (self.patch_size - 1)/2
@@ -382,7 +425,6 @@ class ObjectDetection(object):
         cols = np.arange(col_start, col_end + 1)
 
         depth_patch = self.depth_image[rows[:, np.newaxis], cols]
-
         non_zero = np.nonzero(depth_patch)
         depth_patch_non_zero = depth_patch[non_zero]
 

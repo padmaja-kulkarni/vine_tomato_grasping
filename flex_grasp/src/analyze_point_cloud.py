@@ -34,7 +34,7 @@ class AnalyzePointCloud(object):
 
     def get_points(self, uvs=[]):
         rospy.logdebug("Getting Points")
-        self.points = list(pc2.read_points(self.point_cloud, skip_nans=False, field_names = ("x", "y", "z"), uvs=uvs))
+        self.points = list(pc2.read_points(self.point_cloud, skip_nans=True, field_names = ("x", "y", "z"), uvs=uvs))
         rospy.logdebug("Got points, size: %s", len(self.points))
 
     def save_points(self, filename =  "points"):
@@ -61,8 +61,11 @@ def main():
         while not rospy.core.is_shutdown():
             if analyze_point_cloud.point_cloud is not None:
                 # analyze_point_cloud.save_point_cloud()
-
-                uvs = [[1, 2], [1,1]]
+                # uvs = list()
+                # for row in range(1,700, 100):
+                #     uv = [0, row]
+                #     uvs.append(uv)
+                uvs = [[1279, 719]] # [col, row]
                 analyze_point_cloud.get_points(uvs = uvs)
                 
                 for point in analyze_point_cloud.points:

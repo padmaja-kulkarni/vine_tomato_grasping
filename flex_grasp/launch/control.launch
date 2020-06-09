@@ -12,8 +12,7 @@
 
 	<!-- debug settings -->
 	<arg name="pipeline_debug"					default="false"/>
-	<arg name="object_detection_debug"	default="false"/>
-	<arg name="pose_transform_debug"		default="false"/>
+	<arg name="object_detection_debug"	default="true"/>
 	<arg name="move_robot_debug"				default="false"/>
 	<arg name="visualize_object_debug"	default="false"/>
 	<arg name="pick_place_debug" 				default="false"/>
@@ -58,16 +57,6 @@
 			output="screen">
 			<param name ="debug" value="$(arg object_detection_debug)"/>
 		</node>
-
-		<!--
-		<node name="pose_transform"
-			pkg="flex_grasp"
-			type="pose_transform.py"
-			output="screen">
-			<param name ="debug" value="$(arg pose_transform_debug)"/>
-		</node>
-		-->
-
 
 		<node name="pick_place"
 			pkg="flex_grasp"
