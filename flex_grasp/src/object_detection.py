@@ -19,7 +19,7 @@ from sensor_msgs.msg import CameraInfo
 from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import PointCloud2
 
-from sensor_msgs.msg import PointCloud2
+from sensor_msgs.msg import PointCloud2, PointField
 import sensor_msgs.point_cloud2 as pc2
 
 from flex_grasp.msg import Tomato
@@ -212,7 +212,7 @@ class ObjectDetection(object):
 
                 cage_pose = self.generate_cage_pose(object_features['grasp_location'])
                 tomatoes = self.generate_tomatoes(object_features['tomato'])
-                peduncle = self.generate_peduncle(cage_pose) # object_features['peduncle']
+                peduncle = self.generate_peduncle(object_features['peduncle'], cage_pose) # object_features['peduncle']
                 
                 img_tomato = image.get_truss_visualization()
                 img_segment = image.get_segmented_image(local = True)
@@ -290,11 +290,32 @@ class ObjectDetection(object):
 
         return tomatoes
 
-    def generate_peduncle(self, cage_pose):
+    def generate_peduncle(self, peduncle_img, cage_pose):
         
+        index = np.nonzero(peduncle_img)
+        rows = index[0]
+        cols = index[1]        
+        
+        if not (len(rows) == len(cols)):
+            rospy.logwarn("amount of rows and cols do not match")
+        
+        uvs = list()
+        for row, col in zip(rows, cols):        
+            uvs.append([col,row])
+        
+                
+        points = self.get_points(uvs=uvs, field_names = ("x", "y", "z", "rgb"))
+        
+        # fields
+#        fields = [PointField('x', 0, PointField.FLOAT32, 1),
+#                  PointField('y', 4, PointField.FLOAT32, 1),
+#                  PointField('z', 8, PointField.FLOAT32, 1)]      
+        
+        peduncle_pcl = pc2.create_cloud(self.pcl.header, self.pcl.fields, points)        
         
         peduncle = Peduncle()
         peduncle.pose = cage_pose
+        peduncle.pcl = peduncle_pcl
         peduncle.radius = 0.01
         peduncle.length = 0.15
         return peduncle
@@ -356,12 +377,10 @@ class ObjectDetection(object):
     def get_point(self, uvs):
         points = self.get_points(uvs=uvs)
         point = np.mean(points, axis = 0)
-
-           
         return point
            
-    def get_points(self, uvs=[]):
-        points = list(pc2.read_points(self.pcl, skip_nans=False, field_names = ("x", "y", "z"), uvs=uvs))   
+    def get_points(self, uvs=[], field_names = ("x", "y", "z")):
+        points = list(pc2.read_points(self.pcl, skip_nans=False, field_names = field_names, uvs=uvs))   
         return points
 
     def deproject(self, row, col):

@@ -85,7 +85,7 @@
           <depthImageTopicName>aligned_depth_to_color/image_raw</depthImageTopicName>
           <depthImageInfoTopicName>??</depthImageInfoTopicName>
           <pointCloudTopicName>points</pointCloudTopicName>
-          <frameName>camera_color_optical_frame</frameName>
+          <frameName>/camera_color_optical_frame</frameName>
           <pointCloudCutoff>0.5</pointCloudCutoff>
           <pointCloudCutoffMax>3.0</pointCloudCutoffMax>
           <distortionK1>0.0</distortionK1>

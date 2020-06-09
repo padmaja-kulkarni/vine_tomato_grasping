@@ -53,7 +53,7 @@ class ProcessImage(object):
         self.saveFormat = saveFormat
 
         DIM = imRGB.shape[:2]
-        width_desired = 1920.0
+        width_desired = 1280.0
         scale = width_desired/DIM[1]
         width = int(DIM[1] * scale)
         height = int(DIM[0] * scale)
