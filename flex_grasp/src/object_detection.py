@@ -17,6 +17,9 @@ from std_msgs.msg import String
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import CameraInfo
 from geometry_msgs.msg import PoseStamped
+from sensor_msgs.msg import PointCloud2
+
+import sensor_msgs.point_cloud2 as pc2
 
 from flex_grasp.msg import Tomato
 from flex_grasp.msg import Truss
@@ -43,6 +46,7 @@ class ObjectDetection(object):
         self.depth_image = None
         self.depth_info = None
         self.color_info = None
+        self.point_cloud = None
         self.trans = None
         self.init = None
 
@@ -105,6 +109,8 @@ class ObjectDetection(object):
         rospy.Subscriber("camera/color/camera_info", CameraInfo, self.color_info_cb)
         # rospy.Subscriber("camera/depth/camera_info", CameraInfo, self.depth_info_cb)
         rospy.Subscriber("camera/aligned_depth_to_color/camera_info", CameraInfo, self.depth_info_cb)
+        rospy.Subscriber("camera/points", PointCloud2, self.point_cloud_cb)        
+        
 
     def e_in_cb(self, msg):
         if self.event is None:
@@ -145,6 +151,13 @@ class ObjectDetection(object):
         if (self.depth_info is None) and (self.take_picture):
             rospy.logdebug("[OBJECT DETECTION] Received depth info message")
             self.depth_info = msg
+            
+    def point_cloud_cb(self, msg):
+        if (self.point_cloud is None) and (self.take_picture):
+            rospy.logdebug("[OBJECT DETECTION] Received point_ cloud info message")
+            self.point_cloud = msg
+            print(self.point_cloud.data[0])   
+            
 
     def received_all_data(self):
         return (self.color_image is not None) and (self.depth_image is not None) and (self.depth_info is not None) and (self.color_info is not None)
@@ -197,9 +210,9 @@ class ObjectDetection(object):
 
                 object_features = image.get_object_features()
 
-                cage_pose = self.generate_cage_pose(object_features['grasp'])
+                cage_pose = self.generate_cage_pose(object_features['grasp_location'])
                 tomatoes = self.generate_tomatoes(object_features['tomato'])
-                peduncle = self.generate_peduncle(cage_pose)
+                peduncle = self.generate_peduncle(cage_pose) # object_features['peduncle']
                 
                 img_tomato = image.get_truss_visualization()
                 img_segment = image.get_segmented_image(local = True)
@@ -278,6 +291,8 @@ class ObjectDetection(object):
         return tomatoes
 
     def generate_peduncle(self, cage_pose):
+        
+        
         peduncle = Peduncle()
         peduncle.pose = cage_pose
         peduncle.radius = 0.01

@@ -24,7 +24,7 @@ class AnalyzePointCloud(object):
         self.point_cloud = None
         self.points = None
 
-        rospy.Subscriber("/realsense_plugin/camera/depth/points", PointCloud2, self.point_cloud_cb)
+        rospy.Subscriber("px150/camera/points", PointCloud2, self.point_cloud_cb)
 
 
     def point_cloud_cb(self, msg):
@@ -32,10 +32,10 @@ class AnalyzePointCloud(object):
             self.point_cloud = msg
             rospy.logdebug("Received new point cloud message")
 
-    def get_points(self):
+    def get_points(self, uvs=[]):
         rospy.logdebug("Getting Points")
-        self.points = list(pc2.read_points(self.point_cloud, skip_nans=True, field_names = ("x", "y", "z")))
-        
+        self.points = list(pc2.read_points(self.point_cloud, skip_nans=False, field_names = ("x", "y", "z"), uvs=uvs))
+        rospy.logdebug("Got points, size: %s", len(self.points))
 
     def save_points(self, filename =  "points"):
         return self.save(self.points, filename =  "points")
@@ -61,8 +61,13 @@ def main():
         while not rospy.core.is_shutdown():
             if analyze_point_cloud.point_cloud is not None:
                 # analyze_point_cloud.save_point_cloud()
-                analyze_point_cloud.get_points()
-                analyze_point_cloud.save_points()
+
+                uvs = [[1, 2], [1,1]]
+                analyze_point_cloud.get_points(uvs = uvs)
+                
+                for point in analyze_point_cloud.points:
+                    rospy.logdebug(point)
+                # analyze_point_cloud.save_points()
                 break
 
 

@@ -267,6 +267,7 @@ class ProcessImage(object):
         self.comL = comL
         self.comO = comO
         self.centersO = centersO
+        self.centersL = centersL
         self.radii = radii
 
         if self.saveIntermediate:
@@ -353,7 +354,7 @@ class ProcessImage(object):
         if self.saveIntermediate:
             plot_circles(self.imRGB, locMat, radiiJunction, savePath = self.pwdProcess, saveName = '05_c')
 
-    def detect_grasp_location(self):
+    def detect_grasp_location(self, strategy = 'cage'):
         success = True        
         
         #%%###################
@@ -364,12 +365,25 @@ class ProcessImage(object):
 
         col, row = np.nonzero(skeleton)
         loc = np.transpose(np.matrix(np.vstack((row, col))))
-        dist = np.sqrt(np.sum(np.power(loc - self.comL, 2), 1))
-        iMin = np.argmin(dist)
-
-        graspL = loc[iMin, :]
+        
+        
+        if strategy== "cage":
+            dist = np.sqrt(np.sum(np.power(loc - self.comL, 2), 1))
+            i = np.argmin(dist)
+            
+        elif strategy== "pinch":
+            dist0 = np.sqrt(np.sum(np.power(loc - self.centersL[0,:], 2), 1))
+            dist1 = np.sqrt(np.sum(np.power(loc - self.centersL[1,:], 2), 1))
+            dist = np.minimum(dist0, dist1)
+            i = np.argmax(dist)
+        else:
+            print("Unknown grasping strategy")
+            return False
+            
+        angle = self.angle
+        graspL = loc[i, :]
         graspR = graspL + [self.box[0], self.box[1]]
-        graspO = rot2or(graspR, self.DIM, -self.angle/180*np.pi)
+        graspO = rot2or(graspR, self.DIM, -angle/180*np.pi)
 
         self.graspL = graspL
         self.graspR = graspR
@@ -394,24 +408,33 @@ class ProcessImage(object):
         
         tomato= {"row": tomatoRow, "col": tomatoCol, "radii": radii}
         return tomato
+        
+    def get_peduncle(self):
+        return self.peduncle
 
-    def get_object_features(self):
+    def get_grasp_location(self):
         graspPixel = np.around(self.graspO[0]/self.scale).astype(int)
         row = graspPixel[1]
         col =  graspPixel[0]
         angle = self.angle/180*np.pi
 
+        grasp_location = {"row": row, "col": col, "angle": angle}
+        return grasp_location
+
+    def get_object_features(self):
+
         tomatoes = self.get_tomatoes()
+        peduncle = self.get_peduncle()
+        grasp_location = self.get_grasp_location()
 
         object_feature = {
-            "grasp": {"row": row, "col": col, "angle": angle},
-            "tomato": tomatoes
+            "grasp_location": grasp_location,
+            "tomato": tomatoes,
+            "peduncle": peduncle
         }
         return object_feature
 
     def get_grasp_info(self):
-
-
         graspPixel = np.around(self.graspO[0]).astype(int)
 
         row = graspPixel[1]
@@ -427,6 +450,7 @@ class ProcessImage(object):
     def get_truss_visualization(self):
         img = add_circles(self.imRGB, self.centersO, self.radii)
         img = add_contour(img, self.rescale(self.penduncleMain))        
+        img = add_circles(img, self.graspO, [10], color = (255, 0, 0), thickness = -1)
         return img       
         
         
@@ -489,7 +513,7 @@ class ProcessImage(object):
         if success is False:
             return success
             
-        success = self.detect_grasp_location()
+        success = self.detect_grasp_location(strategy = "pinch")
         return success
 
 def main():
