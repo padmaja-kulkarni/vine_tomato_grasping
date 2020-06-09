@@ -642,6 +642,12 @@ def add_circles(imRGB, centers, radii):
             
     return imRGB
 
+def add_contour(imRGB, mask):
+    contours, hierarchy= cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
+    # segmentPeduncle = self.imRGB.copy()
+    cv2.drawContours(imRGB, contours, -1, (0,255,0), 3)
+    return imRGB
+
 def plot_circles(imRGB, centers, radii, savePath = None, saveName = None, 
                  figureTitle = "", titleSize = 20, resolution = 300, 
                  fileFormat = 'pdf'):

@@ -29,7 +29,7 @@ from util import segmentation_truss_real, segmentation_tomato_real
 from util import segmentation_truss_sim
 from util import rot2or
 from util import or2rot
-from util import add_circles
+from util import add_circles, add_contour
 
 
 
@@ -178,7 +178,8 @@ class ProcessImage(object):
         y = box[1]
         w = box[2]
         h = box[3]
-
+        dim = [h, w]
+    
         # cut
         tomatoFilteredL = tomatoFilteredR[y:y+h, x:x+w]
         peduncleFilteredL = peduncleFilteredR[y:y+h, x:x+w]
@@ -188,23 +189,26 @@ class ProcessImage(object):
         #get origin
         originR = np.matrix((x, y))
         originO = rot2or(originR, self.DIM, -angle/180*np.pi)
+        originL = or2rot(np.matrix((1,1)), dim, angle/180*np.pi)
 
-        self.background = backgroundFilteredL
-        self.tomato = tomatoFilteredL
-        self.peduncle = peduncleFilteredL
-        self.imRGB = imRGBL
-        self.imRGBR = imRGBR
+        self.backgroundL = backgroundFilteredL
+        self.tomatoL = tomatoFilteredL
+        self.peduncleL = peduncleFilteredL
+        self.imRGBL = imRGBL
+        # self.imRGBR = imRGBR
 
         self.box = box
         self.w = w
         self.h = h
         self.angle = angle
 
+        self.originL = originL
         self.originO = originO
+        self.originR = originR
 
         if self.saveIntermediate:
-            self.save_results('04')
-            save_img(self.imRGB, self.pwdProcess, '04_e', saveFormat = self.saveFormat)
+            self.save_results('04', local = True)
+            save_img(self.imRGBL, self.pwdProcess, '04_e', saveFormat = self.saveFormat)
 
 
     def detect_tomatoes_global(self):
@@ -233,7 +237,7 @@ class ProcessImage(object):
         #####################
         success = True
     
-        tomatoFilteredLBlurred = cv2.GaussianBlur(self.tomato, (1, 1), 0)
+        tomatoFilteredLBlurred = cv2.GaussianBlur(self.tomatoL, (1, 1), 0)
         minR = self.w/8 # 6
         maxR = self.w/4
         minDist = self.w/6
@@ -266,7 +270,7 @@ class ProcessImage(object):
         self.radii = radii
 
         if self.saveIntermediate:
-             plot_circles(self.imRGB, centersL, radii, savePath = self.pwdProcess, saveName = '05_a')
+             plot_circles(self.imRGBL, centersL, radii, savePath = self.pwdProcess, saveName = '05_a')
              
         return success
 
@@ -279,7 +283,7 @@ class ProcessImage(object):
     
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (20, 2))
         # penduncleMain = cv2.morphologyEx(cv2.morphologyEx(self.peduncle, cv2.MORPH_OPEN, kernel),cv2.MORPH_CLOSE, kernel)
-        penduncleMain = cv2.morphologyEx(self.peduncle, cv2.MORPH_OPEN, kernel)
+        penduncleMain = cv2.morphologyEx(self.peduncleL, cv2.MORPH_OPEN, kernel)
 
         # only keep largest area
         penduncleMain = romove_blobs(penduncleMain, self.imMax)
@@ -372,7 +376,7 @@ class ProcessImage(object):
         self.graspO = graspO
 
         if self.saveIntermediate:
-            plot_circles(self.imRGB, graspL, [10], savePath = self.pwdProcess, saveName = '06')
+            plot_circles(self.imRGBL, graspL, [10], savePath = self.pwdProcess, saveName = '06')
             
         return success
 
@@ -397,14 +401,11 @@ class ProcessImage(object):
         col =  graspPixel[0]
         angle = self.angle/180*np.pi
 
-        tomatoPixel = np.around(self.centersO/self.scale).astype(int)
-        tomatoRow = tomatoPixel[:, 1]
-        tomatoCol = tomatoPixel[:, 0]
-        radii = self.radii/self.scale
+        tomatoes = self.get_tomatoes()
 
         object_feature = {
             "grasp": {"row": row, "col": col, "angle": angle},
-            "tomato": {"row": tomatoRow, "col": tomatoCol, "radii": radii}
+            "tomato": tomatoes
         }
         return object_feature
 
@@ -420,78 +421,68 @@ class ProcessImage(object):
         return row, col, angle
         
     def get_tomato_visualization(self):
-        
         return add_circles(self.imRGB, self.centersO, self.radii)
         
         
-    def get_segmented_image(self):
-        segmentsRGB = stack_segments(self.imRGB, self.background, self.tomato, self.peduncle)
-        return segmentsRGB
+    def get_truss_visualization(self):
+        img = add_circles(self.imRGB, self.centersO, self.radii)
+        img = add_contour(img, self.rescale(self.penduncleMain))
+        return img       
+        
+        
+    def get_segmented_image(self, local = False):
+        
+        if local:
+            return stack_segments(self.imRGBL, self.backgroundL, self.tomatoL, self.peduncleL)
+        else:
+            return stack_segments(self.imRGB, self.background, self.tomato, self.peduncle)
         
     def get_color_components(self):
-        
         return self.img_hue, self.img_saturation, self.img_A
 
-    def rescale(self):
-        #%%############
-        ### RESCALE ###
-        ###############
-        originL = or2rot(np.matrix((1,1)), self.dim, self.angle/180*np.pi)
+    def rescale(self, img):
+        
+        # tomatoFilteredR= np.uint8(self.imMax*rotate(self.tomato, -angle, resize=True))
+        imgR = np.uint8(self.imMax*rotate(img, self.angle, resize=True))
+        return add_border(imgR, self.originO - self.originL, self.DIM);
 
-        # rotate
-        tomatoFilteredR = np.uint8(self.imMax*rotate(self.tomato, self.angle, resize=True))
-        peduncleFilteredR = np.uint8(self.imMax*rotate(self.peduncle, self.angle, resize=True))
-        penduncleMainR = np.uint8(self.imMax*rotate(self.penduncleMain, self.angle, resize=True))
-
-        tomatoOriginal = add_border(tomatoFilteredR, self.originO - originL , self.DIM)
-        peduncleOriginal = add_border(peduncleFilteredR, self.originO - originL, self.DIM);
-        penduncleMainOriginal = add_border(penduncleMainR, self.originO - originL, self.DIM);
-
-        image =cv2.merge((tomatoOriginal, peduncleOriginal, penduncleMainOriginal))
-
-        self.tomato = tomatoOriginal
-        self.peduncle = peduncleOriginal
-        self.peduncleMian = penduncleMainOriginal
-        self.imRGB = image
-
-
-    def visualive(self):
-        #%%##############
-        ### VISUALIZE ###
-        #################
-        fig = plt.figure()
-        plt.subplot(2, 2, 1)
-        plt.imshow(self.imRGB)
-
-        plt.subplot(2, 2, 2)
-        plt.imshow(image)
+#    def rescale(self):
+#        #%%############
+#        ### RESCALE ###
+#        ###############
+#        originL = or2rot(np.matrix((1,1)), self.dim, self.angle/180*np.pi)
+#
+#        # rotate
+#        tomatoFilteredR = np.uint8(self.imMax*rotate(self.tomato, self.angle, resize=True))
+#        peduncleFilteredR = np.uint8(self.imMax*rotate(self.peduncle, self.angle, resize=True))
+#        penduncleMainR = np.uint8(self.imMax*rotate(self.penduncleMain, self.angle, resize=True))
+#
+#        tomatoOriginal = add_border(tomatoFilteredR, self.originO - originL , self.DIM)
+#        peduncleOriginal = add_border(peduncleFilteredR, self.originO - originL, self.DIM)
+#        penduncleMainOriginal = add_border(penduncleMainR, self.originO - originL, self.DIM)
+#
+#        image =cv2.merge((tomatoOriginal, peduncleOriginal, penduncleMainOriginal))
+#
+#        self.tomato = tomatoOriginal
+#        self.peduncle = peduncleOriginal
+#        self.peduncleMian = penduncleMainOriginal
+#        self.imRGB = image
 
 
-        plt.subplot(2, 2, 3)
-        ax = fig.gca()
-
-        if self.centersO is not None:
-            for i in range(0, len(self.centersO[0]), 1):
-                # draw the outer circle
-                circle = plt.Circle((self.centersO[i, 0], self.centersO[i, 1]), self.radii[i], color='r') # [col, row]
-                ax.add_artist(circle)
-
-
-        circle = plt.Circle((self.comO[0, 0], self.comO[0, 1]), 10, color='b')
-        ax.add_artist(circle)
-
-        plt.imshow(self.imRGB)
-
-        plt.subplot(2, 2, 4)
-        plt.imshow(penduncleMainOriginal)
-
-
-        fig.savefig(os.path.join(self.pwdResults, self.tomatoName), dpi = 300)
-
-    def save_results(self, step):
-        save_img(self.background, self.pwdProcess, step + '_a', saveFormat = self.saveFormat) # figureTitle = "Background",
-        save_img(self.tomato, self.pwdProcess, step + '_b', saveFormat = self.saveFormat) # figureTitle = "Tomato",
-        save_img(self.peduncle, self.pwdProcess, step + '_c',  saveFormat = self.saveFormat) # figureTitle = "Peduncle",
+    def save_results(self, step, local = False):
+        
+        if local:
+            background = self.backgroundL
+            tomato = self.tomatoL
+            peduncle = self.peduncleL
+        else:
+            background = self.background
+            tomato = self.tomato
+            peduncle = self.peduncle
+            
+        save_img(background, self.pwdProcess, step + '_a', saveFormat = self.saveFormat) # figureTitle = "Background",
+        save_img(tomato, self.pwdProcess, step + '_b', saveFormat = self.saveFormat) # figureTitle = "Tomato",
+        save_img(peduncle, self.pwdProcess, step + '_c',  saveFormat = self.saveFormat) # figureTitle = "Peduncle",
 
         segmentsRGB = stack_segments(self.imRGB, self.background, self.tomato, self.peduncle)
         save_img(segmentsRGB, self.pwdProcess, step + '_d', saveFormat = self.saveFormat)

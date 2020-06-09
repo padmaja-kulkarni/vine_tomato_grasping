@@ -190,17 +190,17 @@ class ObjectDetection(object):
 
             # process image
             if self.use_truss:
-                success = image.process_image()
-                if success == False:
+                
+                if not image.process_image():
                     rospy.logwarn("[OBJECT DETECTION] Failed to process image")
                     return False
-
 
                 object_features = image.get_object_features()
 
                 cage_pose = self.generate_cage_pose(object_features['grasp'])
                 tomatoes = self.generate_tomatoes(object_features['tomato'])
                 peduncle = self.generate_peduncle(cage_pose)
+                img_tomato = image.get_truss_visualization()
 
             elif not self.use_truss:
                 image.color_space()
@@ -211,13 +211,15 @@ class ObjectDetection(object):
                 cage_pose = PoseStamped()
                 tomatoes = self.generate_tomatoes(tomato_features)
                 peduncle = Peduncle()
+                
+                img_tomato = image.get_tomato_visualization()
 
             truss = self.create_truss(tomatoes, cage_pose, peduncle)
 
             # get images
             img_hue, img_saturation, img_A  = image.get_color_components()
             img_segment = image.get_segmented_image()
-            img_tomato = image.get_tomato_visualization()
+            
 
             # publish results tomato_img
             imgmsg_segment = self.bridge.cv2_to_imgmsg(img_segment, encoding="rgb8")

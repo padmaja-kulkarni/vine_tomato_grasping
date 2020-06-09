@@ -1,8 +1,6 @@
 <?xml version="1.0"?>
 <robot name="$(arg robot_model)" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
-
-
   <!-- Import Rviz colors -->
   <xacro:include filename="$(find iiwa_description)/urdf/materials.xacro" />
 
