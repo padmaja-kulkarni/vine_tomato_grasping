@@ -562,7 +562,8 @@ def stack_segments(imRGB, background, tomato, peduncle):
     res = color[pixelLabel.flatten()]
     res2 = res.reshape((h,w,3))
     
-    
+    # print('color tomato:', colorTomato)
+    # print('color tomato:', colorPeduncle)
     return res2
 
 def save_img(img, pwd, name, resolution = 300, figureTitle = "", titleSize = 20, saveFormat = 'png'):

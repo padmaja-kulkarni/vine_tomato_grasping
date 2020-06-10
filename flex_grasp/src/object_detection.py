@@ -21,6 +21,7 @@ from sensor_msgs.msg import PointCloud2
 
 from sensor_msgs.msg import PointField
 import sensor_msgs.point_cloud2 as pc2
+import struct 
 
 from flex_grasp.msg import Tomato
 from flex_grasp.msg import Truss
@@ -100,6 +101,9 @@ class ObjectDetection(object):
 
         self.pub_color_A = rospy.Publisher("color_A",
                                 Image, queue_size=5, latch=True)
+                                
+        self.pub_tomato_mask = rospy.Publisher("tomato_mask",
+                        Image, queue_size=5, latch=True)
                                 
         self.pub_peduncle_pcl = rospy.Publisher("peduncle_pcl",
                                  PointCloud2, queue_size=10, latch=True)
@@ -277,7 +281,8 @@ class ObjectDetection(object):
     def generate_tomatoes(self, tomato_features):
                 
         tomato_mask = tomato_features["mask"]        
-        tomato_pcl = self.segment_pcl(tomato_mask)
+        tomato_pcl = self.segment_pcl(tomato_mask, color = (200,  50,  50, 255))
+        self.pub_tomato_mask.publish(self.bridge.cv2_to_imgmsg(tomato_mask))         
         self.pub_tomato_pcl.publish(tomato_pcl)      
 
         tomatoes = []
@@ -303,7 +308,7 @@ class ObjectDetection(object):
         
         peduncle_mask = peduncle_features["mask"]        
         
-        peduncle_pcl = self.segment_pcl(peduncle_mask)
+        peduncle_pcl = self.segment_pcl(peduncle_mask, color = (50, 200,  50, 255))
         self.pub_peduncle_pcl.publish(peduncle_pcl)          
         
         peduncle = Peduncle()
@@ -314,7 +319,12 @@ class ObjectDetection(object):
         return peduncle
 
 
-    def segment_pcl(self, img):
+    def segment_pcl(self, img, color = (255, 255, 255, 255)):
+        
+        r = color[0]
+        g = color[1]
+        b = color[2]
+        a = color[3]        
         
         index = np.nonzero(img)
         
@@ -322,15 +332,20 @@ class ObjectDetection(object):
         for row, col in zip(index[0], index[1]):        
             uvs.append([col,row])
         
+        rgba = struct.unpack('I', struct.pack('BBBB', b, g, r, a))[0]
                 
-        points = self.get_points(uvs=uvs, field_names = ("x", "y", "z", "rgb"))
-        
+        points = self.get_points(uvs=uvs, field_names = ("x", "y", "z"))
+        for i in range(0, len(points)):
+            points[i] = points[i] + (rgba,)
+            
         # fields
-#        fields = [PointField('x', 0, PointField.FLOAT32, 1),
-#                  PointField('y', 4, PointField.FLOAT32, 1),
-#                  PointField('z', 8, PointField.FLOAT32, 1)]      
+#        fields = self.pcl.fields
+        fields = [PointField('x', 0, PointField.FLOAT32, 1),
+                  PointField('y', 4, PointField.FLOAT32, 1),
+                  PointField('z', 8, PointField.FLOAT32, 1),
+                  PointField('rgba', 12, PointField.UINT32, 1)]      
         
-        return pc2.create_cloud(self.pcl.header, self.pcl.fields, points)        
+        return pc2.create_cloud(self.pcl.header, fields, points)        
         
           
 

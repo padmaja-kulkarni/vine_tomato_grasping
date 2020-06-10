@@ -154,7 +154,7 @@ class ProcessImage(object):
         if np.all((self.peduncle == 0)):
             warnings.warn("Cannot rotate based on peduncle, since it does not exist!")
     
-        label_img = label(self.peduncle)
+        label_img = label(cv2.bitwise_or(self.tomato, self.peduncle))
         regions = regionprops(label_img , coordinates='xy')
             
         if len(regions) > 1: 
@@ -370,6 +370,8 @@ class ProcessImage(object):
             dist = np.sqrt(np.sum(np.power(loc - self.comL, 2), 1))
             i = np.argmin(dist)
             
+            grasp_angle = self.angle
+            
         elif strategy== "pinch":
             
             skeleton = skeletonize(self.peduncleL/self.imMax)
@@ -380,18 +382,21 @@ class ProcessImage(object):
             dist1 = np.sqrt(np.sum(np.power(loc - self.centersL[1,:], 2), 1))
             dist = np.minimum(dist0, dist1)
             i = np.argmax(dist)
+            
+            grasp_angle = self.angle + 90
         else:
             print("Unknown grasping strategy")
             return False
             
-        angle = self.angle
+        
         graspL = loc[i, :]
         graspR = graspL + [self.box[0], self.box[1]]
-        graspO = rot2or(graspR, self.DIM, -angle/180*np.pi)
+        graspO = rot2or(graspR, self.DIM, -self.angle/180*np.pi)
 
         self.graspL = graspL
         self.graspR = graspR
         self.graspO = graspO
+        self.grasp_angle = grasp_angle
 
         if self.saveIntermediate:
             plot_circles(self.imRGBL, graspL, [10], savePath = self.pwdProcess, saveName = '06')
@@ -399,10 +404,15 @@ class ProcessImage(object):
         return success
 
     def get_tomatoes(self):
+
+        mask_empty = np.zeros((self.W, self.H), np.uint8)        
+        
         if self.centersO is None:
             tomatoRow = []
             tomatoCol = []
             radii = []
+            mask = mask_empty
+            
         else:
             tomatoPixel = np.around(self.centersO/self.scale).astype(int)
             radii = self.radii/self.scale
@@ -410,7 +420,10 @@ class ProcessImage(object):
             tomatoRow = tomatoPixel[:, 1]
             tomatoCol = tomatoPixel[:, 0]
         
-        tomato= {"row": tomatoRow, "col": tomatoCol, "radii": radii, "mask": self.tomato}
+            
+            mask = add_circles(mask_empty, tomatoPixel, radii, color = (255), thickness = -1)  
+        
+        tomato= {"row": tomatoRow, "col": tomatoCol, "radii": radii, "mask": mask}
         return tomato
         
     def get_peduncle(self):
@@ -421,7 +434,7 @@ class ProcessImage(object):
         graspPixel = np.around(self.graspO[0]/self.scale).astype(int)
         row = graspPixel[1]
         col =  graspPixel[0]
-        angle = self.angle/180*np.pi
+        angle = self.grasp_angle/180*np.pi
 
         grasp_location = {"row": row, "col": col, "angle": angle}
         return grasp_location
