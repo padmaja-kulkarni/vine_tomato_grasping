@@ -154,7 +154,8 @@ class ProcessImage(object):
         if np.all((self.peduncle == 0)):
             warnings.warn("Cannot rotate based on peduncle, since it does not exist!")
     
-        label_img = label(cv2.bitwise_or(self.tomato, self.peduncle))
+        truss = cv2.bitwise_or(self.tomato, self.peduncle)
+        label_img = label(truss)
         regions = regionprops(label_img , coordinates='xy')
             
         if len(regions) > 1: 
@@ -163,17 +164,19 @@ class ProcessImage(object):
         # print('angle: ', angle)
 
         # rotate
-        tomatoFilteredR= np.uint8(self.imMax*rotate(self.tomato, -angle, resize=True))
-        peduncleFilteredR = np.uint8(self.imMax*rotate(self.peduncle, -angle, resize=True))
-        backgroundFilteredR = np.uint8(self.imMax*rotate(self.background, -angle, resize=True))
+        tomatoR= np.uint8(self.imMax*rotate(self.tomato, -angle, resize=True))
+        peduncleR = np.uint8(self.imMax*rotate(self.peduncle, -angle, resize=True))
+        backgroundR = np.uint8(self.imMax*rotate(self.background, -angle, resize=True))
         imRGBR  = np.uint8(self.imMax*rotate(self.imRGB, -angle, resize=True))
 
-        if np.all((tomatoFilteredR == 0)):
+        trussR = cv2.bitwise_or(tomatoR, peduncleR)
+        
+        if np.all((trussR == 0)):
             warnings.warn("Cannot crop based on tomato, since it does not exist!")
 
 
         # get bounding box
-        box = cv2.boundingRect(tomatoFilteredR)
+        box = cv2.boundingRect(trussR)
         x = box[0]
         y = box[1]
         w = box[2]
@@ -181,9 +184,9 @@ class ProcessImage(object):
         dim = [h, w]
     
         # cut
-        tomatoFilteredL = tomatoFilteredR[y:y+h, x:x+w]
-        peduncleFilteredL = peduncleFilteredR[y:y+h, x:x+w]
-        backgroundFilteredL = backgroundFilteredR[y:y+h, x:x+w]
+        tomatoL = tomatoR[y:y+h, x:x+w]
+        peduncleL = peduncleR[y:y+h, x:x+w]
+        backgroundL = backgroundR[y:y+h, x:x+w]
         imRGBL = imRGBR[y:y+h, x:x+w, :]
 
         #get origin
@@ -191,9 +194,9 @@ class ProcessImage(object):
         originO = rot2or(originR, self.DIM, -angle/180*np.pi)
         originL = or2rot(np.matrix((1,1)), dim, angle/180*np.pi)
 
-        self.backgroundL = backgroundFilteredL
-        self.tomatoL = tomatoFilteredL
-        self.peduncleL = peduncleFilteredL
+        self.backgroundL = backgroundL
+        self.tomatoL = tomatoL
+        self.peduncleL = peduncleL
         self.imRGBL = imRGBL
         # self.imRGBR = imRGBR
 
