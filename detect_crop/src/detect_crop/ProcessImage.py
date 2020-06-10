@@ -19,8 +19,8 @@ from skimage.transform import rotate
 from skimage.morphology import skeletonize
 
 
-# from skan import skeleton_to_csgraph
-# from skan import Skeleton, summarize
+from skan import skeleton_to_csgraph
+from skan import Skeleton, summarize
 
 # custom functions
 from util import add_border
@@ -308,16 +308,9 @@ class ProcessImage(object):
             
         return success
 
+
+
     def detect_junction(self):
-        skeleton = skeletonize(self.peduncle/self.imMax)
-        if self.saveIntermediate:
-            save_img(skeleton, self.pwdProcess, '05_c2', saveFormat = self.saveFormat)
-
-
-    def detect_junctione_rip(self):
-        #%%##################
-        ## DETECT JUNCTION ##
-        #####################
 
         skeleton = skeletonize(self.peduncle/self.imMax)
         pixel_graph0, coordinates0, degrees0 = skeleton_to_csgraph(skeleton)
@@ -327,11 +320,11 @@ class ProcessImage(object):
         branch_data.head()
 
         allJunctions = branch_data['node-id-src'].values
-        deadBranch = branch_data['branch-type'] == 1
-        junstionSrc = branch_data['node-id-src'][deadBranch].values
-        junctionDst = branch_data['node-id-dst'][deadBranch].values
+        deadBranch = branch_data['branch-type'] == 1 # junction-to-endpoint
+        junstionSrc = branch_data['node-id-src'][deadBranch].values # from node
+        junctionDst = branch_data['node-id-dst'][deadBranch].values # to node
 
-
+        # Prune all nodes which correspond to a branch going from junction to an endpoint
         allJunctions = np.setdiff1d(allJunctions,junstionSrc)
         allJunctions = np.setdiff1d(allJunctions,junctionDst)
 
@@ -359,10 +352,6 @@ class ProcessImage(object):
 
     def detect_grasp_location(self, strategy = 'cage'):
         success = True        
-        
-        #%%###################
-        ### GRASP LOCATION ###
-        ######################
 
         if strategy== "cage":
             
@@ -430,7 +419,9 @@ class ProcessImage(object):
         return tomato
         
     def get_peduncle(self):
-        peduncle = {"mask": self.peduncle}
+        peduncle = {"mask": self.peduncleL,
+                    "mask_main": self.penduncleMain}
+        
         return peduncle
 
     def get_grasp_location(self):
@@ -528,7 +519,7 @@ class ProcessImage(object):
         
         success1 = self.detect_tomatoes()
         success2 = self.detect_peduncle()
-        # self.detect_junction()
+        self.detect_junction()
 
         success = success1 and success2
         if success is False:
@@ -549,7 +540,7 @@ def main():
     saveIntermediate = True
 
     pathCurrent = os.path.dirname(__file__)
-    dataSet = "empty" # "tomato_rot"
+    dataSet = "real_blue" # "tomato_rot"
 
     pwdTest = os.path.join("..") # "..", "..", ,  "taeke"
 
@@ -571,7 +562,7 @@ def main():
     for iTomato in range(N, N + 1, 1):
 
         tomatoName = str(iTomato).zfill(nDigits)
-        fileName = tomatoName + ".jpg" # png
+        fileName = tomatoName + ".png" #  ".jpg" # 
 
         imRGB, DIM = load_rgb(pwdData, fileName, horizontal = True)
 
