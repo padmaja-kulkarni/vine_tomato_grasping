@@ -49,10 +49,12 @@
 
     <rosparam param="$(arg robot_name)/camera_sim" subst_value="true">$(arg camera_sim)</rosparam>
 
-    <include unless="$(arg camera_sim)" file="$(find realsense2_camera)/launch/rs_aligned_depth.launch" ns="$(arg robot_name)">
+    <include unless="$(arg camera_sim)" file="$(find realsense2_camera)/launch/rs_rgbd.launch" ns="$(arg robot_name)"> <!-- rs_aligned_depth -->
       <arg name="camera" value="$(arg camera_name)"/>
       <arg name="enable_infra1" value="false"/>
       <arg name="enable_infra2" value="false"/>
+      <arg name="enable_pointcloud" value="true"/>
+      <arg name="align_depth" value="true"/>
       <arg name="depth_width" value="$(arg depth_width)"/>
       <arg name="depth_height" value="$(arg depth_height)"/>
       <arg name="color_width" value="$(arg color_width)"/>

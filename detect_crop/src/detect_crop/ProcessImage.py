@@ -360,18 +360,22 @@ class ProcessImage(object):
         #%%###################
         ### GRASP LOCATION ###
         ######################
-        skeleton = skeletonize(self.penduncleMain/self.imMax)
 
-
-        col, row = np.nonzero(skeleton)
-        loc = np.transpose(np.matrix(np.vstack((row, col))))
-        
-        
         if strategy== "cage":
+            
+            skeleton = skeletonize(self.penduncleMain/self.imMax)
+            col, row = np.nonzero(skeleton)
+            loc = np.transpose(np.matrix(np.vstack((row, col))))
+            
             dist = np.sqrt(np.sum(np.power(loc - self.comL, 2), 1))
             i = np.argmin(dist)
             
         elif strategy== "pinch":
+            
+            skeleton = skeletonize(self.peduncle/self.imMax)
+            col, row = np.nonzero(skeleton)
+            loc = np.transpose(np.matrix(np.vstack((row, col))))
+            
             dist0 = np.sqrt(np.sum(np.power(loc - self.centersL[0,:], 2), 1))
             dist1 = np.sqrt(np.sum(np.power(loc - self.centersL[1,:], 2), 1))
             dist = np.minimum(dist0, dist1)
@@ -449,8 +453,8 @@ class ProcessImage(object):
         
     def get_truss_visualization(self):
         img = add_circles(self.imRGB, self.centersO, self.radii)
-        img = add_contour(img, self.rescale(self.penduncleMain))        
-        img = add_circles(img, self.graspO, [10], color = (255, 0, 0), thickness = -1)
+        img = add_contour(img, self.peduncle)       # self.rescale(self.penduncleMain)
+        img = add_circles(img, self.graspO, [20], color = (255, 0, 0), thickness = -1)
         return img       
         
         

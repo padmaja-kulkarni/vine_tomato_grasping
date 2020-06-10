@@ -110,7 +110,7 @@ class ObjectDetection(object):
         rospy.Subscriber("camera/color/camera_info", CameraInfo, self.color_info_cb)
         # rospy.Subscriber("camera/depth/camera_info", CameraInfo, self.depth_info_cb)
         rospy.Subscriber("camera/aligned_depth_to_color/camera_info", CameraInfo, self.depth_info_cb)
-        rospy.Subscriber("camera/points", PointCloud2, self.point_cloud_cb)        
+        rospy.Subscriber("camera/depth_registered/points", PointCloud2, self.point_cloud_cb)        
         
 
     def e_in_cb(self, msg):
