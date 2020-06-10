@@ -35,7 +35,7 @@
          <cameraName>camera/color</cameraName>
          <imageTopicName>image_raw</imageTopicName>
          <cameraInfoTopicName>camera_info</cameraInfoTopicName>
-         <frameName>camera_color_optical_frame</frameName>
+         <frameName>/camera_color_optical_frame</frameName>
          <hackBaseline>0.0</hackBaseline>
          <distortionK1>0.0</distortionK1>
          <distortionK2>0.0</distortionK2>
@@ -84,7 +84,7 @@
           <cameraInfoTopicName>aligned_depth_to_color/camera_info</cameraInfoTopicName>
           <depthImageTopicName>aligned_depth_to_color/image_raw</depthImageTopicName>
           <depthImageInfoTopicName>??</depthImageInfoTopicName>
-          <pointCloudTopicName>depth/color/points</pointCloudTopicName>
+          <pointCloudTopicName>depth_registered/points</pointCloudTopicName>
           <frameName>/camera_color_optical_frame</frameName>
           <pointCloudCutoff>0.5</pointCloudCutoff>
           <pointCloudCutoffMax>3.0</pointCloudCutoffMax>

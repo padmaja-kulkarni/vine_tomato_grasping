@@ -42,9 +42,6 @@ class VisualizeObject(object):
 
         rospy.Subscriber("object_features", Truss, self.object_feature_cb)
 
-        self.pub_peduncle = rospy.Publisher("peduncle",
-                                         PointCloud2, queue_size=10, latch=True)
-
     def object_feature_cb(self, msg):
         if self.object_feature is None:
             self.object_feature = msg
@@ -58,8 +55,6 @@ class VisualizeObject(object):
         length = self.object_feature.peduncle.length
         radius = self.object_feature.peduncle.radius
         size = (length, 2*radius, 2*radius)
-
-        self.pub_peduncle.publish(self.object_feature.peduncle.pcl)
 
         self.scene.add_box(name, pose, size)
         return self.wait_for_state_update(box_is_known=True, timeout=timeout, box_name = name)

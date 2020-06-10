@@ -19,7 +19,7 @@ from sensor_msgs.msg import CameraInfo
 from geometry_msgs.msg import PoseStamped
 from sensor_msgs.msg import PointCloud2
 
-from sensor_msgs.msg import PointCloud2, PointField
+from sensor_msgs.msg import PointField
 import sensor_msgs.point_cloud2 as pc2
 
 from flex_grasp.msg import Tomato
@@ -100,6 +100,12 @@ class ObjectDetection(object):
 
         self.pub_color_A = rospy.Publisher("color_A",
                                 Image, queue_size=5, latch=True)
+                                
+        self.pub_peduncle_pcl = rospy.Publisher("peduncle_pcl",
+                                 PointCloud2, queue_size=10, latch=True)
+                                 
+        self.pub_tomato_pcl = rospy.Publisher("tomato_pcl",
+                                 PointCloud2, queue_size=10, latch=True)
 
         # Subscribe
         rospy.Subscriber("~e_in", String, self.e_in_cb)
@@ -269,9 +275,12 @@ class ObjectDetection(object):
         return cage_pose
 
     def generate_tomatoes(self, tomato_features):
-        tomatoes = []
+                
+        tomato_mask = tomato_features["mask"]        
+        tomato_pcl = self.segment_pcl(tomato_mask)
+        self.pub_tomato_pcl.publish(tomato_pcl)      
 
-        # rospy.logdebug("cols: %s [px]", col)
+        tomatoes = []
         for i in range(0, len(tomato_features['col'])):
 
             # Load from struct
@@ -290,17 +299,27 @@ class ObjectDetection(object):
 
         return tomatoes
 
-    def generate_peduncle(self, peduncle_img, cage_pose):
+    def generate_peduncle(self, peduncle_features, cage_pose):
         
-        index = np.nonzero(peduncle_img)
-        rows = index[0]
-        cols = index[1]        
+        peduncle_mask = peduncle_features["mask"]        
         
-        if not (len(rows) == len(cols)):
-            rospy.logwarn("amount of rows and cols do not match")
+        peduncle_pcl = self.segment_pcl(peduncle_mask)
+        self.pub_peduncle_pcl.publish(peduncle_pcl)          
+        
+        peduncle = Peduncle()
+        peduncle.pose = cage_pose
+        peduncle.pcl = peduncle_pcl
+        peduncle.radius = 0.01
+        peduncle.length = 0.15
+        return peduncle
+
+
+    def segment_pcl(self, img):
+        
+        index = np.nonzero(img)
         
         uvs = list()
-        for row, col in zip(rows, cols):        
+        for row, col in zip(index[0], index[1]):        
             uvs.append([col,row])
         
                 
@@ -311,14 +330,10 @@ class ObjectDetection(object):
 #                  PointField('y', 4, PointField.FLOAT32, 1),
 #                  PointField('z', 8, PointField.FLOAT32, 1)]      
         
-        peduncle_pcl = pc2.create_cloud(self.pcl.header, self.pcl.fields, points)        
+        return pc2.create_cloud(self.pcl.header, self.pcl.fields, points)        
         
-        peduncle = Peduncle()
-        peduncle.pose = cage_pose
-        peduncle.pcl = peduncle_pcl
-        peduncle.radius = 0.01
-        peduncle.length = 0.15
-        return peduncle
+          
+
 
     def generate_object(self):
 

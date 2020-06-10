@@ -372,7 +372,7 @@ class ProcessImage(object):
             
         elif strategy== "pinch":
             
-            skeleton = skeletonize(self.peduncle/self.imMax)
+            skeleton = skeletonize(self.peduncleL/self.imMax)
             col, row = np.nonzero(skeleton)
             loc = np.transpose(np.matrix(np.vstack((row, col))))
             
@@ -410,11 +410,12 @@ class ProcessImage(object):
             tomatoRow = tomatoPixel[:, 1]
             tomatoCol = tomatoPixel[:, 0]
         
-        tomato= {"row": tomatoRow, "col": tomatoCol, "radii": radii}
+        tomato= {"row": tomatoRow, "col": tomatoCol, "radii": radii, "mask": self.tomato}
         return tomato
         
     def get_peduncle(self):
-        return self.peduncle
+        peduncle = {"mask": self.peduncle}
+        return peduncle
 
     def get_grasp_location(self):
         graspPixel = np.around(self.graspO[0]/self.scale).astype(int)
