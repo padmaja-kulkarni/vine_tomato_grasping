@@ -633,12 +633,22 @@ def load_rgb(pwd, name, horizontal = True):
     return imRGB, DIM
 
 
-def add_circles(imRGB, centers, radii, color = (255,255,255), thickness = 5):
+def add_circles(imRGB, centers, radii = 5, color = (255,255,255), thickness = 5):
     if radii is not None:
-        for i in range(0, len(radii), 1):
+        
+        N = centers.shape[0]
+            
+        
+        for i in range(0, N, 1):
             col = int(centers[i, 0])
             row = int(centers[i, 1])
-            r = int(radii[i])
+            
+            if type(radii) is np.ndarray:
+                r = int(radii[i])
+            
+            else:            
+                r = radii
+            
             cv2.circle(imRGB,(col, row), r, color, thickness)
             
     return imRGB
