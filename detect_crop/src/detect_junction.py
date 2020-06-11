@@ -12,8 +12,7 @@ import os # os.sep
 import cv2
 import numpy as np
 
-from skan import skeleton_to_csgraph
-from skan import Skeleton, summarize
+import skan
 
 from matplotlib import pyplot as plt
 
@@ -23,7 +22,7 @@ from detect_crop.util import save_img, add_circles
 from detect_crop.util import make_dirs
 
 from detect_crop.ProcessImage import ProcessImage
-from skimage.morphology import skeletonize
+from skimage.morphology import skeletonize, binary_closing
 
 
 def get_locations_on_mask(mask, locations):
@@ -41,6 +40,28 @@ def get_locations_on_mask(mask, locations):
             iKeep.append(i)
 
     return locations[iKeep, :]
+    
+    
+def prune_branches_off_mask(mask, branch_data):
+    
+    col, row = np.nonzero(mask)
+    loc = np.transpose(np.matrix(np.vstack((row, col))))
+
+    iKeep = []
+    for i, row in branch_data.iterrows():
+        
+        dst_node_coord = [row['coord-dst-{1}'], row['coord-dst-{0}']]
+        src_node_coord = [row['coord-src-{1}'], row['coord-src-{0}']]
+        
+
+        # col, row = np.nonzero(skeleton)
+        dst_dist = np.sqrt(np.sum(np.power(loc - dst_node_coord, 2), 1))
+        src_dist = np.sqrt(np.sum(np.power(loc - src_node_coord, 2), 1))
+        
+        if (np.amin(dst_dist) < 20) & (np.amin(src_dist) < 20):
+            iKeep.append(i)
+
+    return iKeep
 
 def get_neighbours(row,col, skeleton):
     
@@ -113,56 +134,139 @@ image = ProcessImage(imRGB, camera_sim = False,
 if not image.process_image():
     print("[OBJECT DETECTION] Failed to process image")
 
+
+# Get peduncle info
 object_features = image.get_object_features()
-peduncle_mask = object_features['peduncle']["mask"]
+peduncle_mask = image.peduncleL
 peduncle_mask_main = object_features['peduncle']["mask_main"]
 
-fig = plt.figure()
-plt.imshow(peduncle_mask)
-
-skeleton = skeletonize(peduncle_mask/255)
-
-fig = plt.figure()
-plt.imshow(skeleton)
+# create skeleton image
+skeleton_img = skeletonize(peduncle_mask/255)
 
 
-pixel_graph0, coordinates0, degrees0 = skeleton_to_csgraph(skeleton)
+# intiailize for skan
+skeleton = skan.Skeleton(skeleton_img)
+branch_data = skan.summarize(skeleton)
+
+# all nodes
+node_id_src = branch_data['node-id-src'].values
+node_id_dst = branch_data['node-id-dst'].values
+node_id_all = np.append(node_id_src, node_id_dst)
 
 
-branch_data = summarize(Skeleton(skeleton))
-branch_data.head()
-
-all_nodes_ID = branch_data['node-id-src'].values
-deadBranch = branch_data['branch-type'] == 1 # junction-to-endpoint
-# junstionSrc = branch_data['node-id-src'][deadBranch].values # from node
-end_points_ID = branch_data['node-id-dst'][deadBranch].values # to node
-
-# Prune all nodes which correspond to a branch going from junction to an endpoint
-junctions_ID = np.setdiff1d(all_nodes_ID,end_points_ID)
-# allJunctions = np.setdiff1d(allJunctions,junctionDst)
-
-junctions = coordinates0[junctions_ID]
-end_points = coordinates0[end_points_ID]
-# col, row = np.nonzero((degrees0 == 3) & (penduncleMain > 0))
-# loc = np.transpose(np.matrix(np.vstack((row, col))))
-
-junctions[:,[0, 1]] = junctions[:,[1, 0]]
-end_points[:,[0, 1]] = end_points[:,[1, 0]]
-
-junctions = get_locations_on_mask(peduncle_mask_main, junctions)
-end_points = get_locations_on_mask(peduncle_mask_main, end_points)
-
- 
-radii_junctions = np.repeat(5, junctions.shape[0])
-radii_end_points = np.repeat(5, end_points.shape[0])
+all_node_coord = skeleton.coordinates[node_id_all]
+all_node_coord = all_node_coord[:,[1, 0]]
+radii = np.repeat(5, all_node_coord.shape[0])
 
 
-img = add_circles(peduncle_mask, junctions, radii_junctions, color = (255/3), thickness = 2)
-img = add_circles(img, end_points, radii_end_points, color = (2*255/3), thickness = 2)
+all_node_img = add_circles(peduncle_mask.copy(), all_node_coord, radii, color = (255/3), thickness = 2)
+
+# find dead branches
+dead_branch_index = branch_data['branch-type'] == 1 # junction-to-endpoint
 
 
-fig = plt.figure()
-plt.imshow(img)
+b_remove = (skeleton.distances < 10) & (branch_data['branch-type'] == 1) 
+
+i_remove = np.argwhere(b_remove)[:,0]
+
+# prune dead branches
+skeleton_prune_img = skeleton_img.copy()
+
+# print(skeleton.path_coordinates(29))
+
+for i in i_remove:
+    
+    px_coords = skeleton.path_coordinates(i).astype(int)
+#    
+#    junction_coord_0 = branch_data['coord-dst-{0}'].values[i]
+#    junction_coord_1 = branch_data['coord-dst-{1}'].values[i]
+#    junction_coord = [junction_coord_0, junction_coord_1]
+#    b_delete = (px_coords ==junction_coord).all(axis=1)
+#    i_delete = np.argwhere(b_delete) # [0, 0]
+    
+#    px_coords = np.delete(px_coords,(i_delete), axis=0)
+
+    
+    for px_coord in px_coords:
+        skeleton_prune_img[px_coord[0], px_coord[1]] = False
+
+skeleton_prune_img = skeletonize(skeleton_prune_img)
+# binary_closing(skeleton_prune_img, selem = np.ones((3,3)))
+
+# intiailize for skan
+skeleton_prune = skan.Skeleton(skeleton_prune_img)
+branch_data_prune = skan.summarize(skeleton_prune)
+
+# prune brnaches of main peduncle
+iKeep = prune_branches_off_mask(peduncle_mask_main, branch_data_prune)
+branch_data_prune = branch_data_prune.loc[iKeep]
+
+# prune small branches
+iKeep = branch_data_prune['branch-distance'] > 2
+branch_data_prune = branch_data_prune.loc[iKeep]
+
+# get all node IDs
+src_node_id = np.unique(branch_data_prune['node-id-src'].values)
+dst_node_id = np.unique(branch_data_prune['node-id-dst'].values)
+all_node_id = np.unique(np.append(src_node_id, dst_node_id))
+
+# get dead node IDs
+dead_branch_id = np.argwhere(branch_data_prune['branch-type'] == 1)
+dead_node_id = np.unique(branch_data_prune['node-id-dst'].values[dead_branch_id])
+junc_node_id = np.setdiff1d(all_node_id,dead_node_id) 
+
+# swap cols
+dead_node_coord = skeleton_prune.coordinates[dead_node_id][:,[1, 0]]
+junc_node_coord = skeleton_prune.coordinates[junc_node_id][:,[1, 0]]
+
+# visualize results
+radii = np.repeat(5, junc_node_coord.shape[0])
+all_node_prune_img = add_circles(peduncle_mask.copy(), junc_node_coord, radii, color = (255/3), thickness = 2)
+
+radii = np.repeat(5, dead_node_coord.shape[0])
+all_node_prune_img = add_circles(all_node_prune_img, dead_node_coord, radii, color = (2*255/3), thickness = 2)
+
+
+
+# plot result
+fig, axs = plt.subplots(2,3)
+axs[0,0].imshow(skeleton_img)
+axs[1,0].imshow(skeleton_prune_img)
+axs[0,1].imshow(all_node_img)
+axs[1,1].imshow(all_node_prune_img)
+
+axs[1,2].imshow(peduncle_mask_main)
+
+#
+## junstionSrc = branch_data['node-id-src'][deadBranch].values # from node
+#end_points_ID = branch_data['node-id-dst'][deadBranch].values # to node
+#
+## Prune all nodes which correspond to a branch going from junction to an endpoint
+#junctions_ID = np.setdiff1d(all_nodes_ID,end_points_ID)
+## allJunctions = np.setdiff1d(allJunctions,junctionDst)
+#
+#junctions = coordinates0[junctions_ID]
+#end_points = coordinates0[end_points_ID]
+## col, row = np.nonzero((degrees0 == 3) & (penduncleMain > 0))
+## loc = np.transpose(np.matrix(np.vstack((row, col))))
+#
+#junctions = junctions[:,[1, 0]]
+#end_points = end_points[:,[1, 0]]
+#
+#junctions = get_locations_on_mask(peduncle_mask_main, junctions)
+#end_points = get_locations_on_mask(peduncle_mask_main, end_points)
+#
+# 
+#radii_junctions = np.repeat(5, junctions.shape[0])
+#radii_end_points = np.repeat(5, end_points.shape[0])
+#
+#
+#img = add_circles(peduncle_mask, junctions, radii_junctions, color = (255/3), thickness = 2)
+#img = add_circles(img, end_points, radii_end_points, color = (2*255/3), thickness = 2)
+#
+#
+#fig = plt.figure()
+#plt.imshow(img)
 
 #index = np.nonzero(skeleton)
 #

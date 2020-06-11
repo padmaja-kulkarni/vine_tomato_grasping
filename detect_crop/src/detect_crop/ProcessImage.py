@@ -419,7 +419,7 @@ class ProcessImage(object):
         return tomato
         
     def get_peduncle(self):
-        peduncle = {"mask": self.peduncleL,
+        peduncle = {"mask": self.peduncle,
                     "mask_main": self.penduncleMain}
         
         return peduncle
