@@ -18,9 +18,7 @@ from skimage.measure import label, regionprops
 from skimage.transform import rotate
 from skimage.morphology import skeletonize
 
-
-from skan import skeleton_to_csgraph
-from skan import Skeleton, summarize
+import skan
 
 # custom functions
 from util import add_border
@@ -31,6 +29,10 @@ from util import rot2or
 from util import or2rot
 from util import add_circles, add_contour
 
+# junctionm dtection
+from util import prune_branches_off_mask
+from util import get_node_coord
+from util import get_center_branch
 
 
 from util import save_img
@@ -154,7 +156,7 @@ class ProcessImage(object):
         if np.all((self.peduncle == 0)):
             warnings.warn("Cannot rotate based on peduncle, since it does not exist!")
     
-        truss = cv2.bitwise_or(self.tomato, self.peduncle)
+        truss = self.peduncle #cv2.bitwise_or(self.tomato, 
         label_img = label(truss)
         regions = regionprops(label_img , coordinates='xy')
             
@@ -240,19 +242,20 @@ class ProcessImage(object):
         #####################
         success = True
     
-        tomatoFilteredLBlurred = cv2.GaussianBlur(self.tomatoL, (1, 1), 0)
+        tomatoFilteredLBlurred = cv2.GaussianBlur(self.tomatoL, (3, 3), 0)
         minR = self.w/8 # 6
         maxR = self.w/4
-        minDist = self.w/6
+        minDist = self.w/5
 
         circles = cv2.HoughCircles(tomatoFilteredLBlurred, cv2.HOUGH_GRADIENT, 5, minDist,
-                                   param1=50,param2=100, minRadius=minR, maxRadius=maxR)
+                                   param1=50,param2=150, minRadius=minR, maxRadius=maxR)
 
         if circles is None:
             warnings.warn("Failed to detect any circle!")
             comL = None
             comO = None
             centersO = None
+            centersL = None
             radii = None
             success = False
         else:
@@ -312,52 +315,68 @@ class ProcessImage(object):
 
     def detect_junction(self):
 
-        skeleton = skeletonize(self.peduncle/self.imMax)
-        pixel_graph0, coordinates0, degrees0 = skeleton_to_csgraph(skeleton)
 
+        # PARAMETERS
+        distance_threshold = 10
+        
+        # create skeleton image
+        skeleton_img = skeletonize(self.peduncleL/self.imMax)
+        
+        # intiailize for skan
+        skeleton = skan.Skeleton(skeleton_img)
+        branch_data = skan.summarize(skeleton)
+        
+        # get all node coordiantes
+        junc_node_coord, dead_node_coord = get_node_coord(branch_data, skeleton)
+        
+        b_remove = (skeleton.distances < distance_threshold) & (branch_data['branch-type'] == 1) 
+        i_remove = np.argwhere(b_remove)[:,0]
+        
+        # prune dead branches
+        skeleton_prune_img = skeleton_img.copy()
+        
+        # update skeleton
+        for i in i_remove:
+            
+            px_coords = skeleton.path_coordinates(i).astype(int)
+            
+            for px_coord in px_coords:
+                skeleton_prune_img[px_coord[0], px_coord[1]] = False
+        
+        ## closing
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+        close_img = cv2.dilate(skeleton_prune_img.astype(np.uint8), kernel, iterations = 1)
+        
+        # skeletonize
+        skeleton_img_2 = skeletonize(close_img)
+        skeleton_prune = skan.Skeleton(skeleton_img_2)
+        branch_data_prune = skan.summarize(skeleton_prune)
+        
+        # prune brnaches of main peduncle
+        iKeep = prune_branches_off_mask(self.penduncleMain, branch_data_prune)
+        branch_data_prune = branch_data_prune.loc[iKeep]
+        
+        # prune small branches
+        iKeep = branch_data_prune['branch-distance'] > 2
+        branch_data_prune = branch_data_prune.loc[iKeep]
+        
+        junc_node_coord, dead_node_coord = get_node_coord(branch_data_prune, skeleton_prune)
+        junc_branch_center, dead_branch_center = get_center_branch(branch_data_prune, skeleton_img)
+        
+        self.junc_branch_center = junc_branch_center
 
-        branch_data = summarize(Skeleton(skeleton))
-        branch_data.head()
-
-        allJunctions = branch_data['node-id-src'].values
-        deadBranch = branch_data['branch-type'] == 1 # junction-to-endpoint
-        junstionSrc = branch_data['node-id-src'][deadBranch].values # from node
-        junctionDst = branch_data['node-id-dst'][deadBranch].values # to node
-
-        # Prune all nodes which correspond to a branch going from junction to an endpoint
-        allJunctions = np.setdiff1d(allJunctions,junstionSrc)
-        allJunctions = np.setdiff1d(allJunctions,junctionDst)
-
-        locMat = coordinates0[allJunctions]
-        # col, row = np.nonzero((degrees0 == 3) & (penduncleMain > 0))
-        # loc = np.transpose(np.matrix(np.vstack((row, col))))
-        locMat[:,[0, 1]] = locMat[:,[1, 0]]
-
-        col, row = np.nonzero(self.penduncleMain)
-        loc = np.transpose(np.matrix(np.vstack((row, col))))
-
-        iKeep = []
-        for i in range(locMat.shape[0]):
-            junction = locMat[i,:]
-            col, row = np.nonzero(skeleton)
-            dist = np.sqrt(np.sum(np.power(loc - junction, 2), 1))
-            if np.amin(dist) < 20:
-                iKeep.append(i)
-
-        locMat = locMat[iKeep, :]
-        radiiJunction = np.repeat(5, locMat.shape[0])
 
         if self.saveIntermediate:
-            plot_circles(self.imRGB, locMat, radiiJunction, savePath = self.pwdProcess, saveName = '05_c')
+            plot_circles(self.imRGB, junc_branch_center, 5, savePath = self.pwdProcess, saveName = '05_c')
 
     def detect_grasp_location(self, strategy = 'cage'):
         success = True        
 
         if strategy== "cage":
-            
-            skeleton = skeletonize(self.penduncleMain/self.imMax)
-            col, row = np.nonzero(skeleton)
-            loc = np.transpose(np.matrix(np.vstack((row, col))))
+#            skeleton = skeletonize(self.penduncleMain/self.imMax)
+#            col, row = np.nonzero(skeleton)
+#            loc_old = np.transpose(np.matrix(np.vstack((row, col))))
+            loc = self.junc_branch_center #             
             
             dist = np.sqrt(np.sum(np.power(loc - self.comL, 2), 1))
             i = np.argmin(dist)
@@ -381,7 +400,7 @@ class ProcessImage(object):
             return False
             
         
-        graspL = loc[i, :]
+        graspL = np.matrix(loc[i, :])
         graspR = graspL + [self.box[0], self.box[1]]
         graspO = rot2or(graspR, self.DIM, -self.angle/180*np.pi)
 
@@ -462,7 +481,7 @@ class ProcessImage(object):
     def get_truss_visualization(self):
         img = add_circles(self.imRGB, self.centersO, self.radii)
         img = add_contour(img, self.peduncle)       # self.rescale(self.penduncleMain)
-        img = add_circles(img, self.graspO, [20], color = (255, 0, 0), thickness = -1)
+        img = add_circles(img, self.graspO, 20, color = (255, 0, 0), thickness = -1)
         return img       
         
         
@@ -525,7 +544,7 @@ class ProcessImage(object):
         if success is False:
             return success
             
-        success = self.detect_grasp_location(strategy = "pinch")
+        success = self.detect_grasp_location(strategy = "cage")
         return success
 
 def main():
@@ -537,7 +556,7 @@ def main():
     # params
     N = 1               # tomato file to load
     nDigits = 3
-    saveIntermediate = True
+    saveIntermediate = False
 
     pathCurrent = os.path.dirname(__file__)
     dataSet = "real_blue" # "tomato_rot"
@@ -568,8 +587,6 @@ def main():
 
         if saveIntermediate:
             save_img(imRGB, pwdResults, '01')
-
-
 
         image = ProcessImage(imRGB, 
                              camera_sim = False,

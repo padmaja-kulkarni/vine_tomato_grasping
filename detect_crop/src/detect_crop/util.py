@@ -659,7 +659,7 @@ def add_contour(imRGB, mask, color = (255,255,255), thickness = 5):
     cv2.drawContours(imRGB, contours, -1, color, thickness)
     return imRGB
 
-def plot_circles(imRGB, centers, radii, savePath = None, saveName = None, 
+def plot_circles(imRGB, centers, radii = 5, savePath = None, saveName = None, 
                  figureTitle = "", titleSize = 20, resolution = 300, 
                  fileFormat = 'pdf'):
     
@@ -671,11 +671,8 @@ def plot_circles(imRGB, centers, radii, savePath = None, saveName = None,
     plt.subplot(1, 1, 1)
     ax = fig.gca()
     
-    if radii is not None:
-        for i in range(0, len(radii), 1):
-            # draw the outer circle
-            circle = plt.Circle((centers[i, 0], centers[i, 1]), radii[i], color='r', fill=False, lw=5)
-            ax.add_artist(circle)
+    imRGB = add_circles(imRGB, centers, radii = 5, color = (255,255,255), thickness = 5)    
+    
     
     plt.imshow(imRGB)
     plt.title(figureTitle)
@@ -684,3 +681,69 @@ def plot_circles(imRGB, centers, radii, savePath = None, saveName = None,
     if savePath is not None:
         fig.savefig(os.path.join(savePath, saveName), dpi = resolution, pad_inches=0)
     return fig
+    
+def prune_branches_off_mask(mask, branch_data):
+    
+    col, row = np.nonzero(mask)
+    loc = np.transpose(np.matrix(np.vstack((row, col))))
+
+    iKeep = []
+    for i, row in branch_data.iterrows():
+        
+        dst_node_coord = [row['coord-dst-{1}'], row['coord-dst-{0}']]
+        src_node_coord = [row['coord-src-{1}'], row['coord-src-{0}']]
+        
+
+        # col, row = np.nonzero(skeleton)
+        dst_dist = np.sqrt(np.sum(np.power(loc - dst_node_coord, 2), 1))
+        src_dist = np.sqrt(np.sum(np.power(loc - src_node_coord, 2), 1))
+        
+        if (np.amin(dst_dist) < 10) & (np.amin(src_dist) < 10):
+            iKeep.append(i)
+
+    return iKeep
+    
+def get_node_coord(branch_data, skeleton):
+    # get all node IDs
+    src_node_id = np.unique(branch_data['node-id-src'].values)
+    dst_node_id = np.unique(branch_data['node-id-dst'].values)
+    all_node_id = np.unique(np.append(src_node_id, dst_node_id))
+    
+    # get dead node IDs
+    dead_branch_id = np.argwhere(branch_data['branch-type'] == 1)[:,0]
+    dead_node_id = np.unique(branch_data['node-id-dst'].values[dead_branch_id])
+    junc_node_id = np.setdiff1d(all_node_id,dead_node_id) 
+    
+    # swap cols
+    dead_node_coord = skeleton.coordinates[dead_node_id][:,[1, 0]]
+    junc_node_coord = skeleton.coordinates[junc_node_id][:,[1, 0]]
+
+    return junc_node_coord, dead_node_coord
+
+def get_center_branch(branch_data, skeleton_img):
+    
+    col, row = np.nonzero(skeleton_img)
+    loc = np.transpose(np.matrix(np.vstack((row, col))))
+    
+    dead_branch_center = []
+    junc_branch_center = []    
+    
+    for i, row in branch_data.iterrows():
+        
+        dst_node_coord = np.array((row['coord-dst-{1}'], row['coord-dst-{0}']))
+        src_node_coord = np.array((row['coord-src-{1}'], row['coord-src-{0}']))
+
+        center_node_coord = (dst_node_coord + src_node_coord)/2
+
+        dist = np.sqrt(np.sum(np.power(loc - center_node_coord, 2), 1))
+
+        i = np.argmin(dist)
+        center = [loc[i,0], loc[i,1]]
+        
+        if row['branch-type'] == 1:
+            dead_branch_center.append(center)
+            
+        else:
+            junc_branch_center.append(center)
+
+    return np.array(junc_branch_center), np.array(dead_branch_center)  

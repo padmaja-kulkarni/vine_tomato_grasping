@@ -81,6 +81,7 @@
 			<param name ="debug" value="$(arg move_robot_debug)"/>
     </node>
 
+		<!--
 		<node name="visualize_object"
 			pkg="flex_grasp"
 			type="visualize_object.py"
@@ -89,5 +90,6 @@
 			<remap from="/collision_object" to="/$(arg robot_name)/collision_object"/>
 			<param name ="debug" value="$(arg visualize_object_debug)"/>
 		</node>
+	-->
 	</group>
 </launch>
