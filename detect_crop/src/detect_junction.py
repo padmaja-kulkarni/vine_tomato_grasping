@@ -106,7 +106,7 @@ def get_center_branch(branch_data, skeleton_img):
         else:
             junc_branch_center.append(center)
 
-    return np.array(junc_branch_center), np.array(dead_branch_center)
+    return np.array(junc_branch_center), np.array(dead_branch_center)       
 
 #%% init
 iTomato = 1 #  48 #        # tomato file to load
