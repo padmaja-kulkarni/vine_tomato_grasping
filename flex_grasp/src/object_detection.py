@@ -13,7 +13,7 @@ import math
 from cv_bridge import CvBridge, CvBridgeError
 
 # msg
-from std_msgs.msg import String, Int32
+from std_msgs.msg import String
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import CameraInfo
 from geometry_msgs.msg import PoseStamped
@@ -75,7 +75,12 @@ class ObjectDetection(object):
 
         rospy.loginfo("Storing visiual results in: ", self.pwdProcess)
 
+        pwd = os.path.dirname(__file__)
 
+        self.process_image = ProcessImage(camera_sim = self.camera_sim,
+                     tomatoName = 'ros_tomato',
+                     pwdProcess = pwd,
+                     saveIntermediate = False)
 
         if self.debug_mode:
             log_level = rospy.DEBUG
@@ -209,55 +214,49 @@ class ObjectDetection(object):
 
 
         if self.wait_for_data(5):
-            pwd = os.path.dirname(__file__)
 
 
-            image = ProcessImage(self.color_image,
-                                 camera_sim = self.camera_sim,
-                                 use_truss = self.use_truss,
-                                 tomatoName = 'ros_tomato',
-                                 pwdProcess = pwd,
-                                 saveIntermediate = False)
+            self.process_image.add_image(self.color_image)
 
 
             if self.tomato_radius_max is not None:
-                image.tomato_radius_max = self.tomato_radius_max
+                self.process_image.tomato_radius_max = self.tomato_radius_max
 
             self.intrin = camera_info2intrinsics(self.color_info)
 
             # process image
             if self.use_truss:
                 
-                if not image.process_image():
+                if not self.process_image.process_image():
                     rospy.logwarn("[OBJECT DETECTION] Failed to process image")
                     return False
 
-                object_features = image.get_object_features()
+                object_features = self.process_image.get_object_features()
 
                 cage_pose = self.generate_cage_pose(object_features['grasp_location'])
                 tomatoes = self.generate_tomatoes(object_features['tomato'])
                 peduncle = self.generate_peduncle(object_features['peduncle'], cage_pose) # object_features['peduncle']
                 
-                img_tomato = image.get_truss_visualization()
-                img_segment = image.get_segmented_image(local = True)
+                img_tomato = self.process_image.get_truss_visualization()
+                img_segment = self.process_image.get_segmented_image(local = True)
 
             elif not self.use_truss:
-                image.color_space()
-                image.segment_truss()
-                image.detect_tomatoes_global()
-                tomato_features = image.get_tomatoes()
+                self.process_image.color_space()
+                self.process_image.segment_truss()
+                self.process_image.detect_tomatoes_global()
+                tomato_features = self.process_image.get_tomatoes()
 
                 cage_pose = PoseStamped()
                 tomatoes = self.generate_tomatoes(tomato_features)
                 peduncle = Peduncle()
                 
-                img_tomato = image.get_tomato_visualization()
-                img_segment = image.get_segmented_image()
+                img_tomato = self.process_image.get_tomato_visualization()
+                img_segment = self.process_image.get_segmented_image()
 
             truss = self.create_truss(tomatoes, cage_pose, peduncle)
 
             # get images
-            img_hue, img_saturation, img_A  = image.get_color_components()
+            img_hue, img_saturation, img_A  = self.process_image.get_color_components()
             
 
             # publish results tomato_img
@@ -502,12 +501,14 @@ class ObjectDetection(object):
             # if not self.debug_mode:
             #     success = self.generate_object()
             # if self.debug_mode:
+            self.process_image.use_truss = False
             self.use_truss = False
             self.take_picture = True
             success = self.detect_object()
 
         elif (self.event == "detect_truss"):
             rospy.logdebug("[OBEJCT DETECTION] Detect truss")
+            self.process_image.use_truss = True
             self.use_truss = True
             self.take_picture = True
             success = self.detect_object()

@@ -18,6 +18,9 @@ from skimage.measure import label, regionprops
 from skimage.transform import rotate
 from skimage.morphology import skeletonize
 
+
+from flex_grasp.msg import ImageProcessingSettings
+
 import skan
 
 # custom functions
@@ -44,7 +47,7 @@ from util import plot_circles
 
 class ProcessImage(object):
 
-    def __init__(self, imRGB, 
+    def __init__(self, 
                  use_truss = True,
                  camera_sim = True, 
                  tomatoName = 'tomato', 
@@ -55,19 +58,7 @@ class ProcessImage(object):
 
         self.saveFormat = saveFormat
 
-        DIM = imRGB.shape[:2]
-        width_desired = 1280.0
-        scale = width_desired/DIM[1]
-        width = int(DIM[1] * scale)
-        height = int(DIM[0] * scale)
         
-        imRGB = cv2.resize(imRGB, (width, height), interpolation = cv2.INTER_AREA)
-        self.scale = scale
-        self.DIM = imRGB.shape[:2]
-        self.W = DIM[0]
-        self.H = DIM[1]        
-        
-        self.imRGB = imRGB
         self.saveIntermediate = saveIntermediate
 
         self.camera_sim = camera_sim
@@ -88,10 +79,26 @@ class ProcessImage(object):
         self.param1 = 50
         self.param2 = 150
         
-        
         # detect junctions
         self.distance_threshold = 10
 
+
+    def add_image(self, imRGB):
+        
+        DIM = imRGB.shape[:2]
+        width_desired = 1280.0
+        scale = width_desired/DIM[1]
+        width = int(DIM[1] * scale)
+        height = int(DIM[0] * scale)
+        
+        imRGB = cv2.resize(imRGB, (width, height), interpolation = cv2.INTER_AREA)
+        self.scale = scale
+        self.DIM = imRGB.shape[:2]
+        self.W = DIM[0]
+        self.H = DIM[1]        
+        
+        self.imRGB = imRGB
+        
         if self.saveIntermediate:
             save_img(self.imRGB, self.pwdProcess, '01', saveFormat = self.saveFormat)
 
@@ -559,6 +566,17 @@ class ProcessImage(object):
         success = self.detect_grasp_location(strategy = "cage")
         return success
 
+    def get_setting(self):
+        settings = ImageProcessingSettings()
+        settings.tomato_radius_min.data = self.tomato_radius_min
+        settings.tomato_radius_max.data = self.tomato_radius_max
+        settings.tomato_distance_min.data = self.tomato_distance_min
+        settings.dp.data = self.dp
+        settings.param1.data = self.param1
+        settings.param2.data = self.param2
+        
+        return settings
+
 def main():
     #%%########
     ## Path ##
@@ -600,22 +618,26 @@ def main():
         if saveIntermediate:
             save_img(imRGB, pwdResults, '01')
 
-        image = ProcessImage(imRGB, 
+        proces_image = ProcessImage(imRGB, 
                              camera_sim = False,
                              use_truss = True,
                              tomatoName = tomatoName, 
                              pwdProcess = pwdResults, 
                              saveIntermediate = saveIntermediate)
-        success = image.process_image()
+                             
+                             
+        proces_image.add_image(imRGB)
+        success = proces_image.process_image()
+
 
         # plot_circles(image.imRGB, image.graspL, [10], savePath = pwdDataProc, saveName = str(iTomato), fileFormat = 'png')
         # plot_circles(image.imRGB, image.graspL, [10], savePath = pwdProcess, saveName = '06')
         # plot_circles(image.imRGBR, image.graspR, [10], savePath = pwdProcess, saveName = '06')
         
         if success:         
-            plot_circles(imRGB, image.graspO, [10], savePath = pwdResults, saveName = '06')
+            plot_circles(imRGB, proces_image.graspO, [10], savePath = pwdResults, saveName = '06')
     
-            row, col, angle = image.get_grasp_info()
+            row, col, angle = proces_image.get_grasp_info()
     
             print('row: ', row)
             print('col: ', col)
