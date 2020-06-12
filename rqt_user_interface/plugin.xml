@@ -1,7 +1,7 @@
 <library path="src">
-  <class name="SDH Grasp" type="rqt_user_interface.rqt_user_interface.RqtSdhGrasp" base_class_type="rqt_gui_py::Plugin">
+  <class name="Flex Grasp" type="rqt_user_interface.rqt_user_interface.RqtSdhGrasp" base_class_type="rqt_gui_py::Plugin">
     <description>
-      GUI for grasping with the SDH hand.
+      GUI for commanding the flex_grasp statemachine
     </description>
     <qtgui>
       <!-- optional grouping...

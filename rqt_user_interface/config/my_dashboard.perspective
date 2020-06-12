@@ -5,7 +5,7 @@
       "keys": {
         "running-plugins": {
           "type": "repr",
-          "repr": "{u'rqt_user_interface/SDH Grasp': [1], u'rqt_image_view/ImageView': [6, 5, 4, 3, 2, 1], u'rqt_console/Console': [1]}"
+          "repr": "{u'rqt_user_interface/Flex Grasp': [1], u'rqt_image_view/ImageView': [6, 5, 4, 3, 2, 1], u'rqt_console/Console': [1]}"
         }
       },
       "groups": {
