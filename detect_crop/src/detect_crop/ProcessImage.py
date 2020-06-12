@@ -50,7 +50,9 @@ class ProcessImage(object):
                  tomatoName = 'tomato', 
                  saveIntermediate = False, 
                  pwdProcess = '', 
-                 saveFormat = 'png'):
+                 saveFormat = 'png',
+                 tomato_radius_max = 2                 
+                 ):
 
         self.saveFormat = saveFormat
 
@@ -78,6 +80,9 @@ class ProcessImage(object):
         self.filterDiameterTom = 11
         self.filterDiameterPend = 5
 
+        self.tomato_radius_min = 8
+        self.tomato_radius_max = tomato_radius_max
+        self.tomato_distance_min = 5
 
 
         if self.saveIntermediate:
@@ -243,9 +248,9 @@ class ProcessImage(object):
         success = True
     
         tomatoFilteredLBlurred = cv2.GaussianBlur(self.tomatoL, (3, 3), 0)
-        minR = self.w/8 # 6
-        maxR = self.w/2
-        minDist = self.w/5
+        minR = self.w/self.tomato_radius_min # 6
+        maxR = self.w/self.tomato_radius_max
+        minDist = self.w/self.tomato_distance_min
 
         circles = cv2.HoughCircles(tomatoFilteredLBlurred, cv2.HOUGH_GRADIENT, 5, minDist,
                                   param1=50,param2=150, minRadius=minR, maxRadius=maxR)

@@ -13,7 +13,7 @@ import math
 from cv_bridge import CvBridge, CvBridgeError
 
 # msg
-from std_msgs.msg import String
+from std_msgs.msg import String, Int32
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import CameraInfo
 from geometry_msgs.msg import PoseStamped
@@ -53,6 +53,10 @@ class ObjectDetection(object):
         self.init = None
 
         self.take_picture = False
+
+        # params
+        self.tomato_radius_max = None
+
 
         # self.color_frame = None
         # self.depth_frame = None
@@ -122,6 +126,9 @@ class ObjectDetection(object):
         rospy.Subscriber("camera/aligned_depth_to_color/camera_info", CameraInfo, self.depth_info_cb)
         rospy.Subscriber("camera/depth_registered/points", PointCloud2, self.point_cloud_cb)        
         
+        
+        rospy.Subscriber("tomato_radius_max", Int32, self.tomato_radius_max_cb)
+
 
     def e_in_cb(self, msg):
         if self.event is None:
@@ -167,6 +174,10 @@ class ObjectDetection(object):
         if (self.pcl is None) and (self.take_picture):
             rospy.logdebug("[OBJECT DETECTION] Received point_ cloud info message")
             self.pcl = msg
+            
+    def tomato_radius_max_cb(self, msg):
+        self.tomato_radius_max = msg.data
+        rospy.logdebug("[PICK PLACE] Received tomato radius max message %s", msg.data)    
 
     def received_all_data(self):
         return (self.color_image is not None) and (self.depth_image is not None) and (self.depth_info is not None) and (self.color_info is not None) and (self.pcl is not None)
@@ -208,6 +219,9 @@ class ObjectDetection(object):
                                  pwdProcess = pwd,
                                  saveIntermediate = False)
 
+
+            if self.tomato_radius_max is not None:
+                image.tomato_radius_max = self.tomato_radius_max
 
             self.intrin = camera_info2intrinsics(self.color_info)
 

@@ -2,6 +2,7 @@ import os
 import rospy
 import rospkg
 
+# from PyQt4.QtGui import QSlider
 from qt_gui.plugin import Plugin
 from python_qt_binding import loadUi
 from python_qt_binding.QtWidgets import QWidget
@@ -48,11 +49,20 @@ class RqtImageProcessing(Plugin):
                                       String, queue_size=10, latch=False)
 
         # basic commands
-        # self._widget.HomeButton.clicked[bool].connect(self.handle_home)
-        self._widget.Slider.valueChanged.connect(lambda:self.print_value(self._widget.Slider))
+        param_min = 1
+        param_max = 10
         
-    def print_value(self, slider):
-        value = slider.value()
+        self._widget.Slider.setMinimum(param_min)
+        self._widget.Slider.setMaximum(param_max)
+        self._widget.Slider.setValue((param_min + param_max)/2)
+        self._widget.Slider.setTickInterval(param_max - param_min)
+
+
+        self._widget.Slider.valueChanged.connect(lambda: self.set_param('tomato_radius_max'))
+        
+    def set_param(self, param_name):
+        value = self._widget.Slider.value()
+        rospy.set_param(param_name, value)
         rospy.loginfo(value)
 
     def shutdown_plugin(self):
@@ -72,6 +82,3 @@ class RqtImageProcessing(Plugin):
         # Comment in to signal that the plugin has a way to configure
         # This will enable a setting button (gear icon) in each dock widget title bar
         # Usually used to open a modal configuration dialog
-
-    def handle_home(self):
-        self.pub_grasp.publish("home")

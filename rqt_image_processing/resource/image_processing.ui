@@ -29,6 +29,11 @@
       <property name="orientation">
        <enum>Qt::Horizontal</enum>
       </property>
+      <!--
+      <property name="tick_position">
+       <enum>Qt::TicksBelow</enum>
+      </property>
+    -->
      </widget>
 
      <!--

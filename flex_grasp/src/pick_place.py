@@ -114,8 +114,7 @@ class PickPlace(object):
         # if self.command == "transform":
         self.object_features = msg
         rospy.logdebug("[PICK PLACE] Received new object feature message")    
-
-    
+  
     def get_trans(self):
         if not (self.object_features is None):
             try:
