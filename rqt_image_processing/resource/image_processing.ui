@@ -16,8 +16,8 @@
   <layout class="QGridLayout" name="gridLayout">
 
    <item row="0" column="0">
-     <!--
-     <widget class="QSlider" name="slider">
+
+     <widget class="QSlider" name="Slider">
       <property name="geometry">
        <rect>
         <x>200</x>
@@ -30,13 +30,14 @@
        <enum>Qt::Horizontal</enum>
       </property>
      </widget>
-      -->
 
+     <!--
       <widget class="QPushButton" name="HomeButton">
        <property name="text">
         <string>Home</string>
        </property>
       </widget>
+    -->
     </item>
 
   </layout>

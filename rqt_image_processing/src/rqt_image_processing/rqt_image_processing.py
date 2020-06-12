@@ -48,8 +48,12 @@ class RqtImageProcessing(Plugin):
                                       String, queue_size=10, latch=False)
 
         # basic commands
-        self._widget.HomeButton.clicked[bool].connect(self.handle_home)
-
+        # self._widget.HomeButton.clicked[bool].connect(self.handle_home)
+        self._widget.Slider.valueChanged.connect(lambda:self.print_value(self._widget.Slider))
+        
+    def print_value(self, slider):
+        value = slider.value()
+        rospy.loginfo(value)
 
     def shutdown_plugin(self):
         self.pub_grasp.unregister()
