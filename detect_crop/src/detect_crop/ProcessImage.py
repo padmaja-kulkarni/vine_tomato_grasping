@@ -374,7 +374,7 @@ class ProcessImage(object):
 
         if strategy== "cage":
             
-            if self.junc_branch_center:        
+            if self.junc_branch_center.size > 0: # self.junc_branch_center:        
                 print('Detected a junction')
                 loc = self.junc_branch_center
                 dist = np.sqrt(np.sum(np.power(loc - self.comL, 2), 1))
