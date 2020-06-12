@@ -244,11 +244,11 @@ class ProcessImage(object):
     
         tomatoFilteredLBlurred = cv2.GaussianBlur(self.tomatoL, (3, 3), 0)
         minR = self.w/8 # 6
-        maxR = self.w/4
+        maxR = self.w/2
         minDist = self.w/5
 
         circles = cv2.HoughCircles(tomatoFilteredLBlurred, cv2.HOUGH_GRADIENT, 5, minDist,
-                                   param1=50,param2=150, minRadius=minR, maxRadius=maxR)
+                                  param1=50,param2=150, minRadius=minR, maxRadius=maxR)
 
         if circles is None:
             warnings.warn("Failed to detect any circle!")
@@ -373,12 +373,20 @@ class ProcessImage(object):
         success = True        
 
         if strategy== "cage":
-#            skeleton = skeletonize(self.penduncleMain/self.imMax)
-#            col, row = np.nonzero(skeleton)
-#            loc_old = np.transpose(np.matrix(np.vstack((row, col))))
-            loc = self.junc_branch_center #             
             
-            dist = np.sqrt(np.sum(np.power(loc - self.comL, 2), 1))
+            if self.junc_branch_center:        
+                print('Detected a junction')
+                loc = self.junc_branch_center
+                dist = np.sqrt(np.sum(np.power(loc - self.comL, 2), 1))
+                
+            else:
+                print('Did not detect a junction')                
+                skeleton = skeletonize(self.penduncleMain/self.imMax)
+                col, row = np.nonzero(skeleton)
+                loc = np.transpose(np.matrix(np.vstack((row, col))))
+                
+                dist = np.sqrt(np.sum(np.power(loc - self.comL, 2), 1))
+                
             i = np.argmin(dist)
             
             grasp_angle = self.angle
