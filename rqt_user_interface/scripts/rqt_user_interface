@@ -2,7 +2,7 @@
 
 import sys
 
-from rqt_user_interface.rqt_user_interface import RqtSdhGrasp
+from rqt_user_interface.rqt_user_interface import RqtFlexGrasp
 from rqt_gui.main import Main
 
 plugin = 'rqt_user_interface' #

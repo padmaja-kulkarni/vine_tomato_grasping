@@ -7,12 +7,12 @@ from python_qt_binding import loadUi
 from python_qt_binding.QtWidgets import QWidget
 from std_msgs.msg import String
 
-class RqtSdhGrasp(Plugin):
+class RqtFlexGrasp(Plugin):
 
     def __init__(self, context):
-        super(RqtSdhGrasp, self).__init__(context)
+        super(RqtFlexGrasp, self).__init__(context)
         # Give QObjects reasonable names
-        self.setObjectName('RqtSdhGrasp')
+        self.setObjectName('RqtFlexGrasp')
 
         # Process standalone plugin command-line arguments
         from argparse import ArgumentParser
@@ -55,9 +55,9 @@ class RqtSdhGrasp(Plugin):
 
         # tasks
         self._widget.DetectTomatoButton.clicked[bool].connect(self.handle_detect_tomato)
-        self._widget.DetectTrussButton.clicked[bool].connect(self.handle_detect_truss)        
+        self._widget.DetectTrussButton.clicked[bool].connect(self.handle_detect_truss)
 
-        self._widget.PointButton.clicked[bool].connect(self.handle_point)        
+        self._widget.PointButton.clicked[bool].connect(self.handle_point)
         self._widget.PickPlaceButton.clicked[bool].connect(self.handle_pick_place)
         self._widget.PickButton.clicked[bool].connect(self.handle_pick)
         self._widget.PlaceButton.clicked[bool].connect(self.handle_place)
@@ -97,7 +97,7 @@ class RqtSdhGrasp(Plugin):
 
     def handle_detect_truss(self):
         self.pub_grasp.publish("detect_truss")
-        
+
     def handle_point(self):
         self.pub_grasp.publish("point")
 
