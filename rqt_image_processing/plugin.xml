@@ -1,0 +1,20 @@
+<library path="src">
+  <class name="Image Processing" type="rqt_image_processing.rqt_image_processing.RqtImageProcessing" base_class_type="rqt_gui_py::Plugin">
+    <description>
+      GUI for adjusting image processing parameters
+    </description>
+    <qtgui>
+      <!-- optional grouping...
+      <group>
+        <label>Group</label>
+      </group>
+      <group>
+        <label>Subgroup</label>
+      </group>
+      -->
+      <label>Robot Tools</label>
+      <icon type="theme">system-help</icon>
+      <statustip>GUI for adjusting image processing parameters.</statustip>
+    </qtgui>
+  </class>
+</library>
