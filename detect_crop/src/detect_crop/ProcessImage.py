@@ -50,8 +50,7 @@ class ProcessImage(object):
                  tomatoName = 'tomato', 
                  saveIntermediate = False, 
                  pwdProcess = '', 
-                 saveFormat = 'png',
-                 tomato_radius_max = 2                 
+                 saveFormat = 'png'               
                  ):
 
         self.saveFormat = saveFormat
@@ -77,13 +76,21 @@ class ProcessImage(object):
         self.pwdProcess = pwdProcess
         self.tomatoName = tomatoName
 
+        #
         self.filterDiameterTom = 11
         self.filterDiameterPend = 5
 
+        # detect tomatoes
         self.tomato_radius_min = 8
-        self.tomato_radius_max = tomato_radius_max
+        self.tomato_radius_max = 2
         self.tomato_distance_min = 5
-
+        self.dp = 5
+        self.param1 = 50
+        self.param2 = 150
+        
+        
+        # detect junctions
+        self.distance_threshold = 10
 
         if self.saveIntermediate:
             save_img(self.imRGB, self.pwdProcess, '01', saveFormat = self.saveFormat)
@@ -123,9 +130,7 @@ class ProcessImage(object):
         return success
 
     def filter_img(self):
-        #%%###########
-        ### Filter ###
-        ##############
+
         success = True
 
         # tomato
@@ -167,9 +172,7 @@ class ProcessImage(object):
             
         if len(regions) > 1: 
             warnings.warn("Multiple regions found!")
-        angle = regions[0].orientation*180/np.pi # + 90
-        # print('angle: ', angle)
-
+        angle = np.rad2deg(regions[0].orientation)
         # rotate
         tomatoR= np.uint8(self.imMax*rotate(self.tomato, -angle, resize=True))
         peduncleR = np.uint8(self.imMax*rotate(self.peduncle, -angle, resize=True))
@@ -198,8 +201,8 @@ class ProcessImage(object):
 
         #get origin
         originR = np.matrix((x, y))
-        originO = rot2or(originR, self.DIM, -angle/180*np.pi)
-        originL = or2rot(np.matrix((1,1)), dim, angle/180*np.pi)
+        originO = rot2or(originR, self.DIM, np.deg2rad(-angle))
+        originL = or2rot(np.matrix((1,1)), dim, np.deg2rad(angle))
 
         self.backgroundL = backgroundL
         self.tomatoL = tomatoL
@@ -222,6 +225,7 @@ class ProcessImage(object):
 
 
     def detect_tomatoes_global(self):
+        # TODO: crop image into multiple 'tomatoes', and detect tomatoes in each crop
         tomatoFilteredLBlurred = cv2.GaussianBlur(self.tomato, (3, 3), 0)
         minR = self.W/20 # 6
         maxR = self.W/8
@@ -250,10 +254,13 @@ class ProcessImage(object):
         tomatoFilteredLBlurred = cv2.GaussianBlur(self.tomatoL, (3, 3), 0)
         minR = self.w/self.tomato_radius_min # 6
         maxR = self.w/self.tomato_radius_max
-        minDist = self.w/self.tomato_distance_min
+        minDist = self.w/self.tomato_distance_min 
 
-        circles = cv2.HoughCircles(tomatoFilteredLBlurred, cv2.HOUGH_GRADIENT, 5, minDist,
-                                  param1=50,param2=150, minRadius=minR, maxRadius=maxR)
+        circles = cv2.HoughCircles(tomatoFilteredLBlurred, cv2.HOUGH_GRADIENT, self.dp, minDist,
+                                  param1 = self.param1,
+                                  param2 = self.param2, 
+                                  minRadius=minR, 
+                                  maxRadius=maxR)
 
         if circles is None:
             warnings.warn("Failed to detect any circle!")
@@ -270,10 +277,10 @@ class ProcessImage(object):
             # find CoM
             comL = (radii**2) * centersL/(np.sum(radii**2))
             comR = comL + self.box[0:2]
-            comO = rot2or(comR, self.DIM, -self.angle/180*np.pi)
+            comO = rot2or(comR, self.DIM, -np.deg2rad(self.angle))
     
             centersR = centersL + self.box[0:2]
-            centersO = rot2or(centersR, self.DIM, -self.angle/180*np.pi)
+            centersO = rot2or(centersR, self.DIM, -np.deg2rad(self.angle))
 
         self.comL = comL
         self.comO = comO
@@ -287,9 +294,6 @@ class ProcessImage(object):
         return success
 
     def detect_peduncle(self):
-        #%%##################
-        ## DETECT PEDUNCLE ##
-        #####################
     
         success = True    
     
@@ -317,13 +321,8 @@ class ProcessImage(object):
         return success
 
 
-
     def detect_junction(self):
 
-
-        # PARAMETERS
-        distance_threshold = 10
-        
         # create skeleton image
         skeleton_img = skeletonize(self.peduncleL/self.imMax)
         
@@ -334,7 +333,7 @@ class ProcessImage(object):
         # get all node coordiantes
         junc_node_coord, dead_node_coord = get_node_coord(branch_data, skeleton)
         
-        b_remove = (skeleton.distances < distance_threshold) & (branch_data['branch-type'] == 1) 
+        b_remove = (skeleton.distances < self.distance_threshold) & (branch_data['branch-type'] == 1) 
         i_remove = np.argwhere(b_remove)[:,0]
         
         # prune dead branches
@@ -415,7 +414,7 @@ class ProcessImage(object):
         
         graspL = np.matrix(loc[i, :])
         graspR = graspL + [self.box[0], self.box[1]]
-        graspO = rot2or(graspR, self.DIM, -self.angle/180*np.pi)
+        graspO = rot2or(graspR, self.DIM, np.deg2rad(-self.angle))
 
         self.graspL = graspL
         self.graspR = graspR
@@ -460,7 +459,7 @@ class ProcessImage(object):
         graspPixel = np.around(self.graspO[0]/self.scale).astype(int)
         row = graspPixel[1]
         col =  graspPixel[0]
-        angle = self.grasp_angle/180*np.pi
+        angle = np.deg2rad(self.grasp_angle)
 
         grasp_location = {"row": row, "col": col, "angle": angle}
         return grasp_location
@@ -483,7 +482,7 @@ class ProcessImage(object):
 
         row = graspPixel[1]
         col = graspPixel[0]
-        angle = self.angle/180*np.pi
+        angle = np.deg2rad(self.angle)
 
         return row, col, angle
         

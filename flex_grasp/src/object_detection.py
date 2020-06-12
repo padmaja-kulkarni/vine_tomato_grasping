@@ -26,6 +26,7 @@ import struct
 from flex_grasp.msg import Tomato
 from flex_grasp.msg import Truss
 from flex_grasp.msg import Peduncle
+from flex_grasp.msg import ImageProcessingSettings
 
 # custom func
 from detect_crop.ProcessImage import ProcessImage
@@ -58,8 +59,8 @@ class ObjectDetection(object):
         self.tomato_radius_max = None
 
 
-        # self.color_frame = None
-        # self.depth_frame = None
+        self.color_frame = "camera_color_optical_frame"
+        self.depth_frame = "camera_depth_optical_frame"
         self.camera_frame = "camera_color_optical_frame"
 
         self.camera_sim = rospy.get_param("camera_sim")
@@ -122,12 +123,11 @@ class ObjectDetection(object):
         rospy.Subscriber("camera/color/image_raw", Image, self.color_image_cb)
         rospy.Subscriber("camera/aligned_depth_to_color/image_raw", Image, self.depth_image_cb)
         rospy.Subscriber("camera/color/camera_info", CameraInfo, self.color_info_cb)
-        # rospy.Subscriber("camera/depth/camera_info", CameraInfo, self.depth_info_cb)
         rospy.Subscriber("camera/aligned_depth_to_color/camera_info", CameraInfo, self.depth_info_cb)
         rospy.Subscriber("camera/depth_registered/points", PointCloud2, self.point_cloud_cb)        
         
         
-        rospy.Subscriber("tomato_radius_max", Int32, self.tomato_radius_max_cb)
+        rospy.Subscriber("image_processing_settings", ImageProcessingSettings, self.image_processing_settings_cb)
 
 
     def e_in_cb(self, msg):
@@ -144,7 +144,7 @@ class ObjectDetection(object):
             rospy.logdebug("[OBJECT DETECTION] Received color image message")
             try:
                 self.color_image = self.bridge.imgmsg_to_cv2(msg, "rgb8")
-                self.color_frame = "camera_color_optical_frame" # msg.header.frame_id
+                # self.color_frame = "camera_color_optical_frame" # msg.header.frame_id
             except CvBridgeError as e:
                 print(e)
 
@@ -156,7 +156,7 @@ class ObjectDetection(object):
                     self.depth_image = self.bridge.imgmsg_to_cv2(msg, "passthrough")
                 else:
                     self.depth_image = self.bridge.imgmsg_to_cv2(msg, "passthrough")/1000.0
-                self.depth_frame = "camera_depth_optical_frame" # msg.header.frame_id
+                # self.depth_frame = "camera_depth_optical_frame" # msg.header.frame_id
             except CvBridgeError as e:
                 print(e)
 
@@ -175,9 +175,9 @@ class ObjectDetection(object):
             rospy.logdebug("[OBJECT DETECTION] Received point_ cloud info message")
             self.pcl = msg
             
-    def tomato_radius_max_cb(self, msg):
-        self.tomato_radius_max = msg.data
-        rospy.logdebug("[PICK PLACE] Received tomato radius max message %s", msg.data)    
+    def image_processing_settings_cb(self, msg):
+        self.tomato_radius_max = msg.tomato_radius_max.data
+        rospy.logdebug("[PICK PLACE] Received tomato radius max message %s", msg)    
 
     def received_all_data(self):
         return (self.color_image is not None) and (self.depth_image is not None) and (self.depth_info is not None) and (self.color_info is not None) and (self.pcl is not None)

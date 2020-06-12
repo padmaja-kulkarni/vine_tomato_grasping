@@ -20,6 +20,7 @@ add_message_files(
   Tomato.msg
   Truss.msg
   Peduncle.msg
+  ImageProcessingSettings.msg
 )
 
 generate_messages(
