@@ -19,7 +19,7 @@ from skimage.transform import rotate
 from skimage.morphology import skeletonize
 
 
-from flex_grasp.msg import ImageProcessingSettings
+# from flex_grasp.msg import ImageProcessingSettings
 
 import skan
 
@@ -566,16 +566,16 @@ class ProcessImage(object):
         success = self.detect_grasp_location(strategy = "cage")
         return success
 
-    def get_setting(self):
-        settings = ImageProcessingSettings()
-        settings.tomato_radius_min.data = self.tomato_radius_min
-        settings.tomato_radius_max.data = self.tomato_radius_max
-        settings.tomato_distance_min.data = self.tomato_distance_min
-        settings.dp.data = self.dp
-        settings.param1.data = self.param1
-        settings.param2.data = self.param2
-        
-        return settings
+#    def get_setting(self):
+#        settings = ImageProcessingSettings()
+#        settings.tomato_radius_min.data = self.tomato_radius_min
+#        settings.tomato_radius_max.data = self.tomato_radius_max
+#        settings.tomato_distance_min.data = self.tomato_distance_min
+#        settings.dp.data = self.dp
+#        settings.param1.data = self.param1
+#        settings.param2.data = self.param2
+#        
+#        return settings
 
 def main():
     #%%########
@@ -618,8 +618,7 @@ def main():
         if saveIntermediate:
             save_img(imRGB, pwdResults, '01')
 
-        proces_image = ProcessImage(imRGB, 
-                             camera_sim = False,
+        proces_image = ProcessImage(camera_sim = False,
                              use_truss = True,
                              tomatoName = tomatoName, 
                              pwdProcess = pwdResults, 
