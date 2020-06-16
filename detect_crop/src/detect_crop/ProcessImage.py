@@ -23,6 +23,8 @@ from skimage.morphology import skeletonize
 
 import skan
 
+from image import Image
+
 # custom functions
 from util import add_border
 from util import romove_blobs
@@ -67,11 +69,17 @@ class ProcessImage(object):
         self.pwdProcess = pwdProcess
         self.tomatoName = tomatoName
 
-        #
-        self.filterDiameterTom = 11
-        self.filterDiameterPend = 5
+        # image
+        self.width_desired = 1280
+
+        # filtering
+        self.filter_tomato_diameter = 11
+        self.filter_tomato_shape = cv2.MORPH_ELLIPSE
+        self.filter_penduncle_diameter = 5
+        self.filter_penduncle_shape = cv2.MORPH_ELLIPSE
 
         # detect tomatoes
+        self.blur_size = (3,3)
         self.tomato_radius_min = 8
         self.tomato_radius_max = 2
         self.tomato_distance_min = 5
@@ -79,28 +87,19 @@ class ProcessImage(object):
         self.param1 = 50
         self.param2 = 150
         
+        self.peduncle_element = (20, 2)
+        
         # detect junctions
         self.distance_threshold = 10
 
 
     def add_image(self, imRGB):
         
-        DIM = imRGB.shape[:2]
-        width_desired = 1280.0
-        scale = width_desired/DIM[1]
-        width = int(DIM[1] * scale)
-        height = int(DIM[0] * scale)
         
-        imRGB = cv2.resize(imRGB, (width, height), interpolation = cv2.INTER_AREA)
-        self.scale = scale
-        self.DIM = imRGB.shape[:2]
-        self.W = DIM[0]
-        self.H = DIM[1]        
-        
-        self.imRGB = imRGB
+        self._image = Image(imRGB)
         
         if self.saveIntermediate:
-            save_img(self.imRGB, self.pwdProcess, '01', saveFormat = self.saveFormat)
+            save_img(self._image._data, self.pwdProcess, '01', saveFormat = self.saveFormat)
 
     def color_space(self):
         
@@ -141,12 +140,12 @@ class ProcessImage(object):
         success = True
 
         # tomato
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (self.filterDiameterTom, self.filterDiameterTom))
-        tomatoFiltered = cv2.morphologyEx(cv2.morphologyEx(self.tomato, cv2.MORPH_OPEN, kernel),cv2.MORPH_CLOSE, kernel)
+        filter_tomato_kernel = cv2.getStructuringElement(self.filter_tomato_shape, (self.filter_tomato_diameter, self.filter_tomato_diameter))
+        tomatoFiltered = cv2.morphologyEx(cv2.morphologyEx(self.tomato, cv2.MORPH_OPEN, filter_tomato_kernel),cv2.MORPH_CLOSE, filter_tomato_kernel)
 
         # peduncle
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (self.filterDiameterPend, self.filterDiameterPend))
-        peduncleFiltered = cv2.morphologyEx(cv2.morphologyEx(self.peduncle, cv2.MORPH_CLOSE, kernel),cv2.MORPH_OPEN, kernel)
+        filter_peduncle_kernel = cv2.getStructuringElement(self.filter_penduncle_shape, (self.filter_penduncle_diameter, self.filter_penduncle_diameter))
+        peduncleFiltered = cv2.morphologyEx(cv2.morphologyEx(self.peduncle, cv2.MORPH_CLOSE, filter_peduncle_kernel),cv2.MORPH_OPEN, filter_peduncle_kernel)
         peduncleFiltered = romove_blobs(peduncleFiltered, self.imMax)
 
         # background
@@ -233,13 +232,13 @@ class ProcessImage(object):
 
     def detect_tomatoes_global(self):
         # TODO: crop image into multiple 'tomatoes', and detect tomatoes in each crop
-        tomatoFilteredLBlurred = cv2.GaussianBlur(self.tomato, (3, 3), 0)
+        tomatoFilteredLBlurred = cv2.GaussianBlur(self.tomato, self.blur_size, 0)
         minR = self.W/20 # 6
         maxR = self.W/8
         minDist = self.W/10
 
         circles = cv2.HoughCircles(tomatoFilteredLBlurred, cv2.HOUGH_GRADIENT, 5, minDist,
-                                   param1=50,param2=100, minRadius=minR, maxRadius=maxR)
+                                   param1=self.param1,param2=self.param2, minRadius=minR, maxRadius=maxR)
 
         if circles is None:
             warnings.warn("Failed to detect any circle!")
@@ -258,16 +257,15 @@ class ProcessImage(object):
         #####################
         success = True
     
-        tomatoFilteredLBlurred = cv2.GaussianBlur(self.tomatoL, (3, 3), 0)
-        minR = self.w/self.tomato_radius_min # 6
+        tomatoFilteredLBlurred = cv2.GaussianBlur(self.tomatoL, self.blur_size, 0)
+        minR = self.w/self.tomato_radius_min
         maxR = self.w/self.tomato_radius_max
         minDist = self.w/self.tomato_distance_min 
 
-        circles = cv2.HoughCircles(tomatoFilteredLBlurred, cv2.HOUGH_GRADIENT, self.dp, minDist,
-                                  param1 = self.param1,
-                                  param2 = self.param2, 
-                                  minRadius=minR, 
-                                  maxRadius=maxR)
+        circles = cv2.HoughCircles(tomatoFilteredLBlurred, cv2.HOUGH_GRADIENT, 
+                                   self.dp, minDist, param1 = self.param1, 
+                                   param2 = self.param2, minRadius=minR, 
+                                   maxRadius=maxR)
 
         if circles is None:
             warnings.warn("Failed to detect any circle!")
@@ -304,7 +302,7 @@ class ProcessImage(object):
     
         success = True    
     
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (20, 2))
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, self.peduncle_element)
         # penduncleMain = cv2.morphologyEx(cv2.morphologyEx(self.peduncle, cv2.MORPH_OPEN, kernel),cv2.MORPH_CLOSE, kernel)
         penduncleMain = cv2.morphologyEx(self.peduncleL, cv2.MORPH_OPEN, kernel)
 
@@ -413,7 +411,7 @@ class ProcessImage(object):
             dist = np.minimum(dist0, dist1)
             i = np.argmax(dist)
             
-            grasp_angle = self.angle + 90
+            grasp_angle = self.angle
         else:
             print("Unknown grasping strategy")
             return False
@@ -566,16 +564,16 @@ class ProcessImage(object):
         success = self.detect_grasp_location(strategy = "cage")
         return success
 
-#    def get_setting(self):
-#        settings = ImageProcessingSettings()
-#        settings.tomato_radius_min.data = self.tomato_radius_min
-#        settings.tomato_radius_max.data = self.tomato_radius_max
-#        settings.tomato_distance_min.data = self.tomato_distance_min
-#        settings.dp.data = self.dp
-#        settings.param1.data = self.param1
-#        settings.param2.data = self.param2
-#        
-#        return settings
+    def get_settings(self):
+        settings = ImageProcessingSettings()
+        settings.tomato_radius_min.data = self.tomato_radius_min
+        settings.tomato_radius_max.data = self.tomato_radius_max
+        settings.tomato_distance_min.data = self.tomato_distance_min
+        settings.dp.data = self.dp
+        settings.param1.data = self.param1
+        settings.param2.data = self.param2
+        
+        return settings
 
 def main():
     #%%########

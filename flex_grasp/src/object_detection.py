@@ -82,6 +82,8 @@ class ObjectDetection(object):
                      pwdProcess = pwd,
                      saveIntermediate = False)
 
+        settings = self.process_image.get_settings()
+
         if self.debug_mode:
             log_level = rospy.DEBUG
             rospy.loginfo("[OBJECT DETECTION] Luanching object detection node in debug mode")
@@ -120,6 +122,11 @@ class ObjectDetection(object):
                                  
         self.pub_tomato_pcl = rospy.Publisher("tomato_pcl",
                                  PointCloud2, queue_size=10, latch=True)
+                                 
+        pub_image_processing_settings = rospy.Publisher("image_processing_settings",
+                                 ImageProcessingSettings, queue_size=10, latch=True)
+
+        pub_image_processing_settings.publish(settings)
 
         # Subscribe
         rospy.Subscriber("~e_in", String, self.e_in_cb)
@@ -181,8 +188,8 @@ class ObjectDetection(object):
             self.pcl = msg
             
     def image_processing_settings_cb(self, msg):
-        self.tomato_radius_max = msg.tomato_radius_max.data
-        rospy.logdebug("[PICK PLACE] Received tomato radius max message %s", msg)    
+        self.settings = msg
+        rospy.logdebug("[PICK PLACE] Received image processing settings")    
 
     def received_all_data(self):
         return (self.color_image is not None) and (self.depth_image is not None) and (self.depth_info is not None) and (self.color_info is not None) and (self.pcl is not None)
@@ -212,15 +219,17 @@ class ObjectDetection(object):
 
     def detect_object(self):
 
-
         if self.wait_for_data(5):
-
 
             self.process_image.add_image(self.color_image)
 
-
-            if self.tomato_radius_max is not None:
-                self.process_image.tomato_radius_max = self.tomato_radius_max
+            if self.settings is not None:
+                self.process_image.tomato_radius_min = self.settings.tomato_radius_min.data
+                self.process_image.tomato_radius_max = self.settings.tomato_radius_max.data
+                self.process_image.tomato_distance_min = self.settings.tomato_distance_min.data
+                self.process_image.dp = self.settings.dp.data                
+                self.process_image.param1 = self.settings.param1.data
+                self.process_image.param2 = self.settings.param2.data
 
             self.intrin = camera_info2intrinsics(self.color_info)
 
