@@ -349,7 +349,7 @@ class ObjectDetection(object):
         a = color[3]        
         
         index = np.nonzero(img)
-        
+
         uvs = list()
         for row, col in zip(index[0], index[1]):        
             uvs.append([col,row])

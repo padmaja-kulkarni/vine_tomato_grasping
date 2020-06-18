@@ -361,13 +361,11 @@ def translation_rot2or(dim, alpha):
 
     return (col, row)
 
-def or2rot(loc, dim, alpha):
+def or2rot(dim, alpha):
 
     if (alpha > np.pi or alpha < -np.pi):
          warnings.warn('Are you using radians?')
 
-    x = loc[0, 0]
-    y = loc[0, 1]
     H = dim[0]
     W = dim[1]
 

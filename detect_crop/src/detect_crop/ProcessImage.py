@@ -19,7 +19,7 @@ from skimage.transform import rotate
 from skimage.morphology import skeletonize
 
 import rospy
-# from flex_grasp.msg import ImageProcessingSettings
+from flex_grasp.msg import ImageProcessingSettings
 
 import skan
 
@@ -30,8 +30,6 @@ from util import add_border
 from util import romove_blobs
 from util import segmentation_truss_real, segmentation_tomato_real
 from util import segmentation_truss_sim
-from util import rot2or
-from util import or2rot
 from util import translation_rot2or
 from util import add_circles, add_contour
 
@@ -116,21 +114,21 @@ class ProcessImage(object):
         
         imHSV = cv2.cvtColor(self._image_RGB._data, cv2.COLOR_RGB2HSV)
         imLAB = cv2.cvtColor(self._image_RGB._data, cv2.COLOR_RGB2LAB)
-        self._image_hue = Image(imHSV[:, :, 0])
-        self._image_saturation = Image(imHSV[:, :, 1])
-        self._image_A  = Image(imLAB[:, :, 1])
+        self._image_hue = imHSV[:, :, 0]
+        self._image_saturation = imHSV[:, :, 1]
+        self._image_A  = imLAB[:, :, 1]
         
     def segment_truss(self):
 
         success = True
         if self.camera_sim:
-            background, tomato, peduncle = segmentation_truss_sim(self._image_saturation.get_data(), self._image_hue.get_data(), self._image_A.get_data(), self.imMax)
+            background, tomato, peduncle = segmentation_truss_sim(self._image_saturation, self._image_hue, self._image_A, self.imMax)
 
         else:
             if self.use_truss:
-                background, tomato, peduncle = segmentation_truss_real(self._image_hue.get_data(), self.imMax)
+                background, tomato, peduncle = segmentation_truss_real(self._image_hue, self.imMax)
             else:
-                background, tomato, peduncle = segmentation_tomato_real(self._image_A.det_data(), self.imMax)
+                background, tomato, peduncle = segmentation_tomato_real(self._image_A, self.imMax)
         
         self._background = Image(background)
         self._tomato = Image(tomato)
@@ -172,7 +170,7 @@ class ProcessImage(object):
             angle = 0
         else:
             angle = compute_angle(self._peduncle.get_data()) # [rad] 
-        
+            # angle = np.deg2rad(45)
         # rotate
         tomato_rotate = image_rotate(self._tomato, -angle)
         peduncle_rotate = image_rotate(self._peduncle, -angle)        
@@ -190,12 +188,11 @@ class ProcessImage(object):
 
         #get origin
         translation = translation_rot2or(self._image_RGB.get_dimensions(), -angle)
-        # transform = make_2d_transform(self._ROTATED_FRAME_ID, self._ORIGINAL_FRAME_ID, xy = translation , angle = -angle)
-        # self._buffer_core.set_transform(transform, "default_authority")   
-# _ROTATED_FRAME_ID
         dist = np.sqrt(translation[0]**2 + translation[1]**2)
-        print(translation)
-        transform = make_2d_transform(self._ORIGINAL_FRAME_ID,  self._LOCAL_FRAME_ID, xy = (-x,-y + dist), angle = angle)
+        # transform = make_2d_transform(self._ROTATED_FRAME_ID, self._ORIGINAL_FRAME_ID,  xy = (-150, -220) , angle = -angle)
+        # self._buffer_core.set_transform(transform, "default_authority")   
+
+        transform = make_2d_transform(self._ORIGINAL_FRAME_ID,  self._LOCAL_FRAME_ID, xy = (-x + dist,-y), angle = angle)
         self._buffer_core.set_transform(transform, "default_authority")   
 
         self._w = w
@@ -261,8 +258,8 @@ class ProcessImage(object):
             # comR = comL + self.box[0:2]
             # comO = rot2or(comR, self.DIM, -np.deg2rad(self.angle))
     
-            centersR = centers + self._bbox[0:2]
-            centersO = rot2or(centersR, self._image_RGB.get_dimensions(), -self._angle) # np.deg2rad(
+            # centersR = centers + self._bbox[0:2]
+            # centersO = rot2or(centersR, self._image_RGB.get_dimensions(), -self._angle) # np.deg2rad(
             center_points = []
             for center in centers:
                 center_points.append(make_2d_point(self._LOCAL_FRAME_ID, (center[0,0], center[0,1])))
@@ -273,7 +270,7 @@ class ProcessImage(object):
         self.centers = center_points
         self.radii = radii
 
-        if True: # self.saveIntermediate:
+        if self.saveIntermediate:
             xy_local = self.get_xy(center_points, self._LOCAL_FRAME_ID)
             plot_circles(self.crop(self._image_RGB).get_data(), xy_local, radii, savePath = self.pwdProcess, saveName = '05_a')
             
@@ -281,7 +278,6 @@ class ProcessImage(object):
 #            plot_circles(self.rotate(self._image_RGB).get_data(), xy_rotated, radii, savePath = self.pwdProcess, saveName = '05_a')
             
             xy_original = self.get_xy(center_points, self._ORIGINAL_FRAME_ID)
-            print "xy in original frame: ", xy_original
             plot_circles(self._image_RGB.get_data(), xy_original, radii, savePath = self.pwdProcess, saveName = '05_a')
              
         return success
@@ -292,7 +288,8 @@ class ProcessImage(object):
     
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, self.peduncle_element)
         # penduncleMain = cv2.morphologyEx(cv2.morphologyEx(self.peduncle, cv2.MORPH_OPEN, kernel),cv2.MORPH_CLOSE, kernel)
-        penduncleMain = cv2.morphologyEx(self.peduncleL, cv2.MORPH_OPEN, kernel)
+        peduncleL = self.crop(self._peduncle).get_data()
+        penduncleMain = cv2.morphologyEx(peduncleL, cv2.MORPH_OPEN, kernel)
 
         # only keep largest area
         penduncleMain = romove_blobs(penduncleMain, self.imMax)
@@ -301,15 +298,15 @@ class ProcessImage(object):
         if self.saveIntermediate:
             # https://stackoverflow.com/a/56142875
             contours, hierarchy= cv2.findContours(penduncleMain, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
-            segmentPeduncle = self.imRGB.copy()
+            segmentPeduncle = self.crop(self._image_RGB).get_data()
             cv2.drawContours(segmentPeduncle, contours, -1, (0,255,0), 3)
             save_img(segmentPeduncle, self.pwdProcess, '05_b', saveFormat= self.saveFormat)
 
-            penduncleMain = cv2.erode(self.peduncle,kernel,iterations = 1)
-            save_img(penduncleMain, self.pwdProcess, '05_b1', saveFormat = self.saveFormat)
-
-            penduncleMain = cv2.dilate(penduncleMain,kernel,iterations = 1)
-            save_img(penduncleMain, self.pwdProcess, '05_b2', saveFormat = self.saveFormat)
+#            penduncleMain = cv2.erode(self.peduncle,kernel,iterations = 1)
+#            save_img(penduncleMain, self.pwdProcess, '05_b1', saveFormat = self.saveFormat)
+#
+#            penduncleMain = cv2.dilate(penduncleMain,kernel,iterations = 1)
+#            save_img(penduncleMain, self.pwdProcess, '05_b2', saveFormat = self.saveFormat)
             
         return success
 
@@ -317,7 +314,8 @@ class ProcessImage(object):
     def detect_junction(self):
 
         # create skeleton image
-        skeleton_img = skeletonize(self.peduncleL/self.imMax)
+        peduncleL = self.crop(self._peduncle).get_data()
+        skeleton_img = skeletonize(peduncleL/self.imMax)
         
         # intiailize for skan
         skeleton = skan.Skeleton(skeleton_img)
@@ -364,17 +362,18 @@ class ProcessImage(object):
 
 
         if self.saveIntermediate:
-            plot_circles(self.imRGB, junc_branch_center, 5, savePath = self.pwdProcess, saveName = '05_c')
+            plot_circles(self.crop(self._image_RGB).get_data(), junc_branch_center, 5, savePath = self.pwdProcess, saveName = '05_c')
 
     def detect_grasp_location(self, strategy = 'cage'):
         success = True        
 
         if strategy== "cage":
-            
+            com = self.get_xy(self.com, self._LOCAL_FRAME_ID)
+ 
             if self.junc_branch_center.size > 0: # self.junc_branch_center:        
                 print('Detected a junction')
                 loc = self.junc_branch_center
-                dist = np.sqrt(np.sum(np.power(loc - self.comL, 2), 1))
+                dist = np.sqrt(np.sum(np.power(loc - com, 2), 1))
                 
             else:
                 print('Did not detect a junction')                
@@ -382,11 +381,10 @@ class ProcessImage(object):
                 col, row = np.nonzero(skeleton)
                 loc = np.transpose(np.matrix(np.vstack((row, col))))
                 
-                dist = np.sqrt(np.sum(np.power(loc - self.comL, 2), 1))
+                dist = np.sqrt(np.sum(np.power(loc - com, 2), 1))
                 
             i = np.argmin(dist)
-            
-            grasp_angle = self.angle
+            grasp_angle = self._angle
             
         elif strategy== "pinch":
             
@@ -399,39 +397,46 @@ class ProcessImage(object):
             dist = np.minimum(dist0, dist1)
             i = np.argmax(dist)
             
-            grasp_angle = self.angle
+            grasp_angle = self._angle
         else:
             print("Unknown grasping strategy")
             return False
-            
         
-        graspL = np.matrix(loc[i, :])
-        graspR = graspL + [self.box[0], self.box[1]]
-        graspO = rot2or(graspR, self.DIM, np.deg2rad(-self.angle))
 
-        self.graspL = graspL
-        self.graspR = graspR
-        self.graspO = graspO
+        grasp_point = make_2d_point(self._LOCAL_FRAME_ID, xy = (loc[i, 0], loc[i, 1]))
+        # graspR = graspL + [self.box[0], self.box[1]]
+        # graspO = rot2or(graspR, self.DIM, np.deg2rad(-self.angle))
+
+        self.grasp_point = grasp_point
+        # self.graspR = graspR
+        # self.graspO = graspO
         self.grasp_angle = grasp_angle
 
-        if self.saveIntermediate:
-            plot_circles(self.imRGBL, graspL, [10], savePath = self.pwdProcess, saveName = '06')
+        if True: # self.saveIntermediate:
+            xy_local = self.get_xy(grasp_point, self._LOCAL_FRAME_ID)
+            plot_circles(self.crop(self._image_RGB).get_data(), xy_local, 10, savePath = self.pwdProcess, saveName = '06')
+            
+            
+            xy_local = self.get_xy(grasp_point, self._ORIGINAL_FRAME_ID)
+            plot_circles(self._image_RGB.get_data(), xy_local, 10, savePath = self.pwdProcess, saveName = '06')
             
         return success
 
     def get_tomatoes(self):
 
-        mask_empty = np.zeros((self.W, self.H), np.uint8)        
+        mask_empty = np.zeros(self._image_RGB.get_dimensions(), np.uint8)        
         
-        if self.centersO is None:
+        if self.centers is None:
             tomatoRow = []
             tomatoCol = []
             radii = []
             mask = mask_empty
             
         else:
-            tomatoPixel = np.around(self.centersO/self.scale).astype(int)
-            radii = self.radii/self.scale
+            xy = self.get_xy(self.centers, self._ORIGINAL_FRAME_ID)
+            scale = self._image_RGB._scale
+            tomatoPixel = np.around(xy/scale).astype(int)
+            radii = self.radii/scale
             
             tomatoRow = tomatoPixel[:, 1]
             tomatoCol = tomatoPixel[:, 0]
@@ -443,17 +448,22 @@ class ProcessImage(object):
         return tomato
         
     def get_peduncle(self):
-        peduncle = {"mask": self.peduncle,
+        peduncle = {"mask": self._peduncle.get_data(),
                     "mask_main": self.penduncleMain}
         
         return peduncle
 
     def get_grasp_location(self):
-        graspPixel = np.around(self.graspO[0]/self.scale).astype(int)
-        row = graspPixel[1]
-        col =  graspPixel[0]
-        angle = np.deg2rad(self.grasp_angle)
-
+        scale = self._image_RGB._scale
+        xy = self.get_xy(self.grasp_point, self._ORIGINAL_FRAME_ID)
+        graspPixel = np.around(xy/scale).astype(int)
+        row = graspPixel[0,1]
+        col =  graspPixel[0,0]
+        angle = self.grasp_angle
+        
+#        print "grasp pixel: ", graspPixel
+#        print "row: ", row
+#        print "col: ", col
         grasp_location = {"row": row, "col": col, "angle": angle}
         return grasp_location
 
@@ -469,54 +479,58 @@ class ProcessImage(object):
             "peduncle": peduncle
         }
         return object_feature
-
-    def get_grasp_info(self):
-        graspPixel = np.around(self.graspO[0]).astype(int)
-
-        row = graspPixel[1]
-        col = graspPixel[0]
-        angle = np.deg2rad(self.angle)
-
-        return row, col, angle
         
     def get_tomato_visualization(self):
         return add_circles(self.imRGB, self.centersO, self.radii)
         
     def transform_points(self, points, targer_frame_id):
         
-        points_new = []
-        for point in points:
+        if isinstance(points, list):
+            points_new = []
+            for point in points:
+                point_transform = self._buffer_core.lookup_transform_core(point.header.frame_id, targer_frame_id, rospy.Time(0)) 
+                points_new.append(tf2_geometry_msgs.do_transform_pose(point, point_transform))
+                
+        else:
+            point = points
             point_transform = self._buffer_core.lookup_transform_core(point.header.frame_id, targer_frame_id, rospy.Time(0)) 
-            points_new.append(tf2_geometry_msgs.do_transform_pose(point, point_transform))
+            points_new = tf2_geometry_msgs.do_transform_pose(point, point_transform)          
         
         return points_new
         
-    def get_xy(self, points, targer_frame_id):
+    def get_xy(self, points, target_frame_id):
         
-        points_new = self.transform_points(points, targer_frame_id)        
+        points_new = self.transform_points(points, target_frame_id)        
         
-        xy = []
-        for point in points_new:
-            xy.append((point.pose.position.x, point.pose.position.y))
+        if isinstance(points, list):
+            xy = []
+            for point in points_new:
+                xy.append((point.pose.position.x, point.pose.position.y))
+        else:
+            xy = (points_new.pose.position.x, points_new.pose.position.y)
             
-        return xy
+        return np.array(xy, ndmin=2)
         
     def get_truss_visualization(self):
-        img = add_circles(self.imRGB, self.centersO, self.radii)
-        img = add_contour(img, self.peduncle)       # self.rescale(self.penduncleMain)
-        img = add_circles(img, self.graspO, 20, color = (255, 0, 0), thickness = -1)
+        xy_center = self.get_xy(self.centers, self._ORIGINAL_FRAME_ID)
+        xy_grasp = self.get_xy(self.grasp_point, self._ORIGINAL_FRAME_ID)
+        
+        img = add_circles(self._image_RGB.get_data(), xy_center, self.radii)
+        img = add_contour(img, self._peduncle.get_data())       # self.rescale(self.penduncleMain)
+        img = add_circles(img, xy_grasp, 20, color = (255, 0, 0), thickness = -1)
         return img       
         
         
     def get_segmented_image(self, local = False):
-        
+        data = stack_segments(self._image_RGB.get_data(), self._background.get_data(), self._tomato.get_data(), self._peduncle.get_data())
         if local:
-            return stack_segments(self.imRGBL, self.backgroundL, self.tomatoL, self.peduncleL)
+            image = Image(data) 
+            return self.crop(image).get_data()
         else:
-            return stack_segments(self.imRGB, self.background, self.tomato, self.peduncle)
+            return data
         
     def get_color_components(self):
-        return self.img_hue, self.img_saturation, self.img_A
+        return self._image_hue, self._image_saturation, self._image_A
 
     def crop(self, image):
         return image_crop(image, angle = -self._angle, bbox = self._bbox)
@@ -568,14 +582,16 @@ class ProcessImage(object):
             return success
         
         success1 = self.detect_tomatoes()
-#        success2 = self.detect_peduncle()
-#        self.detect_junction()
-#
-#        success = success1 and success2
-#        if success is False:
-#            return success
-#            
-#        success = self.detect_grasp_location(strategy = "cage")
+        success2 = self.detect_peduncle()
+        
+        success = success1 and success2
+        
+        if success is False:
+            return success
+            
+        self.detect_junction()
+            
+        success = self.detect_grasp_location(strategy = "cage")
         return success
 
     def get_settings(self):
@@ -593,7 +609,7 @@ class ProcessImage(object):
 # %matplotlib inline
 # %matplotlib qt
 
-def main():
+if __name__ == '__main__':
     #%%########
     ## Path ##
     ##########
@@ -644,7 +660,10 @@ def main():
         proces_image.add_image(rgb_data)
         success = proces_image.process_image()
 
-
+        features = proces_image.get_object_features()
+        features["tomato"]['mask']
+        
+        visual = proces_image.get_truss_visualization()
         # plot_circles(image.imRGB, image.graspL, [10], savePath = pwdDataProc, saveName = str(iTomato), fileFormat = 'png')
         # plot_circles(image.imRGB, image.graspL, [10], savePath = pwdProcess, saveName = '06')
         # plot_circles(image.imRGBR, image.graspR, [10], savePath = pwdProcess, saveName = '06')
@@ -658,5 +677,4 @@ def main():
 #            print('col: ', col)
 #            print('angle: ', angle)
 
-if __name__ == '__main__':
-    main()
+
