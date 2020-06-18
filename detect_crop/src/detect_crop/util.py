@@ -341,6 +341,26 @@ def rot2or(loc, dim, alpha):
         LOC[i, :] = np.matrix((COL, ROW))
     return LOC
 
+
+def translation_rot2or(dim, alpha):
+    
+    H = dim[0]
+    W = dim[1]
+    
+    if (alpha > np.pi or alpha < -np.pi):
+        warnings.warn('Are you using radians?')
+    
+    # trig equations depend on angle
+    if alpha < 0:
+        col = np.cos(alpha)*np.sin(alpha)*H
+        row = np.sin(alpha)*np.sin(alpha)*H
+    else:
+        col = np.sin(alpha)*np.sin(alpha)*W
+        row = np.cos(alpha)*np.sin(alpha)*W
+            
+
+    return (col, row)
+
 def or2rot(loc, dim, alpha):
 
     if (alpha > np.pi or alpha < -np.pi):
@@ -636,20 +656,33 @@ def load_rgb(pwd, name, horizontal = True):
 def add_circles(imRGB, centers, radii = 5, color = (255,255,255), thickness = 5):
     if radii is not None:
         
-        N = centers.shape[0]
+        if isinstance(centers, list):  
+            for i, center in enumerate(centers):
+                col = int(center[0])
+                row = int(center[1])
             
-        
-        for i in range(0, N, 1):
-            col = int(centers[i, 0])
-            row = int(centers[i, 1])
+                if type(radii) is np.ndarray:
+                    r = int(radii[i])
+                
+                else:            
+                    r = radii   
+                    
+                cv2.circle(imRGB,(col, row), r, color, thickness)
             
-            if type(radii) is np.ndarray:
-                r = int(radii[i])
-            
-            else:            
-                r = radii
-            
-            cv2.circle(imRGB,(col, row), r, color, thickness)
+        else:
+            N = centers.shape[0]
+                
+            for i in range(0, N, 1):
+                col = int(centers[i, 0])
+                row = int(centers[i, 1])
+                
+                if type(radii) is np.ndarray:
+                    r = int(radii[i])
+                
+                else:            
+                    r = radii
+                
+                cv2.circle(imRGB,(col, row), r, color, thickness)
             
     return imRGB
 
@@ -661,7 +694,7 @@ def add_contour(imRGB, mask, color = (255,255,255), thickness = 5):
 
 def plot_circles(imRGB, centers, radii = 5, savePath = None, saveName = None, 
                  figureTitle = "", titleSize = 20, resolution = 300, 
-                 fileFormat = 'pdf'):
+                 fileFormat = 'pdf', color = (255,255,255)):
     
     plt.rcParams["savefig.format"] = fileFormat 
     plt.rcParams["savefig.bbox"] = 'tight' 
@@ -671,7 +704,7 @@ def plot_circles(imRGB, centers, radii = 5, savePath = None, saveName = None,
     plt.subplot(1, 1, 1)
     ax = fig.gca()
     
-    imRGB = add_circles(imRGB, centers, radii = 5, color = (255,255,255), thickness = 5)    
+    imRGB = add_circles(imRGB, centers, radii = radii, color = color, thickness = 5)    
     
     
     plt.imshow(imRGB)
