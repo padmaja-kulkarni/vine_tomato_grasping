@@ -412,7 +412,7 @@ class ProcessImage(object):
         # self.graspO = graspO
         self.grasp_angle = grasp_angle
 
-        if True: # self.saveIntermediate:
+        if self.saveIntermediate: # True: # self.saveIntermediate:
             xy_local = self.get_xy(grasp_point, self._LOCAL_FRAME_ID)
             plot_circles(self.crop(self._image_RGB).get_data(), xy_local, 10, savePath = self.pwdProcess, saveName = '06')
             
@@ -434,6 +434,9 @@ class ProcessImage(object):
             
         else:
             xy = self.get_xy(self.centers, self._ORIGINAL_FRAME_ID)
+            xy_local = self.get_xy(self.centers, self._LOCAL_FRAME_ID)
+            # print(xy_local)
+            # print(xy)
             scale = self._image_RGB._scale
             tomatoPixel = np.around(xy/scale).astype(int)
             radii = self.radii/scale
