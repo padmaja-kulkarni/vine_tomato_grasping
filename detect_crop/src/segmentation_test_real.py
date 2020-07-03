@@ -23,7 +23,29 @@ from matplotlib import pyplot as plt
 from detect_crop.util import save_img
 from detect_crop.util import stack_segments
 from detect_crop.util import make_dirs
-from detect_crop.util import save_fig
+from detect_crop.util import save_fig, label2img
+
+from matplotlib import colors
+
+def hue_scatter(xy, RGB):
+    
+    rows, cols = RGB.shape[:2]
+    
+    pixel_colors = RGB.reshape((rows*cols, 3))
+    norm = colors.Normalize(vmin=-1.,vmax=1.)
+    norm.autoscale(pixel_colors)
+    pixel_colors = norm(pixel_colors).tolist()
+    
+    fig =  plt.figure()
+    ax = fig.add_subplot(2, 2, 1)
+    ax.scatter(xy[:, 0], xy[:, 1], facecolors=pixel_colors, marker=".")
+    ax.set_xlabel("Hue")
+    ax.set_ylabel("Saturation")
+
+
+    
+    plt.show()
+
 #%% init
 
 # tomato rot: 15
@@ -32,26 +54,14 @@ dataSet = "real_blue"
 
 
 settings = {
-    "rot": {
-        "extension": ".png",
-        "files": 14,
-        "name": "tomato_rot"},
-    "cases": {
-        "extension": ".jpg",
-        "files": 47,
-        "name": "tomato_cases"},
-    "real": {
-        "extension": ".png",
-        "files": 1,
-        "name": "tomato_real"},
-    "blue": {
-        "extension": ".jpg",
-        "files": 1,
-        "name": "tomato_blue"},
     "real_blue": {
         "extension": ".png",
-        "files": 3,
+        "files": 5,
         "name": "real_blue"},
+    "artificial": {
+        "extension": ".png",
+        "files": 19,
+        "name": "artificial"},
     "sim_blue": {
         "extension": ".png",
         "files": 1,
@@ -84,7 +94,7 @@ make_dirs(pwdResults)
 imMax = 255
 count = 0
 
-for iTomato in range(N, N + 1):
+for iTomato in range(1, 23):
 
     tomatoID = str(iTomato).zfill(nDigits)
     tomatoName = tomatoID # "tomato" + "_RGB_" + 
@@ -97,6 +107,8 @@ for iTomato in range(N, N + 1):
         print("Failed to load image from path: %s" %(imPath))
     else:
         
+
+
         # color spaces
         imRGB = cv2.cvtColor(imBGR, cv2.COLOR_BGR2RGB)
         imHSV = cv2.cvtColor(imRGB, cv2.COLOR_RGB2HSV)
@@ -106,51 +118,97 @@ for iTomato in range(N, N + 1):
         ### SEGMENTATION ###
         ####################
         im1 = imHSV[:, :, 0] # hue
-        im2 = imLAB[:, :, 1] # A
  
-        # Seperate truss from background
-        data1 = im1.flatten()
-        thresholdTomato, temp = cv2.threshold(data1,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+        dim = im1.shape
+        H = dim[0]
+        W = dim[1] 
         
-        threshPeduncle = 15
-        temp, truss_1 = cv2.threshold(im1,15,imMax,cv2.THRESH_BINARY_INV)
-        temp, truss_2 = cv2.threshold(im1,150,imMax,cv2.THRESH_BINARY) # circle
-        truss = cv2.bitwise_or(truss_1,truss_2)
-        background = cv2.bitwise_not(truss)
+        angle = np.deg2rad(2*np.float32(im1.flatten()))
+        data = np.stack((np.cos(angle), np.sin(angle)), axis = 1)
+ 
+        # Define criteria = ( type, max_iter = 10 , epsilon = 1.0 )
+        criteria = (cv2.TERM_CRITERIA_EPS, 1, np.sin(np.deg2rad(5))) #  + cv2.TERM_CRITERIA_MAX_ITER
+        compactness,labels,centers_xy = cv2.kmeans(data, 
+                                                   3, 
+                                                   None, 
+                                                   criteria, 
+                                                   2, 
+                                                   cv2.KMEANS_PP_CENTERS) 
+ 
+        centers = np.rad2deg(np.arctan2(centers_xy[:, 1], centers_xy[:, 0]))
         
-        # seperate tomato from peduncle
-        data2 = im1[(truss == imMax)].flatten()
-        threshPeduncle, temp = cv2.threshold(data2,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-   
-
-        temp, peduncle_1 = cv2.threshold(im1,60,imMax,cv2.THRESH_BINARY_INV)
-        temp, peduncle_2 = cv2.threshold(im1,15,imMax,cv2.THRESH_BINARY)
-        peduncle = cv2.bitwise_and(peduncle_1, peduncle_2)
-        tomato = truss # cv2.bitwise_not(peduncle)
+        label_peduncle = np.argmax(centers)
+        label_background = np.argmin(centers)
+        label_tomato = list(set([0, 1, 2]) - set([label_peduncle, label_background]))[0]
+ 
+         # compute masks
+        tomato = label2img(labels, label_tomato, H ,W)     
+        peduncle = label2img(labels, label_peduncle, H ,W)   
+        background = label2img(labels, label_background, H ,W)   
+        truss = cv2.bitwise_or(tomato,peduncle)
+        
+        # [-180, 180] => [0, 360]
+        centers[centers<0] += 360   
+        
+        #%% VISUALIZE
+        scale = 0.1
+        
+        height = int(H * scale)
+        width = int(W * scale)
+        dim = (width, height)
+        
+        RGB_mini = cv2.resize(imRGB, dim, interpolation = cv2.INTER_AREA)
+        im1_mini = cv2.resize(im1, dim, interpolation = cv2.INTER_AREA)    
+        data = np.stack((np.cos(np.deg2rad(2*np.float32(im1_mini.flatten()))), 
+                         np.sin(np.deg2rad(2*np.float32(im1_mini.flatten())))), axis = 1)
     
         # plot Hue (HSV)
         fig, ax= plt.subplots(1)
-        fig.suptitle('Histogram')
-        ax.set_title('H (HSV)')
-        
-        values = ax.hist(data1, bins=256/1, range=(0, 255))
+        # fig.suptitle('Histogram')
+        # ax.set_title('H (HSV)')
+#        
+        plt.yscale("log")
+
         # ax.set_ylim(0, 4*np.mean(values[0]))
-        ax.set_xlim(0, 255)
-        ax.axvline(x=thresholdTomato,  color='r')
-        save_fig(fig, pwdResults, tomatoID + "_hist_2", figureTitle = "", resolution = 100, titleSize = 10)
-    
-    
-        # plot A (LAB)
-        fig, ax= plt.subplots(1)
-        fig.suptitle('Histogram')
-        ax.set_title('A (LAB)')
         
-        values = ax.hist(data2, bins=256/1, range=(0,255))
-        # ax.set_ylim(0, 4*np.mean(values[0]))
-        ax.set_xlim(0, 255)
-        ax.axvline(x=threshPeduncle,  color='r')
-        save_fig(fig, pwdResults, tomatoID + "_hist_3", figureTitle = "", resolution = 100, titleSize = 10)
+        #ax.set_xlim(0, 255)
+        center_peduncle = centers[label_peduncle]
+        center_tomato = centers[label_tomato]
+        center_background = centers[label_background]
         
+        ax.axvline(x= center_peduncle,  color='g')
+        ax.axvline(x= center_tomato,  color='r')
+        ax.axvline(x= center_background,  color='b')
+        
+        x0 = 0
+        x1 = (center_tomato + center_peduncle)/2
+        x2 = (center_peduncle + center_background)/2
+        x3 = (center_background + center_tomato + 360)/2
+        x4 = 360
+        alpha = 0.2
+        
+        plt.axvspan(x0, x1, color='r', alpha=alpha, lw=0)
+        plt.axvspan(x1, x2, color='g', alpha=alpha, lw=0)  
+        plt.axvspan(x2, x3, color='b', alpha=alpha, lw=0)
+        plt.axvspan(x3, x4, color='r', alpha=alpha, lw=0)  
+        
+        
+        N = 180
+        radii, bins, patches = ax.hist(im1.flatten().astype('uint16')*2, bins=N, range=(0, 360), color = "black", lw=0)
+        save_fig(fig, pwdResults, tomatoID + "_hist", figureTitle = "", resolution = 100, titleSize = 10)
+        
+#        ## circular        
+#        width = (2*np.pi) / N
+#        bottom = 1
+#        theta = np.linspace(0.0, 2 * np.pi, N, endpoint=False)  
+#        
+#        # ax= plt.subplot(111, polar=True)
+#        fig, ax= plt.subplots(1)
+#        ax = plt.subplot(111, projection='polar')
+#        ax.set_rlim((0.1, 1000.0))
+#        ax.set_rscale('log')
+#        bars = ax.bar(theta, radii, width=width, bottom=bottom)
+    
         segmentsRGB = stack_segments(imRGB, background, truss, np.zeros(tomato.shape, dtype = np.uint8))
     
         figureTitle = ""

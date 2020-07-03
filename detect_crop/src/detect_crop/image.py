@@ -28,7 +28,7 @@ def add(image1, image2):
     
     if check_dimensions:
         
-        image_new = image2.copy()        
+        image_new = image1.copy()        
         image_new._data = cv2.bitwise_or(image1._data, image2._data) 
         return image_new
     else:

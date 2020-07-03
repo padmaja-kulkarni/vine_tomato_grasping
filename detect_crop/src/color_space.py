@@ -117,8 +117,8 @@ def hsv_2d_scatter(HSV, RGB):
     
 #%% init
 pathCurrent = os.path.dirname(__file__)
-dataSet = "tomato_real"
-fileName = "tomato_RGB_001.png"
+dataSet = "real_blue"
+fileName = "001.png"
 
 pwdData = os.path.join(pathCurrent, "data", dataSet)
 pwdResults = os.path.join(pathCurrent, "results", "color_space")
@@ -129,11 +129,11 @@ imBGR = cv2.imread(imPath)
 h = int(H/2)
 w = int(W/2)
 
-row = H - h
-col = int(w/1.5)
-# imBGR = imBGR[row:row + h, col:col + w]
+row = int(H/6)
+col = int(W/3)
+imBGR = imBGR[row:row + h, col:col + w]
 
-plt.rcParams["image.cmap"] = 'plasma'
+plt.rcParams["image.cmap"] = 'plasma' # gray, hsv
 plt.rcParams["savefig.format"] = 'png' 
 plt.rcParams["savefig.bbox"] = 'tight' 
 plt.rcParams['axes.titlesize'] = 20
@@ -215,13 +215,6 @@ plt.imshow(gradient)
 plt.savefig(os.path.join(pwdResults, 'legend'))
 
 
-#%%
-
-# define criteria and apply kmeans()
-# background, tomato, peduncle = segmentation_cluster(imRGB, 255)
-background, tomato, peduncle = segmentation_otsu(imRGB, 255)
-
-
 #%% VISUALIZE
 scale = 0.1
 
@@ -252,10 +245,3 @@ HSV_mini = cv2.resize(imHSV, dim, interpolation = cv2.INTER_AREA)
 #blue = 255 * lab3 # imRGB[:,:,2] * 
 
 #imSEGMENT = np.dstack((np.dstack((red, green)), blue))
-
-plt.figure()
-plt.axis('off')
-plt.imshow(imRGB) 
-
-segmentsRGB = stack_segments(imRGB, background, tomato, peduncle)
-save_img(segmentsRGB, pwdResults, 'segments', saveFormat = 'png')

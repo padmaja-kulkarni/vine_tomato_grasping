@@ -61,7 +61,7 @@ if __name__ == '__main__':
     dataSet = "real_blue" # "tomato_cases" # 
     
     pwdData = os.path.join(pathCurrent, "data", dataSet)
-    pwdResults = os.path.join(pathCurrent, "results", dataSet, "color_space")
+    pwdResults = os.path.join(pathCurrent, "results", dataSet, "detect_junction")
     
     make_dirs(pwdData)
     make_dirs(pwdResults)
@@ -79,11 +79,14 @@ if __name__ == '__main__':
     
     imRGB = cv2.cvtColor(imBGR, cv2.COLOR_BGR2RGB)
     
-    image = ProcessImage(imRGB, camera_sim = False,
+    image = ProcessImage(camera_sim = False,
                                      use_truss = True,
                                      tomatoName = 'ros_tomato',
                                      pwdProcess = pwdResults,
                                      saveIntermediate = False)
+    
+    
+    image.add_image(imRGB)    
     
     image.color_space()
     image.segment_truss()
@@ -94,7 +97,7 @@ if __name__ == '__main__':
     
     # Get peduncle info
     # object_features = image.get_object_features()
-    peduncle_mask = image.peduncleL
+    peduncle_mask = image.get_peduncle_local()
     peduncle_mask_main = image.penduncleMain
     
     # PARAMETERS
@@ -155,10 +158,28 @@ if __name__ == '__main__':
     all_node_prune_img = add_circles(all_node_prune_img, dead_branch_center, color = (2*255/3), thickness = -1)
     
     
+    # save_fig(fig, pwd, name, resolution = 300, figureTitle = "", titleSize = 20, saveFormat = 'png')    
+    fig = plt.figure()    
+    plt.imshow(imRGB)
+    plt.axis('off')
+    
     # plot result
-    fig, axs = plt.subplots(2,3)
+    fig, axs = plt.subplots(2,2)
     axs[0,0].imshow(skeleton_img)
+    axs[0,0].axis('off')
+    
     axs[1,0].imshow(skeleton_img_2)
+    axs[1,0].axis('off')
+    
     axs[0,1].imshow(all_node_img)
+    axs[0,1].axis('off')
+    
     axs[1,1].imshow(all_node_prune_img)
-    axs[1,2].imshow(peduncle_mask_main)
+    axs[1,1].axis('off')
+
+#    axs[1,2].imshow(peduncle_mask_main)
+#    axs[1,2].axis('off')
+#
+#    axs[0,2].axis('off')    
+
+    fig.savefig(os.path.join(pwdResults, fileName), dpi = 300, bbox_inches='tight', pad_inches=0)

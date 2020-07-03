@@ -89,9 +89,9 @@ def romove_blobs(imgIn, imMax):
         return imgIn
 
     else:
-        cnt = max(contours, key=cv2.contourArea)
+        imgOut = np.zeros((H,W), np.uint8)        
         
-        imgOut = np.zeros((H,W), np.uint8)
+        cnt = max(contours, key=cv2.contourArea)
         cv2.drawContours(imgOut, [cnt], -1, imMax, cv2.FILLED)
         imgOut = cv2.bitwise_and(imgIn, imgOut)
         return imgOut
@@ -107,6 +107,24 @@ def romove_blobs_2(imgIn, imMax):
     imgOut = np.zeros((H,W), np.uint8)
     cv2.drawContours(imgOut, [cnt], -1, imMax, cv2.FILLED)
     return imgOut
+    
+def remove_all_blobs(tomato, peduncle, background, imMax):
+    
+    # remove blobs truss
+    truss = cv2.bitwise_or(tomato, peduncle)
+    trussFiltered = romove_blobs(truss, imMax)
+    peduncleFiltered = cv2.bitwise_and(trussFiltered, peduncle)
+    tomatoFiltered = cv2.bitwise_and(trussFiltered, tomato)
+    
+    # remove blobs peduncle
+    peduncleFiltered = romove_blobs(peduncleFiltered, imMax)
+    tomatoFiltered = cv2.bitwise_and(trussFiltered, cv2.bitwise_not(peduncleFiltered))
+    trussFiltered = cv2.bitwise_or(tomatoFiltered, peduncleFiltered)
+    backgroundFiltered = cv2.bitwise_not(truss)    
+    
+    
+    
+    return tomatoFiltered, peduncleFiltered, backgroundFiltered
 
 def add_border(imOriginal, location, sizeBorder):
 
@@ -164,53 +182,62 @@ def segmentation_truss_sim(img_saturation, img_hue, img_A, imMax):
         peduncle = cv2.bitwise_and(cv2.bitwise_not(tomato_temp), truss)
         
         return background, tomato, peduncle
-        
-def segmentation_truss_real_simpel(img_hue, img_A, imMax):
 
-        im1 = img_hue # hue
-        im2 = img_A # A
 
-        # Seperate truss from background
-        data1 = im1.flatten()
-        thresholdTomato, temp = cv2.threshold(data1,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-        
-        thresholdTruss = 15
-        temp, truss_1 = cv2.threshold(im1,thresholdTruss,imMax,cv2.THRESH_BINARY_INV)
-        temp, truss_2 = cv2.threshold(im1,thresholdTruss + 120,imMax,cv2.THRESH_BINARY) # circle
-        tomato = cv2.bitwise_or(truss_1,truss_2)
-        
-        # seperate tomato from peduncle
-        # data2 = im2[(truss == imMax)].flatten()
-        # threshPeduncle, temp = cv2.threshold(data2,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-   
-        temp, peduncle = cv2.threshold(im1,60,imMax,cv2.THRESH_BINARY)
-        #temp, peduncle_2 = cv2.threshold(im1,thresholdTruss,imMax,cv2.THRESH_BINARY)
-        # peduncle = cv2.bitwise_and(peduncle_1, peduncle_2)
-        truss = cv2.bitwise_or(tomato, peduncle) # 
-        background = cv2.bitwise_not(truss)    
+#def segmentation_truss_real(img_hue, imMax):
+#        im1 = img_hue # hue
+# 
+#        # Seperate truss from background
+#        data1 = im1.flatten()
+#        thresholdTomato, temp = cv2.threshold(data1,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+#        
+#        temp, truss_1 = cv2.threshold(im1,15,imMax,cv2.THRESH_BINARY_INV)
+#        temp, truss_2 = cv2.threshold(im1,150,imMax,cv2.THRESH_BINARY) # circle
+#        truss = cv2.bitwise_or(truss_1,truss_2)
+#        background = cv2.bitwise_not(truss)
+#        
+#        # seperate tomato from peduncle
+#        data2 = im1[(truss == imMax)].flatten()
+#        threshPeduncle, temp = cv2.threshold(data2,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+#   
+#
+#        temp, peduncle_1 = cv2.threshold(im1,60,imMax,cv2.THRESH_BINARY_INV)
+#        temp, peduncle_2 = cv2.threshold(im1,15,imMax,cv2.THRESH_BINARY)
+#        peduncle = cv2.bitwise_and(peduncle_1, peduncle_2)
+#        
+#        return background, truss, peduncle
         
 def segmentation_truss_real(img_hue, imMax):
-        im1 = img_hue # hue
- 
-        # Seperate truss from background
-        data1 = im1.flatten()
-        thresholdTomato, temp = cv2.threshold(data1,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-        
-        temp, truss_1 = cv2.threshold(im1,15,imMax,cv2.THRESH_BINARY_INV)
-        temp, truss_2 = cv2.threshold(im1,150,imMax,cv2.THRESH_BINARY) # circle
-        truss = cv2.bitwise_or(truss_1,truss_2)
-        background = cv2.bitwise_not(truss)
-        
-        # seperate tomato from peduncle
-        data2 = im1[(truss == imMax)].flatten()
-        threshPeduncle, temp = cv2.threshold(data2,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-   
 
-        temp, peduncle_1 = cv2.threshold(im1,60,imMax,cv2.THRESH_BINARY_INV)
-        temp, peduncle_2 = cv2.threshold(im1,15,imMax,cv2.THRESH_BINARY)
-        peduncle = cv2.bitwise_and(peduncle_1, peduncle_2)
-        
-        return background, truss, peduncle
+    dim = img_hue.shape
+    H = dim[0]
+    W = dim[1] 
+    
+    angle = np.deg2rad(2*np.float32(img_hue.flatten()))
+    data = np.stack((np.cos(angle), np.sin(angle)), axis = 1)
+ 
+    # Define criteria = ( type, max_iter = 10 , epsilon = 1.0 )
+    criteria = (cv2.TERM_CRITERIA_EPS, 1, np.sin(np.deg2rad(5)))
+    compactness,labels,centers_xy = cv2.kmeans(data, 
+                                               3, 
+                                               None, 
+                                               criteria, 
+                                               2, 
+                                               cv2.KMEANS_PP_CENTERS) 
+ 
+    centers = np.rad2deg(np.arctan2(centers_xy[:, 1], centers_xy[:, 0]))
+    
+    label_peduncle = np.argmax(centers)
+    label_background = np.argmin(centers)
+    label_tomato = list(set([0, 1, 2]) - set([label_peduncle, label_background]))[0]
+ 
+     # compute masks
+    tomato = label2img(labels, label_tomato, H ,W)     
+    peduncle = label2img(labels, label_peduncle, H ,W)   
+    background = label2img(labels, label_background, H ,W)   
+    truss = cv2.bitwise_or(tomato,peduncle)    
+    
+    return background, tomato, peduncle
         
 def segmentation_tomato_real(img_a, imMax):
         im1 = img_a # hue
@@ -734,22 +761,34 @@ def prune_branches_off_mask(mask, branch_data):
 
     return iKeep
     
-def get_node_coord(branch_data, skeleton):
-    # get all node IDs
+    
+def get_node_id(branch_data, skeleton):
+
     src_node_id = np.unique(branch_data['node-id-src'].values)
     dst_node_id = np.unique(branch_data['node-id-dst'].values)
-    all_node_id = np.unique(np.append(src_node_id, dst_node_id))
+    all_node_id = np.unique(np.append(src_node_id, dst_node_id))        
     
-    # get dead node IDs
-    dead_branch_id = np.argwhere(branch_data['branch-type'] == 1)[:,0]
-    dead_node_id = np.unique(branch_data['node-id-dst'].values[dead_branch_id])
-    junc_node_id = np.setdiff1d(all_node_id,dead_node_id) 
+    deg = skeleton.degrees [all_node_id]
+    end_node_index= np.argwhere(deg == 1)[:, 0] # endpoint
+    
+    end_node_id = all_node_id[end_node_index]        
+    junc_node_id = np.setdiff1d(all_node_id,end_node_id)        
+    
+    return junc_node_id, end_node_id    
+    
+def pipi(angle):
+    # cast angle to range [-pi, pi]
+    return (angle + 180) % 360 - 180    
+    
+def get_node_coord(branch_data, skeleton):
+    # get all node IDs
+    junc_node_id, end_node_id = get_node_id(branch_data, skeleton)    
     
     # swap cols
-    dead_node_coord = skeleton.coordinates[dead_node_id][:,[1, 0]]
+    end_node_coord = skeleton.coordinates[end_node_id][:,[1, 0]]
     junc_node_coord = skeleton.coordinates[junc_node_id][:,[1, 0]]
 
-    return junc_node_coord, dead_node_coord
+    return junc_node_coord, end_node_coord
 
 def get_center_branch(branch_data, skeleton_img):
     
