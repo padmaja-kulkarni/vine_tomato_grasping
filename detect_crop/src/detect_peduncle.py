@@ -131,9 +131,6 @@ def filter_branch_length(skeleton_img):
     max_path = list()      
     max_length = 0
   
-
-
-    
     junc_node_ids, start_node_ids = get_node_id(branch_data, skeleton)   
     
     for node_id in start_node_ids:
@@ -141,7 +138,7 @@ def filter_branch_length(skeleton_img):
         current_path = list()
         current_length = 0
         current_path, current_length = find_largest_branch(branch_data, skeleton, 
-                                               node_id, current_path, current_length) 
+                                               node_id, node_id, current_path, current_length) 
                                               
         if current_length > max_length:
             max_path = current_path
@@ -157,37 +154,59 @@ def filter_branch_length(skeleton_img):
     return skeleton_img
    
    
-def find_largest_branch(branch_data, skeleton, node_id, path, length, 
-                        max_path = [], max_length = 0):
+def find_largest_branch(branch_data, skeleton, node_id, start_node, path, length, 
+                        angle = None, max_path = [], max_length = 0):
           
-
     branch_indexes = get_attached_branches(branch_data, node_id)
     branch_indexes = list(set(branch_indexes) - set(path))
-    
-    # print "branches attached to node ", node_id, ": ", branch_indexes
     
     for branch_index in branch_indexes:    
         path_new = path[:]
         node_new = get_new_node(branch_data, branch_index, node_id)
         
-        # walk over branch
-        path_new.append(branch_index)
-        length += skeleton.distances[branch_index]
-               
-        # store as largest branch if required
-        if length > max_length:
-            max_path = path_new
-            max_length = length
-            
+        
+        angle_new = node_angle(node_id, node_new, skeleton) 
+        
+        if angle is None:
+            diff = 0
+        else:
+            diff = abs(angle - angle_new)
+        
+        if diff < 45:
 
-        max_path, max_length = find_largest_branch(branch_data, skeleton, 
-                                                   node_new,
-                                                   path_new,
-                                                   length,  
-                                                   max_path = max_path,
-                                                   max_length = max_length)
+            angle_total = node_angle(start_node, node_new, skeleton) 
+                
+            # walk over branch
+            path_new.append(branch_index)
+            length += skeleton.distances[branch_index]
+                   
+            # store as largest branch if required
+            if length > max_length:
+                max_path = path_new
+                max_length = length
+                
+            max_path, max_length = find_largest_branch(branch_data, skeleton, 
+                                                       node_new,
+                                                       start_node,
+                                                       path_new,
+                                                       length,  
+                                                       angle = angle_total,
+                                                       max_path = max_path,
+                                                       max_length = max_length)
                                                         
     return max_path, max_length
+
+def get_dst_id(branch_index, branch_data):                
+    return branch_data['node-id-dst'][branch_index]
+
+def get_src_id(branch_index, branch_data):                
+    return branch_data['node-id-src'][branch_index]
+
+def node_angle(node_1_id, node_2_id, skeleton):
+    src = skeleton.coordinates[node_1_id][[1,0]]
+    dst = skeleton.coordinates[node_2_id][[1,0]]
+    angle = np.arctan2((dst[0] - src[0]), (dst[1] - src[1]))/np.pi*180
+    return angle
 
 def filter_branch_angle(skeleton_img):
     skeleton = skan.Skeleton(skeleton_img)
