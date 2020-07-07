@@ -172,7 +172,6 @@ class ProcessImage(object):
             warnings.warn("Cannot rotate based on peduncle, since it does not exist!")
             angle = 0
         else:
-            truss = add(self._peduncle, self._tomato)
             angle = compute_angle(self._peduncle.get_data()) # [rad] 
             # angle = np.deg2rad(45)
         # rotate

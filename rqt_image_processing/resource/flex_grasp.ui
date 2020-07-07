@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>GraspUI</class>
+ <widget class="QWidget" name="GraspUI">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>400</width>
+    <height>300</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Grasp UI</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout">
+
+   <item row="0" column="0">
+    <widget class="QPushButton" name="HomeButton">
+     <property name="text">
+      <string>Home</string>
+     </property>
+    </widget>
+   </item>
+
+   <item row="1" column="0">
+    <widget class="QPushButton" name="OpenButton">
+     <property name="text">
+      <string>Open</string>
+     </property>
+    </widget>
+   </item>
+
+   <item row="2" column="0">
+    <widget class="QPushButton" name="CloseButton">
+     <property name="text">
+      <string>Close</string>
+     </property>
+    </widget>
+   </item>
+
+   <item row="3" column="0">
+    <widget class="QPushButton" name="CalibrateButton">
+     <property name="text">
+      <string>Calibrate</string>
+     </property>
+    </widget>
+   </item>
+
+   <item row="0" column="1">
+    <widget class="QPushButton" name="DetectTomatoButton">
+     <property name="text">
+      <string>Detect Tomato</string>
+     </property>
+    </widget>
+   </item>
+
+   <item row="1" column="1">
+    <widget class="QPushButton" name="DetectTrussButton">
+     <property name="text">
+      <string>Detect Truss</string>
+     </property>
+    </widget>
+   </item>
+
+   <item row="0" column="2">
+    <widget class="QPushButton" name="PointButton">
+     <property name="text">
+      <string>Point</string>
+     </property>
+    </widget>
+   </item>
+
+
+   <item row="1" column="2">
+    <widget class="QPushButton" name="PickPlaceButton">
+     <property name="text">
+      <string>Pick and Place</string>
+     </property>
+    </widget>
+   </item>
+
+   <item row="2" column="2">
+    <widget class="QPushButton" name="PickButton">
+     <property name="text">
+      <string>Pick</string>
+     </property>
+    </widget>
+   </item>
+
+   <item row="3" column="2">
+    <widget class="QPushButton" name="PlaceButton">
+     <property name="text">
+      <string>Place</string>
+     </property>
+    </widget>
+   </item>
+
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

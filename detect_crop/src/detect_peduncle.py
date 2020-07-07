@@ -36,6 +36,41 @@ from detect_crop.util import get_node_coord, get_node_id
 from detect_crop.util import romove_blobs, bin2img, pipi
 
 
+#def get_attached_branches(branch_data, node_ids):
+#    branch_indexes = list()
+#    
+#    for node_id in node_ids:
+#        tmp_src = np.argwhere(branch_data['node-id-src'] == node_id)[:, 0]
+#        tmp_dst = np.argwhere(branch_data['node-id-dst'] == node_id)[:, 0]
+#        branch_indexes.extend(list(np.unique(np.append(tmp_src, tmp_dst))))
+#    
+#    branch_indexes = np.array(list(set(branch_indexes)))
+#    return branch_indexes
+    
+def get_attached_branches(branch_data, node_id):
+    src = np.argwhere(branch_data['node-id-src'] == node_id)[:, 0]
+    dst = np.argwhere(branch_data['node-id-dst'] == node_id)[:, 0]
+    branch_indexes = np.unique(np.append(src, dst))
+    return branch_indexes
+    
+    
+def get_attached_nodes(branch_data, branch_indexes):
+    node_id_src = branch_data['node-id-src'][branch_indexes]
+    node_id_dst = branch_data['node-id-dst'][branch_indexes]   
+    node_ids = np.unique(np.append(node_id_src, node_id_dst)) 
+    return node_ids
+    
+def get_new_node(branch_data, branch_index, old_node):
+    node_id_src = branch_data['node-id-src'][branch_index]
+    node_id_dst = branch_data['node-id-dst'][branch_index]   
+    if node_id_src == old_node:
+        return node_id_dst
+    elif node_id_dst == old_node:
+        return node_id_src
+    else:
+        print('Old node was not attached to this branch!')
+        return None
+    
 def update_skeleton(skeleton_img, skeleton, i_remove):
 
     skeleton_prune_img = skeleton_img.copy()    
@@ -48,6 +83,7 @@ def update_skeleton(skeleton_img, skeleton, i_remove):
     
     ## closing
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    # img = skeleton_prune_img
     img = cv2.dilate(skeleton_prune_img, kernel, iterations = 1)
     img = romove_blobs(img, 255)
     return bin2img(skeletonize(img/255))
@@ -70,7 +106,7 @@ def threshold_branch_angle(skeleton_img, skeleton, angle_mean, angle_amplitude):
 
     branch_data = skan.summarize(skeleton)
     # remove ner vertical branches
-        
+
     ndim = 2
     i_remove = list()
     for i in range(0, skeleton.n_paths):
@@ -87,14 +123,79 @@ def threshold_branch_angle(skeleton_img, skeleton, angle_mean, angle_amplitude):
             
     return update_skeleton(skeleton_img, skeleton, i_remove)
 
+def filter_branch_length(skeleton_img):
+    
+    skeleton = skan.Skeleton(skeleton_img)
+    branch_data = skan.summarize(skeleton)
+    
+    max_path = list()      
+    max_length = 0
+  
+
+
+    
+    junc_node_ids, start_node_ids = get_node_id(branch_data, skeleton)   
+    
+    for node_id in start_node_ids:
+        
+        current_path = list()
+        current_length = 0
+        current_path, current_length = find_largest_branch(branch_data, skeleton, 
+                                               node_id, current_path, current_length) 
+                                              
+        if current_length > max_length:
+            max_path = current_path
+            max_length = current_length
+                                              
+    i_remove = list()
+    for branch_index in branch_data.index:
+        if branch_index not in max_path:
+            i_remove.append(branch_index)
+            
+    skeleton_img = update_skeleton(skeleton_img, skeleton, i_remove)
+
+    return skeleton_img
+   
+   
+def find_largest_branch(branch_data, skeleton, node_id, path, length, 
+                        max_path = [], max_length = 0):
+          
+
+    branch_indexes = get_attached_branches(branch_data, node_id)
+    branch_indexes = list(set(branch_indexes) - set(path))
+    
+    # print "branches attached to node ", node_id, ": ", branch_indexes
+    
+    for branch_index in branch_indexes:    
+        path_new = path[:]
+        node_new = get_new_node(branch_data, branch_index, node_id)
+        
+        # walk over branch
+        path_new.append(branch_index)
+        length += skeleton.distances[branch_index]
+               
+        # store as largest branch if required
+        if length > max_length:
+            max_path = path_new
+            max_length = length
+            
+
+        max_path, max_length = find_largest_branch(branch_data, skeleton, 
+                                                   node_new,
+                                                   path_new,
+                                                   length,  
+                                                   max_path = max_path,
+                                                   max_length = max_length)
+                                                        
+    return max_path, max_length
+
 def filter_branch_angle(skeleton_img):
     skeleton = skan.Skeleton(skeleton_img)
     branch_data = skan.summarize(skeleton)
     
     junc_node_ids, end_node_ids = get_node_id(branch_data, skeleton)
     i_remove = list()
-    
-        # for junc_node_id in junc_node_ids:
+        
     for junc_node_id in junc_node_ids:
         branch_index_src = np.argwhere(branch_data['node-id-src'] == junc_node_id)[:, 0]
         branch_index_dst = np.argwhere(branch_data['node-id-dst'] == junc_node_id)[:, 0]
@@ -153,9 +254,10 @@ def filter_branch_angle(skeleton_img):
             if branch_index not in branch_index_keep:
                 i_remove.append(branch_index)
                 
-        print(i_remove)
-    skeleton_img = update_skeleton(skeleton_img, skeleton, i_remove)
+    print(i_remove)
         
+    skeleton_img = update_skeleton(skeleton_img, skeleton, i_remove)
+    # save_img(skeleton_img, '/home/taeke/catkin_ws/src/flexcraft_jelle/detect_crop/src/results/real_blue/detect_peduncle', '008' + "_" + str(counter)) 
     return skeleton_img
 
 if __name__ == '__main__':
@@ -170,7 +272,7 @@ if __name__ == '__main__':
     plt.rcParams['axes.titlesize'] = 20
     
     pathCurrent = os.path.dirname(__file__)
-    dataSet = "real_blue" # "real_blue" # 
+    dataSet = "real_blue" # "artificial" # 
     
     pwdData = os.path.join(pathCurrent, "data", dataSet)
     pwdResults = os.path.join(pathCurrent, "results", dataSet, "detect_peduncle")
@@ -181,7 +283,7 @@ if __name__ == '__main__':
     imMax = 255
     count = 0
     N = 3
-    for iTomato in range(1,23):
+    for iTomato in range(1,20):
         
         tomatoID = str(iTomato).zfill(nDigits)
         tomatoName = tomatoID # "tomato" + "_RGB_" + 
@@ -242,7 +344,6 @@ if __name__ == '__main__':
         # get all node coordiantes
         junc_node_coord, dead_node_coord = get_node_coord(branch_data, skeleton)
         
-        
         all_node_img = skeleton_img.copy()
         all_node_img = add_circles(all_node_img, junc_node_coord, color = (255/3), thickness = 1)
         all_node_img = add_circles(all_node_img, dead_node_coord, color = (2*255/3), thickness = 1)
@@ -267,8 +368,10 @@ if __name__ == '__main__':
 #        save_img(node_img, pwdResults, tomatoName + "_03")   
 
 
-        skeleton_img = filter_branch_angle(skeleton_img)
-
+        # skeleton_img = filter_branch_angle(skeleton_img)
+        skeleton_img = filter_branch_length(skeleton_img)    
+        
+        
         # skeletonize
         skeleton = skan.Skeleton(skeleton_img)
         branch_data_prune = skan.summarize(skeleton)
