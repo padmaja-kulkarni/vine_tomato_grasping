@@ -777,7 +777,7 @@ def get_node_id(branch_data, skeleton):
     return junc_node_id, end_node_id    
     
 def pipi(angle):
-    # cast angle to range [-pi, pi]
+    # cast angle to range [-180, 180]
     return (angle + 180) % 360 - 180    
     
 def get_node_coord(branch_data, skeleton):

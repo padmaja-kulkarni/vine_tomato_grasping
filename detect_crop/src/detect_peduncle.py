@@ -82,10 +82,28 @@ def update_skeleton(skeleton_img, skeleton, i_remove):
             skeleton_prune_img[px_coord[0], px_coord[1]] = 0
     
     ## closing
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-    # img = skeleton_prune_img
-    img = cv2.dilate(skeleton_prune_img, kernel, iterations = 1)
-    img = romove_blobs(img, 255)
+    # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    img = skeleton_prune_img
+    # img = cv2.dilate(skeleton_prune_img, kernel, iterations = 1)
+    # img = romove_blobs(img, 255)
+    return bin2img(skeletonize(img/255))
+
+def generate_skeleton_img(skeleton, i_keep, shape):
+    
+    skeleton_img = np.zeros(shape, dtype=np.uint8)
+  
+    
+    for i in i_keep:
+        px_coords = skeleton.path_coordinates(i).astype(int)
+        
+        for px_coord in px_coords:
+            skeleton_img[px_coord[0], px_coord[1]] = 255
+    
+    ## closing
+    # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    img = skeleton_img
+    # img = cv2.dilate(skeleton_prune_img, kernel, iterations = 1)
+    # img = romove_blobs(img, 255)
     return bin2img(skeletonize(img/255))
 
 def threshold_branch_length(skeleton_img, skeleton, distance_threshold):
@@ -144,14 +162,14 @@ def filter_branch_length(skeleton_img):
             max_path = current_path
             max_length = current_length
                                               
-    i_remove = list()
-    for branch_index in branch_data.index:
-        if branch_index not in max_path:
-            i_remove.append(branch_index)
-            
-    skeleton_img = update_skeleton(skeleton_img, skeleton, i_remove)
-
-    return skeleton_img
+#    i_remove = list()
+#    for branch_index in branch_data.index:
+#        if branch_index not in max_path:
+#            i_remove.append(branch_index)
+#            
+#    skeleton_img = update_skeleton(skeleton_img, skeleton, i_remove)
+                                              
+    return generate_skeleton_img(skeleton, max_path, skeleton_img.shape)
    
    
 def find_largest_branch(branch_data, skeleton, node_id, start_node, path, length, 
@@ -162,37 +180,42 @@ def find_largest_branch(branch_data, skeleton, node_id, start_node, path, length
     
     for branch_index in branch_indexes:    
         path_new = path[:]
+        length_new = length
         node_new = get_new_node(branch_data, branch_index, node_id)
         
         
         angle_new = node_angle(node_id, node_new, skeleton) 
-        
         if angle is None:
             diff = 0
         else:
             diff = abs(angle - angle_new)
         
-        if diff < 45:
-
-            angle_total = node_angle(start_node, node_new, skeleton) 
-                
+        if (diff < 45): # or (length < 10):
             # walk over branch
+
+            angle_total = node_angle(start_node, node_new, skeleton)
             path_new.append(branch_index)
-            length += skeleton.distances[branch_index]
-                   
-            # store as largest branch if required
-            if length > max_length:
-                max_path = path_new
-                max_length = length
-                
-            max_path, max_length = find_largest_branch(branch_data, skeleton, 
-                                                       node_new,
-                                                       start_node,
-                                                       path_new,
-                                                       length,  
-                                                       angle = angle_total,
-                                                       max_path = max_path,
-                                                       max_length = max_length)
+            length_new += skeleton.distances[branch_index]
+                 
+        else:
+            start_node = node_id
+            path_new.append(branch_index)
+            angle_total = angle_new 
+            length_new = skeleton.distances[branch_index]                
+                 
+        # store as largest branch if required
+        if length_new > max_length:
+            max_path = path_new
+            max_length = length_new
+            
+        max_path, max_length = find_largest_branch(branch_data, skeleton, 
+                                                   node_new,
+                                                   start_node,
+                                                   path_new,
+                                                   length_new,  
+                                                   angle = angle_total,
+                                                   max_path = max_path,
+                                                   max_length = max_length)
                                                         
     return max_path, max_length
 
@@ -302,6 +325,10 @@ if __name__ == '__main__':
     imMax = 255
     count = 0
     N = 3
+    
+    junc_color = (100, 0, 200)
+    end_color =   (200, 0, 0)  
+    
     for iTomato in range(1,20):
         
         tomatoID = str(iTomato).zfill(nDigits)
@@ -347,27 +374,29 @@ if __name__ == '__main__':
         # get all node coordiantes
         junc_node_coord, dead_node_coord = get_node_coord(branch_data, skeleton)
         
-        all_node_img = skeleton_img.copy()
-        all_node_img = add_circles(all_node_img, junc_node_coord, color = (255/3), thickness = 1)
-        all_node_img = add_circles(all_node_img, dead_node_coord, color = (2*255/3), thickness = 1)
-        all_node_img = add_circles(all_node_img, tomatoes['pixel'], color = (2*255/3), thickness = -1)
+        all_node_img = segment_img.copy() + ((255  - segment_img.copy())**0.9).astype(np.uint8) #  skeleton_img.copy() # 
+        contours, hierarchy= cv2.findContours(skeleton_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
+        cv2.drawContours(all_node_img, contours, -1, (0,200,50), 2)        
+        all_node_img = add_circles(all_node_img, junc_node_coord, color = junc_color, thickness = -1, radii = 3)
+        all_node_img = add_circles(all_node_img, dead_node_coord, color = end_color, thickness = -1, radii = 3)
+        # all_node_img = add_circles(all_node_img, tomatoes['pixel'], color = (2*255/3), thickness = -1)
         save_img(all_node_img, pwdResults, tomatoName + "_01") 
         
         
-        skeleton_img = threshold_branch_length(skeleton_img, skeleton, distance_threshold)        
-        
-        # skeletonize
-        skeleton = skan.Skeleton(skeleton_img)
-        branch_data = skan.summarize(skeleton)
-        
-        # get all node coordiantes
-        junc_node_coord, dead_node_coord = get_node_coord(branch_data, skeleton)
-        
-        all_node_img = skeleton_img.copy()
-        all_node_img = add_circles(all_node_img, junc_node_coord, color = (255/3), thickness = 1)
-        all_node_img = add_circles(all_node_img, dead_node_coord, color = (2*255/3), thickness = 1)
-        all_node_img = add_circles(all_node_img, tomatoes['pixel'], color = (2*255/3), thickness = -1)
-        save_img(all_node_img, pwdResults, tomatoName + "_02")
+#        skeleton_img = threshold_branch_length(skeleton_img, skeleton, distance_threshold)        
+#        
+#        # skeletonize
+#        skeleton = skan.Skeleton(skeleton_img)
+#        branch_data = skan.summarize(skeleton)
+#        
+#        # get all node coordiantes
+#        junc_node_coord, dead_node_coord = get_node_coord(branch_data, skeleton)
+#        
+#        all_node_img = skeleton_img.copy()
+#        all_node_img = add_circles(all_node_img, junc_node_coord, color = (255/3), thickness = 1)
+#        all_node_img = add_circles(all_node_img, dead_node_coord, color = (2*255/3), thickness = 1)
+#        all_node_img = add_circles(all_node_img, tomatoes['pixel'], color = (2*255/3), thickness = -1)
+#        save_img(all_node_img, pwdResults, tomatoName + "_02")
         
 #        angle_mean = 0
 #        angle_amplitude = np.pi/4
@@ -403,7 +432,7 @@ if __name__ == '__main__':
         all_node_img = add_circles(all_node_img, junc_node_coord, color = (255/3), thickness = 1)
         all_node_img = add_circles(all_node_img, dead_node_coord, color = (2*255/3), thickness = 1)
         all_node_img = add_circles(all_node_img, tomatoes['pixel'], color = (2*255/3), thickness = -1)
-        save_img(all_node_img, pwdResults, tomatoName + "_04")
+        save_img(all_node_img, pwdResults, tomatoName + "_02")
         
         all_node_img = skeleton_img.copy()
         contours, hierarchy= cv2.findContours(all_node_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
