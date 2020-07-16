@@ -1,9 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Spyder Editor
 
-This is a temporary script file.
-"""
 
 ## imports ##
 import os # os.sep
@@ -21,31 +17,27 @@ from skimage.morphology import skeletonize
 import rospy
 # from flex_grasp.msg import ImageProcessingSettings
 
-import skan
-
 from image import Image, compute_angle, add, compute_bbox, image_rotate, image_crop
 
 # custom functions
 from util import add_border
-from util import remove_all_blobs, romove_blobs
+from util import remove_all_blobs
 from util import segmentation_truss_real, segmentation_tomato_real
 from util import segmentation_truss_sim
 from util import translation_rot2or
 from util import add_circles, add_contour
-
-# junctionm dtection
-from util import prune_branches_off_mask
-from util import get_node_coord
-from util import get_center_branch
 
 
 from util import save_img
 from util import load_rgb
 from util import stack_segments
 from util import plot_circles
+from util import change_brightness
 
 from point_2d import make_2d_transform, make_2d_point
 
+from detect_peduncle import detect_peduncle
+from detect_tomato import detect_tomato
 
 class ProcessImage(object):
 
@@ -86,6 +78,7 @@ class ProcessImage(object):
         self.dp = 4
         self.param1 = 20
         self.param2 = 50
+        self.ratio_threshold = 0.5        
         
         self.peduncle_element = (20, 2)
         
@@ -232,164 +225,60 @@ class ProcessImage(object):
         self.radii = radii
 
     def detect_tomatoes(self):
-        #%%##################
-        ## Detect tomatoes ##
-        #####################
         success = True
         
         tomato_crop = self.crop(self._tomato)
         peduncle_crop = self.crop(self._peduncle)
-        truss_crop = add(tomato_crop, peduncle_crop)
+        truss_crop = add(tomato_crop, peduncle_crop).get_data()
     
+        bg_image = self.crop(self._image_RGB).get_data()
+        bg_img = change_brightness(bg_image, 0.85)
     
-        truss_blurred = cv2.GaussianBlur(truss_crop.get_data(), self.blur_size, 0)
-        minR = self._w/self.tomato_radius_min
-        maxR = self._w/self.tomato_radius_max
-        minDist = self._w/self.tomato_distance_min 
-
-        circles = cv2.HoughCircles(truss_blurred, cv2.HOUGH_GRADIENT, 
-                                   self.dp, minDist, param1 = self.param1, 
-                                   param2 = self.param2, minRadius=minR, 
-                                   maxRadius=maxR) # [x, y, radius]
-
-        if circles is None:
-            warnings.warn("Failed to detect any circle!")
-            com = None
-            centers = None
-            radii = None
-            success = False
-        else:
-            centers =np.matrix(circles[0][:,0:2])
-            radii = circles[0][:,2]
+        centers, radii, com = detect_tomato(truss_crop, imageRGB=bg_img, 
+                  blur_size=self.blur_size, radius_min=self.tomato_radius_min, 
+                  radius_max=self.tomato_radius_max, 
+                  distance_min=self.tomato_distance_min,
+                  dp = self.dp, param1 = self.param1, param2 = self.param2,
+                  ratio_threshold = self.ratio_threshold,
+                  save = self.saveIntermediate, pwd = pwdResults, name = tomatoName)
             
-            iKeep = []
-            N = centers.shape[0]
-            for i in range(0, N):
-             
-                image_empty = np.zeros(truss_crop.get_dimensions(), dtype=np.uint8)
-                mask = cv2.circle(image_empty,(centers[i,0], centers[i,1]), radii[i], 255, -1)            
+        # convert to 2D points
+        center_points = []
+        for center in centers:
+            center_points.append(make_2d_point(self._LOCAL_FRAME_ID, (center[0,0], center[0,1])))
                 
-                res = cv2.bitwise_and(truss_crop.get_data(), mask)
-                pixels = np.sum(res == 255)
-                total = np.pi*radii[i]**2
-
-                if pixels/total > 0.5:
-                    iKeep.append(i)
-                    
-            centers = centers[iKeep, :]
-            radii = radii[iKeep]            
-            
-
-            # find CoM
-            com = (radii**2) * centers/(np.sum(radii**2))
-            # comR = comL + self.box[0:2]
-            # comO = rot2or(comR, self.DIM, -np.deg2rad(self.angle))
-    
-            # centersR = centers + self._bbox[0:2]
-            # centersO = rot2or(centersR, self._image_RGB.get_dimensions(), -self._angle) # np.deg2rad(
-            center_points = []
-            for center in centers:
-                center_points.append(make_2d_point(self._LOCAL_FRAME_ID, (center[0,0], center[0,1])))
-                
+        if com is not None:
+            success is True
             com_point =  make_2d_point(self._LOCAL_FRAME_ID, (com[0,0], com[0,1]))
+        else:
+            com_point = None
+            success = False
 
         self.com = com_point
         self.centers = center_points
-        self.radii = radii
-
-        if self.saveIntermediate:
-            xy_local = self.get_xy(center_points, self._LOCAL_FRAME_ID)
-            plot_circles(self.crop(self._image_RGB).get_data(), xy_local, radii, savePath = self.pwdProcess, saveName = '05_a')
-            
-#            xy_rotated = self.get_xy(center_points, self._ROTATED_FRAME_ID)
-#            plot_circles(self.rotate(self._image_RGB).get_data(), xy_rotated, radii, savePath = self.pwdProcess, saveName = '05_a')
-            
-            xy_original = self.get_xy(center_points, self._ORIGINAL_FRAME_ID)
-            plot_circles(self._image_RGB.get_data(), xy_original, radii, savePath = self.pwdProcess, saveName = '05_a')
-             
+        self.radii = radii             
         return success
 
     def detect_peduncle(self):
-    
+        distance_threshold = 10
         success = True    
     
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, self.peduncle_element)
-        # penduncleMain = cv2.morphologyEx(cv2.morphologyEx(self.peduncle, cv2.MORPH_OPEN, kernel),cv2.MORPH_CLOSE, kernel)
+        bg_img = self.crop(self._image_RGB).get_data()
+        bg_img = change_brightness(bg_image, 0.85)
         peduncleL = self.crop(self._peduncle).get_data()
-        penduncleMain = cv2.morphologyEx(peduncleL, cv2.MORPH_OPEN, kernel)
+        
+        penduncle_main, branch_center = detect_peduncle(peduncleL, 
+                                                        distance_threshold, 
+                                                        save = self.saveIntermediate, 
+                                                        bg_img = bg_img, 
+                                                        name = '06', 
+                                                        pwd = self.pwdProcess)
+        
+        
 
-        # only keep largest area
-        penduncleMain = romove_blobs(penduncleMain, self.imMax)
-        self.penduncleMain = penduncleMain
-
-        if self.saveIntermediate:
-            # https://stackoverflow.com/a/56142875
-            contours, hierarchy= cv2.findContours(penduncleMain, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
-            segmentPeduncle = self.crop(self._image_RGB).get_data()
-            cv2.drawContours(segmentPeduncle, contours, -1, (0,255,0), 3)
-            save_img(segmentPeduncle, self.pwdProcess, '05_b', saveFormat= self.saveFormat)
-
-#            penduncleMain = cv2.erode(self.peduncle,kernel,iterations = 1)
-#            save_img(penduncleMain, self.pwdProcess, '05_b1', saveFormat = self.saveFormat)
-#
-#            penduncleMain = cv2.dilate(penduncleMain,kernel,iterations = 1)
-#            save_img(penduncleMain, self.pwdProcess, '05_b2', saveFormat = self.saveFormat)
-            
+        self.penduncleMain = penduncle_main
+        self.junc_branch_center = branch_center
         return success
-
-
-    def detect_junction(self):
-
-        # create skeleton image
-        peduncleL = self.crop(self._peduncle).get_data()
-        skeleton_img = skeletonize(peduncleL/self.imMax)
-        
-        # intiailize for skan
-        skeleton = skan.Skeleton(skeleton_img)
-        branch_data = skan.summarize(skeleton)
-        
-        # get all node coordiantes
-        junc_node_coord, dead_node_coord = get_node_coord(branch_data, skeleton)
-        
-        b_remove = (skeleton.distances < self.distance_threshold) & (branch_data['branch-type'] == 1) 
-        i_remove = np.argwhere(b_remove)[:,0]
-        
-        # prune dead branches
-        skeleton_prune_img = skeleton_img.copy()
-        
-        # update skeleton
-        for i in i_remove:
-            
-            px_coords = skeleton.path_coordinates(i).astype(int)
-            
-            for px_coord in px_coords:
-                skeleton_prune_img[px_coord[0], px_coord[1]] = False
-        
-        ## closing
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-        close_img = cv2.dilate(skeleton_prune_img.astype(np.uint8), kernel, iterations = 1)
-        
-        # skeletonize
-        skeleton_img_2 = skeletonize(close_img)
-        skeleton_prune = skan.Skeleton(skeleton_img_2)
-        branch_data_prune = skan.summarize(skeleton_prune)
-        
-        # prune brnaches of main peduncle
-        iKeep = prune_branches_off_mask(self.penduncleMain, branch_data_prune)
-        branch_data_prune = branch_data_prune.loc[iKeep]
-        
-        # prune small branches
-        iKeep = branch_data_prune['branch-distance'] > 2
-        branch_data_prune = branch_data_prune.loc[iKeep]
-        
-        junc_node_coord, dead_node_coord = get_node_coord(branch_data_prune, skeleton_prune)
-        junc_branch_center, dead_branch_center = get_center_branch(branch_data_prune, skeleton_img)
-        
-        self.junc_branch_center = junc_branch_center
-
-
-        if self.saveIntermediate:
-            plot_circles(self.crop(self._image_RGB).get_data(), junc_branch_center, 5, savePath = self.pwdProcess, saveName = '05_c')
 
     def detect_grasp_location(self, strategy = 'cage'):
         success = True        
@@ -441,11 +330,11 @@ class ProcessImage(object):
 
         if self.saveIntermediate: # True: # self.saveIntermediate:
             xy_local = self.get_xy(grasp_point, self._LOCAL_FRAME_ID)
-            plot_circles(self.crop(self._image_RGB).get_data(), xy_local, 10, savePath = self.pwdProcess, saveName = '06')
+            plot_circles(self.crop(self._image_RGB).get_data(), xy_local, 10, pwd = self.pwdProcess, name = '06')
             
             
-            xy_local = self.get_xy(grasp_point, self._ORIGINAL_FRAME_ID)
-            plot_circles(self._image_RGB.get_data(), xy_local, 10, savePath = self.pwdProcess, saveName = '06')
+#            xy_local = self.get_xy(grasp_point, self._ORIGINAL_FRAME_ID)
+#            plot_circles(self._image_RGB.get_data(), xy_local, 10, pwd = self.pwdProcess, name = '06')
             
         return success
         
@@ -578,14 +467,20 @@ class ProcessImage(object):
         
     def get_segments(self, local = False):
         if local:
-            return self.crop(self._tomato).get_data(), self.crop(self._peduncle).get_data(), self.crop(self._background).get_data()
+            tomato = self.crop(self._tomato).get_data()
+            peduncle = self.crop(self._peduncle).get_data()
+            background = self.crop(self._background).get_data()
+
         else:
-            return self._tomato.get_data(), self._peduncle.get_data(), self._background.get_data()
+            tomato = self._tomato.get_data()
+            peduncle = self._peduncle.get_data()
+            background = self._background.get_data()
             
-        
+        return tomato, peduncle, background
         
     def get_segmented_image(self, local = False):
-        data = stack_segments(self._image_RGB.get_data(), self._background.get_data(), self._tomato.get_data(), self._peduncle.get_data())
+        tomato, peduncle, background = self.get_segments()
+        data = stack_segments(self._image_RGB.get_data(), background, tomato, peduncle)
         if local:
             image = Image(data) 
             return self.crop(image).get_data()
@@ -644,15 +539,13 @@ class ProcessImage(object):
         if success is False:
             return success
         
-        success1 = self.detect_tomatoes()
-        success2 = self.detect_peduncle()
+        success = self.detect_tomatoes()
+        if success is False:
+            return success        
         
-        success = success1 and success2
-        
+        success = self.detect_peduncle()
         if success is False:
             return success
-            
-        self.detect_junction()
             
         success = self.detect_grasp_location(strategy = "cage")
         return success
@@ -727,12 +620,12 @@ if __name__ == '__main__':
         features["tomato"]['mask']
         
         visual = proces_image.get_truss_visualization()
-        # plot_circles(image.imRGB, image.graspL, [10], savePath = pwdDataProc, saveName = str(iTomato), fileFormat = 'png')
-        # plot_circles(image.imRGB, image.graspL, [10], savePath = pwdProcess, saveName = '06')
-        # plot_circles(image.imRGBR, image.graspR, [10], savePath = pwdProcess, saveName = '06')
+        # plot_circles(image.imRGB, image.graspL, [10], pwd = pwdDataProc, name = str(iTomato), fileFormat = 'png')
+        # plot_circles(image.imRGB, image.graspL, [10], pwd = pwdProcess, name = '06')
+        # plot_circles(image.imRGBR, image.graspR, [10], pwd = pwdProcess, name = '06')
         
 #        if success:         
-#            plot_circles(rgb_data, proces_image.graspO, [10], savePath = pwdResults, saveName = '06')
+#            plot_circles(rgb_data, proces_image.graspO, [10], pwd = pwdResults, name = '06')
 #    
 #            row, col, angle = proces_image.get_grasp_info()
 #    

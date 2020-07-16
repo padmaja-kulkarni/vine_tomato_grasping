@@ -183,3 +183,56 @@ if __name__ == '__main__':
 #    axs[0,2].axis('off')    
 
     fig.savefig(os.path.join(pwdResults, fileName), dpi = 300, bbox_inches='tight', pad_inches=0)
+    
+def detect_junction(self):
+
+    # create skeleton image
+    peduncleL = self.crop(self._peduncle).get_data()
+    skeleton_img = skeletonize(peduncleL/self.imMax)
+    
+    # intiailize for skan
+    skeleton = skan.Skeleton(skeleton_img)
+    branch_data = skan.summarize(skeleton)
+    
+    # get all node coordiantes
+    junc_node_coord, dead_node_coord = get_node_coord(branch_data, skeleton)
+    
+    b_remove = (skeleton.distances < self.distance_threshold) & (branch_data['branch-type'] == 1) 
+    i_remove = np.argwhere(b_remove)[:,0]
+    
+    # prune dead branches
+    skeleton_prune_img = skeleton_img.copy()
+    
+    # update skeleton
+    for i in i_remove:
+        
+        px_coords = skeleton.path_coordinates(i).astype(int)
+        
+        for px_coord in px_coords:
+            skeleton_prune_img[px_coord[0], px_coord[1]] = False
+    
+    ## closing
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    close_img = cv2.dilate(skeleton_prune_img.astype(np.uint8), kernel, iterations = 1)
+    
+    # skeletonize
+    skeleton_img_2 = skeletonize(close_img)
+    skeleton_prune = skan.Skeleton(skeleton_img_2)
+    branch_data_prune = skan.summarize(skeleton_prune)
+    
+    # prune brnaches of main peduncle
+    iKeep = prune_branches_off_mask(self.penduncleMain, branch_data_prune)
+    branch_data_prune = branch_data_prune.loc[iKeep]
+    
+    # prune small branches
+    iKeep = branch_data_prune['branch-distance'] > 2
+    branch_data_prune = branch_data_prune.loc[iKeep]
+    
+    junc_node_coord, dead_node_coord = get_node_coord(branch_data_prune, skeleton_prune)
+    junc_branch_center, dead_branch_center = get_center_branch(branch_data_prune, skeleton_img)
+    
+    self.junc_branch_center = junc_branch_center
+
+
+    if self.saveIntermediate:
+        plot_circles(self.crop(self._image_RGB).get_data(), junc_branch_center, 5, savePath = self.pwdProcess, saveName = '05_c')

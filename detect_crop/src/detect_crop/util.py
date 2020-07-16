@@ -717,9 +717,9 @@ def add_contour(imRGB, mask, color = (255,255,255), thickness = 5):
     cv2.drawContours(imRGB, contours, -1, color, thickness)
     return imRGB
 
-def plot_circles(imRGB, centers, radii = 5, savePath = None, saveName = None, 
+def plot_circles(imRGB, centers, radii = 5, pwd = None, name = None, 
                  figureTitle = "", titleSize = 20, resolution = 300, 
-                 fileFormat = 'pdf', color = (255,255,255)):
+                 fileFormat = 'pdf', color = (255,255,255), thickness = 5):
     
     plt.rcParams["savefig.format"] = fileFormat 
     plt.rcParams["savefig.bbox"] = 'tight' 
@@ -727,17 +727,17 @@ def plot_circles(imRGB, centers, radii = 5, savePath = None, saveName = None,
     
     fig = plt.figure() 
     plt.subplot(1, 1, 1)
-    ax = fig.gca()
+    # ax = fig.gca()
     
-    imRGB = add_circles(imRGB, centers, radii = radii, color = color, thickness = 5)    
+    imRGB = add_circles(imRGB, centers, radii = radii, color = color, thickness = thickness)    
     
     
     plt.imshow(imRGB)
     plt.title(figureTitle)
     plt.axis('off')
     
-    if savePath is not None:
-        fig.savefig(os.path.join(savePath, saveName), dpi = resolution, pad_inches=0)
+    if pwd is not None:
+        fig.savefig(os.path.join(pwd, name), dpi = resolution, pad_inches=0)
     return fig
     
 def prune_branches_off_mask(mask, branch_data):
@@ -761,21 +761,6 @@ def prune_branches_off_mask(mask, branch_data):
 
     return iKeep
     
-    
-def get_node_id(branch_data, skeleton):
-
-    src_node_id = np.unique(branch_data['node-id-src'].values)
-    dst_node_id = np.unique(branch_data['node-id-dst'].values)
-    all_node_id = np.unique(np.append(src_node_id, dst_node_id))        
-    
-    deg = skeleton.degrees [all_node_id]
-    end_node_index= np.argwhere(deg == 1)[:, 0] # endpoint
-    
-    end_node_id = all_node_id[end_node_index]        
-    junc_node_id = np.setdiff1d(all_node_id,end_node_id)        
-    
-    return junc_node_id, end_node_id    
-    
 def pipi(angle):
     # cast angle to range [-180, 180]
     return (angle + 180) % 360 - 180    
@@ -783,41 +768,3 @@ def pipi(angle):
 def change_brightness(img, brightness):
     img_copy = img.copy()
     return img_copy + ((255  - img_copy)**brightness).astype(np.uint8) 
-    
-def get_node_coord(branch_data, skeleton):
-    # get all node IDs
-    junc_node_id, end_node_id = get_node_id(branch_data, skeleton)    
-    
-    # swap cols
-    end_node_coord = skeleton.coordinates[end_node_id][:,[1, 0]]
-    junc_node_coord = skeleton.coordinates[junc_node_id][:,[1, 0]]
-
-    return junc_node_coord, end_node_coord
-
-def get_center_branch(branch_data, skeleton_img):
-    
-    col, row = np.nonzero(skeleton_img)
-    loc = np.transpose(np.matrix(np.vstack((row, col))))
-    
-    dead_branch_center = []
-    junc_branch_center = []    
-    
-    for i, row in branch_data.iterrows():
-        
-        dst_node_coord = np.array((row['coord-dst-{1}'], row['coord-dst-{0}']))
-        src_node_coord = np.array((row['coord-src-{1}'], row['coord-src-{0}']))
-
-        center_node_coord = (dst_node_coord + src_node_coord)/2
-
-        dist = np.sqrt(np.sum(np.power(loc - center_node_coord, 2), 1))
-
-        i = np.argmin(dist)
-        center = [loc[i,0], loc[i,1]]
-        
-        if row['branch-type'] == 1:
-            dead_branch_center.append(center)
-            
-        else:
-            junc_branch_center.append(center)
-
-    return np.array(junc_branch_center), np.array(dead_branch_center)  

@@ -73,9 +73,9 @@ class Image(object):
         self._angle = 0
 
     def rescale(self, width_desired):
-        scale = width_desired/self._width
-        new_width = scale * self._width
-        new_height = scale * self._height        
+        scale = float(width_desired)/float(self._width)
+        new_width = int(scale * self._width)
+        new_height = int(scale * self._height)    
         
         self._data = cv2.resize(self._data, (new_width, new_height), 
                                 interpolation = cv2.INTER_AREA)
