@@ -23,12 +23,11 @@ import skan
 from matplotlib import pyplot as plt
 
 # custom functions
-from detect_crop.util import save_img
+from detect_crop.util import change_brightness
 
-from detect_crop.util import make_dirs
+from detect_crop.util import make_dirs, save_img
 
 from detect_crop.ProcessImage import ProcessImage
-from skimage.morphology import skeletonize
 
 from detect_crop.util import add_circles
 
@@ -73,8 +72,11 @@ if __name__ == '__main__':
     
     imMax = 255
     count = 0
+    brightness = 0.85
+    tom_color = (150, 30, 0)     
+    thickness = 3
     
-    for iTomato in range(17,18): #  48 #        # tomato file to load    
+    for iTomato in range(1,23): #  48 #        # tomato file to load    
         
         tomatoID = str(iTomato).zfill(nDigits)
         tomatoName = tomatoID # "tomato" + "_RGB_" + 
@@ -159,14 +161,14 @@ if __name__ == '__main__':
             centers = centers[iKeep, :]
             radii = radii[iKeep]
 #        save_img(segmentImg, pwdResults, tomatoName + '_img')        
-        
-        image_circles = add_circles(imageRGB, centers, radii, thickness = 2)
+        imageRGB_bright = change_brightness(imageRGB, brightness)
+        image_circles = add_circles(imageRGB_bright, centers, radii, thickness = thickness, color=tom_color)
         
         if use_segment:
             save_name = "segmented"
         else:
             save_name = "red"
-        # save_img(image_circles, pwdResults, tomatoName + "_2") 
+        save_img(image_circles, pwdResults, tomatoName) 
 #        save_img(tomatoImg, pwdResults, tomatoName + '_tomato') 
         
 

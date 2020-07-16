@@ -780,6 +780,10 @@ def pipi(angle):
     # cast angle to range [-180, 180]
     return (angle + 180) % 360 - 180    
     
+def change_brightness(img, brightness):
+    img_copy = img.copy()
+    return img_copy + ((255  - img_copy)**brightness).astype(np.uint8) 
+    
 def get_node_coord(branch_data, skeleton):
     # get all node IDs
     junc_node_id, end_node_id = get_node_id(branch_data, skeleton)    
