@@ -41,8 +41,7 @@ def get_node_coord(skeleton_img):
     return junc_node_coord, end_node_coord
 
 def get_locations_on_mask(mask, locations):
-    
-    
+
     col, row = np.nonzero(mask)
     loc = np.transpose(np.matrix(np.vstack((row, col))))
 

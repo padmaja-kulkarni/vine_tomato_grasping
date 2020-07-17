@@ -107,12 +107,6 @@ class ObjectDetection(object):
 
         self.pub_color_hue = rospy.Publisher("color_hue",
                         Image, queue_size=5, latch=True)
-
-        self.pub_color_saturation = rospy.Publisher("color_saturation",
-                                Image, queue_size=5, latch=True)
-
-        self.pub_color_A = rospy.Publisher("color_A",
-                                Image, queue_size=5, latch=True)
                                 
         self.pub_tomato_mask = rospy.Publisher("tomato_mask",
                         Image, queue_size=5, latch=True)
@@ -265,22 +259,18 @@ class ObjectDetection(object):
             truss = self.create_truss(tomatoes, cage_pose, peduncle)
 
             # get images
-            img_hue, img_saturation, img_A  = self.process_image.get_color_components()
+            img_hue  = self.process_image.get_color_components()
             
 
             # publish results tomato_img
             imgmsg_segment = self.bridge.cv2_to_imgmsg(img_segment, encoding="rgb8")
             imgmsg_tomato = self.bridge.cv2_to_imgmsg(img_tomato, encoding="rgb8")
             imgmsg_hue = self.bridge.cv2_to_imgmsg(img_hue)
-            imgmsg_saturation = self.bridge.cv2_to_imgmsg(img_saturation)
-            imgmsg_A = self.bridge.cv2_to_imgmsg(img_A)
 
-            rospy.loginfo("Publishing results")
+            rospy.logdebug("Publishing results")
             self.pub_segment_image.publish(imgmsg_segment)
             self.pub_tomato_image.publish(imgmsg_tomato)
             self.pub_color_hue.publish(imgmsg_hue)
-            self.pub_color_saturation.publish(imgmsg_saturation)
-            self.pub_color_A.publish(imgmsg_A)
             self.pub_object_features.publish(truss)
 
             return True

@@ -22,8 +22,7 @@ from image import Image, compute_angle, add, compute_bbox, image_rotate, image_c
 # custom functions
 from util import add_border
 from util import remove_all_blobs
-from util import segmentation_truss_real, segmentation_tomato_real
-from util import segmentation_truss_sim
+from segment_image import segment_truss, segment_tomato
 from util import translation_rot2or
 from util import add_circles, add_contour
 
@@ -108,20 +107,14 @@ class ProcessImage(object):
         imHSV = cv2.cvtColor(self._image_RGB._data, cv2.COLOR_RGB2HSV)
         imLAB = cv2.cvtColor(self._image_RGB._data, cv2.COLOR_RGB2LAB)
         self._image_hue = imHSV[:, :, 0]
-        self._image_saturation = imHSV[:, :, 1]
-        self._image_A  = imLAB[:, :, 1]
         
     def segment_truss(self):
 
         success = True
-        if self.camera_sim:
-            background, tomato, peduncle = segmentation_truss_sim(self._image_saturation, self._image_hue, self._image_A, self.imMax)
-
+        if self.use_truss:
+            background, tomato, peduncle = segment_truss(self._image_hue, self.imMax)
         else:
-            if self.use_truss:
-                background, tomato, peduncle = segmentation_truss_real(self._image_hue, self.imMax)
-            else:
-                background, tomato, peduncle = segmentation_tomato_real(self._image_A, self.imMax)
+            background, tomato, peduncle = segment_tomato(self._image_hue, self.imMax)
         
         self._background = Image(background)
         self._tomato = Image(tomato)
@@ -199,7 +192,7 @@ class ProcessImage(object):
         self._angle = angle
         
         if self.saveIntermediate:
-            self.save_results('04', crop = True)
+            self.save_results('04', local = True)
 
     def detect_tomatoes(self):
         success = True
@@ -497,7 +490,7 @@ class ProcessImage(object):
         return data
 
     def get_color_components(self):
-        return self._image_hue, self._image_saturation, self._image_A
+        return self._image_hue
 
     def save_results(self, step, local = False):
         tomato, peduncle, background = self.get_segments(local = local)

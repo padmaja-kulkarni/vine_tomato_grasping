@@ -23,9 +23,105 @@ from matplotlib import pyplot as plt
 from detect_crop.util import save_img
 from detect_crop.util import stack_segments
 from detect_crop.util import make_dirs
-from detect_crop.util import save_fig, label2img
+from detect_crop.util import save_fig, bin2img
 
 from matplotlib import colors
+
+def segment_truss(img_hue, imMax):
+
+    background, tomato, peduncle, _, _, _, _ = segment_truss_extensive(img_hue, imMax)
+    return background, tomato, peduncle
+    
+def segment_truss_extensive(img_hue, imMax):
+    
+    # convert hue value to angles, and place on unit circle
+    angle = np.deg2rad(2*np.float32(img_hue.flatten()))
+    data = np.stack((np.cos(angle), np.sin(angle)), axis = 1)
+ 
+    # Define criteria = ( type, max_iter = 10 , epsilon = 1.0 )
+    criteria = (cv2.TERM_CRITERIA_EPS, 1, np.sin(np.deg2rad(5)))
+    compactness,labels,centers_xy = cv2.kmeans(data, 
+                                               3, 
+                                               None, 
+                                               criteria, 
+                                               2, 
+                                               cv2.KMEANS_PP_CENTERS) 
+
+    # convert the centers from xy to angles
+    centers = np.rad2deg(np.arctan2(centers_xy[:, 1], centers_xy[:, 0]))
+    
+    # determine which center corresponds to which segment
+    label_peduncle = np.argmax(centers)
+    label_background = np.argmin(centers)
+    label_tomato = list(set([0, 1, 2]) - set([label_peduncle, label_background]))[0]
+
+    # compute masks
+    dim = img_hue.shape
+    tomato = label2img(labels, label_tomato, dim)     
+    peduncle = label2img(labels, label_peduncle, dim)   
+    background = label2img(labels, label_background, dim)  
+    
+    return background, tomato, peduncle, label_background, label_tomato, label_peduncle, centers
+        
+def label2img(labels, label, dim):
+    data = labels.ravel() == label
+    img = data.reshape(dim)
+    return bin2img(img)           
+        
+def segment_tomato(img_a, imMax):
+        im1 = img_a # hue
+ 
+        # Seperate truss from background
+        data1 = im1.flatten()
+        thresholdTomato, temp = cv2.threshold(data1,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+        
+
+        temp, truss = cv2.threshold(im1,thresholdTomato,imMax,cv2.THRESH_BINARY_INV)
+        background = cv2.bitwise_not(truss)
+        
+        peduncle = np.zeros(truss.shape, dtype = np.uint8)
+        
+        return background, truss, peduncle
+
+
+def rgb2hsi(RGB):
+    
+    RGB = RGB.astype('float')
+    
+    # unsigned int!
+    R, G, B = cv2.split(RGB)
+
+    MAX = np.amax(RGB, 2) # maximum
+    MIN = np.amin(RGB, 2) # minimum
+    C = MAX - MIN           #
+    
+    rows, cols = RGB.shape[:2]
+    H = np.zeros((rows,cols))
+           
+    # taken from https://docs.opencv.org/2.4/modules/imgproc/doc/miscellaneous_transformations.html      
+    for row in range(0, rows):
+        for col in range(0, cols):
+            r = R[row,col]
+            g = G[row,col]
+            b = B[row,col]
+            if C[row,col] == 0:
+                H[row,col] = 0
+            elif MAX[row,col] == r:
+                H[row,col] = (60*(g-b)/C[row,col]) % 360
+            elif MAX[row,col] == g:
+                H[row,col] = (120 + 60*(b - r)/C[row,col]) % 360
+            elif MAX[row,col] == b:
+                H[row,col] = (240 + 60*(r - g)/C[row,col]) % 360
+
+    #Intensity
+    I=(R + G + B)/3
+
+    S= 1 - np.amin(RGB, 2) /np.sum(RGB, 2)
+
+    H = H/2
+    S = S * 255
+    HSI = np.dstack((np.dstack((H, S)), I))
+    return HSI
 
 def hue_scatter(xy, RGB):
     
@@ -53,25 +149,9 @@ def hue_scatter(xy, RGB):
 dataSet = "real_blue"
 
 
-settings = {
-    "real_blue": {
-        "extension": ".png",
-        "files": 5,
-        "name": "real_blue"},
-    "artificial": {
-        "extension": ".png",
-        "files": 19,
-        "name": "artificial"},
-    "sim_blue": {
-        "extension": ".png",
-        "files": 1,
-        "name": "sim_blue"},
-            }
-
-
-N = settings[dataSet]["files"]              # tomato file to load
-extension = settings[dataSet]["extension"]
-dataSet = settings[dataSet]["name"] # "tomato_rot" #  
+N = 23              # tomato file to load
+extension = ".png"
+dataSet = "real_blue" # "tomato_rot" #  
 
 nDigits = 3
 # ls | cat -n | while read n f; do mv "$f" `printf "%03d.jpg" $n`; done
@@ -94,7 +174,7 @@ make_dirs(pwdResults)
 imMax = 255
 count = 0
 
-for iTomato in range(1, 23):
+for iTomato in range(1, N):
 
     tomatoID = str(iTomato).zfill(nDigits)
     tomatoName = tomatoID # "tomato" + "_RGB_" + 
@@ -107,44 +187,16 @@ for iTomato in range(1, 23):
         print("Failed to load image from path: %s" %(imPath))
     else:
         
-
-
         # color spaces
         imRGB = cv2.cvtColor(imBGR, cv2.COLOR_BGR2RGB)
         imHSV = cv2.cvtColor(imRGB, cv2.COLOR_RGB2HSV)
-        imLAB = cv2.cvtColor(imRGB, cv2.COLOR_RGB2LAB)
         
-        #%%#################
-        ### SEGMENTATION ###
-        ####################
-        im1 = imHSV[:, :, 0] # hue
- 
-        dim = im1.shape
+        img_hue = imHSV[:, :, 0] # hue
+        dim = img_hue.shape
         H = dim[0]
-        W = dim[1] 
-        
-        angle = np.deg2rad(2*np.float32(im1.flatten()))
-        data = np.stack((np.cos(angle), np.sin(angle)), axis = 1)
+        W = dim[1]
  
-        # Define criteria = ( type, max_iter = 10 , epsilon = 1.0 )
-        criteria = (cv2.TERM_CRITERIA_EPS, 1, np.sin(np.deg2rad(5))) #  + cv2.TERM_CRITERIA_MAX_ITER
-        compactness,labels,centers_xy = cv2.kmeans(data, 
-                                                   3, 
-                                                   None, 
-                                                   criteria, 
-                                                   2, 
-                                                   cv2.KMEANS_PP_CENTERS) 
- 
-        centers = np.rad2deg(np.arctan2(centers_xy[:, 1], centers_xy[:, 0]))
-        
-        label_peduncle = np.argmax(centers)
-        label_background = np.argmin(centers)
-        label_tomato = list(set([0, 1, 2]) - set([label_peduncle, label_background]))[0]
- 
-         # compute masks
-        tomato = label2img(labels, label_tomato, H ,W)     
-        peduncle = label2img(labels, label_peduncle, H ,W)   
-        background = label2img(labels, label_background, H ,W)   
+        background, tomato, peduncle, label_background, label_tomato, label_peduncle, centers = segment_truss_extensive(img_hue, imMax) 
         truss = cv2.bitwise_or(tomato,peduncle)
         
         # [-180, 180] => [0, 360]
@@ -158,7 +210,7 @@ for iTomato in range(1, 23):
         dim = (width, height)
         
         RGB_mini = cv2.resize(imRGB, dim, interpolation = cv2.INTER_AREA)
-        im1_mini = cv2.resize(im1, dim, interpolation = cv2.INTER_AREA)    
+        im1_mini = cv2.resize(img_hue, dim, interpolation = cv2.INTER_AREA)    
         data = np.stack((np.cos(np.deg2rad(2*np.float32(im1_mini.flatten()))), 
                          np.sin(np.deg2rad(2*np.float32(im1_mini.flatten())))), axis = 1)
     
@@ -194,7 +246,7 @@ for iTomato in range(1, 23):
         
         
         N = 180
-        radii, bins, patches = ax.hist(im1.flatten().astype('uint16')*2, bins=N, range=(0, 360), color = "black", lw=0)
+        radii, bins, patches = ax.hist(img_hue.flatten().astype('uint16')*2, bins=N, range=(0, 360), color = "black", lw=0)
         save_fig(fig, pwdResults, tomatoID + "_hist", figureTitle = "", resolution = 100, titleSize = 10)
         
 #        ## circular        

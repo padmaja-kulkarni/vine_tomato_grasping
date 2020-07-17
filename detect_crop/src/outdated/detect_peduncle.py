@@ -117,3 +117,24 @@ def filter_branch_angle(skeleton_img):
 #    
 #    branch_indexes = np.array(list(set(branch_indexes)))
 #    return branch_indexes
+    
+def prune_branches_off_mask(mask, branch_data):
+    
+    col, row = np.nonzero(mask)
+    loc = np.transpose(np.matrix(np.vstack((row, col))))
+
+    iKeep = []
+    for i, row in branch_data.iterrows():
+        
+        dst_node_coord = [row['coord-dst-{1}'], row['coord-dst-{0}']]
+        src_node_coord = [row['coord-src-{1}'], row['coord-src-{0}']]
+        
+
+        # col, row = np.nonzero(skeleton)
+        dst_dist = np.sqrt(np.sum(np.power(loc - dst_node_coord, 2), 1))
+        src_dist = np.sqrt(np.sum(np.power(loc - src_node_coord, 2), 1))
+        
+        if (np.amin(dst_dist) < 10) & (np.amin(src_dist) < 10):
+            iKeep.append(i)
+
+    return iKeep
