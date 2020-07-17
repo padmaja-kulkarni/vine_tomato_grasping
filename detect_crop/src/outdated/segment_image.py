@@ -4,6 +4,35 @@ Created on Fri Jul 17 12:44:23 2020
 
 @author: taeke
 """
+import numpy as np
+import cv2
+
+scale = 0.1
+
+height = int(H * scale)
+width = int(W * scale)
+dim = (width, height)
+
+RGB_mini = cv2.resize(imRGB, dim, interpolation = cv2.INTER_AREA)
+im1_mini = cv2.resize(img_hue, dim, interpolation = cv2.INTER_AREA)    
+data = np.stack((np.cos(np.deg2rad(2*np.float32(im1_mini.flatten()))), 
+                 np.sin(np.deg2rad(2*np.float32(im1_mini.flatten())))), axis = 1)
+                 
+def hue_cirvular_hist():
+    
+    N = 180
+    
+    ## circular        
+    width = (2*np.pi) / N
+    bottom = 1
+    theta = np.linspace(0.0, 2 * np.pi, N, endpoint=False)  
+    
+    # ax= plt.subplot(111, polar=True)
+    fig, ax= plt.subplots(1)
+    ax = plt.subplot(111, projection='polar')
+    ax.set_rlim((0.1, 1000.0))
+    ax.set_rscale('log')
+    # bars = ax.bar(theta, radii, width=width, bottom=bottom)
 
 def segmentation_truss_sim(img_saturation, img_hue, img_A, imMax):
     

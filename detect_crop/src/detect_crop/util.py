@@ -193,8 +193,8 @@ def stack_segments(imRGB, background, tomato, peduncle):
     # print('color tomato:', colorPeduncle)
     return res2
 
-def save_img(img, pwd, name, resolution = 300, figureTitle = "", titleSize = 20, saveFormat = 'png'):
-        plt.rcParams["savefig.format"] = saveFormat
+def save_img(img, pwd, name, resolution = 300, figureTitle = "", titleSize = 20, ext = 'png'):
+        plt.rcParams["savefig.format"] = ext
         plt.rcParams["savefig.bbox"] = 'tight' 
         plt.rcParams['axes.titlesize'] = titleSize
         
@@ -215,13 +215,13 @@ def save_img(img, pwd, name, resolution = 300, figureTitle = "", titleSize = 20,
         
         fig.savefig(os.path.join(pwd, name), dpi = resolution, bbox_inches='tight', pad_inches=0)
         
-def save_fig(fig, pwd, name, resolution = 300, figureTitle = "", titleSize = 20, saveFormat = 'png'):
+def save_fig(fig, pwd, name, resolution = 300, figureTitle = "", titleSize = 20, ext = 'png'):
         
         SMALL_SIZE = 8
         MEDIUM_SIZE = 15
         BIGGER_SIZE = 20
     
-        plt.rcParams["savefig.format"] = saveFormat
+        plt.rcParams["savefig.format"] = ext
         plt.rcParams["savefig.bbox"] = 'tight' 
         # plt.rcParams['axes.titlesize'] = titleSize
         

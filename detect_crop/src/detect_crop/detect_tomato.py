@@ -20,7 +20,83 @@ import numpy as np
 
 # custom functions
 from util import plot_circles
+
+def detect_tomato(img_segment, settings, imageRGB = None,
+                      save = False, pwd = "", name = ""):
+                     
+    if imageRGB is None:                     
+        imageRGB = img_segment
+        
+
+    # set dimensions
+    dim = img_segment.shape
+    min_radius = dim[1]/settings['radius_min']
+    max_radius = dim[1]/settings['radius_max']
+    min_distance = dim[1]/settings['distance_min']    
+
+    # Hough requires a gradient, thus the image is blurred
+    truss_blurred = cv2.GaussianBlur(img_segment, settings['blur_size'], 0)     
     
+    # fit circles: [x, y, radius]
+    circles = cv2.HoughCircles(truss_blurred, 
+                               cv2.HOUGH_GRADIENT, 
+                               settings['dp'], 
+                               min_distance, 
+                               param1 = settings['param1'], 
+                               param2 = settings['param2'], 
+                               minRadius = min_radius, 
+                               maxRadius=max_radius) 
+
+    if circles is None:
+        centers = None
+        radii = None
+        com = None
+            
+    else:
+        # swap columns [r, c] -> [x,y]
+        centers =np.matrix(circles[0][:,0:2])
+        radii = circles[0][:,2]
+        
+        # remove circles which do not overlapp with the tomato segment
+        i_keep = find_overlapping_tomatoes(centers, 
+                                           radii, 
+                                           img_segment, 
+                                           ratio_threshold = settings['ratio_threshold'])
+        centers = centers[i_keep, :]
+        radii = radii[i_keep]
+        
+        com = (radii**2) * centers/(np.sum(radii**2))
+    
+    # visualize result
+    thickness = 3
+    tom_color = (150, 30, 0) 
+    
+    if save:
+        plot_circles(imageRGB, centers, radii, pwd = pwd, name = name, 
+                                     thickness = thickness, color=tom_color)
+                                     
+    return centers, radii, com
+
+def set_detect_tomato_settings(blur_size = (3,3),
+                               radius_min = 8,
+                               radius_max = 4,
+                               distance_min = 4, # = tomato_radius_max
+                               dp = 4,
+                               param1 = 20,
+                               param2 = 50,
+                               ratio_threshold = 0.5):   
+    
+    settings = {}
+    settings['blur_size'] = blur_size  
+    settings['radius_min'] = radius_min  
+    settings['radius_max'] = radius_max
+    settings['distance_min'] = distance_min
+    settings['dp'] = dp
+    settings['param1'] = param1
+    settings['param2'] = param2
+    settings['ratio_threshold'] = ratio_threshold
+    return settings
+
 def find_overlapping_tomatoes(centers, radii, img_segment, ratio_threshold = 0.5):
         
     
@@ -40,56 +116,5 @@ def find_overlapping_tomatoes(centers, radii, img_segment, ratio_threshold = 0.5
             
     return iKeep
 
-    
-def detect_tomato(img_segment, imageRGB = None, blur_size = None, radius_min = None, 
-                      radius_max = None, distance_min = None,
-                      dp = None, param1 = None, param2 = None, ratio_threshold = None,
-                      save = False, pwd = "", name = ""):
-                     
-    if imageRGB is None:                     
-        imageRGB = img_segment
-        
-    # set dimensions
-    dim = img_segment.shape
-    minR = dim[1]/radius_min
-    maxR = dim[1]/radius_max
-    minDist = dim[1]/distance_min    
-
-    # Hough requires a gradient, thus the image is blurred
-    truss_blurred = cv2.GaussianBlur(img_segment, blur_size, 0)     
-    
-    # fit circles: [x, y, radius]
-    circles = cv2.HoughCircles(truss_blurred, cv2.HOUGH_GRADIENT, 
-                       dp, minDist, param1 = param1, 
-                       param2 = param2, minRadius=minR, 
-                       maxRadius=maxR) 
-
-    if circles is None:
-        centers = None
-        radii = None
-        com = None
-            
-    else:
-        # swap columns [r, c] -> [x,y]
-        centers =np.matrix(circles[0][:,0:2])
-        radii = circles[0][:,2]
-        
-        # remove circles which do not overlapp with the tomato segment
-        i_keep = find_overlapping_tomatoes(centers, radii, img_segment, ratio_threshold = ratio_threshold)
-        centers = centers[i_keep, :]
-        radii = radii[i_keep]
-        
-        com = (radii**2) * centers/(np.sum(radii**2))
-    
-    # visualize result
-    thickness = 3
-    tom_color = (150, 30, 0) 
-    
-    if save:
-        plot_circles(imageRGB, centers, radii, pwd = pwd, name = name, 
-                                     thickness = thickness, color=tom_color)
-                                     
-    return centers, radii, com
-
 if __name__ == '__main__':
-    pass
+    print("This file has no main!")

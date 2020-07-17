@@ -15,14 +15,13 @@ from skimage.transform import rotate
 from skimage.morphology import skeletonize
 
 import rospy
-from flex_grasp.msg import ImageProcessingSettings
 
 from image import Image, compute_angle, add, compute_bbox, image_rotate, image_crop
 
 # custom functions
 from util import add_border
 from util import remove_all_blobs
-from segment_image import segment_truss, segment_tomato
+
 from util import translation_rot2or
 from util import add_circles, add_contour
 
@@ -36,29 +35,30 @@ from util import change_brightness
 from point_2d import make_2d_transform, make_2d_point
 
 from detect_peduncle import detect_peduncle
-from detect_tomato import detect_tomato
+from detect_tomato import detect_tomato, set_detect_tomato_settings
+from segment_image import segment_truss, segment_tomato
 
 class ProcessImage(object):
 
     def __init__(self, 
                  use_truss = True,
                  camera_sim = True, 
-                 tomatoName = 'tomato', 
-                 saveIntermediate = False, 
-                 pwdProcess = '', 
-                 saveFormat = 'png'               
+                 save = False, 
+                 pwd = '', 
+                 name = 'tomato', 
+                 ext = 'png'               
                  ):
 
-        self.saveFormat = saveFormat
+        self.ext = ext
 
         
-        self.saveIntermediate = saveIntermediate
+        self.save = save
 
         self.camera_sim = camera_sim
         self.use_truss = use_truss
         self.imMax = 255
-        self.pwdProcess = pwdProcess
-        self.tomatoName = tomatoName
+        self.pwd = pwd
+        self.name = name
 
         # image
         self.width_desired = 1280
@@ -69,17 +69,8 @@ class ProcessImage(object):
         self.filter_penduncle_diameter = 5
         self.filter_penduncle_shape = cv2.MORPH_ELLIPSE
 
-        # detect tomatoes
-        self.blur_size = (3,3)
-        self.tomato_radius_min = 8
-        self.tomato_radius_max = 4
-        self.tomato_distance_min = self.tomato_radius_max
-        self.dp = 4
-        self.param1 = 20
-        self.param2 = 50
-        self.ratio_threshold = 0.5        
         
-        self.peduncle_element = (20, 2)
+        self.detect_tomato_settings = set_detect_tomato_settings()
         
         # detect junctions
         self.distance_threshold = 10
@@ -99,8 +90,8 @@ class ProcessImage(object):
         image.rescale(self.width_desired)        
         self._image_RGB = image        
         
-        if self.saveIntermediate:
-            save_img(self._image_RGB._data, self.pwdProcess, '01', saveFormat = self.saveFormat)
+        if self.save:
+            save_img(self._image_RGB._data, self.pwd, '01', ext = self.ext)
 
     def color_space(self):
         
@@ -112,7 +103,7 @@ class ProcessImage(object):
 
         success = True
         if self.use_truss:
-            background, tomato, peduncle = segment_truss(self._image_hue, self.imMax)
+            background, tomato, peduncle = segment_truss(self._image_hue, self.imMax, save = self.save, pwd = self.pwd, name = self.name)
         else:
             background, tomato, peduncle = segment_tomato(self._image_hue, self.imMax)
         
@@ -125,7 +116,7 @@ class ProcessImage(object):
             warnings.warn("Segment truss: no pixel has been classified as tomato")
             success = False
 
-        if self.saveIntermediate:
+        if self.save:
             self.save_results('02')
 
         return success
@@ -143,7 +134,7 @@ class ProcessImage(object):
         self._tomato._data, self._peduncle._data, self._background._data = remove_all_blobs(self._tomato.get_data(),
                          self._peduncle.get_data(), self._background.get_data(), self.imMax)
 
-        if self.saveIntermediate:
+        if self.save:
             self.save_results('03')
             
         if self._tomato.is_empty():
@@ -191,7 +182,7 @@ class ProcessImage(object):
         self._bbox = bbox
         self._angle = angle
         
-        if self.saveIntermediate:
+        if self.save:
             self.save_results('04', local = True)
 
     def detect_tomatoes(self):
@@ -204,13 +195,12 @@ class ProcessImage(object):
         bg_image = self.crop(self._image_RGB).get_data()
         bg_img = change_brightness(bg_image, 0.85)
     
-        centers, radii, com = detect_tomato(truss_crop, imageRGB=bg_img, 
-                  blur_size=self.blur_size, radius_min=self.tomato_radius_min, 
-                  radius_max=self.tomato_radius_max, 
-                  distance_min=self.tomato_distance_min,
-                  dp = self.dp, param1 = self.param1, param2 = self.param2,
-                  ratio_threshold = self.ratio_threshold,
-                  save = self.saveIntermediate, pwd = self.pwdProcess, name = self.tomatoName)
+        centers, radii, com = detect_tomato(truss_crop, 
+                                            self.detect_tomato_settings, 
+                                            imageRGB=bg_img, 
+                                            save = self.save, 
+                                            pwd = self.pwd, 
+                                            name = self.name)
             
         # convert to 2D points
         center_points = []
@@ -239,10 +229,10 @@ class ProcessImage(object):
         
         penduncle_main, branch_center = detect_peduncle(peduncleL, 
                                                         distance_threshold, 
-                                                        save = self.saveIntermediate, 
+                                                        save = self.save, 
                                                         bg_img = bg_img, 
                                                         name = '06', 
-                                                        pwd = self.pwdProcess)
+                                                        pwd = self.pwd)
         
         self.penduncle_main = penduncle_main
         self.junc_branch_center = branch_center
@@ -296,13 +286,13 @@ class ProcessImage(object):
         # self.graspO = graspO
         self.grasp_angle = grasp_angle
 
-        if self.saveIntermediate: # True: # self.saveIntermediate:
+        if self.save:
             xy_local = self.get_xy(grasp_point, self._LOCAL_FRAME_ID)
-            plot_circles(self.crop(self._image_RGB).get_data(), xy_local, 10, pwd = self.pwdProcess, name = '06')
+            plot_circles(self.crop(self._image_RGB).get_data(), xy_local, 10, pwd = self.pwd, name = '06')
             
             
 #            xy_local = self.get_xy(grasp_point, self._ORIGINAL_FRAME_ID)
-#            plot_circles(self._image_RGB.get_data(), xy_local, 10, pwd = self.pwdProcess, name = '06')
+#            plot_circles(self._image_RGB.get_data(), xy_local, 10, pwd = self.pwd, name = '06')
             
         return success
         
@@ -496,10 +486,10 @@ class ProcessImage(object):
         tomato, peduncle, background = self.get_segments(local = local)
         segments_rgb = self.get_segmented_image(local = local)
             
-        save_img(background, self.pwdProcess, step + '_a', saveFormat = self.saveFormat)
-        save_img(tomato, self.pwdProcess, step + '_b', saveFormat = self.saveFormat)
-        save_img(peduncle, self.pwdProcess, step + '_c',  saveFormat = self.saveFormat) # figureTitle = "Peduncle",
-        save_img(segments_rgb, self.pwdProcess, step + '_d', saveFormat = self.saveFormat)
+        save_img(background, self.pwd, step + '_a', ext = self.ext)
+        save_img(tomato, self.pwd, step + '_b', ext = self.ext)
+        save_img(peduncle, self.pwd, step + '_c',  ext = self.ext) # figureTitle = "Peduncle",
+        save_img(segments_rgb, self.pwd, step + '_d', ext = self.ext)
 
     def process_image(self):
 
@@ -528,16 +518,22 @@ class ProcessImage(object):
         success = self.detect_grasp_location(strategy = "cage")
         return success
 
-    def get_settings(self):
-        settings = ImageProcessingSettings()
-        settings.tomato_radius_min.data = self.tomato_radius_min
-        settings.tomato_radius_max.data = self.tomato_radius_max
-        settings.tomato_distance_min.data = self.tomato_distance_min
-        settings.dp.data = self.dp
-        settings.param1.data = self.param1
-        settings.param2.data = self.param2
+    def get_settings(self):        
+        return self.detect_tomato_settings
         
-        return settings
+    def set_settings(self, settings):     
+        settings = set_detect_tomato_settings(# blur_size = (3,3),
+                               radius_min = settings['radius_min'],
+                               radius_max = settings['radius_max'],
+                               distance_min = settings['distance_min'], # = tomato_radius_max
+                               dp = settings['dp'],
+                               param1 = settings['param1'],
+                               param2 = settings['param2'],
+                               # ratio_threshold = 0.5
+                               )
+
+        self.detect_tomato_settings = settings
+
 
 
 # %matplotlib inline
@@ -552,22 +548,21 @@ if __name__ == '__main__':
     # params
     N = 15               # tomato file to load
     nDigits = 3
-    saveIntermediate = True
+    save = True
 
     pathCurrent = os.path.dirname(__file__)
     dataSet = "real_blue" # "tomato_rot"
 
-    pwdTest = os.path.join("..") # "..", "..", ,  "taeke"
 
-    pwdData = os.path.join(pathCurrent, pwdTest, "data", dataSet)
-    pwdResults = os.path.join(pathCurrent, pwdTest, "results", dataSet)
+    pwd_data = os.path.join(pathCurrent, "..", "data", dataSet)
+    pwd_results = os.path.join(pathCurrent, "..", "results", dataSet)
 
 
 
     # create folder if required
-    if not os.path.isdir(pwdResults):
-        print("New data set, creating a new folder: " + pwdResults)
-        os.makedirs(pwdResults)
+    if not os.path.isdir(pwd_results):
+        print("New data set, creating a new folder: " + pwd_results)
+        os.makedirs(pwd_results)
 
     # general settings
 
@@ -576,19 +571,19 @@ if __name__ == '__main__':
     ############
     for iTomato in range(N, N + 1, 1):
 
-        tomatoName = str(iTomato).zfill(nDigits)
-        fileName = tomatoName + ".png" #  ".jpg" # 
+        tomato_name = str(iTomato).zfill(nDigits)
+        file_name = tomato_name + ".png" #  ".jpg" # 
 
-        rgb_data, DIM = load_rgb(pwdData, fileName, horizontal = True)
+        rgb_data, DIM = load_rgb(pwd_data, file_name, horizontal = True)
 
-        if saveIntermediate:
-            save_img(rgb_data, pwdResults, '01')
+        if save:
+            save_img(rgb_data, pwd_results, '01')
 
         proces_image = ProcessImage(camera_sim = False,
                              use_truss = True,
-                             tomatoName = tomatoName, 
-                             pwdProcess = pwdResults, 
-                             saveIntermediate = saveIntermediate)
+                             name = tomato_name, 
+                             pwd = pwd_results, 
+                             save = save)
                              
                              
         proces_image.add_image(rgb_data)
@@ -597,11 +592,11 @@ if __name__ == '__main__':
         if success:
         
             visual = proces_image.get_truss_visualization()
-            save_img(visual, pwdResults, '99')
+            save_img(visual, pwd_results, '99')
             
             visual = proces_image.get_truss_visualization(local = True)
-            save_img(visual, pwdResults, '99')
-        # plot_circles(image.imRGB, image.graspL, [10], pwd = pwdDataProc, name = str(iTomato), fileFormat = 'png')
+            save_img(visual, pwd_results, '99')
+        # plot_circles(image.imRGB, image.graspL, [10], pwd = pwd, name = str(iTomato), fileFormat = 'png')
         # plot_circles(image.imRGB, image.graspL, [10], pwd = pwdProcess, name = '06')
         # plot_circles(image.imRGBR, image.graspR, [10], pwd = pwdProcess, name = '06')
         

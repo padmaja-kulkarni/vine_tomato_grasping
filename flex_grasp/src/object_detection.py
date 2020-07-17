@@ -39,6 +39,32 @@ import pyrealsense2 as rs
 # import pathlib
 import os # os.sep
 
+
+def lib2msg(lib):
+    msg = ImageProcessingSettings()
+    # msg.blur_size.data = lib['blur_size']
+    msg.tomato_radius_min.data = lib['radius_min']
+    msg.tomato_radius_max.data = lib['radius_max']
+    msg.tomato_distance_min.data = lib['distance_min']
+    msg.dp.data = lib['dp']
+    msg.param1.data = lib['param1']
+    msg.param2.data = lib['param2']
+    # msg.ratio_threshold.data = lib['ratio_threshold']
+    return msg
+
+def msg2lib(msg):
+    
+    lib = {}
+    # lib['blur_size'] = msg.blur_size.data  
+    lib['radius_min'] = msg.tomato_radius_min.data  
+    lib['radius_max'] = msg.tomato_radius_max.data
+    lib['distance_min'] = msg.tomato_distance_min.data
+    lib['dp'] = msg.dp.data
+    lib['param1'] = msg.param1.data
+    lib['param2'] = msg.param2.data
+    # lib['ratio_threshold'] = msg.ratio_threshold.data
+    return lib
+
 class ObjectDetection(object):
     """ObjectDetection"""
     def __init__(self):
@@ -78,11 +104,11 @@ class ObjectDetection(object):
         pwd = os.path.dirname(__file__)
 
         self.process_image = ProcessImage(camera_sim = self.camera_sim,
-                     tomatoName = 'ros_tomato',
-                     pwdProcess = pwd,
-                     saveIntermediate = False)
+                     name = 'ros_tomato',
+                     pwd = pwd,
+                     save = False)
 
-        settings = self.process_image.get_settings()
+        settings = lib2msg(self.process_image.get_settings())
 
         if self.debug_mode:
             log_level = rospy.DEBUG
@@ -218,12 +244,7 @@ class ObjectDetection(object):
             self.process_image.add_image(self.color_image)
 
             if self.settings is not None:
-                self.process_image.tomato_radius_min = self.settings.tomato_radius_min.data
-                self.process_image.tomato_radius_max = self.settings.tomato_radius_max.data
-                self.process_image.tomato_distance_min = self.settings.tomato_distance_min.data
-                self.process_image.dp = self.settings.dp.data                
-                self.process_image.param1 = self.settings.param1.data
-                self.process_image.param2 = self.settings.param2.data
+                self.process_image.set_settings(msg2lib(self.settings))
 
             self.intrin = camera_info2intrinsics(self.color_info)
 

@@ -14,14 +14,10 @@ from matplotlib import colors
 
 # custom functions
 from util import bin2img
-
-def segment_truss(img_hue, imMax):
-
-    background, tomato, peduncle, _, _, _, _ = segment_truss_extensive(img_hue, imMax)
-    return background, tomato, peduncle
+from util import save_fig
     
-def segment_truss_extensive(img_hue, imMax):
-    
+def k_means_hue(img_hue, imMax, n_clusters):
+
     # convert hue value to angles, and place on unit circle
     angle = np.deg2rad(2*np.float32(img_hue.flatten()))
     data = np.stack((np.cos(angle), np.sin(angle)), axis = 1)
@@ -29,87 +25,98 @@ def segment_truss_extensive(img_hue, imMax):
     # Define criteria = ( type, max_iter = 10 , epsilon = 1.0 )
     criteria = (cv2.TERM_CRITERIA_EPS, 1, np.sin(np.deg2rad(5)))
     compactness,labels,centers_xy = cv2.kmeans(data, 
-                                               3, 
+                                               n_clusters, 
                                                None, 
                                                criteria, 
                                                2, 
                                                cv2.KMEANS_PP_CENTERS) 
 
     # convert the centers from xy to angles
-    centers = np.rad2deg(np.arctan2(centers_xy[:, 1], centers_xy[:, 0]))
+    centers = np.rad2deg(np.arctan2(centers_xy[:, 1], centers_xy[:, 0]))    
+    return centers, labels
+
+def segment_truss(img_hue, imMax, save = "False", name = "", pwd = ""):
+    
+    n = 3
+    centers, labels = k_means_hue(img_hue, imMax, n)
     
     # determine which center corresponds to which segment
-    label_peduncle = np.argmax(centers)
-    label_background = np.argmin(centers)
-    label_tomato = list(set([0, 1, 2]) - set([label_peduncle, label_background]))[0]
-
+    lbl = {}
+    lbl["peduncle"] = np.argmax(centers)
+    lbl["background"] = np.argmin(centers)
+    lbl["tomato"] = list(set(range(0, n)) - set(lbl.values()))[0]
+    
     # compute masks
     dim = img_hue.shape
-    tomato = label2img(labels, label_tomato, dim)     
-    peduncle = label2img(labels, label_peduncle, dim)   
-    background = label2img(labels, label_background, dim)  
+    tomato = label2img(labels, lbl["tomato"], dim)     
+    peduncle = label2img(labels, lbl["peduncle"], dim)   
+    background = label2img(labels, lbl["background"], dim)  
     
-    return background, tomato, peduncle, label_background, label_tomato, label_peduncle, centers
+    if save:
+        hue_hist(img_hue, centers, lbl, name, pwd)
+    
+    return background, tomato, peduncle
+        
+def segment_tomato(img_hue, imMax, save = False, name = "", pwd = ""):
+
+    n = 2
+    centers, labels = k_means_hue(img_hue, imMax, n)
+ 
+    # determine which center corresponds to which segment
+    lbl = {}
+    lbl["background"] = np.argmin(centers)
+    lbl["peduncle"] = None
+    lbl["tomato"] = list(set(range(0,n)) - set(lbl.values()))[0]
+    
+    # compute masks
+    dim = img_hue.shape
+    tomato = label2img(labels, lbl["tomato"], dim)     
+    peduncle = np.zeros(img_hue.shape, dtype = np.uint8)
+    background = label2img(labels, lbl["background"], dim)  
+    
+    if save:
+        hue_hist(img_hue, centers, lbl, name, pwd)    
+    
+    return background, tomato, peduncle, lbl, centers        
+        
+def hue_hist(img_hue, centers, lbl, name, pwd):
+    
+    # [-180, 180] => [0, 360]
+    centers[centers<0] += 360       
+    
+    # plot Hue (HSV)
+    fig, ax= plt.subplots(1)
+    plt.yscale("log")
+
+    center_background = centers[lbl["background"]]
+    center_tomato = centers[lbl["tomato"]]
+    center_peduncle = centers[lbl["peduncle"]]
+
+    ax.axvline(x= center_background,  color='b')
+    ax.axvline(x= center_tomato,  color='r')
+    ax.axvline(x= center_peduncle,  color='g')
+    
+    x0 = 0
+    x1 = (center_tomato + center_peduncle)/2
+    x2 = (center_peduncle + center_background)/2
+    x3 = (center_background + center_tomato + 360)/2
+    x4 = 360
+    alpha = 0.2
+    
+    plt.axvspan(x0, x1, color='r', alpha=alpha, lw=0)
+    plt.axvspan(x1, x2, color='g', alpha=alpha, lw=0)  
+    plt.axvspan(x2, x3, color='b', alpha=alpha, lw=0)
+    plt.axvspan(x3, x4, color='r', alpha=alpha, lw=0)  
+    
+    bins = 180
+    angle = img_hue.flatten().astype('uint16')*2
+    radii, bins, patches = ax.hist(angle, bins=bins, range=(0, 360), color = "black", lw=0)
+    save_fig(fig, pwd, name + "_hist", figureTitle = "", resolution = 100, titleSize = 10)        
         
 def label2img(labels, label, dim):
     data = labels.ravel() == label
     img = data.reshape(dim)
     return bin2img(img)           
-        
-def segment_tomato(img_a, imMax):
-        im1 = img_a # hue
- 
-        # Seperate truss from background
-        data1 = im1.flatten()
-        thresholdTomato, temp = cv2.threshold(data1,0,imMax,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-        
-
-        temp, truss = cv2.threshold(im1,thresholdTomato,imMax,cv2.THRESH_BINARY_INV)
-        background = cv2.bitwise_not(truss)
-        
-        peduncle = np.zeros(truss.shape, dtype = np.uint8)
-        
-        return background, truss, peduncle
-
-
-def rgb2hsi(RGB):
-    
-    RGB = RGB.astype('float')
-    
-    # unsigned int!
-    R, G, B = cv2.split(RGB)
-
-    MAX = np.amax(RGB, 2) # maximum
-    MIN = np.amin(RGB, 2) # minimum
-    C = MAX - MIN           #
-    
-    rows, cols = RGB.shape[:2]
-    H = np.zeros((rows,cols))
-           
-    # taken from https://docs.opencv.org/2.4/modules/imgproc/doc/miscellaneous_transformations.html      
-    for row in range(0, rows):
-        for col in range(0, cols):
-            r = R[row,col]
-            g = G[row,col]
-            b = B[row,col]
-            if C[row,col] == 0:
-                H[row,col] = 0
-            elif MAX[row,col] == r:
-                H[row,col] = (60*(g-b)/C[row,col]) % 360
-            elif MAX[row,col] == g:
-                H[row,col] = (120 + 60*(b - r)/C[row,col]) % 360
-            elif MAX[row,col] == b:
-                H[row,col] = (240 + 60*(r - g)/C[row,col]) % 360
-
-    #Intensity
-    I=(R + G + B)/3
-
-    S= 1 - np.amin(RGB, 2) /np.sum(RGB, 2)
-
-    H = H/2
-    S = S * 255
-    HSI = np.dstack((np.dstack((H, S)), I))
-    return HSI
 
 def hue_scatter(xy, RGB):
     
@@ -123,9 +130,7 @@ def hue_scatter(xy, RGB):
     fig =  plt.figure()
     ax = fig.add_subplot(2, 2, 1)
     ax.scatter(xy[:, 0], xy[:, 1], facecolors=pixel_colors, marker=".")
-    ax.set_xlabel("Hue")
-    ax.set_ylabel("Saturation")
-
-
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
     
     plt.show()
