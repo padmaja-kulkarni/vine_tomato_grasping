@@ -280,6 +280,18 @@ def add_circles(imRGB, centers, radii = 5, color = (255,255,255), thickness = 5)
             
     return imRGB
 
+def plot_segments(img_rgb, background, tomato, peduncle, pwd=None, 
+                  file_name=None, title="", alpha = 0.7):
+    
+    segmentsRGB = stack_segments(img_rgb, background, tomato, peduncle)
+    
+    added_image = cv2.addWeighted(img_rgb, 1 - alpha,segmentsRGB,alpha,0)
+    added_image = add_contour(added_image, tomato, color = (255,0,0), thickness = 3)
+    added_image = add_contour(added_image, peduncle, color = (0,255,0), thickness = 2)  
+    
+    if pwd is not None:
+        save_img(added_image, pwd, file_name, figureTitle = title)
+
 def add_contour(imRGB, mask, color = (255,255,255), thickness = 5):
     contours, hierarchy= cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
     # segmentPeduncle = self.imRGB.copy()

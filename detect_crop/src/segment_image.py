@@ -15,14 +15,12 @@ Created on Wed May 20 13:32:31 2020
 ## imports ##
 import os # os.sep
 import cv2
-import numpy as np
-
 import time
 
 # custom functions
-from detect_crop.util import save_img
-from detect_crop.util import stack_segments
-from detect_crop.util import make_dirs, load_rgb
+from detect_crop.util import plot_segments
+from detect_crop.util import load_rgb
+from detect_crop.util import make_dirs
 
 from detect_crop.segment_image import segment_truss
 
@@ -65,17 +63,20 @@ if __name__ == '__main__':
         print("--- %.2f seconds ---" % duration)
         
         # VISUALIZE
-        truss = cv2.bitwise_or(tomato,peduncle)
-    
-        peduncle_empty = np.zeros(tomato.shape, dtype = np.uint8)
-        segmentsRGB = stack_segments(img_rgb, background, truss, peduncle_empty)
-    
-        figureTitle = ""
-        save_img(segmentsRGB, pwd_results, tomato_ID + "_img_1", figureTitle = figureTitle)
-        
-    
-        segmentsRGB = stack_segments(img_rgb, background, tomato, peduncle)
-        save_img(segmentsRGB, pwd_results, tomato_ID + "_img_2", figureTitle = figureTitle)
-        
+        name = tomato_ID + "_img"
+        plot_segments(img_rgb, background, tomato, peduncle, 
+                      file_name = name, pwd = pwd_results)
+      
         count = count + 1
         print("completed image %d out of %d" %(count, N))
+        
+        #        truss = cv2.bitwise_or(tomato,peduncle)
+#        peduncle_empty = np.zeros(tomato.shape, dtype = np.uint8)
+#    
+#
+#        
+#
+#        name = tomato_ID + "_img_1"
+#        plot_segments(img_rgb, background, truss, peduncle_empty, 
+#                                      file_name = name, pwd = pwd_results)   
+#    
