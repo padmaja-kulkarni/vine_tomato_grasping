@@ -16,7 +16,7 @@ from matplotlib import colors
 from util import bin2img
 from util import save_fig
     
-def k_means_hue(img_hue, imMax, n_clusters):
+def k_means_hue(img_hue, n_clusters):
 
     # convert hue value to angles, and place on unit circle
     angle = np.deg2rad(2*np.float32(img_hue.flatten()))
@@ -35,10 +35,10 @@ def k_means_hue(img_hue, imMax, n_clusters):
     centers = np.rad2deg(np.arctan2(centers_xy[:, 1], centers_xy[:, 0]))    
     return centers, labels
 
-def segment_truss(img_hue, imMax, save = "False", name = "", pwd = ""):
+def segment_truss(img_hue, save = "False", name = "", pwd = ""):
     
     n = 3
-    centers, labels = k_means_hue(img_hue, imMax, n)
+    centers, labels = k_means_hue(img_hue, n)
     
     # determine which center corresponds to which segment
     lbl = {}
@@ -57,10 +57,10 @@ def segment_truss(img_hue, imMax, save = "False", name = "", pwd = ""):
     
     return background, tomato, peduncle
         
-def segment_tomato(img_hue, imMax, save = False, name = "", pwd = ""):
+def segment_tomato(img_hue, save = False, name = "", pwd = ""):
 
     n = 2
-    centers, labels = k_means_hue(img_hue, imMax, n)
+    centers, labels = k_means_hue(img_hue, n)
  
     # determine which center corresponds to which segment
     lbl = {}

@@ -7,7 +7,7 @@ Created on Tue Jun 16 16:05:23 2020
 
 import cv2
 import numpy as np
-from util import romove_blobs
+from util import remove_blobs
 from matplotlib import pyplot as plt
 
 from skimage.measure import label, regionprops
@@ -100,10 +100,7 @@ class Image(object):
         self._data = cv2.morphologyEx(cv2.morphologyEx(self._data, 
                                                        cv2.MORPH_CLOSE, 
                                                        kernel), 
-                                       cv2.MORPH_OPEN, kernel)
-        
-    def remove_blobs(self):
-        self._data = romove_blobs(self._data, self._data_max)        
+                                       cv2.MORPH_OPEN, kernel)       
         
     def is_empty(self):
         return np.all((self._data == 0))        

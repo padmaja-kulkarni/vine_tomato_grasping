@@ -10,22 +10,21 @@ import numpy as np
 import tf2_ros
 import cv2
 import tf2_geometry_msgs
+import time
+
 
 from skimage.transform import rotate
-from skimage.morphology import skeletonize
-
 import rospy
 
 from image import Image, compute_angle, add, compute_bbox, image_rotate, image_crop
 
 # custom functions
 from util import add_border
-from util import remove_all_blobs
 
 from util import translation_rot2or
 from util import add_circles, add_contour
 
-
+from util import make_dirs
 from util import save_img
 from util import load_rgb
 from util import stack_segments
@@ -34,15 +33,23 @@ from util import change_brightness
 
 from point_2d import make_2d_transform, make_2d_point
 
+from filter_segments import filter_segments
 from detect_peduncle import detect_peduncle
 from detect_tomato import detect_tomato, set_detect_tomato_settings
 from segment_image import segment_truss, segment_tomato
 
 class ProcessImage(object):
 
+    version = '0.1'
+
+    # frame ids
+    _ORIGINAL_FRAME_ID = 'original'
+    _LOCAL_FRAME_ID = 'local'
+    
+    dtype = np.uint8
+
     def __init__(self, 
                  use_truss = True,
-                 camera_sim = True, 
                  save = False, 
                  pwd = '', 
                  name = 'tomato', 
@@ -50,26 +57,14 @@ class ProcessImage(object):
                  ):
 
         self.ext = ext
-
-        
         self.save = save
-
-        self.camera_sim = camera_sim
         self.use_truss = use_truss
-        self.imMax = 255
         self.pwd = pwd
         self.name = name
 
         # image
         self.width_desired = 1280
 
-        # filtering
-        self.filter_tomato_diameter = 11
-        self.filter_tomato_shape = cv2.MORPH_ELLIPSE
-        self.filter_penduncle_diameter = 5
-        self.filter_penduncle_shape = cv2.MORPH_ELLIPSE
-
-        
         self.detect_tomato_settings = set_detect_tomato_settings()
         
         # detect junctions
@@ -77,43 +72,45 @@ class ProcessImage(object):
 
         # init buffer
         self._buffer_core = tf2_ros.BufferCore(rospy.Time(10))
-        
-        # frame ids
-        self._ORIGINAL_FRAME_ID = 'original'
-        self._ROTATED_FRAME_ID = 'rotated'
-        self._LOCAL_FRAME_ID = 'local'
+    
 
     def add_image(self, data):
-        
-        
         image = Image(data)
-        image.rescale(self.width_desired)        
+        image.rescale(self.width_desired)     
         self._image_RGB = image        
         
         if self.save:
             save_img(self._image_RGB._data, self.pwd, '01', ext = self.ext)
 
     def color_space(self):
-        
         imHSV = cv2.cvtColor(self._image_RGB._data, cv2.COLOR_RGB2HSV)
-        imLAB = cv2.cvtColor(self._image_RGB._data, cv2.COLOR_RGB2LAB)
         self._image_hue = imHSV[:, :, 0]
         
     def segment_truss(self):
 
         success = True
         if self.use_truss:
-            background, tomato, peduncle = segment_truss(self._image_hue, self.imMax, save = self.save, pwd = self.pwd, name = self.name)
+            background, tomato, peduncle = segment_truss(self._image_hue, 
+                                                         save = self.save, 
+                                                         pwd = self.pwd, 
+                                                         name = self.name)
         else:
-            background, tomato, peduncle = segment_tomato(self._image_hue, self.imMax)
+            background, tomato, peduncle = segment_tomato(self._image_hue,
+                                                          save = self.save, 
+                                                          pwd = self.pwd, 
+                                                          name = self.name)
         
         self._background = Image(background)
         self._tomato = Image(tomato)
         self._peduncle = Image(peduncle)
         
 
-        if np.all((tomato == 0)):
-            warnings.warn("Segment truss: no pixel has been classified as tomato")
+        if self._tomato.is_empty():
+            warnings.warn("Segment truss: no pixel has been classified as tomato!")
+            success = False
+            
+        if self._peduncle.is_empty():
+            warnings.warn("Segment truss: no pixel has been classified as peduncle!")
             success = False
 
         if self.save:
@@ -122,17 +119,17 @@ class ProcessImage(object):
         return success
 
     def filter_img(self):
-#        tomato_kernel = cv2.getStructuringElement(self.filter_tomato_shape, (self.filter_tomato_diameter, self.filter_tomato_diameter))
-#        self._tomato.open_close(tomato_kernel)
-#
-#        peduncle_kernel = cv2.getStructuringElement(self.filter_penduncle_shape, (self.filter_penduncle_diameter, self.filter_penduncle_diameter))
-#        self._peduncle.close_open(peduncle_kernel)
-#        self._peduncle.remove_blobs()
-#
-#        self._background = Image(cv2.bitwise_not(self._tomato.get_data()))
+        tomato = self._tomato.get_data()
+        peduncle = self._peduncle.get_data()
+        background = self._background.get_data()
     
-        self._tomato._data, self._peduncle._data, self._background._data = remove_all_blobs(self._tomato.get_data(),
-                         self._peduncle.get_data(), self._background.get_data(), self.imMax)
+        tomato_f, peduncle_f, background_f = filter_segments(tomato, 
+                                                              peduncle, 
+                                                              background)
+
+        self._tomato = Image(tomato_f)
+        self._peduncle = Image(peduncle_f)
+        self._background = Image(background_f)
 
         if self.save:
             self.save_results('03')
@@ -168,17 +165,16 @@ class ProcessImage(object):
         #get origin
         translation = translation_rot2or(self._image_RGB.get_dimensions(), -angle)
         dist = np.sqrt(translation[0]**2 + translation[1]**2)
-        # transform = make_2d_transform(self._ROTATED_FRAME_ID, self._ORIGINAL_FRAME_ID,  xy = (-150, -220) , angle = -angle)
-        # self._buffer_core.set_transform(transform, "default_authority")   
+ 
         if angle >= 0:
-            transform = make_2d_transform(self._ORIGINAL_FRAME_ID,  self._LOCAL_FRAME_ID, xy = (-x + dist,-y), angle = angle)
+            xy = (-x + dist,-y)
         if angle < 0:    
-            transform = make_2d_transform(self._ORIGINAL_FRAME_ID,  self._LOCAL_FRAME_ID, xy = (-x,-y + dist), angle = angle)
+            xy = (-x,-y + dist)
         
+        # make and add transform to the buffer
+        transform = make_2d_transform(self._ORIGINAL_FRAME_ID,  self._LOCAL_FRAME_ID, xy = xy, angle = angle)
         self._buffer_core.set_transform(transform, "default_authority")   
 
-        self._w = w
-        self._h = h
         self._bbox = bbox
         self._angle = angle
         
@@ -251,8 +247,8 @@ class ProcessImage(object):
                 
             else:
                 print('Did not detect a junction')                
-                skeleton = skeletonize(self.penduncle_main/self.imMax)
-                col, row = np.nonzero(skeleton)
+                # skeleton = skeletonize(self.penduncle_main/self.imMax)
+                col, row = np.nonzero(self.penduncle_main)
                 loc = np.transpose(np.matrix(np.vstack((row, col))))
                 
                 dist = np.sqrt(np.sum(np.power(loc - com, 2), 1))
@@ -262,8 +258,8 @@ class ProcessImage(object):
             
         elif strategy== "pinch":
             
-            skeleton = skeletonize(self.peduncleL/self.imMax)
-            col, row = np.nonzero(skeleton)
+            # skeleton = skeletonize(self.peduncleL/self.imMax)
+            col, row = np.nonzero(self.penduncle_main)
             loc = np.transpose(np.matrix(np.vstack((row, col))))
             
             dist0 = np.sqrt(np.sum(np.power(loc - self.centersL[0,:], 2), 1))
@@ -343,16 +339,16 @@ class ProcessImage(object):
         if self._angle < 0:    
             transform = np.array(((-x,-y + dist),))
         
-        imgR = np.uint8(self.imMax*rotate(img, self._angle, resize=True))
+        imgR = rotate(img, self._angle, resize=True)
         return add_border(imgR, transform, self._image_RGB.get_dimensions())
 
     def get_tomatoes(self, local = False):
         if local:
-            mask_empty = np.zeros(self._image_RGB.get_dimensions(), np.uint8)      
+            mask_empty = np.zeros(self._image_RGB.get_dimensions(), self.dtype)      
             target_frame_id = self._LOCAL_FRAME_ID
             scale = 1
         else:
-            mask_empty = np.zeros((self._h, self._w), np.uint8)   
+            mask_empty = np.zeros(self._bbox[:2], np.uint8)   
             target_frame_id = self._ORIGINAL_FRAME_ID
             scale = self._image_RGB._scale
             
@@ -540,54 +536,40 @@ class ProcessImage(object):
 # %matplotlib qt
 
 if __name__ == '__main__':
-    #%%########
-    ## Path ##
-    ##########
 
-    ## params ##
-    # params
-    N = 15               # tomato file to load
+    N = 22               # tomato file to load
     nDigits = 3
-    save = True
+    save = False
 
     pathCurrent = os.path.dirname(__file__)
     dataSet = "real_blue" # "tomato_rot"
 
-
     pwd_data = os.path.join(pathCurrent, "..", "data", dataSet)
     pwd_results = os.path.join(pathCurrent, "..", "results", dataSet)
+    make_dirs(pwd_results)
 
-
-
-    # create folder if required
-    if not os.path.isdir(pwd_results):
-        print("New data set, creating a new folder: " + pwd_results)
-        os.makedirs(pwd_results)
-
-    # general settings
-
-    #%%#########
-    ### Loop ###
-    ############
-    for iTomato in range(N, N + 1, 1):
+    for iTomato in range(1, N + 1, 1):
 
         tomato_name = str(iTomato).zfill(nDigits)
-        file_name = tomato_name + ".png" #  ".jpg" # 
+        file_name = tomato_name + ".png"
 
-        rgb_data, DIM = load_rgb(pwd_data, file_name, horizontal = True)
+        rgb_data = load_rgb(pwd_data, file_name, horizontal = True)
 
         if save:
             save_img(rgb_data, pwd_results, '01')
 
-        proces_image = ProcessImage(camera_sim = False,
-                             use_truss = True,
+        start_time = time.time()
+        
+        proces_image = ProcessImage(use_truss = True,
                              name = tomato_name, 
                              pwd = pwd_results, 
-                             save = save)
-                             
+                             save = save)                           
                              
         proces_image.add_image(rgb_data)
         success = proces_image.process_image()
+        
+        duration = time.time() - start_time                                            
+        print("--- %.2f seconds ---" % duration)
 
         if success:
         

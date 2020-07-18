@@ -19,56 +19,62 @@ def make_dirs(pwd):
         print("New path, creating a new folder: " + pwd)
         os.makedirs(pwd)
 
-def bin2img(binary):
-    img = binary.astype(np.uint8) * 255
-    return img
+def load_rgb(pwd, name, horizontal = True):
+    
+    #load image
+    name_full = os.path.join(pwd, name)
+    img_bgr = cv2.imread(name_full)
+    img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+    shape = img_rgb.shape[:2]
+    
+    # transpose image if required
+    if horizontal:
+        if shape[0] > shape[1] :
+            img_rgb = np.transpose(img_rgb, [1,0,2])
+            shape = img_rgb.shape[:2]
 
-def romove_blobs(imgIn, imMax):
-    [H, W] = imgIn.shape[:2]
+    if img_rgb is None:
+        print("Failed to load image from path: %s" %(name_full))
+
+    return img_rgb
+
+def bin2img(binary, dtype = np.uint8, copy = False):
+    'convets an incomming binary image to the desired data type, defualt: uint8'
+    max_value = np.iinfo(dtype).max       
+    return binary.astype(dtype, copy = copy) * max_value
+    
+def img2bin(img, copy = False):
+    
+    dtype = bool
+    return img.astype(dtype, copy = copy) 
+
+def remove_blobs(img_in):
+    dtype = img_in.dtype
+    value = np.iinfo(dtype).max   
+    
+    # initialize outgoing image
+    img_out = np.zeros(img_in.shape[:2], dtype)
     
     # the extra [-2:] is essential to make it work with varios cv2 ersions
-    contours, _ = cv2.findContours(imgIn, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)[-2:]
+    contours, _ = cv2.findContours(img_in, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)[-2:]
     
-    if contours == []:
-        return imgIn
-
-    else:
-        imgOut = np.zeros((H,W), np.uint8)        
-        
+    # only when the image contains a contour
+    if len(contours) != 0:
         cnt = max(contours, key=cv2.contourArea)
-        cv2.drawContours(imgOut, [cnt], -1, imMax, cv2.FILLED)
-        imgOut = cv2.bitwise_and(imgIn, imgOut)
-        return imgOut
+        cv2.drawContours(img_out, [cnt], -1, value, cv2.FILLED)
+        
+    return cv2.bitwise_and(img_in, img_out)
 
-
-def romove_blobs_2(imgIn, imMax):
-    [H, W] = imgIn.shape[:2]
-    
-    # the extra [-2:] is essential to make it work with varios cv2 ersions
-    contours, _ = cv2.findContours(imgIn, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)[-2:]
-    cnt = max(contours, key=cv2.contourArea)
-    
-    imgOut = np.zeros((H,W), np.uint8)
-    cv2.drawContours(imgOut, [cnt], -1, imMax, cv2.FILLED)
-    return imgOut
-    
-def remove_all_blobs(tomato, peduncle, background, imMax):
-    
-    # remove blobs truss
-    truss = cv2.bitwise_or(tomato, peduncle)
-    trussFiltered = romove_blobs(truss, imMax)
-    peduncleFiltered = cv2.bitwise_and(trussFiltered, peduncle)
-    tomatoFiltered = cv2.bitwise_and(trussFiltered, tomato)
-    
-    # remove blobs peduncle
-    peduncleFiltered = romove_blobs(peduncleFiltered, imMax)
-    tomatoFiltered = cv2.bitwise_and(trussFiltered, cv2.bitwise_not(peduncleFiltered))
-    trussFiltered = cv2.bitwise_or(tomatoFiltered, peduncleFiltered)
-    backgroundFiltered = cv2.bitwise_not(truss)    
-    
-    
-    
-    return tomatoFiltered, peduncleFiltered, backgroundFiltered
+#def romove_blobs_2(imgIn, imMax):
+#    [H, W] = imgIn.shape[:2]
+#    
+#    # the extra [-2:] is essential to make it work with varios cv2 ersions
+#    contours, _ = cv2.findContours(imgIn, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)[-2:]
+#    cnt = max(contours, key=cv2.contourArea)
+#    
+#    imgOut = np.zeros((H,W), np.uint8)
+#    cv2.drawContours(imgOut, [cnt], -1, imMax, cv2.FILLED)
+#    return imgOut
 
 def add_border(imOriginal, location, sizeBorder):
 
@@ -239,25 +245,6 @@ def save_fig(fig, pwd, name, resolution = 300, figureTitle = "", titleSize = 20,
         plt.margins(0,0) 
         
         fig.savefig(os.path.join(pwd, name), dpi = resolution, bbox_inches='tight', pad_inches=0)
-        
-def load_rgb(pwd, name, horizontal = True):
-    
-    #load image
-    imPath = os.path.join(pwd, name)
-    imBGR = cv2.imread(imPath)
-    imRGB = cv2.cvtColor(imBGR, cv2.COLOR_BGR2RGB)
-    # plt.imshow(imRGB) 
-    
-    if horizontal:
-        [H, W] = imRGB.shape[:2]
-        if H > W :
-            imRGB = np.transpose(imRGB, [1,0,2])
-            [H, W] = imRGB.shape[:2]
-    
-    [H, W] = imRGB.shape[:2]
-    DIM = [H,W]
-    
-    return imRGB, DIM
 
 
 def add_circles(imRGB, centers, radii = 5, color = (255,255,255), thickness = 5):

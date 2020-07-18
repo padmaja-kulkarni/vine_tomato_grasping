@@ -8,7 +8,7 @@ import skan
 # custom functions
 from util import add_circles
 from util import save_img
-from util import romove_blobs, bin2img
+from util import remove_blobs, bin2img, img2bin
 
 from skimage.morphology import skeletonize
 
@@ -28,7 +28,7 @@ def get_node_id(branch_data, skeleton):
 
 def get_node_coord(skeleton_img):
     
-    skeleton = skan.Skeleton(skeleton_img/255)
+    skeleton = skan.Skeleton(img2bin(skeleton_img))
     branch_data = skan.summarize(skeleton)        
     
     # get all node IDs
@@ -80,6 +80,8 @@ def get_new_node(branch_data, branch_index, old_node):
         return None
     
 def update_skeleton(skeleton_img, skeleton, i_remove):
+    dtype = skeleton_img.dtype
+    max_value = np.iinfo(dtype).max
 
     skeleton_prune_img = skeleton_img.copy()    
     
@@ -94,27 +96,25 @@ def update_skeleton(skeleton_img, skeleton, i_remove):
     img = skeleton_prune_img
     img = cv2.dilate(skeleton_prune_img, kernel, iterations = 1)
     img = cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel)
-    img = romove_blobs(img, 255)
-    return bin2img(skeletonize(img/255))
+    img = remove_blobs(img)
+    return bin2img(skeletonize(img/max_value))
 
-def generate_skeleton_img(skeleton, i_keep, shape):
-    
-    skeleton_img = np.zeros(shape, dtype=np.uint8)
+def generate_skeleton_img(skeleton, i_keep, shape, dtype=np.uint8):
+    max_value = np.iinfo(dtype).max
+    skeleton_img = np.zeros(shape, dtype = dtype)
   
-    
     for i in i_keep:
         px_coords = skeleton.path_coordinates(i).astype(int)
         
         for px_coord in px_coords:
-            skeleton_img[px_coord[0], px_coord[1]] = 255
+            skeleton_img[px_coord[0], px_coord[1]] = max_value
     
     ## closing
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
     img = skeleton_img
     img = cv2.dilate(skeleton_img, kernel, iterations = 1)
     img = cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel)
-    # img = romove_blobs(img, 255)
-    return bin2img(skeletonize(img/255))
+    return bin2img(skeletonize(img2bin(img)))
 
 def threshold_branch_length(skeleton_img, distance_threshold):
     
@@ -205,7 +205,7 @@ def find_largest_branch(branch_data, skeleton, node_id, start_node, path, length
 def node_angle(node_1_id, node_2_id, skeleton):
     src = skeleton.coordinates[node_1_id][[1,0]]
     dst = skeleton.coordinates[node_2_id][[1,0]]
-    angle = np.arctan2((dst[0] - src[0]), (dst[1] - src[1]))/np.pi*180
+    angle = np.rad2deg(np.arctan2((dst[0] - src[0]), (dst[1] - src[1])))
     return angle
 
 def visualize_skeleton(bg_img, skeleton_img, junc_coord = None, 
@@ -260,14 +260,15 @@ def get_center_branch(branch_data, skeleton_img):
 
     return np.array(junc_branch_center), np.array(dead_branch_center)  
 
-def detect_peduncle(peduncle_img, distance_threshold, save = False, bg_img = None, name = "", pwd = ""):
+def detect_peduncle(peduncle_img, distance_threshold, bg_img = None, 
+                    save = False, name = "", pwd = ""):
     
     if bg_img is None:
         bg_img = peduncle_img
     
     
     # skeletonize peduncle segment
-    skeleton_img = bin2img(skeletonize(peduncle_img/255))  
+    skeleton_img = bin2img(skeletonize(img2bin(peduncle_img)))  
     if save:
         visualize_skeleton(bg_img, skeleton_img, name=name+"_01", pwd=pwd)        
     
@@ -277,7 +278,7 @@ def detect_peduncle(peduncle_img, distance_threshold, save = False, bg_img = Non
         visualize_skeleton(bg_img, skeleton_img, name=name+"_02", pwd=pwd)        
         
     # summerize skeleton
-    skeleton = skan.Skeleton(skeleton_img/255)
+    skeleton = skan.Skeleton(img2bin(skeleton_img))
     branch_data = skan.summarize(skeleton)        
     
     # get all node coordiantes
