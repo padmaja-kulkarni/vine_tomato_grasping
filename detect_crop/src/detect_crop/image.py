@@ -29,7 +29,7 @@ def add(image1, image2):
     if check_dimensions:
         
         image_new = image1.copy()        
-        image_new._data = cv2.bitwise_or(image1._data, image2._data) 
+        image_new.data = cv2.bitwise_or(image1.data, image2.data) 
         return image_new
     else:
         return None
@@ -62,91 +62,57 @@ def compute_bbox(image):
 class Image(object):
     
     def __init__(self, data):
-        self._sub_image = []
-        self._data = data
-        self._update_shape()
-        self._type = data.dtype.type
-        self._data_max = np.iinfo(self._type).max
-        self._update_shape()
-        
-        self._scale = 1
-        self._angle = 0
+        self.data = data
+        self.dtype = data.dtype
+        self.value_max = np.iinfo(self.dtype).max
 
     def rescale(self, width_desired):
-        scale = float(width_desired)/float(self._width)
-        new_width = int(scale * self._width)
-        new_height = int(scale * self._height)    
+        shape = self.data.shape[:2] # (height, width)
+        scale = float(width_desired)/float(shape[1])
+        new_shape = (int(scale * shape[1]), int(scale * shape[0])) # [width, height]
         
-        self._data = cv2.resize(self._data, (new_width, new_height), 
-                                interpolation = cv2.INTER_AREA)
-                                
-        self._update_shape()
-        
-        
-    def _update_shape(self):
-        shape = self._data.shape[:2]
-        self._height = shape[0]
-        self._width = shape[1]
-        
+        self.data = cv2.resize(self.data, new_shape, 
+                               interpolation = cv2.INTER_AREA)
+                               
+        return scale
         
     def open_close(self, kernel):
-        self._data = cv2.morphologyEx(cv2.morphologyEx(self._data, 
-                                                       cv2.MORPH_OPEN, 
-                                                       kernel),
-                                       cv2.MORPH_CLOSE, kernel)        
+        image_open = cv2.morphologyEx(self.data, cv2.MORPH_OPEN, kernel)
+        self.data = cv2.morphologyEx(image_open, cv2.MORPH_CLOSE, kernel)        
         
         
     def close_open(self, kernel):
-        self._data = cv2.morphologyEx(cv2.morphologyEx(self._data, 
-                                                       cv2.MORPH_CLOSE, 
-                                                       kernel), 
-                                       cv2.MORPH_OPEN, kernel)       
+        image_close = cv2.morphologyEx(self.data, cv2.MORPH_CLOSE, kernel)
+        self.data = cv2.morphologyEx(image_close, cv2.MORPH_OPEN, kernel)       
         
     def is_empty(self):
-        return np.all((self._data == 0))        
-        
-    def get_data(self):
-        return self._data    
+        return np.all((self.data == 0))        
         
     def rotate(self, angle):
 
-        # rotate
-        self._data= self._type(self._data_max*rotate(self._data, 
-                                                     np.rad2deg(angle), 
-                                                        resize=True))        
-        self._angle = angle
-        self._update_shape()
-        
-    def cut(self, box):
+        # rotate returns a float in range [0, 1], this needs to be converted
+        image_rotate = rotate(self.data, np.rad2deg(angle), resize=True) 
+        self.data= (self.value_max*image_rotate).astype(self.dtype, copy=False) 
 
-        x = box[0]
-        y = box[1]
-        w = box[2]
-        h = box[3]        
+    def cut(self, bbox):
+
+        x = bbox[0]
+        y = bbox[1]
+        w = bbox[2]
+        h = bbox[3]        
+        self.data = self.data[y:y+h, x:x+w]
         
-        self._data = self._data[y:y+h, x:x+w]
-        
-    def crop(self, angle = None, bbox = None):
-        if angle == None:
-            angle = compute_angle(self._data)
-            
-        if bbox == None:
-            bbox = compute_bbox(self._data)
+    def crop(self, angle, bbox):
         
         self.rotate(angle)
         self.cut(bbox)
         return self        
-        
+
     def copy(self):
-        image_new = Image(self._data.copy())
-        image_new._scale = self._scale
-        image_new._angle = self._angle
-        return image_new
+        image_new = Image(self.data.copy())
+        return image_new  
+        
         
     def show(self):
-        plt.imshow(self._data)
+        plt.imshow(self.data)
         plt.axis('off')
-        
-    def get_dimensions(self):
-        
-        return (self._height, self._width)
