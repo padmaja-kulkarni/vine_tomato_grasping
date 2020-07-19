@@ -6,17 +6,18 @@ import os # os.sep
 import warnings
 
 
+
 import numpy as np
 import tf2_ros
 import cv2
 import tf2_geometry_msgs
-import time
-
 
 from skimage.transform import rotate
 import rospy
 
-from image import Image, compute_angle, add, compute_bbox, image_rotate, image_crop
+from image import Image, compute_angle, add, compute_bbox, image_rotate, image_crop, image_cut
+
+from timer import Timer
 
 # custom functions
 from util import add_border
@@ -28,15 +29,20 @@ from util import make_dirs
 from util import save_img
 from util import load_rgb
 from util import stack_segments
-from util import plot_circles
+from util import plot_circles, plot_timer, save_fig
 from util import change_brightness
 
 from point_2d import make_2d_transform, make_2d_point
+
+from matplotlib import pyplot as plt
 
 from filter_segments import filter_segments
 from detect_peduncle import detect_peduncle
 from detect_tomato import detect_tomato, set_detect_tomato_settings
 from segment_image import segment_truss, segment_tomato
+
+
+warnings.filterwarnings('error', category=FutureWarning)
 
 class ProcessImage(object):
 
@@ -45,6 +51,8 @@ class ProcessImage(object):
     # frame ids
     _ORIGINAL_FRAME_ID = 'original'
     _LOCAL_FRAME_ID = 'local'
+    
+    name_space = 'main'
     
     dtype = np.uint8
 
@@ -85,11 +93,13 @@ class ProcessImage(object):
         if self.save:
             save_img(self.image.data, self.pwd, '01', ext = self.ext)
 
+    @Timer("color space", name_space)
     def color_space(self):
         imHSV = cv2.cvtColor(self.image.data, cv2.COLOR_RGB2HSV)
         self.image_hue = imHSV[:, :, 0]
-        
-    def segment_truss(self):
+
+    @Timer("segment image", name_space)        
+    def segment_image(self):
 
         success = True
         if self.use_truss:
@@ -121,6 +131,7 @@ class ProcessImage(object):
 
         return success
 
+    @Timer("filter image", name_space)
     def filter_img(self):
 
         tomato_f, peduncle_f, background_f = filter_segments(self.tomato.data, 
@@ -140,6 +151,7 @@ class ProcessImage(object):
             
         return True
 
+    @Timer("crop image", name_space)
     def rotate_cut_img(self):
     
         if self.peduncle.is_empty():
@@ -148,15 +160,15 @@ class ProcessImage(object):
         else:
             angle = compute_angle(self.peduncle.data) # [rad] 
 
-        tomato = image_rotate(self.tomato, -angle)
-        peduncle = image_rotate(self.peduncle, -angle)        
-        truss = add(tomato, peduncle)
+        tomato_rotate = image_rotate(self.tomato, -angle)
+        peduncle_rotate = image_rotate(self.peduncle, -angle)       
+        truss_rotate = add(tomato_rotate, peduncle_rotate)
         
-        if truss.is_empty():
+        if truss_rotate.is_empty():
             warnings.warn("Cannot crop based on tomato, since it does not exist!")
             return False
 
-        bbox = compute_bbox(truss.data)
+        bbox = compute_bbox(truss_rotate.data)
         x = bbox[0]
         y = bbox[1]
 
@@ -173,26 +185,27 @@ class ProcessImage(object):
         transform = make_2d_transform(self._ORIGINAL_FRAME_ID, 
                                       self._LOCAL_FRAME_ID, 
                                       xy = xy, 
-                                      angle = angle)
-                                      
+                                      angle = angle)             
+                       
         self.buffer_core.set_transform(transform, "default_authority")
         self.bbox = bbox
         self.angle = angle
         
+        self.tomato_crop = self.cut(tomato_rotate)
+        self.peduncle_crop = self.cut(peduncle_rotate)
+        self.image_crop = self.crop(self.image) 
+        self.truss_crop = self.cut(truss_rotate) 
+        
         if self.save:
             self.save_results('04', local = True)
 
+    @Timer("detect tomatoes", name_space)
     def detect_tomatoes(self):
         success = True
-        
-        tomato = self.crop(self.tomato)
-        peduncle = self.crop(self.peduncle)
-        bg_image = self.crop(self.image)
-        
-        truss = add(tomato, peduncle)
-        bg_img = change_brightness(bg_image.data, 0.85)
+
+        bg_img = change_brightness(self.image_crop.data, 0.85)
     
-        centers, radii, com = detect_tomato(truss.data, 
+        centers, radii, com = detect_tomato(self.truss_crop.data, 
                                             self.detect_tomato_settings, 
                                             imageRGB=bg_img, 
                                             save = self.save, 
@@ -216,15 +229,14 @@ class ProcessImage(object):
         self.radii = radii             
         return success
 
+    @Timer("detect peduncle", name_space)
     def detect_peduncle(self):
         distance_threshold = 10
         success = True    
     
-        peduncle = self.crop(self.peduncle)
-        bg_img = self.crop(self.image)        
-        bg_img = change_brightness(bg_img.data, 0.85)
+        bg_img = change_brightness(self.image_crop.data, 0.85)
 
-        penduncle_main, branch_center = detect_peduncle(peduncle.data, 
+        penduncle_main, branch_center = detect_peduncle(self.peduncle_crop.data, 
                                                         distance_threshold, 
                                                         save = self.save, 
                                                         bg_img = bg_img, 
@@ -235,6 +247,7 @@ class ProcessImage(object):
         self.junc_branch_center = branch_center
         return success
 
+    @Timer("detect grasp location", name_space)
     def detect_grasp_location(self, strategy = 'cage'):
         success = True        
 
@@ -242,7 +255,6 @@ class ProcessImage(object):
             com = self.get_xy(self.com, self._LOCAL_FRAME_ID)
  
             if self.junc_branch_center.size > 0: # self.junc_branch_center:        
-                print('Detected a junction')
                 loc = self.junc_branch_center
                 dist = np.sqrt(np.sum(np.power(loc - com, 2), 1))
                 
@@ -326,6 +338,9 @@ class ProcessImage(object):
         
     def rotate(self, image):
         return image_rotate(image, angle = -self.angle)
+        
+    def cut(self, image):
+        return image_cut(image, bbox = self.bbox)
 
     def rescale(self, img):
         
@@ -488,11 +503,12 @@ class ProcessImage(object):
         save_img(peduncle, self.pwd, step + '_c',  ext = self.ext) # figureTitle = "Peduncle",
         save_img(segments_rgb, self.pwd, step + '_d', ext = self.ext)
 
+    @Timer("process image")
     def process_image(self):
 
         self.color_space()
         
-        success = self.segment_truss()
+        success = self.segment_image()
         if success is False:
             return success        
         
@@ -537,10 +553,11 @@ class ProcessImage(object):
 # %matplotlib qt
 
 if __name__ == '__main__':
-
-    N = 1               # tomato file to load
-    nDigits = 3
-    save = True
+    i_start = 1
+    i_end = 23
+    N = i_end - i_start
+    
+    save = False
 
     pathCurrent = os.path.dirname(__file__)
     dataSet = "real_blue" # "tomato_rot"
@@ -549,9 +566,10 @@ if __name__ == '__main__':
     pwd_results = os.path.join(pathCurrent, "..", "results", dataSet)
     make_dirs(pwd_results)
 
-    for iTomato in range(1, N + 1, 1):
+    for count, i_tomato in enumerate(range(i_start, i_end)):
+        print("Analyzing image %d out of %d" %(count + 1, N))
 
-        tomato_name = str(iTomato).zfill(nDigits)
+        tomato_name = str(i_tomato).zfill(3)
         file_name = tomato_name + ".png"
 
         rgb_data = load_rgb(pwd_data, file_name, horizontal = True)
@@ -559,8 +577,7 @@ if __name__ == '__main__':
         if save:
             save_img(rgb_data, pwd_results, '01')
 
-        start_time = time.time()
-        
+
         proces_image = ProcessImage(use_truss = True,
                              name = tomato_name, 
                              pwd = pwd_results, 
@@ -569,27 +586,37 @@ if __name__ == '__main__':
         proces_image.add_image(rgb_data)
         success = proces_image.process_image()
         
-        duration = time.time() - start_time                                            
-        print("--- %.2f seconds ---" % duration)
-
-        if success:
+        if False: # success:
         
             visual = proces_image.get_truss_visualization()
             save_img(visual, pwd_results, '99')
             
             visual = proces_image.get_truss_visualization(local = True)
             save_img(visual, pwd_results, '99')
-        # plot_circles(image.imRGB, image.graspL, [10], pwd = pwd, name = str(iTomato), fileFormat = 'png')
-        # plot_circles(image.imRGB, image.graspL, [10], pwd = pwdProcess, name = '06')
-        # plot_circles(image.imRGBR, image.graspR, [10], pwd = pwdProcess, name = '06')
-        
-#        if success:         
-#            plot_circles(rgb_data, proces_image.graspO, [10], pwd = pwdResults, name = '06')
-#    
-#            row, col, angle = proces_image.get_grasp_info()
-#    
-#            print('row: ', row)
-#            print('col: ', col)
-#            print('angle: ', angle)
+            
+            
+    plot_timer(Timer.timers['main'].copy(), threshold = 0.02, pwd = pwd_results, title = 'Processing time')
 
+    plot_timer(Timer.timers['peduncle'].copy(), N = N, threshold = 0.02, pwd = pwd_results, title = 'Processing time peduncle')
+    
+    total_key = "process image"
+    total = np.mean(Timer.timers[total_key])
+    print(total)
 
+    width = 0.5
+    fig, ax = plt.subplots()
+    
+    time_ms = Timer.timers[total_key]
+    time_s = [x / 1000 for x in time_ms]    
+    
+    ax.p1 = plt.bar(np.arange(i_start, i_end), time_s, width)
+    
+    plt.ylabel('time [s]')
+    plt.xlabel('image ID')
+    plt.title('Processing time per image')
+    # plt.rc('ytick', labelsize=16)
+    
+    fig.show()    
+    
+    fig.savefig(os.path.join(pwd_results, 'time_bar'), dpi = 300) #, bbox_inches='tight', pad_inches=0)
+    save_fig(fig, pwd_results, 'time')

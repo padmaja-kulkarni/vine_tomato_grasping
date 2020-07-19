@@ -23,12 +23,12 @@ def k_means_hue(img_hue, n_clusters):
     data = np.stack((np.cos(angle), np.sin(angle)), axis = 1)
  
     # Define criteria = ( type, max_iter = 10 , epsilon = 1.0 )
-    criteria = (cv2.TERM_CRITERIA_EPS, 1, np.sin(np.deg2rad(5)))
+    criteria = (cv2.TERM_CRITERIA_EPS, 10, np.sin(np.deg2rad(1.0)))
     compactness,labels,centers_xy = cv2.kmeans(data, 
                                                n_clusters, 
                                                None, 
                                                criteria, 
-                                               2, 
+                                               3, 
                                                cv2.KMEANS_PP_CENTERS) 
 
     # convert the centers from xy to angles
@@ -111,7 +111,7 @@ def hue_hist(img_hue, centers, lbl, name, pwd):
     bins = 180
     angle = img_hue.flatten().astype('uint16')*2
     radii, bins, patches = ax.hist(angle, bins=bins, range=(0, 360), color = "black", lw=0)
-    save_fig(fig, pwd, name + "_hist", figureTitle = "", resolution = 100, titleSize = 10)        
+    save_fig(fig, pwd, name + "_hist", titleSize = 10)        
         
 def label2img(labels, label, dim):
     data = labels.ravel() == label

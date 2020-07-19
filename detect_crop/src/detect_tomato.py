@@ -36,22 +36,22 @@ if __name__ == '__main__':
         
     
     
-    for iTomato in range(1,2): 
+    for count, i_tomato in enumerate(range(1, N)):
         
-        tomatoID = str(iTomato).zfill(nDigits)
+        tomatoID = str(i_tomato).zfill(nDigits)
         tomato_name = tomatoID
         file_name = tomato_name + ".png"
         
         
         
-        imRGB, DIM = load_rgb(pwdData, file_name, horizontal = True)
+        imRGB = load_rgb(pwdData, file_name, horizontal = True)
         
         image = ProcessImage(use_truss = True)
 
         image.add_image(imRGB)    
         
         image.color_space()
-        image.segment_truss()
+        image.segment_image()
         image.filter_img()
         image.rotate_cut_img()
         
@@ -65,13 +65,11 @@ if __name__ == '__main__':
         image_gray = cv2.bitwise_or(image_tomato, image_peduncle)
 #        image_gray = imageRGB[:,:,0]
 
-        start_time = time.time()
         centers, radii, com = detect_tomato(image_gray, 
                                             settings, 
                                             imageRGB = imageRGB_bright, 
                                             save = True, 
                                             pwd = pwdResults, 
-                                            name = tomatoName)
-
-        duration = time.time() - start_time
-        print("--- %.2f seconds ---" % (duration))
+                                            name = tomato_name)
+                                            
+        print("completed image %d out of %d" %(count, N))

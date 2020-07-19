@@ -15,7 +15,6 @@ Created on Wed May 20 13:32:31 2020
 ## imports ##
 import os # os.sep
 import cv2
-import time
 
 # custom functions
 from detect_crop.util import plot_segments
@@ -53,14 +52,10 @@ if __name__ == '__main__':
         img_hsv = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2HSV)
         img_hue = img_hsv[:, :, 0] # hue
 
-        start_time = time.time()
         background, tomato, peduncle = segment_truss(img_hue, 
                                                      save = save, 
                                                      name = tomato_name, 
                                                      pwd = pwd_results) 
-
-        duration = time.time() - start_time                                            
-        print("--- %.2f seconds ---" % duration)
         
         # VISUALIZE
         name = tomato_ID + "_img"

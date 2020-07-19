@@ -47,14 +47,10 @@ if __name__ == '__main__':
         
         image.add_image(img_rgb)    
         image.color_space()
-        image.segment_truss()    
+        image.segment_image()    
         tomato, peduncle, background = image.get_segments(local = False)
         
-        start_time = time.time()
         tomato_f, peduncle_f, background_f = filter_segments(tomato, peduncle, background)
-        
-        duration = (time.time() - start_time)*1000                                          
-        print("--- %.0f milli seconds ---" % duration)        
         
         # save filtered
         name = tomato_name

@@ -60,9 +60,10 @@ def remove_blobs(img_in):
     
     # only when the image contains a contour
     if len(contours) != 0:
+        # print('Filling largest blob...')
         cnt = max(contours, key=cv2.contourArea)
         cv2.drawContours(img_out, [cnt], -1, value, cv2.FILLED)
-        
+        # print('Done!...')
     return cv2.bitwise_and(img_in, img_out)
 
 #def romove_blobs_2(imgIn, imMax):
@@ -221,7 +222,7 @@ def save_img(img, pwd, name, resolution = 300, figureTitle = "", titleSize = 20,
         
         fig.savefig(os.path.join(pwd, name), dpi = resolution, bbox_inches='tight', pad_inches=0)
         
-def save_fig(fig, pwd, name, resolution = 300, figureTitle = "", titleSize = 20, ext = 'png'):
+def save_fig(fig, pwd, name, resolution = 300, title = "", titleSize = 20, ext = 'png'):
         
         SMALL_SIZE = 8
         MEDIUM_SIZE = 15
@@ -286,8 +287,8 @@ def plot_segments(img_rgb, background, tomato, peduncle, pwd=None,
     segmentsRGB = stack_segments(img_rgb, background, tomato, peduncle)
     
     added_image = cv2.addWeighted(img_rgb, 1 - alpha,segmentsRGB,alpha,0)
-    added_image = add_contour(added_image, tomato, color = (255,0,0), thickness = 3)
-    added_image = add_contour(added_image, peduncle, color = (0,255,0), thickness = 2)  
+    added_image = add_contour(added_image, tomato, color = (255,0,0), thickness = 1)
+    added_image = add_contour(added_image, peduncle, color = (0,255,0), thickness = 1)  
     
     if pwd is not None:
         save_img(added_image, pwd, file_name, figureTitle = title)
@@ -327,3 +328,96 @@ def pipi(angle):
 def change_brightness(img, brightness):
     img_copy = img.copy()
     return img_copy + ((255  - img_copy)**brightness).astype(np.uint8) 
+    
+def plot_timer(timer_dict, N = 1, threshold = 0, ignore_key=None, pwd = None, name = 'time', title = 'time'):   
+    
+    for key in timer_dict.keys():
+        
+        # remove ignored keys
+        if key == ignore_key:
+            del timer_dict[key]
+            break
+            
+        # remove empty keys
+        if timer_dict[key] == []:
+            del timer_dict[key]
+       
+    values = np.array(timer_dict.values())
+    
+    if len(values.shape) == 1:
+        values = values/N
+    else:
+        values = np.mean(values, axis = 1)
+        
+    labels = np.array(timer_dict.keys())   
+    
+    values_rel = values/np.sum(values)
+    i_keep = (values_rel > threshold)
+    i_remove = np.bitwise_not(i_keep)
+    
+    # if everything is put under others
+    if np.all(i_remove == True):
+        print("No time to plot!")
+        return
+    
+    labels_keep = labels[i_keep].tolist()
+    values_keep = values[i_keep].tolist() 
+    
+    if np.any(i_remove == True):
+        remains = np.mean(values[i_remove])
+        values_keep.append(remains)
+        labels_keep.append('others')
+
+
+    l = zip(values_keep, labels_keep)
+    l.sort()
+    values_keep, labels_keep = zip(*l)
+    
+    donut(values_keep, labels_keep, pwd = pwd, title = title)
+
+#    fig, ax = plt.subplots()
+#    ax.pie(values_keep, labels=labels_keep, autopct=make_autopct(values_keep), startangle=90, labeldistance=1.2)
+#    ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+#    
+#    fig.show()
+
+def donut(data, labels, pwd = None, title = None):
+    
+    data_rel = data/sum(data)*100    
+    
+    text = []
+    separator = ': '
+    for label, value, value_rel in zip(labels, data, data_rel):
+        text.append(label + separator + str(int(round(value_rel))) + '% (' + str(int(round(value))) + ' ms)')
+    
+    fig, ax = plt.subplots(figsize=(6, 3), subplot_kw=dict(aspect="equal"))
+    
+    
+    
+    wedges, texts = ax.pie(data, wedgeprops=dict(width=0.5), startangle=0)
+    
+    bbox_props = dict(boxstyle="square,pad=0.3", fc="w", ec="k", lw=0.72)
+    kw = dict(arrowprops=dict(arrowstyle="-"),
+              bbox=bbox_props, zorder=0, va="center")
+    
+    for i, p in enumerate(wedges):
+        ang = (p.theta2 - p.theta1)/2. + p.theta1
+        y = np.sin(np.deg2rad(ang))
+        x = np.cos(np.deg2rad(ang))
+        horizontalalignment = {-1: "right", 1: "left"}[int(np.sign(x))]
+        connectionstyle = "angle,angleA=0,angleB={}".format(ang)
+        kw["arrowprops"].update({"connectionstyle": connectionstyle})
+        ax.annotate(text[i], xy=(x, y), xytext=(1.35*np.sign(x), 1.4*y),
+                    horizontalalignment=horizontalalignment, **kw)
+    
+    ax.set_title(title)
+
+    if pwd is not None:
+        save_fig(fig, pwd, 'time')
+    
+def make_autopct(values):
+    def my_autopct(pct):
+        total = sum(values)
+        val = int(round(pct*total/100.0)) # [ms]
+        return '{p:.2f}%  ({v:d} ms)'.format(p=pct,v=val)
+    return my_autopct

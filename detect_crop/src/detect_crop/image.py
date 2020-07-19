@@ -55,6 +55,12 @@ def image_rotate(image, angle):
     image_new = image.copy()
     image_new.rotate(angle)
     return image_new
+    
+def image_cut(image, bbox):
+    
+    image_new = image.copy()
+    image_new.cut(bbox)
+    return image_new
 
 def compute_bbox(image):
     return cv2.boundingRect(image)

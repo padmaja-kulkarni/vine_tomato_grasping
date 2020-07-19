@@ -38,8 +38,6 @@ def list_to_orientation(orientation_list):
 
 def make_2d_transform(from_frame_id, to_frame_id, xy = (0,0), angle = 0):
     
-    
-    
     transform_stamped = TransformStamped()
     transform_stamped.header.stamp = rospy.Time(0)
     transform_stamped.header.frame_id = from_frame_id

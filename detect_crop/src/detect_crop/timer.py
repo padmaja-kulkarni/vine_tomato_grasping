@@ -22,17 +22,30 @@ class Timer:
     def __init__(
         self,
         name=None,
+        name_space = None,
         text="Elapsed time: {:0.4f} seconds",
         logger=False,
+        append = True
     ):
         self._start_time = None
         self.name = name
         self.text = text
         self.logger = logger
-
+        self.name_space = name_space
+        self.append = append
         # Add new named timers to dictionary of timers
-        if name:
-            self.timers.setdefault(name, 0)
+
+        if self.append:
+            val = []
+        else:
+            val = 0
+
+        if self.name:
+            if self.name_space:
+                self.timers.setdefault(self.name_space, {})
+                self.timers[self.name_space].setdefault(self.name, val)
+            else:
+                self.timers.setdefault(name, val)
 
     def start(self):
         """Start a new timer"""
@@ -46,13 +59,22 @@ class Timer:
         if self._start_time is None:
             raise TimerError("Timer is not running. Use .start() to start it")
 
-        elapsed_time = time.time() - self._start_time # perf_counter()
+        elapsed_time = (time.time() - self._start_time) * 1000 # perf_counter()
         self._start_time = None
 
         if self.logger:
             print(self.text.format(elapsed_time))
         if self.name:
-            self.timers[self.name] += elapsed_time
+            
+            if self.name_space:
+                d = self.timers[self.name_space]
+            else:
+                d = self.timers
+
+            if self.append:
+                d[self.name].append(elapsed_time)
+            else:
+                d[self.name] += elapsed_time
 
         return elapsed_time
         
@@ -74,17 +96,17 @@ class Timer:
     
         return wrapper_timer
         
-@Timer("sleep", text="Downloaded the tutorial in {:.2f} seconds")
-def cust_sleep(sleep_time):
-    time.sleep(sleep_time)
-        
-if __name__ == '__main__':
-    t = Timer("sleep", logger=True)
-    
-    with t:
-        time.sleep(0.2)
-    
-    cust_sleep(0.5)
-    
-    
-    print(Timer.timers)
+#@Timer("sleep", text="Downloaded the tutorial in {:.2f} seconds")
+#def cust_sleep(sleep_time):
+#    time.sleep(sleep_time)
+#        
+#if __name__ == '__main__':
+#    t = Timer("sleep", logger=True)
+#    
+#    with t:
+#        time.sleep(0.2)
+#    
+#    cust_sleep(0.5)
+#    
+#    
+#    print(Timer.timers)
