@@ -13,19 +13,21 @@ from util import remove_blobs, bin2img, img2bin
 from skimage.morphology import skeletonize
 
 from timer import Timer
+from counter import Counter
+
 def get_node_id(branch_data, skeleton):
 
     src_node_id = np.unique(branch_data['node-id-src'].values)
     dst_node_id = np.unique(branch_data['node-id-dst'].values)
     all_node_id = np.unique(np.append(src_node_id, dst_node_id))        
     
-    deg = skeleton.degrees[all_node_id]
-    end_node_index= np.argwhere(deg == 1)[:, 0] # endpoint
+    # deg = skeleton.degrees[all_node_id]
+    end_node_index= skeleton.degrees[all_node_id] == 1 # np.argwhere(deg == 1)[:, 0] # endpoint
     
     end_node_id = all_node_id[end_node_index]        
     junc_node_id = np.setdiff1d(all_node_id,end_node_id)        
     
-    return junc_node_id, end_node_id    
+    return junc_node_id, end_node_id 
 
 @Timer("get node coord", name_space = 'peduncle', append = False)
 def get_node_coord(skeleton_img):
@@ -43,6 +45,7 @@ def get_node_coord(skeleton_img):
     junc_node_coord = skeleton.coordinates[junc_node_id][:,[1, 0]]
 
     return junc_node_coord, end_node_coord
+
 
 @Timer('get locations on mask', name_space = 'peduncle', append = False)
 def get_locations_on_mask(mask, locations):
@@ -130,7 +133,7 @@ def threshold_branch_length(skeleton_img, distance_threshold):
     
     tip_junction = branch_data['branch-type'] == 1
     
-    b_remove = (skeleton.distances < distance_threshold) & tip_junction 
+    b_remove = (branch_data['branch-distance'] < distance_threshold) & tip_junction 
     i_remove = np.argwhere(b_remove)[:,0]
     
     return update_skeleton(skeleton_img, skeleton, i_remove)
@@ -146,6 +149,13 @@ def filter_branch_length(skeleton_img):
   
     junc_node_ids, start_node_ids = get_node_id(branch_data, skeleton)   
     
+
+    n_start_nodes = len(start_node_ids)
+    n_junc_nodes = len(junc_node_ids)
+    # n_roads = len(branch_data.values) # 2*(n - 1)
+    n_paths = (n_start_nodes + n_junc_nodes)*n_start_nodes
+    print 'Expected function calls %d' %(n_paths)    
+    
     for node_id in start_node_ids:
         
         current_path = list()
@@ -159,6 +169,7 @@ def filter_branch_length(skeleton_img):
                                               
     return generate_skeleton_img(skeleton, max_path, skeleton_img.shape), max_path
    
+@Counter("find largest branch", name_space = 'peduncle')
 def find_largest_branch(branch_data, skeleton, node_id_current, node_id_start, path, length, 
                         angle = None, max_path = [], max_length = 0, branch_visited = []):
           
@@ -221,6 +232,9 @@ def visualize_skeleton(bg_img, skeleton_img, junc_coord = None,
     junc_color = (100, 0, 200)
     end_color =   (200, 0, 0)  
     pend_color = (0,150,30)
+    
+#    skeleton = skan.Skeleton(img2bin(skeleton_img))
+#    branch_data = skan.summarize(skeleton) 
 
     if (junc_coord is None) and (end_coord is None):   
         junc_coord, end_coord = get_node_coord(skeleton_img)
@@ -267,9 +281,16 @@ def get_center_branch(branch_data, skeleton_img):
 
     return np.array(junc_branch_center), np.array(dead_branch_center)  
 
-@Timer("skeletonize img", name_space = 'peduncle', append = False)
+@Timer("skeletonize image", name_space = 'peduncle', append = False)
 def skeletonize_img(img):
     return bin2img(skeletonize(img2bin(img)))
+
+@Timer("summarize image", name_space = 'peduncle', append = False)
+def summarize_img(skeleton_img):
+    # summarize skeleton
+    skeleton = skan.Skeleton(img2bin(skeleton_img))
+    branch_data = skan.summarize(skeleton) 
+    return skeleton, branch_data
 
 def detect_peduncle(peduncle_img, distance_threshold, bg_img = None, 
                     save = False, name = "", pwd = ""):
@@ -290,10 +311,7 @@ def detect_peduncle(peduncle_img, distance_threshold, bg_img = None,
     if save:
         visualize_skeleton(bg_img, skeleton_img, name=name+"_02", pwd=pwd)        
         
-    # summerize skeleton
-    with Timer("summerize", name_space = 'peduncle', append = False):
-        skeleton = skan.Skeleton(img2bin(skeleton_img))
-        branch_data = skan.summarize(skeleton)        
+    skeleton, branch_data = summarize_img(skeleton_img)   
     
     # get all node coordiantes
     all_juncions, _ = get_node_coord(skeleton_img)
@@ -323,3 +341,6 @@ def detect_peduncle(peduncle_img, distance_threshold, bg_img = None,
     
     
     return skeleton_img, branch_center
+    
+if __name__ == '__main__':
+    print('No main!')
