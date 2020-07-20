@@ -23,7 +23,7 @@ from detect_crop.util import make_dirs
 
 from detect_crop.segment_image import segment_truss
 
-# ls | cat -n | while read n f; do mv "$f" `printf "%03d.jpg" $n`; done
+# ls | cat -n | while read n f; do mv "$f" `printf "%03d.png" $n`; done
 if __name__ == '__main__':
 
     N = 23              # tomato file to load

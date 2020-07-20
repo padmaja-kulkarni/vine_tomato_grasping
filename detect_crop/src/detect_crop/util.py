@@ -255,12 +255,12 @@ def add_circles(imRGB, centers, radii = 5, color = (255,255,255), thickness = 5)
             for i, center in enumerate(centers):
                 col = int(center[0])
                 row = int(center[1])
-            
-                if type(radii) is np.ndarray:
+                
+                if isinstance(radii, (list, np.ndarray)):
                     r = int(radii[i])
                 
                 else:            
-                    r = radii   
+                    r = int(radii)   
                     
                 cv2.circle(imRGB,(col, row), r, color, thickness)
             
@@ -271,7 +271,7 @@ def add_circles(imRGB, centers, radii = 5, color = (255,255,255), thickness = 5)
                 col = int(centers[i, 0])
                 row = int(centers[i, 1])
                 
-                if type(radii) is np.ndarray:
+                if isinstance(radii, (list, np.ndarray)):
                     r = int(radii[i])
                 
                 else:            
@@ -394,7 +394,7 @@ def donut(data, labels, pwd = None, title = None):
     
     
     
-    wedges, texts = ax.pie(data, wedgeprops=dict(width=0.5), startangle=0)
+    wedges, texts = ax.pie(data, wedgeprops=dict(width=0.5), startangle=-45)
     
     bbox_props = dict(boxstyle="square,pad=0.3", fc="w", ec="k", lw=0.72)
     kw = dict(arrowprops=dict(arrowstyle="-"),

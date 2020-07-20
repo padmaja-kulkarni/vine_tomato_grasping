@@ -150,11 +150,12 @@ def filter_branch_length(skeleton_img):
     junc_node_ids, start_node_ids = get_node_id(branch_data, skeleton)   
     
 
-    n_start_nodes = len(start_node_ids)
-    n_junc_nodes = len(junc_node_ids)
-    # n_roads = len(branch_data.values) # 2*(n - 1)
-    n_paths = (n_start_nodes + n_junc_nodes)*n_start_nodes
-    print 'Expected function calls %d' %(n_paths)    
+#    n_start_nodes = len(start_node_ids)
+#    n_junc_nodes = len(junc_node_ids)
+#    n_edges = len(branch_data.values) # 2*(n - 1)
+#    n_vertices = n_start_nodes + n_junc_nodes 
+#    n_paths = (n_vertices + n_vertices**2)*n_start_nodes
+#    print 'Expected function calls %d' %(n_paths)    
     
     for node_id in start_node_ids:
         

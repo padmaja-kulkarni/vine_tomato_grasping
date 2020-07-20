@@ -11,6 +11,7 @@ import numpy as np
 import tf2_ros
 import cv2
 import tf2_geometry_msgs
+import json
 
 from skimage.transform import rotate
 import rospy
@@ -345,7 +346,7 @@ class ProcessImage(object):
     def rescale(self, img):
         
         # TODO: fix
-        translation = translation_rot2or(self.shape, -self._angle)
+        translation = translation_rot2or(self.shape, -self.angle)
         dist = np.sqrt(translation[0]**2 + translation[1]**2)
         x = self.bbox[0]
         y = self.bbox[0]
@@ -355,36 +356,44 @@ class ProcessImage(object):
         if self.angle < 0:    
             transform = np.array(((-x,-y + dist),))
         
-        imgR = rotate(img, self._angle, resize=True)
+        imgR = rotate(img, self.angle, resize=True)
         return add_border(imgR, transform, self.shape)
 
     def get_tomatoes(self, local = False):
         if local:
-            mask_empty = np.zeros(self.shape, self.dtype)      
+            # shape = self.bbox[:2]      
             target_frame_id = self._LOCAL_FRAME_ID
-            scale = 1
+            scale = 1.0
         else:
-            mask_empty = np.zeros(self._bbox[:2], np.uint8)   
+            # shape = self.shape
             target_frame_id = self._ORIGINAL_FRAME_ID
             scale = self.scale
             
+        # mask_empty = np.zeros(shape, self.dtype)
+            
         if self.centers is None:
-            tomatoRow = []
-            tomatoCol = []
+            row = []
+            col = []
             radii = []
-            mask = mask_empty
+            # mask = mask_empty
+            centers = [[]]
             
         else:
             xy = self.get_xy(self.centers, target_frame_id) 
-            radii = self.radii/scale
+            radii = (self.radii/scale).astype(int).tolist()
             
-            tomatoPixel = np.around(xy/scale).astype(int)
-            tomatoRow = tomatoPixel[:, 1]
-            tomatoCol = tomatoPixel[:, 0]
+            centers = np.around(xy/scale).astype(int)
+            row = centers[:, 1].tolist()
+            col = centers[:, 0].tolist()
+            centers = centers.tolist()
+#            centers = []
+#            for row, col in zin(tomatoRow, tomatoCol):
+#                center = [row, col]
+#                centers.append(center)
         
-            mask = add_circles(mask_empty, tomatoPixel, radii, color = (255), thickness = -1)  
+#             mask = add_circles(mask_empty, centers, radii, color = (255), thickness = -1).tolist()
         
-        tomato= {"row": tomatoRow, "col": tomatoCol, "radii": radii, "mask": mask, "pixel": tomatoPixel}
+        tomato= {'centers': centers, 'radii': radii, "row": row, "col": col} # ,  "mask": mask
         return tomato
 
 
@@ -402,11 +411,11 @@ class ProcessImage(object):
         
         
     def get_peduncle(self, local = False):
-        peduncle_mask = self.get_peduncle_image(local = local)
-        penduncle_main = self.get_main_peduncle_image(local = local)
-        peduncle = {"mask": peduncle_mask,
-                    "mask_main": penduncle_main}
-        
+#        peduncle_mask = self.get_peduncle_image(local = local)
+#        penduncle_main = self.get_main_peduncle_image(local = local)
+#        peduncle = {"mask": peduncle_mask,
+#                    "mask_main": penduncle_main}
+        peduncle = {'junctions': [], 'end_points': []}
         return peduncle
 
     def get_grasp_location(self, local = False):
@@ -554,7 +563,7 @@ class ProcessImage(object):
 
 if __name__ == '__main__':
     i_start = 1
-    i_end = 23
+    i_end = 2
     N = i_end - i_start
     
     save = False
@@ -578,22 +587,28 @@ if __name__ == '__main__':
             save_img(rgb_data, pwd_results, '01')
 
 
-        proces_image = ProcessImage(use_truss = True,
+        process_image = ProcessImage(use_truss = True,
                              name = tomato_name, 
                              pwd = pwd_results, 
                              save = save)                           
                              
-        proces_image.add_image(rgb_data)
-        success = proces_image.process_image()
+        process_image.add_image(rgb_data)
+        success = process_image.process_image()
         
         if False: # success:
         
-            visual = proces_image.get_truss_visualization()
+            visual = process_image.get_truss_visualization()
             save_img(visual, pwd_results, '99')
             
-            visual = proces_image.get_truss_visualization(local = True)
+            visual = process_image.get_truss_visualization(local = True)
             save_img(visual, pwd_results, '99')
             
+            
+        json_data = process_image.get_object_features()
+        
+        pwd_json = os.path.join(pwd_results, tomato_name + '.json')
+        with open(pwd_json, "w") as write_file:
+            json.dump(json_data, write_file)
             
     plot_timer(Timer.timers['main'].copy(), threshold = 0.02, pwd = pwd_results, title = 'Processing time')
 
@@ -620,3 +635,5 @@ if __name__ == '__main__':
     
     fig.savefig(os.path.join(pwd_results, 'time_bar'), dpi = 300) #, bbox_inches='tight', pad_inches=0)
     save_fig(fig, pwd_results, 'time')
+    
+    
