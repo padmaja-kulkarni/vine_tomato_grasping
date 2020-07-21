@@ -237,15 +237,26 @@ class ProcessImage(object):
     
         bg_img = change_brightness(self.image_crop.data, 0.85)
 
-        penduncle_main, branch_center = detect_peduncle(self.peduncle_crop.data, 
+        mask, coord_center, junctions, ends  = detect_peduncle(self.peduncle_crop.data, 
                                                         distance_threshold, 
                                                         save = self.save, 
                                                         bg_img = bg_img, 
                                                         name = '06', 
                                                         pwd = self.pwd)
+        # convert to 2D points
+        junction_points = []
+        for junction in junctions:
+            junction_points.append(make_2d_point(self._LOCAL_FRAME_ID, junction))        
+
+        # convert to 2D points
+        end_points = []
+        for end in ends:
+            end_points.append(make_2d_point(self._LOCAL_FRAME_ID, end))       
         
-        self.penduncle_main = penduncle_main
-        self.junc_branch_center = branch_center
+        self.penduncle_main = mask
+        self.junc_branch_center = coord_center
+        self.junction_points = junction_points
+        self.end_points = end_points
         return success
 
     @Timer("detect grasp location", name_space)
@@ -415,7 +426,16 @@ class ProcessImage(object):
 #        penduncle_main = self.get_main_peduncle_image(local = local)
 #        peduncle = {"mask": peduncle_mask,
 #                    "mask_main": penduncle_main}
-        peduncle = {'junctions': [], 'end_points': []}
+    
+        if local:
+            frame_id = self._LOCAL_FRAME_ID
+        else:
+            frame_id = self._ORIGINAL_FRAME_ID
+            
+        junction_points = self.get_xy(self.junction_points, frame_id).tolist()
+        end_points = self.get_xy(self.end_points, frame_id).tolist()       
+            
+        peduncle = {'junctions': junction_points, 'ends': end_points}
         return peduncle
 
     def get_grasp_location(self, local = False):
@@ -556,24 +576,25 @@ class ProcessImage(object):
 
         self.detect_tomato_settings = settings
 
-
-
 # %matplotlib inline
 # %matplotlib qt
 
 if __name__ == '__main__':
     i_start = 1
-    i_end = 2
+    i_end = 23
     N = i_end - i_start
     
     save = False
 
-    pathCurrent = os.path.dirname(__file__)
-    dataSet = "real_blue" # "tomato_rot"
+    pwd_current = os.path.dirname(__file__)
+    dataset = "real_blue" # "tomato_rot"
 
-    pwd_data = os.path.join(pathCurrent, "..", "data", dataSet)
-    pwd_results = os.path.join(pathCurrent, "..", "results", dataSet)
+    pwd_data = os.path.join(pwd_current, "..", "data", dataset)
+    pwd_results = os.path.join(pwd_current, "..", "results", dataset)
+    pwd_json = os.path.join(pwd_results, 'json')
+    
     make_dirs(pwd_results)
+    make_dirs(pwd_json)
 
     for count, i_tomato in enumerate(range(i_start, i_end)):
         print("Analyzing image %d out of %d" %(count + 1, N))
@@ -606,8 +627,8 @@ if __name__ == '__main__':
             
         json_data = process_image.get_object_features()
         
-        pwd_json = os.path.join(pwd_results, tomato_name + '.json')
-        with open(pwd_json, "w") as write_file:
+        pwd_json_file = os.path.join(pwd_json, tomato_name + '.json')
+        with open(pwd_json_file, "w") as write_file:
             json.dump(json_data, write_file)
             
     plot_timer(Timer.timers['main'].copy(), threshold = 0.02, pwd = pwd_results, title = 'Processing time')
@@ -634,6 +655,5 @@ if __name__ == '__main__':
     fig.show()    
     
     fig.savefig(os.path.join(pwd_results, 'time_bar'), dpi = 300) #, bbox_inches='tight', pad_inches=0)
-    save_fig(fig, pwd_results, 'time')
     
     

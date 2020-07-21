@@ -322,26 +322,26 @@ def detect_peduncle(peduncle_img, distance_threshold, bg_img = None,
     branch_data = branch_data.loc[i_keep]
     
     # get end points
-    _, endpoints = get_node_coord(skeleton_img)
+    _, coord_end = get_node_coord(skeleton_img)
     
     # only select the junctions which lie on the main peduncle
-    junctions = get_locations_on_mask(skeleton_img, all_juncions)     
+    coord_junc = get_locations_on_mask(skeleton_img, all_juncions)     
     
     # get the centers of the obtained branches
     branch_center,_ = get_center_branch(branch_data, skeleton_img)
     
     if save:
-        visualize_skeleton(bg_img, skeleton_img, junc_coord=junctions, 
-                           end_coord = endpoints, name=name+"_03", 
+        visualize_skeleton(bg_img, skeleton_img, junc_coord=coord_junc, 
+                           end_coord = coord_end, name=name+"_03", 
                            pwd=pwd)                      
     if save:
         visualize_skeleton(bg_img, skeleton_img, junc_coord=branch_center, 
-                       end_coord = endpoints, name=name+"_04", 
+                       end_coord = coord_end, name=name+"_04", 
                        pwd=pwd)  
     
     
     
-    return skeleton_img, branch_center
+    return skeleton_img, branch_center, coord_junc, coord_end
     
 if __name__ == '__main__':
     print('No main!')
