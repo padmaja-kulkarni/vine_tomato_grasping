@@ -383,20 +383,24 @@ class ProcessImage(object):
         # mask_empty = np.zeros(shape, self.dtype)
             
         if self.centers is None:
-            row = []
-            col = []
+#            row = []
+#            col = []
             radii = []
             # mask = mask_empty
             centers = [[]]
+            com = []
             
         else:
-            xy = self.get_xy(self.centers, target_frame_id) 
+            centers_xy = self.get_xy(self.centers, target_frame_id) 
+            com_xy = self.get_xy(self.com, target_frame_id)  
             radii = (self.radii/scale).astype(int).tolist()
             
-            centers = np.around(xy/scale).astype(int)
-            row = centers[:, 1].tolist()
-            col = centers[:, 0].tolist()
+            centers = np.around(centers_xy/scale).astype(int)
+            com = np.around(com_xy/scale).astype(int)
+#            row = centers[:, 1].tolist()
+#            col = centers[:, 0].tolist()
             centers = centers.tolist()
+            com = com.tolist()
 #            centers = []
 #            for row, col in zin(tomatoRow, tomatoCol):
 #                center = [row, col]
@@ -404,7 +408,7 @@ class ProcessImage(object):
         
 #             mask = add_circles(mask_empty, centers, radii, color = (255), thickness = -1).tolist()
         
-        tomato= {'centers': centers, 'radii': radii, "row": row, "col": col} # ,  "mask": mask
+        tomato= {'centers': centers, 'radii': radii, 'com': com} # ,  "mask": mask, "row": row, "col": col
         return tomato
 
 

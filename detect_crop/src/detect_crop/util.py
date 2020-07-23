@@ -245,35 +245,34 @@ def save_fig(fig, pwd, name, resolution = 300, title = "", titleSize = 20, ext =
 
 
 def add_circles(imRGB, centers, radii = 5, color = (255,255,255), thickness = 5):
-    if radii is not None:
         
-        if isinstance(centers, list):  
-            for i, center in enumerate(centers):
-                col = int(center[0])
-                row = int(center[1])
-                
-                if isinstance(radii, (list, np.ndarray)):
-                    r = int(radii[i])
-                
-                else:            
-                    r = int(radii)   
-                    
-                cv2.circle(imRGB,(col, row), r, color, thickness)
+    if isinstance(centers, list):  
+        for i, center in enumerate(centers):
+            col = int(center[0])
+            row = int(center[1])
             
-        else:
-            N = centers.shape[0]
+            if isinstance(radii, (list, np.ndarray)):
+                r = int(radii[i])
+            
+            else:            
+                r = int(radii)   
                 
-            for i in range(0, N, 1):
-                col = int(centers[i, 0])
-                row = int(centers[i, 1])
-                
-                if isinstance(radii, (list, np.ndarray)):
-                    r = int(radii[i])
-                
-                else:            
-                    r = radii
-                
-                cv2.circle(imRGB,(col, row), r, color, thickness)
+            cv2.circle(imRGB,(col, row), r, color, thickness)
+        
+    else:
+        N = centers.shape[0]
+            
+        for i in range(0, N, 1):
+            col = int(centers[i, 0])
+            row = int(centers[i, 1])
+            
+            if isinstance(radii, (list, np.ndarray)):
+                r = int(radii[i])
+            
+            else:            
+                r = radii
+            
+            cv2.circle(imRGB,(col, row), r, color, thickness)
             
     return imRGB
 
@@ -291,22 +290,28 @@ def plot_segments(img_rgb, background, tomato, peduncle, pwd=None,
 
 
 
-def plot_features(img_rgb, tomato, peduncle = None, grasp = None,
+def plot_features(img_rgb, tomato = None, peduncle = None, grasp = None,
                   alpha = 0.6, thickness = 1, pwd = None, file_name=None, title=""):
     
     img_overlay = np.ones(img_rgb.shape, dtype = np.uint8)
-    img_overlay = add_circles(img_overlay, tomato['centers'], radii = tomato['radii'], color = tomato_color, thickness = -1)
+    if tomato:
+        img_overlay = add_circles(img_overlay, tomato['centers'], radii = tomato['radii'], color = tomato_color, thickness = -1)
     if peduncle:
         img_overlay = add_circles(img_overlay, peduncle['junctions'], radii = 10, color = junction_color, thickness = -1)    
         img_overlay = add_circles(img_overlay, peduncle['ends'], radii = 10, color = end_color, thickness = -1)  
 
     added_image = cv2.addWeighted(img_rgb, 1,img_overlay,alpha,0)
 
+    if tomato:
+        added_image = add_circles(added_image, tomato['centers'], 
+                                  radii = tomato['radii'], 
+                                  color = tomato_color, 
+                                  thickness = thickness)
 
-    added_image = add_circles(added_image, tomato['centers'], 
-                              radii = tomato['radii'], 
-                              color = tomato_color, 
-                              thickness = thickness)
+        added_image = add_circles(added_image, tomato['com'], radii = 10,
+                          color = (0,0,0), 
+                          thickness = -1)               
+                   
     if peduncle:
         added_image = add_circles(added_image, peduncle['junctions'], radii = 10, color = junction_color, thickness = thickness)
         added_image = add_circles(added_image, peduncle['ends'], radii = 10, color = end_color, thickness = thickness)
@@ -350,8 +355,7 @@ def plot_error(img, centers, error_centers, error_radii = None, pwd = None, name
         zipped = zip(centers, error_centers)
         zipped.sort(key = lambda x: x[0][1])    
         centers, error_centers = zip(*zipped)
-
-    
+        
     h, w = img.shape[:2]
     n = len(centers)+ 1
     y_text = 0 # 1.0/n* h
@@ -361,11 +365,18 @@ def plot_error(img, centers, error_centers, error_radii = None, pwd = None, name
         kw = dict(arrowprops=dict(arrowstyle="-"),
                   bbox=bbox_props, va="center", size = 12, color='k')             
         
+
         error_center = error_centers[i]
+        
+        if error_radii is not None:
+            error_radius = error_radii[i]
+        else:
+            error_radius = None
+            
         if error_center is not None:
             center_error = int(round(error_center))
             
-            if error_radii is not None:
+            if (error_radius is not None):
                 radius_error = int(round(error_radii[i]))
                 text = 'center: {c:d} px \nradius: {r:d} px'.format(c=center_error, r= radius_error) # str()
             else:
