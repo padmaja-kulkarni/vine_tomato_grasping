@@ -96,8 +96,8 @@ class ProcessImage(object):
 
     @Timer("color space", name_space)
     def color_space(self):
-        imHSV = cv2.cvtColor(self.image.data, cv2.COLOR_RGB2HSV)
-        self.image_hue = imHSV[:, :, 0]
+        self.image_hue = cv2.cvtColor(self.image.data, cv2.COLOR_RGB2HSV)[:, :, 0]
+        # self.image_hue = imHSV[:, :, 0]
 
     @Timer("segment image", name_space)        
     def segment_image(self):
@@ -208,7 +208,7 @@ class ProcessImage(object):
     
         centers, radii, com = detect_tomato(self.truss_crop.data, 
                                             self.detect_tomato_settings, 
-                                            imageRGB=bg_img, 
+                                            img_rgb=bg_img, 
                                             save = self.save, 
                                             pwd = self.pwd, 
                                             name = self.name)

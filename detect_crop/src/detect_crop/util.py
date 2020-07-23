@@ -283,26 +283,33 @@ def plot_segments(img_rgb, background, tomato, peduncle, pwd=None,
     img_segments = stack_segments(img_rgb, background, tomato, peduncle)
     
     added_image = cv2.addWeighted(img_rgb, 1 - alpha,img_segments,alpha,0)
-    added_image = add_contour(added_image, tomato, color = tomato_color, thickness = 1)
-    added_image = add_contour(added_image, peduncle, color = peduncle_color, thickness = 1)  
+    added_image = add_contour(added_image, tomato, color = tomato_color, thickness = 2)
+    added_image = add_contour(added_image, peduncle, color = peduncle_color, thickness = 2)  
     
     if pwd is not None:
         save_img(added_image, pwd, file_name, figureTitle = title)
 
-def plot_features(img_rgb, tomato, peduncle, grasp,
-                  alpha = 0.7, pwd = None, file_name=None, title=""):
+
+
+def plot_features(img_rgb, tomato, peduncle = None, grasp = None,
+                  alpha = 0.6, thickness = 1, pwd = None, file_name=None, title=""):
     
     img_overlay = np.ones(img_rgb.shape, dtype = np.uint8)
     img_overlay = add_circles(img_overlay, tomato['centers'], radii = tomato['radii'], color = tomato_color, thickness = -1)
-    img_overlay = add_circles(img_overlay, peduncle['junctions'], radii = 10, color = junction_color, thickness = -1)    
-    img_overlay = add_circles(img_overlay, peduncle['ends'], radii = 10, color = end_color, thickness = -1)  
+    if peduncle:
+        img_overlay = add_circles(img_overlay, peduncle['junctions'], radii = 10, color = junction_color, thickness = -1)    
+        img_overlay = add_circles(img_overlay, peduncle['ends'], radii = 10, color = end_color, thickness = -1)  
 
     added_image = cv2.addWeighted(img_rgb, 1,img_overlay,alpha,0)
 
 
-    added_image = add_circles(added_image, tomato['centers'], radii = tomato['radii'], color = tomato_color, thickness = 1)
-    added_image = add_circles(added_image, peduncle['junctions'], radii = 10, color = junction_color, thickness = 1)
-    added_image = add_circles(added_image, peduncle['ends'], radii = 10, color = end_color, thickness = 1)
+    added_image = add_circles(added_image, tomato['centers'], 
+                              radii = tomato['radii'], 
+                              color = tomato_color, 
+                              thickness = thickness)
+    if peduncle:
+        added_image = add_circles(added_image, peduncle['junctions'], radii = 10, color = junction_color, thickness = thickness)
+        added_image = add_circles(added_image, peduncle['ends'], radii = 10, color = end_color, thickness = thickness)
     
     if pwd is not None:
         save_img(added_image, pwd, file_name, figureTitle = title)

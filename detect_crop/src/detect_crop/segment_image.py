@@ -28,8 +28,8 @@ def k_means_hue(img_hue, n_clusters):
                                                n_clusters, 
                                                None, 
                                                criteria, 
-                                               3, 
-                                               cv2.KMEANS_PP_CENTERS) 
+                                               attempts = 3, 
+                                               flags = cv2.KMEANS_PP_CENTERS) 
 
     # convert the centers from xy to angles
     centers = np.rad2deg(np.arctan2(centers_xy[:, 1], centers_xy[:, 0]))    

@@ -19,13 +19,13 @@ import cv2
 import numpy as np
 
 # custom functions
-from util import plot_circles
+from util import plot_features
 
-def detect_tomato(img_segment, settings, imageRGB = None,
+def detect_tomato(img_segment, settings, img_rgb = None,
                       save = False, pwd = "", name = ""):
                      
-    if imageRGB is None:                     
-        imageRGB = img_segment
+    if img_rgb is None:                     
+        img_rgb = img_segment
         
 
     # set dimensions
@@ -68,12 +68,15 @@ def detect_tomato(img_segment, settings, imageRGB = None,
         com = (radii**2) * centers/(np.sum(radii**2))
     
     # visualize result
-    thickness = 3
+    thickness = 1
     tom_color = (150, 30, 0) 
     
+       
     if save:
-        plot_circles(imageRGB, centers, radii, pwd = pwd, name = name, 
-                                     thickness = thickness, color=tom_color)
+        tomato = {'centers': centers, 'radii': radii} 
+        plot_features(img_rgb, tomato, pwd = pwd, file_name=name, thickness = thickness)
+#        plot_circles(img_rgb, centers, radii, pwd = pwd, name = name, 
+#                                     thickness = thickness, color=tom_color)
                                      
     return centers, radii, com
 

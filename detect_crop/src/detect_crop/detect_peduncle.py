@@ -150,12 +150,18 @@ def filter_branch_length(skeleton_img):
     junc_node_ids, start_node_ids = get_node_id(branch_data, skeleton)   
     
 
-#    n_start_nodes = len(start_node_ids)
-#    n_junc_nodes = len(junc_node_ids)
-#    n_edges = len(branch_data.values) # 2*(n - 1)
-#    n_vertices = n_start_nodes + n_junc_nodes 
-#    n_paths = (n_vertices + n_vertices**2)*n_start_nodes
-#    print 'Expected function calls %d' %(n_paths)    
+    n_start_nodes = len(start_node_ids)
+    n_junc_nodes = len(junc_node_ids)
+    n_vertices = n_start_nodes + n_junc_nodes 
+    n_edges = len(branch_data.values) # 2*(n - 1)
+    n_loop = 1 + n_edges - n_vertices
+    
+    n_paths_min = n_start_nodes * (n_edges + 1) # n_vertices * (1 + 0.5*n_vertices)# (n_vertices)*n_start_nodes
+    n_paths_max = n_paths_min * 2 ** n_loop # n_vertices * (1 + 2**n_junc_nodes)
+    print '|E|: %d' %(n_edges)   
+    print '|V|: %d' %(n_vertices)   
+    print 'loops: %d' %(n_loop)   
+    print 'Expected function calls between  %d and %d' %(n_paths_min, n_paths_max)    
     
     for node_id in start_node_ids:
         
@@ -172,7 +178,7 @@ def filter_branch_length(skeleton_img):
    
 @Counter("find largest branch", name_space = 'peduncle')
 def find_largest_branch(branch_data, skeleton, node_id_current, node_id_start, path, length, 
-                        angle = None, max_path = [], max_length = 0, branch_visited = []):
+                        angle = None, max_path = [], max_length = 0, branch_visited = [], depth = 1):
           
     branch_indexes = get_attached_branches(branch_data, node_id_current)
     branch_indexes = list(set(branch_indexes) - set(branch_visited))
@@ -185,6 +191,7 @@ def find_largest_branch(branch_data, skeleton, node_id_current, node_id_start, p
         node_id_new = get_new_node(branch_data, branch_index, node_id_current)        
         angle_new = node_angle(node_id_current, node_id_new, skeleton) 
         length_new = length
+        depth_new = depth + 1
         
         if angle is None:
             diff = 0
@@ -202,22 +209,28 @@ def find_largest_branch(branch_data, skeleton, node_id_current, node_id_start, p
             node_id_start = node_id_current
             path_new = [branch_index]
             angle_total = angle_new 
-            length_new = skeleton.distances[branch_index]                
+            length_new = skeleton.distances[branch_index]    
             
-        max_path, max_length = find_largest_branch(branch_data, skeleton, 
-                                                   node_id_new,
-                                                   node_id_start,
-                                                   path_new,
-                                                   length_new,  
-                                                   angle = angle_total,
-                                                   max_path = max_path,
-                                                   max_length = max_length,
-                                                   branch_visited = branch_visited_new)
+        if depth_new < 12:
+            max_path, max_length = find_largest_branch(branch_data, skeleton, 
+                                                       node_id_new,
+                                                       node_id_start,
+                                                       path_new,
+                                                       length_new,  
+                                                       angle = angle_total,
+                                                       max_path = max_path,
+                                                       max_length = max_length,
+                                                       branch_visited = branch_visited_new,
+                                                       depth = depth_new)
+   
+        else:
+            pass
+            # print('Reached maximum search depth!')
                                                    
-    # store as largest branch if required
+                                # store as largest branch if required
     if length > max_length:
         max_path = path
-        max_length = length                           
+        max_length = length 
                                                         
     return max_path, max_length
 

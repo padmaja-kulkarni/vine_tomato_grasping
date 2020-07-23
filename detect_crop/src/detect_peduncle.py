@@ -20,12 +20,12 @@ if __name__ == '__main__':
     #%% init
      #  48 #        # tomato file to load
     nDigits = 3
-    i_start = 6
-    i_end = 7    
+    i_start = 1
+    i_end = 23    
     N = i_end - i_start
     
     pwd_current = os.path.dirname(__file__)
-    dataset ="drawing" #  "empty" # "artificial" # 'real_blue' # 
+    dataset ='real_blue' # "drawing" #  "empty" # "artificial" # 
     
     pwd_data = os.path.join(pwd_current, "data", dataset)
     pwd_results = os.path.join(pwd_current, "results", dataset, "detect_peduncle")
@@ -62,7 +62,7 @@ if __name__ == '__main__':
         peduncle_img = image.get_peduncle_image(local = True)
         segment_img_bright = change_brightness(segment_img, brightness)
               
-        skeleton_img, branch_center = detect_peduncle(peduncle_img, 
+        skeleton_img, branch_center, coord_junc, coord_end = detect_peduncle(peduncle_img, 
                                                       distance_threshold, 
                                                       bg_img = segment_img_bright, 
                                                       save = True, 

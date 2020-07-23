@@ -19,7 +19,9 @@ if __name__ == '__main__':
     
     #%% init
 
-    nDigits = 3
+    i_start = 1
+    i_end = 22
+    N = i_end - i_start + 1
     
     pathCurrent = os.path.dirname(__file__)
     dataSet = "real_blue" # "tomato_cases" # "empty" # 
@@ -36,9 +38,11 @@ if __name__ == '__main__':
         
     
     
-    for count, i_tomato in enumerate(range(1, N)):
+    for count, i_tomato in enumerate(range(i_start, i_end + 1)):
+                                                    
+        print("Analyzing image %d out of %d" %(count + 1, N))        
         
-        tomatoID = str(i_tomato).zfill(nDigits)
+        tomatoID = str(i_tomato).zfill(3)
         tomato_name = tomatoID
         file_name = tomato_name + ".png"
         
@@ -58,18 +62,16 @@ if __name__ == '__main__':
         # set parameters
         settings = set_detect_tomato_settings()
 
-        imageRGB = image.get_rgb(local = True)
-        imageRGB_bright = change_brightness(imageRGB, brightness)
+        img_rgb = image.get_rgb(local = True)
+        img_rgb_bright = change_brightness(img_rgb, brightness)
 
         image_tomato, image_peduncle, _ = image.get_segments(local = True)
         image_gray = cv2.bitwise_or(image_tomato, image_peduncle)
-#        image_gray = imageRGB[:,:,0]
 
         centers, radii, com = detect_tomato(image_gray, 
                                             settings, 
-                                            imageRGB = imageRGB_bright, 
+                                            img_rgb = img_rgb, 
                                             save = True, 
                                             pwd = pwdResults, 
                                             name = tomato_name)
-                                            
-        print("completed image %d out of %d" %(count, N))
+
