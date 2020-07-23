@@ -359,14 +359,14 @@ def plot_error(img, centers, error_centers, error_radii = None, pwd = None, name
         
         bbox_props = dict(boxstyle="square,pad=0.3", fc="w", ec="k", lw=0.72)
         kw = dict(arrowprops=dict(arrowstyle="-"),
-                  bbox=bbox_props, va="center", size = 10, color='k')             
+                  bbox=bbox_props, va="center", size = 12, color='k')             
         
         error_center = error_centers[i]
         if error_center is not None:
             center_error = int(round(error_center))
             
             if error_radii is not None:
-                radius_error = int(round(error_centers[i]))
+                radius_error = int(round(error_radii[i]))
                 text = 'center: {c:d} px \nradius: {r:d} px'.format(c=center_error, r= radius_error) # str()
             else:
                 text = 'error:  {c:d} px'.format(c=center_error) # str()
@@ -434,7 +434,16 @@ def pipi(angle):
     
 def change_brightness(img, brightness):
     img_copy = img.copy()
-    return img_copy + ((255  - img_copy)**brightness).astype(np.uint8) 
+    
+    if brightness > 0 and brightness < 1:
+        return img_copy + ((255  - img_copy)**brightness).astype(np.uint8) 
+        
+    if brightness > -1 and brightness < 0:
+        return img_copy - ((img_copy)**-brightness).astype(np.uint8) 
+        
+    else:
+        print 'I can not do anything with this brightness value!'
+        return img
     
 def plot_timer(timer_dict, N = 1, threshold = 0, ignore_key=None, pwd = None, name = 'time', title = 'time'):   
     
@@ -480,7 +489,7 @@ def plot_timer(timer_dict, N = 1, threshold = 0, ignore_key=None, pwd = None, na
     l.sort()
     values_keep, labels_keep = zip(*l)
     
-    donut(values_keep, labels_keep, pwd = pwd, title = title)
+    donut(values_keep, labels_keep, pwd = pwd, name = name, title = title)
 
 #    fig, ax = plt.subplots()
 #    ax.pie(values_keep, labels=labels_keep, autopct=make_autopct(values_keep), startangle=90, labeldistance=1.2)
@@ -488,7 +497,7 @@ def plot_timer(timer_dict, N = 1, threshold = 0, ignore_key=None, pwd = None, na
 #    
 #    fig.show()
 
-def donut(data, labels, pwd = None, title = None):
+def donut(data, labels, pwd = None, name = None, title = None):
     
     data_rel = data/sum(data)*100    
     
@@ -520,7 +529,7 @@ def donut(data, labels, pwd = None, title = None):
     ax.set_title(title)
 
     if pwd is not None:
-        save_fig(fig, pwd, 'time')
+        save_fig(fig, pwd, name)
     
 def make_autopct(values):
     def my_autopct(pct):

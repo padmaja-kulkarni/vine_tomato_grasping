@@ -617,7 +617,6 @@ if __name__ == '__main__':
         success = process_image.process_image()
         
         if False: # success:
-        
             visual = process_image.get_truss_visualization()
             save_img(visual, pwd_results, '99')
             
@@ -631,9 +630,9 @@ if __name__ == '__main__':
         with open(pwd_json_file, "w") as write_file:
             json.dump(json_data, write_file)
             
-    plot_timer(Timer.timers['main'].copy(), threshold = 0.02, pwd = pwd_results, title = 'Processing time')
+    plot_timer(Timer.timers['main'].copy(), threshold = 0.02, pwd = pwd_results, name = 'main', title = 'Processing time')
 
-    plot_timer(Timer.timers['peduncle'].copy(), N = N, threshold = 0.02, pwd = pwd_results, title = 'Processing time peduncle')
+    plot_timer(Timer.timers['peduncle'].copy(), N = N, threshold = 0.02, pwd = pwd_results, name = 'peduncle', title = 'Processing time peduncle')
     
     total_key = "process image"
     total = np.mean(Timer.timers[total_key])
