@@ -66,7 +66,7 @@ def detect_tomato(img_segment, settings, img_rgb = None,
         centers = centers_overlap[i_keep, :]
         radii = radii_overlap[i_keep]
         
-        com = (radii**2) * centers/(np.sum(radii**2))
+        com = (radii**3) * centers/(np.sum(radii**3))
     
     # visualize result
     thickness = 1

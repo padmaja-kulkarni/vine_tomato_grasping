@@ -10,8 +10,9 @@ import os
 import cv2
 import numpy as np
 import warnings
-
+import copy
 from matplotlib import pyplot as plt
+from matplotlib.offsetbox import (OffsetImage, AnnotationBbox)
 
 tomato_color = (255,0,0)
 peduncle_color = (0, 255, 0)
@@ -291,7 +292,7 @@ def plot_segments(img_rgb, background, tomato, peduncle, pwd=None,
 
 
 def plot_features(img_rgb, tomato = None, peduncle = None, grasp = None,
-                  alpha = 0.6, thickness = 1, pwd = None, file_name=None, title=""):
+                  alpha = 0.6, thickness = 2, pwd = None, file_name=None, title=""):
     
     img_overlay = np.ones(img_rgb.shape, dtype = np.uint8)
     if tomato:
@@ -305,23 +306,27 @@ def plot_features(img_rgb, tomato = None, peduncle = None, grasp = None,
     if tomato:
         added_image = add_circles(added_image, tomato['centers'], 
                                   radii = tomato['radii'], 
-                                  color = tomato_color, 
+                                  color = (0,0,0), #tomato_color, 
                                   thickness = thickness)
 
         added_image = add_circles(added_image, tomato['com'], radii = 10,
+                          color = (255,255,255), 
+                          thickness = -1)      
+             
+        added_image = add_circles(added_image, tomato['com'], radii = 10,
                           color = (0,0,0), 
-                          thickness = -1)               
+                          thickness = 3) 
                    
     if peduncle:
-        added_image = add_circles(added_image, peduncle['junctions'], radii = 10, color = junction_color, thickness = thickness)
-        added_image = add_circles(added_image, peduncle['ends'], radii = 10, color = end_color, thickness = thickness)
+        added_image = add_circles(added_image, peduncle['junctions'], radii = 10, color = (0,0,0), thickness = thickness)
+        added_image = add_circles(added_image, peduncle['ends'], radii = 10, color = (0,0,0), thickness = thickness)
     
     if pwd is not None:
         save_img(added_image, pwd, file_name, figureTitle = title)
 
     return added_image
 
-def plot_error(img, centers, error_centers, error_radii = None, pwd = None, name = None, title = "", resolution = 300, title_size = 20, ext = 'png'):
+def plot_error(img, centers, error_centers, error_radii = None, com_center = None, com_error = None,  pwd = None, name = None, title = "", resolution = 300, title_size = 20, ext = 'png'):
 
     fig, ax = plt.subplots()
     ax.imshow(img)    
@@ -329,8 +334,6 @@ def plot_error(img, centers, error_centers, error_radii = None, pwd = None, name
     plt.rcParams["savefig.bbox"] = 'tight' 
     plt.rcParams['axes.titlesize'] = title_size
         
-    
-    # fig = plt.figure() 
     plt.imshow(img)
     plt.axis('off')
     plt.title(title)
@@ -343,10 +346,16 @@ def plot_error(img, centers, error_centers, error_radii = None, pwd = None, name
     plt.gca().xaxis.set_major_locator(plt.NullLocator())
     plt.gca().yaxis.set_major_locator(plt.NullLocator())
     
-   
+    if com_center:
+        centers = centers[:]
+        error_centers= error_centers[:]
+        centers.append(com_center)
+        error_centers.append(com_error)
+        if error_radii:
+            error_radii = error_radii[:]
+            error_radii.append(None)
     
-    # [x for _, x in sorted(zip(Y,X), key=lambda pair: pair[0])]
-    # centers.sort(key = lambda x: x[1]) 
+    # sort based on height
     if error_radii is not None:
         zipped = zip(centers, error_centers, error_radii)
         zipped.sort(key = lambda x: x[0][1])    
@@ -356,32 +365,46 @@ def plot_error(img, centers, error_centers, error_radii = None, pwd = None, name
         zipped.sort(key = lambda x: x[0][1])    
         centers, error_centers = zip(*zipped)
         
+    if com_center:
+        i_com = centers.index(com_center)
+    else:
+        i_com = None
+    
+    # default bbox style
+    bbox_props = dict(boxstyle="square,pad=0.3", fc="w", ec="k", lw=0.72)
+    kw_default = dict(arrowprops=dict(arrowstyle="-"),
+              bbox=bbox_props, va="center", size = 12, color='k') 
+        
     h, w = img.shape[:2]
     n = len(centers)+ 1
     y_text = 0 # 1.0/n* h
     for i, center in enumerate(centers):
-        
-        bbox_props = dict(boxstyle="square,pad=0.3", fc="w", ec="k", lw=0.72)
-        kw = dict(arrowprops=dict(arrowstyle="-"),
-                  bbox=bbox_props, va="center", size = 12, color='k')             
-        
 
+        # copy default style
+        kw = copy.deepcopy(kw_default)
+    
         error_center = error_centers[i]
         
         if error_radii is not None:
             error_radius = error_radii[i]
         else:
             error_radius = None
+        
+        if i == i_com:
+            text = 'com: {c:d} px'.format(c=int(round(com_error)))
+            kw['bbox']['fc'] = 'k'
+            kw['color']= 'w'
             
-        if error_center is not None:
+        elif error_center is not None:
             center_error = int(round(error_center))
             
             if (error_radius is not None):
                 radius_error = int(round(error_radii[i]))
-                text = 'center: {c:d} px \nradius: {r:d} px'.format(c=center_error, r= radius_error) # str()
+                text = 'center: {c:d} px \nradius: {r:d} px'.format(c=center_error, r= radius_error)
             else:
                 text = 'error:  {c:d} px'.format(c=center_error) # str()
         else:
+            
             text = 'false positive'
             kw['bbox']['fc'] = (1, 0.8, 0.8)
             kw['bbox']['ec'] = 'r'
@@ -407,6 +430,7 @@ def plot_error(img, centers, error_centers, error_radii = None, pwd = None, name
         connectionstyle = "angle,angleA=0,angleB={}".format(ang)
         kw["arrowprops"].update({"connectionstyle": connectionstyle})
         plt.annotate(text, xy=(x, y), xytext=(x_text, y_text), **kw) #  
+
 
     if pwd:
         fig.savefig(os.path.join(pwd, name), dpi = resolution, bbox_inches='tight', pad_inches=0)

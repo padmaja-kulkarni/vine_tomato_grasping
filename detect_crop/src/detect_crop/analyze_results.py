@@ -54,10 +54,10 @@ make_dirs(pwd_store)
 tomato_error_all = {}
 junction_error_all = {}
 
-for count, i_tomato in enumerate(range(i_start, i_end + 1)):
+for count, i_truss in enumerate(range(i_start, i_end + 1)):
     print("Analyzing image %d out of %d" %(count + 1, N))
 
-    truss_name = str(i_tomato).zfill(3)
+    truss_name = str(i_truss).zfill(3)
     
     file_lbl = os.path.join(pwd_lbl, truss_name + '.json')
     file_res = os.path.join(pwd_res, truss_name + '.json')
@@ -113,7 +113,7 @@ for count, i_tomato in enumerate(range(i_start, i_end + 1)):
     # compute com
     radii = np.array(tomato_lbl['radii'])
     centers = np.matrix(tomato_lbl['centers'])
-    com = (radii**2) * centers/(np.sum(radii**2))
+    com = (radii**3) * centers/(np.sum(radii**3))
     tomato_lbl['com'] = com
     
     #img_rgb = change_brightness(img_rgb.copy(), -0.9) # change_brightness( , 0.8)
@@ -162,22 +162,15 @@ for count, i_tomato in enumerate(range(i_start, i_end + 1)):
     error_false = [None] * false_pos    
     tomato_error['centers'].extend(error_false)
     tomato_error['radii'].extend(error_false)
-
-    centers_plot = tomato_res['centers'][:]
-    centers_plot.append(tomato_res['com'][0])
-    
-    error_centers_plot = tomato_error['centers'][:]
-    error_centers_plot.append(tomato_error['com'])
-
-    error_raddii_plot = tomato_error['radii'][:]
-    error_raddii_plot.append(None)
     
     # plot
     img_tom_res = plot_features(img_res, tomato = tomato_res)
     plot_error(img_tom_res, 
-               centers = centers_plot, 
-               error_centers = error_centers_plot, 
-               error_radii =  error_raddii_plot, 
+               centers = tomato_res['centers'], 
+               error_centers = tomato_error['centers'], 
+               error_radii =  tomato_error['radii'], 
+               com_center = tomato_res['com'][0],
+               com_error = tomato_error['com'],
                pwd = pwd_store, 
                name=truss_name + '_tom_error')
     
@@ -218,18 +211,24 @@ for count, i_tomato in enumerate(range(i_start, i_end + 1)):
 
 tomato_error_centers = []
 tomato_error_radii = []
+tomato_error_com= []
 n_true_pos = 0
 n_false_pos = 0
 n_labeled_pos = 0
 n_predict_pos = 0
 
-for truss_name in tomato_error_all:
-    tomato_error_centers.extend(tomato_error_all[truss_name]['centers'])
-    tomato_error_radii.extend(tomato_error_all[truss_name]['radii'])
-    n_true_pos += tomato_error_all[truss_name]['true_pos']
-    n_false_pos += tomato_error_all[truss_name]['false_pos']
-    n_labeled_pos += tomato_error_all[truss_name]['labeled_pos']
-    n_predict_pos += tomato_error_all[truss_name]['predict_pos']    
+# not in order be default!
+all_keys = junction_error_all.keys()
+all_keys.sort()
+for key in all_keys:
+    print(truss_name)
+    tomato_error_centers.extend(tomato_error_all[key]['centers'])
+    tomato_error_radii.extend(tomato_error_all[key]['radii'])
+    tomato_error_com.append(tomato_error_all[key]['com'])
+    n_true_pos += tomato_error_all[key]['true_pos']
+    n_false_pos += tomato_error_all[key]['false_pos']
+    n_labeled_pos += tomato_error_all[key]['labeled_pos']
+    n_predict_pos += tomato_error_all[key]['predict_pos']    
     
 error_tomato_center_mean = np.mean(tomato_error_centers)
 error_tomato_center_std = np.std(tomato_error_centers)
@@ -237,11 +236,16 @@ error_tomato_center_std = np.std(tomato_error_centers)
 error_tomato_radius_mean = np.mean(tomato_error_radii)
 error_tomato_radius_std = np.std(tomato_error_radii)
 
+error_com_center_mean = np.mean(tomato_error_com)
+error_com_center_std = np.std(tomato_error_com)
+
 true_pos_perc = int(round(float(n_true_pos)/float(n_labeled_pos) * 100))
 false_pos_perc = int(round(float(n_false_pos)/float(n_predict_pos) * 100))
 
 print 'Tomato center error: {mean:.2f} px +- {std:.2f} px (n = {n:d})'.format(mean=error_tomato_center_mean, std= error_tomato_center_std, n = n_labeled_pos)
 print 'Tomato radius error: {mean:.2f} px +- {std:.2f} px (n = {n:d})'.format(mean=error_tomato_radius_mean, std= error_tomato_radius_std, n = n_labeled_pos)
+print 'CoM error: {mean:.2f} px +- {std:.2f} px (n = {n:d})'.format(mean=error_com_center_mean, std= error_com_center_std, n = n_labeled_pos)
+
 
 print 'True positive: {true_pos:d} out of {n_tomatoes:d} ({true_pos_perc:d}%)'.format(true_pos=n_true_pos, n_tomatoes= n_labeled_pos, true_pos_perc = true_pos_perc)
 print 'False positive: {false_pos:d} out of {n_tomatoes:d} ({false_pos_perc:d}%)'.format(false_pos=n_false_pos, n_tomatoes= n_labeled_pos, false_pos_perc = false_pos_perc)
@@ -254,12 +258,13 @@ n_false_pos = 0
 n_labeled_pos = 0
 n_predict_pos = 0
 
-for truss_name in junction_error_all:
-    junction_error_centers.extend(junction_error_all[truss_name]['centers'])
-    n_true_pos += junction_error_all[truss_name]['true_pos']
-    n_false_pos += junction_error_all[truss_name]['false_pos']
-    n_labeled_pos += junction_error_all[truss_name]['labeled_pos']
-    n_predict_pos += junction_error_all[truss_name]['predict_pos']
+
+for key in all_keys:
+    junction_error_centers.extend(junction_error_all[key]['centers'])
+    n_true_pos += junction_error_all[key]['true_pos']
+    n_false_pos += junction_error_all[key]['false_pos']
+    n_labeled_pos += junction_error_all[key]['labeled_pos']
+    n_predict_pos += junction_error_all[key]['predict_pos']
     
 # mean and std without None
 junction_error_centers = remove_none_from_list(junction_error_centers)
