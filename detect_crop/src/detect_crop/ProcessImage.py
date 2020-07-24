@@ -31,7 +31,7 @@ from util import save_img
 from util import load_rgb
 from util import stack_segments
 from util import plot_circles, plot_timer, save_fig
-from util import change_brightness
+from util import change_brightness, plot_segments
 
 from point_2d import make_2d_transform, make_2d_point
 
@@ -205,16 +205,16 @@ class ProcessImage(object):
         success = True
 
         if self.save:
-            bg_img = change_brightness(self.image_crop.data, 0.85)
+            img_bg = self.image_crop.data # self.get_segmented_image(local = True)
         else:
-            bg_img = self.image_crop.data
+            img_bg = self.image_crop.data
 
         centers, radii, com = detect_tomato(self.truss_crop.data,
                                             self.detect_tomato_settings,
-                                            img_rgb=bg_img,
+                                            img_rgb=img_bg,
                                             save=self.save,
                                             pwd=self.pwd,
-                                            name=self.name)
+                                            name='05')
 
         # convert to 2D points
         center_points = []
@@ -238,12 +238,17 @@ class ProcessImage(object):
         distance_threshold = 10
         success = True
 
-        # bg_img = change_brightness(self.image_crop.data, 0.85)
+
+        if self.save:
+            img_bg = change_brightness(self.get_segmented_image(local = True), 0.85) # self.image_crop.data # 
+        else:
+            img_bg = self.image_crop.data
+        # bg_img = self.image_crop.data, 0.85)
 
         mask, coord_center, junctions, ends  = detect_peduncle(self.peduncle_crop.data,
                                                         distance_threshold,
                                                         save = self.save,
-                                                        bg_img = self.image_crop.data,
+                                                        bg_img = img_bg,
                                                         name = '06',
                                                         pwd = self.pwd)
         # convert to 2D points
@@ -312,7 +317,8 @@ class ProcessImage(object):
 
         if self.save:
             xy_local = self.get_xy(grasp_point, self._LOCAL_FRAME_ID)
-            plot_circles(self.crop(self.image).data, xy_local, 10, pwd = self.pwd, name = '06')
+            plot_circles(self.crop(self.image).data, xy_local, 10, pwd = self.pwd, 
+                         name = '06', ext = self.ext)
 
 
 #            xy_local = self.get_xy(grasp_point, self._ORIGINAL_FRAME_ID)
@@ -532,13 +538,8 @@ class ProcessImage(object):
 
     def save_results(self, step, local = False):
         tomato, peduncle, background = self.get_segments(local = local)
-        segments_rgb = self.get_segmented_image(local = local)
-
-        save_img(background, self.pwd, step + '_a', ext = self.ext)
-        save_img(tomato, self.pwd, step + '_b', ext = self.ext)
-        save_img(peduncle, self.pwd, step + '_c',  ext = self.ext) # figureTitle = "Peduncle",
-        save_img(segments_rgb, self.pwd, step + '_d', ext = self.ext)
-
+        img_rgb = self.get_rgb(local = local)
+        plot_segments(img_rgb, background, tomato, peduncle, pwd = self.pwd, name = step)
     @Timer("process image")
     def process_image(self):
 
@@ -588,10 +589,10 @@ class ProcessImage(object):
 
 if __name__ == '__main__':
     i_start = 1
-    i_end = 23
+    i_end = 2
     N = i_end - i_start
 
-    save = False
+    save = True
 
     pwd_current = os.path.dirname(__file__)
     dataset = "real_blue" # "tomato_rot"
@@ -642,14 +643,20 @@ if __name__ == '__main__':
     plot_timer(Timer.timers['peduncle'].copy(), N = N, threshold = 0.02, pwd = pwd_results, name = 'peduncle', title = 'Processing time peduncle')
 
     total_key = "process image"
-    total = np.mean(Timer.timers[total_key])
-    print(total)
-
-    width = 0.5
-    fig, ax = plt.subplots()
+    time_tot_mean = np.mean(Timer.timers[total_key])/1000
+    time_tot_std = np.std(Timer.timers[total_key])/1000
 
     time_ms = Timer.timers[total_key]
     time_s = [x / 1000 for x in time_ms]
+    
+    time_min = min(time_s)
+    time_max = max(time_s)  
+    
+    print 'Processing time: {mean:.2f}s +- {std:.2f}s (n = {n:d})'.format(mean=time_tot_mean, std= time_tot_std, n = N)
+    print 'Processing time leas between {time_min:.2f}s and {time_max:.2f}s (n = {n:d})'.format(time_min=time_min, time_max= time_max, n = N)
+    
+    width = 0.5
+    fig, ax = plt.subplots()
 
     ax.p1 = plt.bar(np.arange(i_start, i_end), time_s, width)
 

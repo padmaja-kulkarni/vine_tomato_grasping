@@ -278,7 +278,7 @@ def add_circles(imRGB, centers, radii = 5, color = (255,255,255), thickness = 5)
     return imRGB
 
 def plot_segments(img_rgb, background, tomato, peduncle, pwd=None, 
-                  file_name=None, title="", alpha = 0.7):
+                  name=None, title="", alpha = 0.7):
     
     img_segments = stack_segments(img_rgb, background, tomato, peduncle)
     
@@ -287,7 +287,7 @@ def plot_segments(img_rgb, background, tomato, peduncle, pwd=None,
     added_image = add_contour(added_image, peduncle, color = peduncle_color, thickness = 2)  
     
     if pwd is not None:
-        save_img(added_image, pwd, file_name, figureTitle = title)
+        save_img(added_image, pwd, name, figureTitle = title)
 
 
 
@@ -441,22 +441,21 @@ def add_contour(imRGB, mask, color = (255,255,255), thickness = 5):
     cv2.drawContours(imRGB, contours, -1, color, thickness)
     return imRGB
 
-def plot_circles(imRGB, centers, radii = 5, pwd = None, name = None, 
-                 figureTitle = "", titleSize = 20, resolution = 300, 
-                 fileFormat = 'pdf', color = (255,255,255), thickness = 5):
+def plot_circles(img_rgb, centers, radii = 5, pwd = None, name = None, 
+                 title = "", titleSize = 20, resolution = 300, 
+                 ext = 'png', color = (255,255,255), thickness = 5):
     
-    plt.rcParams["savefig.format"] = fileFormat 
+    plt.rcParams["savefig.format"] = ext 
     plt.rcParams["savefig.bbox"] = 'tight' 
     plt.rcParams['axes.titlesize'] = titleSize
     
     fig = plt.figure() 
     plt.subplot(1, 1, 1)
     
-    imRGB = add_circles(imRGB, centers, radii = radii, color = color, thickness = thickness)    
-    
-    
-    plt.imshow(imRGB)
-    plt.title(figureTitle)
+    imRGB = add_circles(img_rgb, centers, radii = radii, color = color, thickness = thickness)    
+
+    plt.imshow(img_rgb)
+    plt.title(title)
     plt.axis('off')
     
     if pwd is not None:

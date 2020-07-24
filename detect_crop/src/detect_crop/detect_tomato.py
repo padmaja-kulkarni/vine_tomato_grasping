@@ -56,13 +56,15 @@ def detect_tomato(img_segment, settings, img_rgb = None,
         # swap columns [r, c] -> [x,y]
         centers_overlap =np.matrix(circles[0][:,0:2])
         radii_overlap = circles[0][:,2]
-        
+        com_overlap = (radii_overlap**3) * centers_overlap/(np.sum(radii_overlap**3))
         
         # remove circles which do not overlapp with the tomato segment
         i_keep = find_overlapping_tomatoes(centers_overlap, 
                                            radii_overlap, 
                                            img_segment, 
                                            ratio_threshold = settings['ratio_threshold'])
+                                   
+        
         centers = centers_overlap[i_keep, :]
         radii = radii_overlap[i_keep]
         
@@ -73,8 +75,8 @@ def detect_tomato(img_segment, settings, img_rgb = None,
     
        
     if save:
-        tomato = {'centers': centers, 'radii': radii} 
-        tomato_overlap = {'centers': centers_overlap, 'radii': radii_overlap} 
+        tomato = {'centers': centers, 'radii': radii, 'com': com} 
+        tomato_overlap = {'centers': centers_overlap, 'radii': radii_overlap, 'com': com_overlap} 
         plot_features(img_rgb, tomato_overlap, pwd = pwd, file_name=name + '_1', thickness = thickness)
         plot_features(img_rgb, tomato, pwd = pwd, file_name=name + '_2', thickness = thickness)
 #        plot_circles(img_rgb, centers, radii, pwd = pwd, name = name, 
