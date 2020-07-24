@@ -33,7 +33,6 @@
     <arg name="object_origin_xyz" default="'$(arg object_x) $(arg object_y) 0.26'"/>
     <arg name="object_origin_rpy" default="'0 0 $(arg object_angle)'"/>
 
-
     <!-- Camera params -->
     <arg name="depth_width"         default="1280"/>
     <arg name="depth_height"        default="720"/>

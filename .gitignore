@@ -5,6 +5,6 @@
 /results/
 /taeke/
 
-/detect_crop/src/data
-/detect_crop/src/results
-/detect_crop/src/data_processed
+/detect_truss/src/data
+/detect_truss/src/results
+/detect_truss/src/data_processed
