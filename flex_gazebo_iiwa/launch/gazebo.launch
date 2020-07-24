@@ -30,22 +30,49 @@
     <arg name="object_name" default="truss"/>
     <arg name="object_dimension" default="3d"/>
 
+    <arg name="object_origin_xyz" default="'$(arg object_x) $(arg object_y) 0.26'"/>
+    <arg name="object_origin_rpy" default="'0 0 $(arg object_angle)'"/>
+
+
+    <!-- Camera params -->
+    <arg name="depth_width"         default="1280"/>
+    <arg name="depth_height"        default="720"/>
+    <arg name="color_width"         default="1280"/>
+    <arg name="color_height"        default="720"/>
+
     <!-- Loads the Gazebo world. -->
-    <include file="$(find flex_gazebo_iiwa)/launch/world.launch">
-        <arg name="hardware_interface" value="$(arg hardware_interface)" />
-        <arg name="robot_name" value="$(arg robot_name)" />
-        <arg name="robot_model" value="$(arg robot_model)" />
-
-        <arg name="camera_sim" value="$(arg camera_sim)"/>
-        <arg name="camera_name" value="$(arg camera_name)"/>
-        <arg name="use_sdh" value="$(arg use_sdh)"/>
-
-        <arg name="object_x" value="$(arg object_x)"/>
-        <arg name="object_y" value="$(arg object_y)"/>
-        <arg name="object_angle" value="$(arg object_angle)"/>
-        <arg name="object_name" value="$(arg object_name)"/>
-        <arg name="object_dimension" value="$(arg object_dimension)"/>
+    <!-- We resume the logic in empty_world.launch, changing only the name of the world to be launched -->
+    <include file="$(find gazebo_ros)/launch/empty_world.launch">
+      <arg name="world_name"    value="$(find flex_gazebo)/worlds/default.world"/>
+      <arg name="debug"         value="false" />
+      <arg name="gui"           value="true" />
+      <arg name="paused"        value="true"/>
+      <arg name="use_sim_time"  value="true"/>
+      <arg name="headless"      value="false"/>
     </include>
+
+
+    <param name="$(arg robot_name)/robot_description" command="$(find xacro)/xacro --inorder '$(find flex_gazebo_iiwa)/urdf/robot.urdf.xacro'
+      hardware_interface:=$(arg hardware_interface)
+      robot_model:=$(arg robot_model)
+      robot_name:=$(arg robot_name)
+      camera_name:=$(arg camera_name)
+      camera_sim:=$(arg camera_sim)
+      use_sdh:=$(arg use_sdh)
+      "/>
+
+    <!-- world -->
+    <param name="$(arg robot_name)/world_description" command="$(find xacro)/xacro --inorder '$(find flex_gazebo_iiwa)/urdf/world.urdf.xacro'
+      object_name:=$(arg object_name)
+      object_dimension:=$(arg object_dimension)
+      object_origin_xyz:=$(arg object_origin_xyz)
+      object_origin_rpy:=$(arg object_origin_rpy)
+
+      depth_width:=$(arg depth_width)
+      depth_height:=$(arg depth_height)
+      color_width:=$(arg color_width)
+      color_height:=$(arg color_height)
+      "/>
 
 
   <group if="$(arg robot_sim)">
@@ -91,5 +118,23 @@
         </include>
       </group>
   </group>
+
+  <node
+    name="robot_urdf_spawner"
+    pkg="gazebo_ros"
+    type="spawn_model"
+    respawn="false"
+    output="screen"
+    ns="$(arg robot_name)"
+    args="-urdf -model $(arg robot_model) -param robot_description"/>
+
+  <node
+    name="world_urdf_spawner"
+    pkg="gazebo_ros"
+    type="spawn_model"
+    respawn="false"
+    output="screen"
+    ns="$(arg robot_name)"
+    args="-urdf -model tomato -param world_description"/>
 
 </launch>
