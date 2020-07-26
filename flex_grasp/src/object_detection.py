@@ -29,7 +29,7 @@ from flex_grasp.msg import Peduncle
 from flex_grasp.msg import ImageProcessingSettings
 
 # custom func
-from detect_crop.ProcessImage import ProcessImage
+from detect_truss.ProcessImage import ProcessImage
 from func.conversions import point_to_pose_stamped
 
 from func.utils import camera_info2intrinsics

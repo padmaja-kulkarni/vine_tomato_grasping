@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>detect_crop</name>
+  <name>detect_truss</name>
   <version>0.0.0</version>
-  <description>The detect_crop package</description>
+  <description>The detect_truss package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->
