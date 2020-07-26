@@ -27,7 +27,9 @@ class Calibration(object):
     """Calibration"""
     def __init__(self):
 
-        self.debug_mode = rospy.get_param("/px150/calibration_eye_on_base/calibrate/debug")
+#        robot_name = rospy.get_param("robot_name") 
+#        print(robot_name)
+        self.debug_mode = rospy.get_param("calibrate/debug")
 
         if self.debug_mode:
             log_level = rospy.DEBUG
@@ -54,8 +56,8 @@ class Calibration(object):
         self.listener = tf2_ros.TransformListener(self.tfBuffer)
 
 
-        self.calibration_frame = "px150/base_link"
-        self.planning_frame = "world"
+        self.calibration_frame = rospy.get_param('/px150/robot_base_frame')# "px150/base_link"
+        self.planning_frame = rospy.get_param('/px150/planning_frame')
         self.pose_array = None
 
         self.event = None
@@ -191,7 +193,7 @@ class Calibration(object):
 
         # reset
         self.pub_move_robot_command.publish("home")
-        success = wait_for_success("move_robot/e_out", 5) 
+        success = wait_for_success("/px150/move_robot/e_out", 5) 
         
         # compute result
         result = self.client.compute_calibration()

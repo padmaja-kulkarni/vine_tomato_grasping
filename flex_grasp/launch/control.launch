@@ -36,6 +36,7 @@
 		<param name="manipulator_group_name" value="$(arg manipulator_group_name)"/>
 		<param name="ee_group_name" value="$(arg ee_group_name)"/>
 		<param name="robot_base_frame" value="$(arg robot_base_frame)"/>
+		<param name="robot_base_frame" value="$(arg robot_base_frame)"/>
 
 		<node name = "my_rqt_dashboard"
 			pkg = "rqt_gui"
