@@ -186,7 +186,6 @@ class Calibration(object):
 
                     try:
                         self.client.take_sample()
-                        break
                     except:
                         rospy.logwarn("[CALIBRATE] Failed to take sample, marker might not be visible. Attempts remaining: %s", attempts - attempt - 1)
 
