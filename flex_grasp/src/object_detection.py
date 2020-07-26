@@ -103,8 +103,7 @@ class ObjectDetection(object):
 
         pwd = os.path.dirname(__file__)
 
-        self.process_image = ProcessImage(camera_sim = self.camera_sim,
-                     name = 'ros_tomato',
+        self.process_image = ProcessImage(name = 'ros_tomato',
                      pwd = pwd,
                      save = False)
 
@@ -256,10 +255,15 @@ class ObjectDetection(object):
                     return False
 
                 object_features = self.process_image.get_object_features()
+                tomato_mask, peduncle_mask, _ = self.process_image.get_segments()
 
                 cage_pose = self.generate_cage_pose(object_features['grasp_location'])
                 tomatoes = self.generate_tomatoes(object_features['tomato'])
                 peduncle = self.generate_peduncle(object_features['peduncle'], cage_pose) # object_features['peduncle']
+                
+                self.visualive_tomatoes(tomato_mask)
+                self.visualive_peduncle(peduncle_mask)
+                # visualive_tomatoes(self, tomato_mask)
                 
                 img_tomato = self.process_image.get_truss_visualization()
                 img_segment = self.process_image.get_segmented_image(local = True)
@@ -300,7 +304,7 @@ class ObjectDetection(object):
 
 
     def generate_cage_pose(self, grasp_features):
-        row = grasp_features['row']
+        row = grasp_features['row'] 
         col = grasp_features['col']
         angle = -grasp_features['angle'] # minus since camera frame is upside down...
         rpy = [0, 0, angle]
@@ -311,12 +315,16 @@ class ObjectDetection(object):
 
         return cage_pose
 
-    def generate_tomatoes(self, tomato_features):
-                
-        tomato_mask = tomato_features["mask"]        
+    def visualive_tomatoes(self, tomato_mask):
         tomato_pcl = self.segment_pcl(tomato_mask, color = (200,  50,  50, 255))
         self.pub_tomato_mask.publish(self.bridge.cv2_to_imgmsg(tomato_mask))         
-        self.pub_tomato_pcl.publish(tomato_pcl)      
+        self.pub_tomato_pcl.publish(tomato_pcl)  
+
+    def visualive_peduncle(self, peduncle_mask):
+        peduncle_pcl = self.segment_pcl(peduncle_mask, color = (50, 200,  50, 255))
+        self.pub_peduncle_pcl.publish(peduncle_pcl)  
+
+    def generate_tomatoes(self, tomato_features):
 
         tomatoes = []
         for i in range(0, len(tomato_features['col'])):
@@ -339,14 +347,9 @@ class ObjectDetection(object):
 
     def generate_peduncle(self, peduncle_features, cage_pose):
         
-        peduncle_mask = peduncle_features["mask"]        
-        
-        peduncle_pcl = self.segment_pcl(peduncle_mask, color = (50, 200,  50, 255))
-        self.pub_peduncle_pcl.publish(peduncle_pcl)          
-        
         peduncle = Peduncle()
         peduncle.pose = cage_pose
-        peduncle.pcl = peduncle_pcl
+        # peduncle.pcl = peduncle_pcl
         peduncle.radius = 0.01
         peduncle.length = 0.15
         return peduncle

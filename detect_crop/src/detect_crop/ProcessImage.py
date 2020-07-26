@@ -406,8 +406,8 @@ class ProcessImage(object):
 
             centers = np.around(centers_xy/scale).astype(int)
             com = np.around(com_xy/scale).astype(int)
-#            row = centers[:, 1].tolist()
-#            col = centers[:, 0].tolist()
+            row = centers[:, 1].tolist()
+            col = centers[:, 0].tolist()
             centers = centers.tolist()
             com = com.tolist()
 #            centers = []
@@ -417,7 +417,7 @@ class ProcessImage(object):
 
 #             mask = add_circles(mask_empty, centers, radii, color = (255), thickness = -1).tolist()
 
-        tomato= {'centers': centers, 'radii': radii, 'com': com} # ,  "mask": mask, "row": row, "col": col
+        tomato= {'centers': centers, 'radii': radii, 'com': com, "row": row, "col": col} # ,  "mask": mask, 
         return tomato
 
 
