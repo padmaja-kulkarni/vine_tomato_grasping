@@ -9,6 +9,7 @@ Created on Mon Mar  9 15:30:31 2020
 import numpy as np
 import rospy
 import math
+import cv2
 
 from cv_bridge import CvBridge, CvBridgeError
 
@@ -96,15 +97,15 @@ class ObjectDetection(object):
 
         self.bridge = CvBridge()
 
-        pathCurrent = os.path.dirname(__file__) # path to THIS file
-        self.pwdProcess = os.path.join(pathCurrent, '..', '..', 'results')
+        pwd_current = os.path.dirname(__file__) # path to THIS file
+        data_set = 'real_blue'
+        self.pwd_results = os.path.join(pwd_current, '..', '..', 'results')
+        self.pwd_data = os.path.join(pwd_current, '..', '..', 'detect_truss', 'src', 'data', data_set)
 
-        rospy.loginfo("Storing visiual results in: ", self.pwdProcess)
-
-        pwd = os.path.dirname(__file__)
+        rospy.loginfo("Storing visiual results in: ", self.pwd_results)
 
         self.process_image = ProcessImage(name = 'ros_tomato',
-                     pwd = pwd,
+                     pwd = self.pwd_results,
                      save = False)
 
         settings = lib2msg(self.process_image.get_settings())
@@ -236,71 +237,97 @@ class ObjectDetection(object):
         return False
 
 
-    def detect_object(self):
+    def save_image(self):
 
-        if self.wait_for_data(5):
+        if not self.wait_for_data(5):
+            return False
 
-            self.process_image.add_image(self.color_image)
+        # check contents folder
+        contents = os.listdir(self.pwd_data)
 
-            if self.settings is not None:
-                self.process_image.set_settings(msg2lib(self.settings))
+        # determine starting number
+        if not len(contents):
+            new_id = 1;
+        else:
+            contents.sort()
+            file_name = contents[-1]
+            file_id = file_name[:3]
+            new_id = int(file_id) + 1
+        
+        new_file_name = str(new_id).zfill(3) + '.png'
+        new_file_path = os.path.join(self.pwd_data, new_file_name)
 
-            self.intrin = camera_info2intrinsics(self.color_info)
-
-            # process image
-            if self.use_truss:
-                
-                if not self.process_image.process_image():
-                    rospy.logwarn("[OBJECT DETECTION] Failed to process image")
-                    return False
-
-                object_features = self.process_image.get_object_features()
-                tomato_mask, peduncle_mask, _ = self.process_image.get_segments()
-
-                cage_pose = self.generate_cage_pose(object_features['grasp_location'])
-                tomatoes = self.generate_tomatoes(object_features['tomato'])
-                peduncle = self.generate_peduncle(object_features['peduncle'], cage_pose) # object_features['peduncle']
-                
-                self.visualive_tomatoes(tomato_mask)
-                self.visualive_peduncle(peduncle_mask)
-                # visualive_tomatoes(self, tomato_mask)
-                
-                img_tomato = self.process_image.get_truss_visualization(local = True)
-                img_segment = self.process_image.get_segmented_image(local = True)
-
-            elif not self.use_truss:
-                self.process_image.color_space()
-                self.process_image.segment_truss()
-                self.process_image.detect_tomatoes_global()
-                tomato_features = self.process_image.get_tomatoes()
-
-                cage_pose = PoseStamped()
-                tomatoes = self.generate_tomatoes(tomato_features)
-                peduncle = Peduncle()
-                
-                img_tomato = self.process_image.get_tomato_visualization(local = True)
-                img_segment = self.process_image.get_segmented_image()
-
-            truss = self.create_truss(tomatoes, cage_pose, peduncle)
-
-            # get images
-            img_hue  = self.process_image.get_color_components()
-            
-
-            # publish results tomato_img
-            imgmsg_segment = self.bridge.cv2_to_imgmsg(img_segment, encoding="rgb8")
-            imgmsg_tomato = self.bridge.cv2_to_imgmsg(img_tomato, encoding="rgb8")
-            imgmsg_hue = self.bridge.cv2_to_imgmsg(img_hue)
-
-            rospy.logdebug("Publishing results")
-            self.pub_segment_image.publish(imgmsg_segment)
-            self.pub_tomato_image.publish(imgmsg_tomato)
-            self.pub_color_hue.publish(imgmsg_hue)
-            self.pub_object_features.publish(truss)
-
+        if cv2.imwrite(new_file_path, cv2.cvtColor(self.color_image, cv2.COLOR_RGB2BGR)):
+            rospy.loginfo("[OBJECT DETECTION] File %s save successfully to path %s", new_file_name, self.pwd_data)
             return True
         else:
+            rospy.logwarn("[OBJECT DETECTION] Failed to save image %s to path %s", new_file_name, self.pwd_data)
             return False
+
+    def detect_object(self):
+
+        if not self.wait_for_data(5):
+            return False
+
+        self.process_image.add_image(self.color_image)
+
+        if self.settings is not None:
+            self.process_image.set_settings(msg2lib(self.settings))
+
+        self.intrin = camera_info2intrinsics(self.color_info)
+
+        # process image
+        if self.use_truss:
+            
+            if not self.process_image.process_image():
+                rospy.logwarn("[OBJECT DETECTION] Failed to process image")
+                return False
+
+            object_features = self.process_image.get_object_features()
+            tomato_mask, peduncle_mask, _ = self.process_image.get_segments()
+
+            cage_pose = self.generate_cage_pose(object_features['grasp_location'])
+            tomatoes = self.generate_tomatoes(object_features['tomato'])
+            peduncle = self.generate_peduncle(object_features['peduncle'], cage_pose) # object_features['peduncle']
+            
+            self.visualive_tomatoes(tomato_mask)
+            self.visualive_peduncle(peduncle_mask)
+            # visualive_tomatoes(self, tomato_mask)
+            
+            img_tomato = self.process_image.get_truss_visualization(local = True)
+            img_segment = self.process_image.get_segmented_image(local = True)
+
+        elif not self.use_truss:
+            self.process_image.color_space()
+            self.process_image.segment_truss()
+            self.process_image.detect_tomatoes_global()
+            tomato_features = self.process_image.get_tomatoes()
+
+            cage_pose = PoseStamped()
+            tomatoes = self.generate_tomatoes(tomato_features)
+            peduncle = Peduncle()
+            
+            img_tomato = self.process_image.get_tomato_visualization(local = True)
+            img_segment = self.process_image.get_segmented_image()
+
+        truss = self.create_truss(tomatoes, cage_pose, peduncle)
+
+        # get images
+        img_hue  = self.process_image.get_color_components()
+        
+
+        # publish results tomato_img
+        imgmsg_segment = self.bridge.cv2_to_imgmsg(img_segment, encoding="rgb8")
+        imgmsg_tomato = self.bridge.cv2_to_imgmsg(img_tomato, encoding="rgb8")
+        imgmsg_hue = self.bridge.cv2_to_imgmsg(img_hue)
+
+        rospy.logdebug("Publishing results")
+        self.pub_segment_image.publish(imgmsg_segment)
+        self.pub_tomato_image.publish(imgmsg_tomato)
+        self.pub_color_hue.publish(imgmsg_hue)
+        self.pub_object_features.publish(truss)
+
+        return True
 
 
     def generate_cage_pose(self, grasp_features):
@@ -535,6 +562,11 @@ class ObjectDetection(object):
             self.use_truss = True
             self.take_picture = True
             success = self.detect_object()
+
+        elif (self.event == "save_image"):
+            rospy.logdebug("[OBEJCT DETECTION] Take picture")
+            self.take_picture = True
+            success = self.save_image()
 
         elif (self.event == "e_init"):
             self.init = True

@@ -51,7 +51,7 @@ class Idle(smach.State):
         smach.State.__init__(self, outcomes=['calibrate', 'detect', 'move', "pick_place", "point", 'failure'], output_keys=['command'])
         self.command_op_topic = "pipelineState"
 
-        self.detect_commands =  ["detect_tomato", "detect_truss"]
+        self.detect_commands =  ["detect_tomato", "detect_truss", "save_image"]
         self.calibrate_commands =  ["calibrate"]
         self.move_commands =  ["home", "open", "close"]
         self.pick_place_commands = ["pick", "place", "pick_place"]
@@ -104,7 +104,7 @@ class DetectObject(smach.State):
         success = wait_for_success(self.detection_op_topic, self.timeout)
         if success:
             
-            if userdata.command == 'detect_tomato':
+            if userdata.command == 'detect_tomato' or userdata.command == 'save_image':
                 return 'success'
                 
             if userdata.command == 'detect_truss':

@@ -56,6 +56,7 @@ class RqtFlexGrasp(Plugin):
         # tasks
         self._widget.DetectTomatoButton.clicked[bool].connect(self.handle_detect_tomato)
         self._widget.DetectTrussButton.clicked[bool].connect(self.handle_detect_truss)
+        self._widget.SaveImageButton.clicked[bool].connect(self.handle_save_image)
 
         self._widget.PointButton.clicked[bool].connect(self.handle_point)
         self._widget.PickPlaceButton.clicked[bool].connect(self.handle_pick_place)
@@ -97,6 +98,9 @@ class RqtFlexGrasp(Plugin):
 
     def handle_detect_truss(self):
         self.pub_grasp.publish("detect_truss")
+        
+    def handle_save_image(self):
+        self.pub_grasp.publish("save_image")
 
     def handle_point(self):
         self.pub_grasp.publish("point")
