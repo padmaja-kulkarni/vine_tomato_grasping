@@ -269,7 +269,15 @@ class ObjectDetection(object):
         if not self.wait_for_data(5):
             return False
 
-        self.process_image.add_image(self.color_image)
+        heights = self.get_points(field_names = ("z"))
+        height = np.median(np.array(heights))
+        rospy.loginfo('Height above table: %s [m]', height)
+
+        f = self.color_info.K[0]
+        px_per_mm = f/height
+        rospy.loginfo('Pixels per m: %s [px/m]', px_per_mm)
+
+        self.process_image.add_image(self.color_image, px_per_mm = px_per_mm)
 
         if self.settings is not None:
             self.process_image.set_settings(msg2lib(self.settings))
@@ -401,8 +409,6 @@ class ObjectDetection(object):
         for i in range(0, len(points)):
             points[i] = points[i] + (rgba,)
             
-        # fields
-#        fields = self.pcl.fields
         fields = [PointField('x', 0, PointField.FLOAT32, 1),
                   PointField('y', 4, PointField.FLOAT32, 1),
                   PointField('z', 8, PointField.FLOAT32, 1),

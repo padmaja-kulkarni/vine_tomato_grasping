@@ -24,13 +24,13 @@ from timer import Timer
 from util import add_border
 
 from util import translation_rot2or
-from util import add_circles, add_contour, add_arrows
+from util import add_circles
 
 from util import make_dirs
 from util import save_img
 from util import load_rgb
 from util import stack_segments
-from util import plot_timer, save_fig, plot_grasp_location
+from util import plot_timer, plot_grasp_location
 from util import change_brightness, plot_segments
 
 from point_2d import make_2d_transform, make_2d_point
@@ -83,13 +83,15 @@ class ProcessImage(object):
         self.buffer_core = tf2_ros.BufferCore(rospy.Time(10))
 
 
-    def add_image(self, data):
+    def add_image(self, data, px_per_mm = None):
         image = Image(data)
         # scale = image.rescale(self.width_desired)
 
         self.scale = 1.0
         self.image = image
         self.shape = data.shape[:2]
+        self.px_per_mm = px_per_mm
+
 
         if self.save:
             save_img(self.image.data, self.pwd, '01', ext = self.ext)
