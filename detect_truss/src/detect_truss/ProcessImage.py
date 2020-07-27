@@ -72,7 +72,7 @@ class ProcessImage(object):
         self.name = name
 
         # image
-        self.width_desired = 1280
+        # self.width_desired = 1280
 
         self.detect_tomato_settings = set_detect_tomato_settings()
 
@@ -85,9 +85,9 @@ class ProcessImage(object):
 
     def add_image(self, data):
         image = Image(data)
-        scale = image.rescale(self.width_desired)
+        # scale = image.rescale(self.width_desired)
 
-        self.scale = scale
+        self.scale = 1.0
         self.image = image
         self.shape = data.shape[:2]
 

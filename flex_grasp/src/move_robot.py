@@ -55,8 +55,8 @@ class MoveRobot(object):
         self.robot_pose = None
 
         # tolerance
-        self.position_tolerance = 0.01 # [m]
-        self.orientation_tolerance = deg2rad(1.0) # [rad]
+        self.position_tol = 0.03 # [m]
+        self.orientation_tol = deg2rad(1.0) # [rad]
         self.man_joint_tolerance = deg2rad(1.0) # [rad]
         self.ee_joint_tolerance = 0.0005 # [m]
 
@@ -132,13 +132,13 @@ class MoveRobot(object):
         man_group.set_planning_time(5)
 
         # Allow some leeway in position (meters) and orientation (radians) PLANNING!
-#        man_group.set_goal_position_tolerance(self.position_tolerance)
-#        man_group.set_goal_orientation_tolerance(self.orientation_tolerance)
+#        man_group.set_goal_position_tolerance(self.position_tol)
+#        man_group.set_goal_orientation_tolerance(self.orientation_tol)
 #        man_group.set_goal_joint_tolerance(self.man_joint_tolerance)
 #        
-#        ee_group.set_goal_position_tolerance(self.position_tolerance)
-#        ee_group.set_goal_orientation_tolerance(self.orientation_tolerance)
-#        ee_group.set_goal_joint_tolerance(self.ee_joint_tolerance)
+#        ee_group.set_goal_position_tolerance(self.position_tol)
+#        ee_group.set_goal_orientation_tolerance(self.orientation_tol)
+#        ee_group.set_goal_joint_tolerance(self.ee_joint_tol)
 
         self.max_attempts = 2
 
@@ -287,7 +287,6 @@ class MoveRobot(object):
             return False
         if not self.check_frames(goal_pose.header.frame_id):
             return False
-        ## Only if inverse kinematics exist
         if not self.check_ik(goal_pose):
             return False
 
@@ -309,17 +308,17 @@ class MoveRobot(object):
             
             curr_pose = self.man_group.get_current_pose()
             
-            orientation_close, position_close = pose_close(goal_pose, curr_pose, self.position_tolerance, self.orientation_tolerance)
+            orientation_close, position_close = pose_close(goal_pose, curr_pose, self.position_tol, self.orientation_tol)
             is_all_close = orientation_close and position_close
             # success = is_all_close
             if is_all_close is False:
                 if orientation_close is False:
                     # self.man_group.get_goal_orientation_tolerance()
-                    rospy.logwarn("[MOVE ROBOT] Failed to move to pose target, obtained orientation is not sufficiently close to goal orientation (tolerance: %s). Attempts remaining: %s",self.orientation_tolerance, self.max_attempts - attempt) 
+                    rospy.logdebug("[MOVE ROBOT] Failed to move to pose target, obtained orientation is not sufficiently close to goal orientation (tolerance: %s). Attempts remaining: %s",self.orientation_tol, self.max_attempts - attempt) 
                     
                 if position_close is False:
                     # self.man_group.get_goal_position_tolerance()
-                    rospy.logwarn("[MOVE ROBOT] Failed to move to pose target, obtained position is not sufficiently close to goal position (tolerance: %s). Attempts remaining: %s", self.position_tolerance, self.max_attempts - attempt)
+                    rospy.logdebug("[MOVE ROBOT] Failed to move to pose target, obtained position is not sufficiently close to goal position (tolerance: %s). Attempts remaining: %s", self.position_tol, self.max_attempts - attempt)
                     
                 rospy.logdebug("[MOVE ROBOT] Goal pose: %s", pose_to_list(goal_pose.pose))
                 rospy.logdebug("[MOVE ROBOT] Curr pose: %s", pose_to_list(curr_pose.pose))

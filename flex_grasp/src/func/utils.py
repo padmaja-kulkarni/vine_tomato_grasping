@@ -35,7 +35,7 @@ def camera_info2intrinsics(camera_info):
     return intrin
 
 
-def pose_close(goal, actual, position_tolerance, orientation_tolerance):
+def pose_close(goal, actual, position_tol, orientation_tol):
     """
     Convenience method for testing if a list of values are within a position_tolerance of their counterparts in another list
     @param: goal       A list of floats, a Pose or a PoseStamped
@@ -54,35 +54,39 @@ def pose_close(goal, actual, position_tolerance, orientation_tolerance):
         position_close = True
 
         # check position
-        for index in range(len(goal_position)):
-            if abs(actual_position[index] - goal_position[index]) > position_tolerance:
+        for (pos_goal, pos_act) in zip(goal_position, actual_position):
+            position_difference = abs(pos_goal - pos_act)
+            if abs(position_difference) > position_tol:
+                # print(position_difference)
                 position_close = False
 
         # check orientation
-        orientation_close = True
+        orientation_close_1 = True # actual_quat = goal_quat
+        orientation_close_2 = True # actual_quat = -goal_quat
 
         # actual_quat = goal_quat
-        for index in range(len(goal_quat)):
-            if abs(actual_quat[index] - goal_quat[index]) > orientation_tolerance:
-                orientation_close = False
-
-        # actual_quat = -goal_quat
-        if not orientation_close:
-            goal_quat = neg_list(goal_quat)
-
-            for index in range(len(goal_quat)):
-                if abs(actual_quat[index] - goal_quat[index]) > orientation_tolerance:
-                    orientation_close = False
-                else:
-                    orientation_close = True
+        for (q_goal, q_actual) in zip(goal_quat, actual_quat):
+            orientation_diff_1 = abs(q_goal - q_actual)
+            orientation_diff_2 = abs(q_goal + q_actual)
+            if orientation_diff_1 > orientation_tol:
+                orientation_close_1 = False
+            if orientation_diff_2 > orientation_tol:
+                orientation_close_2 = False
+                
+            if orientation_diff_1 > orientation_tol and orientation_diff_2 > orientation_tol:
+                pass
+                # print(orientation_diff_1)
+                # print(orientation_diff_2)
+               
+        orientation_close = orientation_close_1 or orientation_close_2
 
         return orientation_close, position_close
 
     elif type(goal) is PoseStamped:
-        return pose_close(goal.pose, actual.pose, position_tolerance, orientation_tolerance)
+        return pose_close(goal.pose, actual.pose, position_tol, orientation_tol)
 
     elif type(goal) is Pose:
-        return pose_close(pose_to_list(goal), pose_to_list(actual), position_tolerance, orientation_tolerance)
+        return pose_close(pose_to_list(goal), pose_to_list(actual), position_tol, orientation_tol)
 
     return True
 

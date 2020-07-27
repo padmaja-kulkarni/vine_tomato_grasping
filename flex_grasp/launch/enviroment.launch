@@ -33,8 +33,8 @@
 
     <arg name="depth_width"         default="1280"/>
     <arg name="depth_height"        default="720"/>
-    <arg name="color_width"         default="1280"/>
-    <arg name="color_height"        default="720"/>
+    <arg name="color_width"         default="1280"/> <!-- 1920 -->
+    <arg name="color_height"        default="720"/> <!-- 1080 -->
 
     <remap from="/$(arg hardware_interface)_trajectory_controller/follow_joint_trajectory"
            to="/$(arg robot_name)/$(arg hardware_interface)_trajectory_controller/follow_joint_trajectory" />
