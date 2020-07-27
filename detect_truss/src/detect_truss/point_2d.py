@@ -16,7 +16,7 @@ import tf2_geometry_msgs
 from tf.transformations import quaternion_from_euler
 
 
-from util import add_circles, plot_circles
+from util import add_circles
 from util import translation_rot2or
 
 def list_to_orientation(orientation_list):

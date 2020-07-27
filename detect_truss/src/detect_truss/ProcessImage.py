@@ -30,7 +30,7 @@ from util import make_dirs
 from util import save_img
 from util import load_rgb
 from util import stack_segments
-from util import plot_circles, plot_timer, save_fig, plot_grasp_location
+from util import plot_timer, save_fig, plot_grasp_location
 from util import change_brightness, plot_segments
 
 from point_2d import make_2d_transform, make_2d_point
@@ -340,9 +340,6 @@ class ProcessImage(object):
             plot_grasp_location(img_rgb, xy_local, grasp_angle_local, 
                                 l = 20, pwd = self.pwd, name = '06', ext = self.ext)
 
-#            xy_local = self.get_xy(grasp_point, self._ORIGINAL_FRAME_ID)
-#            plot_circles(self.image.data, xy_local, 10, pwd = self.pwd, name = '06')
-
         return success
 
     def transform_points(self, points, targer_frame_id):
@@ -534,9 +531,6 @@ class ProcessImage(object):
         tomato, peduncle, background = self.get_segments(local = local)
         main_peduncle = self.penduncle_main
         # img_peduncle = self.get_peduncle_image(local = local)
-        
-        print(xy_junc)
-        print(xy_end)
         
         img = plot_segments(img, background, tomato, peduncle, thickness = 1)
         visualize_skeleton(img, main_peduncle, coord_junc = xy_junc, coord_end = xy_end)

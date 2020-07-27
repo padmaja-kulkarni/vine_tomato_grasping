@@ -197,7 +197,7 @@ def stack_segments(imRGB, background, tomato, peduncle):
     
     return res2
 
-def save_img(img, pwd, name, resolution = 300, figureTitle = "", titleSize = 20, ext = 'png'):
+def save_img(img, pwd, name, resolution = 300, title = "", titleSize = 20, ext = 'png'):
         plt.rcParams["savefig.format"] = ext
         plt.rcParams["savefig.bbox"] = 'tight' 
         plt.rcParams['axes.titlesize'] = titleSize
@@ -206,7 +206,7 @@ def save_img(img, pwd, name, resolution = 300, figureTitle = "", titleSize = 20,
         fig = plt.figure() 
         plt.imshow(img)
         plt.axis('off')
-        plt.title(figureTitle)
+        plt.title(title)
         
         # https://stackoverflow.com/a/27227718
         plt.gca().set_axis_off()
@@ -244,9 +244,8 @@ def save_fig(fig, pwd, name, resolution = 300, title = "", titleSize = 20, ext =
         
         fig.savefig(os.path.join(pwd, name), dpi = resolution, bbox_inches='tight', pad_inches=0)
 
-def add_circles(img_rgb, centers, radii = 5, color = (255,255,255), thickness = 5):
-
-    
+def add_circles(img_rgb, centers, radii = 5, color = (255,255,255), thickness = 5, 
+                pwd = None, name = None, title = ""):
 
     if isinstance(centers, (list, tuple, np.matrix)):  
         centers = np.array(centers, ndmin=2)   
@@ -254,15 +253,19 @@ def add_circles(img_rgb, centers, radii = 5, color = (255,255,255), thickness = 
     # if empty we can not add any circles
     if centers.shape[1] == 0:
         return img_rgb
-        
+
+    # centers should be integers        
+    centers = np.round(centers).astype(dtype = int) # (col, row)
+    
+    # if a single radius is give, we repeat the value
     if not isinstance(radii, (list, np.ndarray)):
         radii = [radii] * centers.shape[0]
         
     for center, radius in zip(centers, radii):
-        col = int(round(center[0]))
-        row = int(round(center[1])) # 
-#        center_round = np.round(center).astype(dtype = np.uint8)
-        cv2.circle(img_rgb, (col, row), radius, color, thickness)
+        cv2.circle(img_rgb, tuple(center), radius, color, thickness) # (col, row)
+
+    if pwd is not None:
+        save_img(img_rgb, pwd, name, title = "", titleSize = 20, ext = 'png')
             
     return img_rgb
 
@@ -276,7 +279,7 @@ def plot_segments(img_rgb, background, tomato, peduncle, pwd=None,
     added_image = add_contour(added_image, peduncle, color = peduncle_color, thickness = thickness)  
     
     if pwd is not None:
-        save_img(added_image, pwd, name, figureTitle = title)
+        save_img(added_image, pwd, name, title = title)
 
     return added_image
 
@@ -311,7 +314,7 @@ def plot_features(img_rgb, tomato = None, peduncle = None, grasp = None,
         added_image = add_circles(added_image, peduncle['ends'], radii = 10, color = (0,0,0), thickness = thickness)
     
     if pwd is not None:
-        save_img(added_image, pwd, file_name, figureTitle = title)
+        save_img(added_image, pwd, file_name, title = title)
 
     return added_image
 
@@ -430,26 +433,26 @@ def add_contour(imRGB, mask, color = (255,255,255), thickness = 5):
     cv2.drawContours(imRGB, contours, -1, color, thickness)
     return imRGB
 
-def plot_circles(img_rgb, centers, radii = 5, pwd = None, name = None, 
-                 title = "", titleSize = 20, resolution = 300, 
-                 ext = 'png', color = (255,255,255), thickness = 5):
-    
-    plt.rcParams["savefig.format"] = ext 
-    plt.rcParams["savefig.bbox"] = 'tight' 
-    plt.rcParams['axes.titlesize'] = titleSize
-    
-    fig = plt.figure() 
-    plt.subplot(1, 1, 1)
-    
-    imRGB = add_circles(img_rgb, centers, radii = radii, color = color, thickness = thickness)    
-
-    plt.imshow(img_rgb)
-    plt.title(title)
-    plt.axis('off')
-    
-    if pwd is not None:
-        fig.savefig(os.path.join(pwd, name), dpi = resolution, pad_inches=0)
-    return fig
+#def plot_circles(img_rgb, centers, radii = 5, pwd = None, name = None, 
+#                 title = "", titleSize = 20, resolution = 300, 
+#                 ext = 'png', color = (255,255,255), thickness = 5):
+#    
+#    plt.rcParams["savefig.format"] = ext 
+#    plt.rcParams["savefig.bbox"] = 'tight' 
+#    plt.rcParams['axes.titlesize'] = titleSize
+#    
+#    fig = plt.figure() 
+#    plt.subplot(1, 1, 1)
+#    
+#    imRGB = add_circles(img_rgb, centers, radii = radii, color = color, thickness = thickness)    
+#
+#    plt.imshow(img_rgb)
+#    plt.title(title)
+#    plt.axis('off')
+#    
+#    if pwd is not None:
+#        fig.savefig(os.path.join(pwd, name), dpi = resolution, pad_inches=0)
+#    return fig
 
 def add_arrows(img_rgb, centers, angles, l =20, color = (255,255,255), thickness = 1, tip_length = 0.5):
 
@@ -488,22 +491,9 @@ def plot_grasp_location(img_rgb, loc, angle, l = 30, r = 5,
     add_circles(img_rgb, loc, radii = r,  color = (255,255,255), thickness = -1)  
 
     if pwd is not None:
-        save_img(img_rgb, pwd, name, figureTitle = title)
+        save_img(img_rgb, pwd, name, title = title)
         
     return img_rgb
-    
-#def plot_arrows(img_rgb, centers, angles, l = 20, r = 5, pwd = None, name = None, 
-#                 title = "", titleSize = 20, resolution = 300, 
-#                 ext = 'png', color = (255,255,255), thickness = 5, tip_length = 0.5):
-#
-#    
-#    add_arrows(img_rgb, centers, angles, l=l, color = color, tip_length = tip_length) 
-#    add_circles(img_rgb, centers, radii = r, color = color, thickness = thickness)    
-#
-#    if pwd is not None:
-#        save_img(img_rgb, pwd, name, figureTitle = title)
-#
-#    return img_rgb
     
 def pipi(angle):
     # cast angle to range [-180, 180]
