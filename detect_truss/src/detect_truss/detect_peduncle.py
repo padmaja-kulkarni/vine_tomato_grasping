@@ -6,7 +6,7 @@ import numpy as np
 import skan
 
 # custom functions
-from util import add_circles
+from util import add_circles, add_arrows
 from util import save_img
 from util import remove_blobs, bin2img, img2bin
 
@@ -189,7 +189,7 @@ def find_largest_branch(branch_data, skeleton, node_id_current, node_id_start, p
         
         branch_visited_new.append(branch_index)
         node_id_new = get_new_node(branch_data, branch_index, node_id_current)        
-        angle_new = node_angle(node_id_current, node_id_new, skeleton) 
+        angle_new = node_id_angle(node_id_current, node_id_new, skeleton) 
         length_new = length
         depth_new = depth + 1
         
@@ -200,7 +200,7 @@ def find_largest_branch(branch_data, skeleton, node_id_current, node_id_start, p
         
         if (diff < 45):
             # walk over branch
-            angle_total = node_angle(node_id_start, node_id_new, skeleton) # angle_new 
+            angle_total = node_id_angle(node_id_start, node_id_new, skeleton) # angle_new 
             path_new.append(branch_index)
             length_new += skeleton.distances[branch_index]
                  
@@ -234,44 +234,56 @@ def find_largest_branch(branch_data, skeleton, node_id_current, node_id_start, p
                                                         
     return max_path, max_length
 
-def node_angle(node_1_id, node_2_id, skeleton):
+def node_id_angle(node_1_id, node_2_id, skeleton):
     src = skeleton.coordinates[node_1_id][[1,0]]
     dst = skeleton.coordinates[node_2_id][[1,0]]
-    angle = np.rad2deg(np.arctan2((dst[0] - src[0]), (dst[1] - src[1])))
+    angle = np.rad2deg(np.arctan2((dst[1] - src[1]), (dst[0] - src[0])))
+    return angle
+    
+def node_coord_angle(src, dst):
+    angle = np.rad2deg(np.arctan2((dst[1] - src[1]), (dst[0] - src[0])))
     return angle
 
-def visualize_skeleton(bg_img, skeleton_img, junc_coord = None, 
-                       end_coord = None, name = "", pwd = None):
+
+def visualize_skeleton(img, skeleton_img, coord_junc = None, 
+                       coord_end = None, branch_data = None, name = "", pwd = None):
                            
     junc_color = (100, 0, 200)
     end_color =   (200, 0, 0)  
     pend_color = (0,150,30)
     
 
-    if (junc_coord is None) and (end_coord is None):   
-        junc_coord, end_coord = get_node_coord(skeleton_img)
+    if (coord_junc is None) and (coord_end is None):   
+        coord_junc, coord_end = get_node_coord(skeleton_img)
     
-    elif junc_coord is None:
-        junc_coord, _ = get_node_coord(skeleton_img)
+    elif coord_junc is None:
+        coord_junc, _ = get_node_coord(skeleton_img)
         
-    elif end_coord is None:
-        _, end_coord = get_node_coord(skeleton_img)
+    elif coord_end is None:
+        _, coord_end = get_node_coord(skeleton_img)
     
-    img = bg_img.copy()
     contours, hierarchy= cv2.findContours(skeleton_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
     cv2.drawContours(img, contours, -1, pend_color, 2)        
-    img = add_circles(img, junc_coord, color=junc_color, thickness=-1, radii = 3)
-    img = add_circles(img, end_coord, color=end_color, thickness=-1, radii = 3)
-    save_img(img, pwd, name) 
+    add_circles(img, coord_junc, color=junc_color, thickness=-1, radii = 3)
+    add_circles(img, coord_end, color=end_color, thickness=-1, radii = 3)
+
+    if branch_data:
+        branch_junc = branch_data['junction']
+        branch_end = branch_data['end']        
+        add_arrows(img, branch_junc['center'], branch_junc['angle'], l = 20, color=junc_color, thickness=2, tip_length = 0.5)
+        add_arrows(img, branch_end['center'], branch_end['angle'], l = 20, color=end_color, thickness=2, tip_length = 0.5)        
+    
+    if pwd:
+        save_img(img, pwd, name) 
 
 @Timer("get center branch", name_space = 'peduncle', append = False)
-def get_center_branch(branch_data, skeleton_img):
+def get_branch_center(branch_data, skeleton_img):
     
     col, row = np.nonzero(skeleton_img)
     loc = np.transpose(np.matrix(np.vstack((row, col))))
     
-    dead_branch_center = []
-    junc_branch_center = []    
+    junc_branch = {'center' : [], 'angle' : []}
+    dead_branch = {'center' : [], 'angle' : []}
     
     for i, row in branch_data.iterrows():
         
@@ -281,17 +293,22 @@ def get_center_branch(branch_data, skeleton_img):
         center_node_coord = (dst_node_coord + src_node_coord)/2
 
         dist = np.sqrt(np.sum(np.power(loc - center_node_coord, 2), 1))
+        angle = node_coord_angle(src_node_coord, dst_node_coord)
 
         i = np.argmin(dist)
         center = [loc[i,0], loc[i,1]]
         
         if row['branch-type'] == 1:
-            dead_branch_center.append(center)
+            dead_branch['center'].append(center)
+            dead_branch['angle'].append(angle)
             
         else:
-            junc_branch_center.append(center)
+            junc_branch['center'].append(center)
+            junc_branch['angle'].append(angle)
 
-    return np.array(junc_branch_center), np.array(dead_branch_center)  
+    # dead_branch['center'] = np.array(dead_branch['center'])    
+    # junc_branch['center'] = np.array(junc_branch['center'])
+    return junc_branch, dead_branch # np.array(junc_branch_center), np.array(dead_branch_center)  
 
 @Timer("skeletonize image", name_space = 'peduncle', append = False)
 def skeletonize_img(img):
@@ -315,13 +332,13 @@ def detect_peduncle(peduncle_img, distance_threshold, bg_img = None,
     skeleton_img = skeletonize_img(peduncle_img)
         
     if save:
-        visualize_skeleton(bg_img, skeleton_img, name=name+"_01", pwd=pwd)        
+        visualize_skeleton(bg_img.copy(), skeleton_img, name=name+"_01", pwd=pwd)        
     
     # prune all smal branches
     skeleton_img = threshold_branch_length(skeleton_img, distance_threshold) 
         
     if save:
-        visualize_skeleton(bg_img, skeleton_img, name=name+"_02", pwd=pwd)        
+        visualize_skeleton(bg_img.copy(), skeleton_img, name=name+"_02", pwd=pwd)        
         
     skeleton, branch_data = summarize_img(skeleton_img)   
     
@@ -339,20 +356,21 @@ def detect_peduncle(peduncle_img, distance_threshold, bg_img = None,
     coord_junc = get_locations_on_mask(skeleton_img, all_juncions)     
     
     # get the centers of the obtained branches
-    branch_center,_ = get_center_branch(branch_data, skeleton_img)
+    junc_branch, end_branch = get_branch_center(branch_data, skeleton_img)
+    branch_data = {'junction': junc_branch, 'end': end_branch}
     
     if save:
-        visualize_skeleton(bg_img, skeleton_img, junc_coord=coord_junc, 
-                           end_coord = coord_end, name=name+"_03", 
+        visualize_skeleton(bg_img.copy(), skeleton_img, coord_junc=coord_junc, 
+                           coord_end=coord_end, name=name+"_03", 
                            pwd=pwd)                      
     if save:
-        visualize_skeleton(bg_img, skeleton_img, junc_coord=branch_center, 
-                       end_coord = coord_end, name=name+"_04", 
-                       pwd=pwd)  
+        visualize_skeleton(bg_img.copy(), skeleton_img, coord_junc=coord_junc, 
+                           branch_data = branch_data, 
+                           coord_end = coord_end, name=name+"_04", pwd=pwd)  
     
     
     
-    return skeleton_img, branch_center, coord_junc, coord_end
+    return skeleton_img, branch_data, coord_junc, coord_end
     
 if __name__ == '__main__':
     print('No main!')

@@ -244,52 +244,35 @@ def save_fig(fig, pwd, name, resolution = 300, title = "", titleSize = 20, ext =
         
         fig.savefig(os.path.join(pwd, name), dpi = resolution, bbox_inches='tight', pad_inches=0)
 
-
 def add_circles(imRGB, centers, radii = 5, color = (255,255,255), thickness = 5):
+
+    if isinstance(centers, (list, tuple, np.matrix)):  
+        centers = np.array(centers, ndmin=2)   
         
-    if isinstance(centers, list):  
-        for i, center in enumerate(centers):
-            col = int(center[0])
-            row = int(center[1])
-            
-            if isinstance(radii, (list, np.ndarray)):
-                r = int(radii[i])
-            
-            else:            
-                r = int(radii)   
-                
-            cv2.circle(imRGB,(col, row), r, color, thickness)
+    if not isinstance(radii, (list, np.ndarray)):
+        radii = [radii] * centers.shape[0]
         
-    else:
-        N = centers.shape[0]
-            
-        for i in range(0, N, 1):
-            col = int(centers[i, 0])
-            row = int(centers[i, 1])
-            
-            if isinstance(radii, (list, np.ndarray)):
-                r = int(radii[i])
-            
-            else:            
-                r = radii
-            
-            cv2.circle(imRGB,(col, row), r, color, thickness)
+    for center, radius in zip(centers, radii):
+        col = int(round(center[0]))
+        row = int(round(center[1])) # 
+#        center_round = np.round(center).astype(dtype = np.uint8)
+        cv2.circle(imRGB, (col, row), radius, color, thickness)
             
     return imRGB
 
 def plot_segments(img_rgb, background, tomato, peduncle, pwd=None, 
-                  name=None, title="", alpha = 0.7):
+                  name=None, title="", alpha = 0.7, thickness = 2):
     
     img_segments = stack_segments(img_rgb, background, tomato, peduncle)
     
     added_image = cv2.addWeighted(img_rgb, 1 - alpha,img_segments,alpha,0)
-    added_image = add_contour(added_image, tomato, color = tomato_color, thickness = 2)
-    added_image = add_contour(added_image, peduncle, color = peduncle_color, thickness = 2)  
+    added_image = add_contour(added_image, tomato, color = tomato_color, thickness = thickness)
+    added_image = add_contour(added_image, peduncle, color = peduncle_color, thickness = thickness)  
     
     if pwd is not None:
         save_img(added_image, pwd, name, figureTitle = title)
 
-
+    return added_image
 
 def plot_features(img_rgb, tomato = None, peduncle = None, grasp = None,
                   alpha = 0.6, thickness = 2, pwd = None, file_name=None, title=""):
@@ -461,6 +444,60 @@ def plot_circles(img_rgb, centers, radii = 5, pwd = None, name = None,
     if pwd is not None:
         fig.savefig(os.path.join(pwd, name), dpi = resolution, pad_inches=0)
     return fig
+
+def add_arrows(img_rgb, centers, angles, l =20, color = (255,255,255), thickness = 1, tip_length = 0.5):
+
+    if isinstance(centers, list):  
+        centers = np.array(centers, ndmin=2)          
+        
+    if not isinstance(angles, (list, tuple)):
+        angles = [angles]
+        
+    for center, angle in zip(centers, angles):
+        angle = angle/180*np.pi
+        col = center[0]
+        row = center[1]
+        
+        col_start = col + 0.5*l*np.cos(angle)
+        row_start = row + 0.5*l*np.sin(angle)
+        
+        col_end = col - 0.5*l*np.cos(angle)
+        row_end = row - 0.5*l*np.sin(angle)
+        
+        start_point = (int(round(col_start)), int(round(row_start)))
+        end_point = (int(round(col_end)), int(round(row_end)))
+
+        cv2.arrowedLine(img_rgb, start_point, end_point, color, thickness, tipLength = tip_length)
+    
+def plot_grasp_location(img_rgb, loc, angle, l = 30, r = 5, 
+                        pwd= None, 
+                        name = None, 
+                        title = None,
+                        ext= 'png', 
+                        resolution = 300):
+                            
+    angle = angle * 180 / np.pi
+
+    add_arrows(img_rgb, loc, angle, l = l,  color = (255,255,255), thickness = 2)    
+    add_circles(img_rgb, loc, radii = r,  color = (255,255,255), thickness = -1)  
+
+    if pwd is not None:
+        save_img(img_rgb, pwd, name, figureTitle = title)
+        
+    return img_rgb
+    
+#def plot_arrows(img_rgb, centers, angles, l = 20, r = 5, pwd = None, name = None, 
+#                 title = "", titleSize = 20, resolution = 300, 
+#                 ext = 'png', color = (255,255,255), thickness = 5, tip_length = 0.5):
+#
+#    
+#    add_arrows(img_rgb, centers, angles, l=l, color = color, tip_length = tip_length) 
+#    add_circles(img_rgb, centers, radii = r, color = color, thickness = thickness)    
+#
+#    if pwd is not None:
+#        save_img(img_rgb, pwd, name, figureTitle = title)
+#
+#    return img_rgb
     
 def pipi(angle):
     # cast angle to range [-180, 180]

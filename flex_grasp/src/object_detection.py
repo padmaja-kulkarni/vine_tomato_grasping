@@ -265,7 +265,7 @@ class ObjectDetection(object):
                 self.visualive_peduncle(peduncle_mask)
                 # visualive_tomatoes(self, tomato_mask)
                 
-                img_tomato = self.process_image.get_truss_visualization()
+                img_tomato = self.process_image.get_truss_visualization(local = True)
                 img_segment = self.process_image.get_segmented_image(local = True)
 
             elif not self.use_truss:
@@ -278,7 +278,7 @@ class ObjectDetection(object):
                 tomatoes = self.generate_tomatoes(tomato_features)
                 peduncle = Peduncle()
                 
-                img_tomato = self.process_image.get_tomato_visualization()
+                img_tomato = self.process_image.get_tomato_visualization(local = True)
                 img_segment = self.process_image.get_segmented_image()
 
             truss = self.create_truss(tomatoes, cage_pose, peduncle)

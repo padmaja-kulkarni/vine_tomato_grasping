@@ -24,13 +24,13 @@ from timer import Timer
 from util import add_border
 
 from util import translation_rot2or
-from util import add_circles, add_contour
+from util import add_circles, add_contour, add_arrows
 
 from util import make_dirs
 from util import save_img
 from util import load_rgb
 from util import stack_segments
-from util import plot_circles, plot_timer, save_fig
+from util import plot_circles, plot_timer, save_fig, plot_grasp_location
 from util import change_brightness, plot_segments
 
 from point_2d import make_2d_transform, make_2d_point
@@ -38,7 +38,7 @@ from point_2d import make_2d_transform, make_2d_point
 from matplotlib import pyplot as plt
 
 from filter_segments import filter_segments
-from detect_peduncle import detect_peduncle
+from detect_peduncle import detect_peduncle, visualize_skeleton
 from detect_tomato import detect_tomato, set_detect_tomato_settings
 from segment_image import segment_truss, segment_tomato
 
@@ -204,6 +204,9 @@ class ProcessImage(object):
     def detect_tomatoes(self):
         success = True
 
+        if self.peduncle.is_empty():
+            return False
+
         if self.save:
             img_bg = self.image_crop.data # self.get_segmented_image(local = True)
         else:
@@ -245,7 +248,7 @@ class ProcessImage(object):
             img_bg = self.image_crop.data
         # bg_img = self.image_crop.data, 0.85)
 
-        mask, coord_center, junctions, ends  = detect_peduncle(self.peduncle_crop.data,
+        mask, branch_data, junctions, ends  = detect_peduncle(self.peduncle_crop.data,
                                                         distance_threshold,
                                                         save = self.save,
                                                         bg_img = img_bg,
@@ -261,8 +264,20 @@ class ProcessImage(object):
         for end in ends:
             end_points.append(make_2d_point(self._LOCAL_FRAME_ID, end))
 
+        junc_branch_center_points = []
+        for center in branch_data['junction']['center']:
+            junc_branch_center_points.append(make_2d_point(self._LOCAL_FRAME_ID, center))
+
+        end_branch_center_points = []
+        for center in branch_data['end']['center']:
+            end_branch_center_points.append(make_2d_point(self._LOCAL_FRAME_ID, center))
+            
+
         self.penduncle_main = mask
-        self.junc_branch_center = coord_center
+        self.junc_branch_center = junc_branch_center_points
+        self.junc_branch_angle = branch_data['junction']['angle'] # degree
+        self.end_branch_center = end_branch_center_points
+        self.end_branch_angle = branch_data['end']['angle'] # degree
         self.junction_points = junction_points
         self.end_points = end_points
         return success
@@ -273,9 +288,10 @@ class ProcessImage(object):
 
         if strategy== "cage":
             com = self.get_xy(self.com, self._LOCAL_FRAME_ID)
+            
 
-            if self.junc_branch_center.size > 0: # self.junc_branch_center:
-                loc = self.junc_branch_center
+            if len(self.junc_branch_center) > 0: # self.junc_branch_center:
+                loc = self.get_xy(self.junc_branch_center, self._LOCAL_FRAME_ID)
                 dist = np.sqrt(np.sum(np.power(loc - com, 2), 1))
 
             else:
@@ -287,7 +303,8 @@ class ProcessImage(object):
                 dist = np.sqrt(np.sum(np.power(loc - com, 2), 1))
 
             i = np.argmin(dist)
-            grasp_angle = self.angle
+            grasp_angle_local = self.junc_branch_angle[i]/180.0*np.pi
+            grasp_angle_global = self.angle + grasp_angle_local
 
         elif strategy== "pinch":
 
@@ -299,8 +316,9 @@ class ProcessImage(object):
             dist1 = np.sqrt(np.sum(np.power(loc - self.centersL[1,:], 2), 1))
             dist = np.minimum(dist0, dist1)
             i = np.argmax(dist)
-
-            grasp_angle = self.angle
+            
+            grasp_angle_local = 0
+            grasp_angle_global = self.angle + grasp_angle_local
         else:
             print("Unknown grasping strategy")
             return False
@@ -313,13 +331,14 @@ class ProcessImage(object):
         self.grasp_point = grasp_point
         # self.graspR = graspR
         # self.graspO = graspO
-        self.grasp_angle = grasp_angle
+        self.grasp_angle_local = grasp_angle_local
+        self.grasp_angle_global = grasp_angle_global
 
         if self.save:
             xy_local = self.get_xy(grasp_point, self._LOCAL_FRAME_ID)
-            plot_circles(self.crop(self.image).data, xy_local, 10, pwd = self.pwd, 
-                         name = '06', ext = self.ext)
-
+            img_rgb = self.crop(self.image).data
+            plot_grasp_location(img_rgb, xy_local, grasp_angle_local, 
+                                l = 20, pwd = self.pwd, name = '06', ext = self.ext)
 
 #            xy_local = self.get_xy(grasp_point, self._ORIGINAL_FRAME_ID)
 #            plot_circles(self.image.data, xy_local, 10, pwd = self.pwd, name = '06')
@@ -433,7 +452,6 @@ class ProcessImage(object):
         else:
             return self.rescale(self.penduncle_main)
 
-
     def get_peduncle(self, local = False):
 #        peduncle_mask = self.get_peduncle_image(local = local)
 #        penduncle_main = self.get_main_peduncle_image(local = local)
@@ -455,16 +473,17 @@ class ProcessImage(object):
         # TODO fix for local frame
         if local:
             frame_id = self._LOCAL_FRAME_ID
+            angle = self.grasp_angle_local
             scale = 1
         else:
             frame_id = self._ORIGINAL_FRAME_ID
+            angle = self.grasp_angle_global
             scale = self.scale
 
         xy = self.get_xy(self.grasp_point, frame_id)
         graspPixel = np.around(xy/scale).astype(int)
         row = graspPixel[0,1]
         col =  graspPixel[0,0]
-        angle = self.grasp_angle
 
         grasp_location = {"row": row, "col": col, "angle": angle}
         return grasp_location
@@ -501,17 +520,27 @@ class ProcessImage(object):
     def get_truss_visualization(self, local = False):
         if local:
             frame_id = self._LOCAL_FRAME_ID
+            grasp_angle = self.grasp_angle_local
         else:
             frame_id = self._ORIGINAL_FRAME_ID
+            grasp_angle = self.grasp_angle_global
 
-        xy_center = self.get_xy(self.centers, frame_id)
+        # xy_center = self.get_xy(self.centers, frame_id)
         xy_grasp = self.get_xy(self.grasp_point, frame_id)
-        img_rgb = self.get_rgb(local = local)
-        img_peduncle = self.get_peduncle_image(local = local)
-
-        img = add_circles(img_rgb, xy_center, self.radii)
-        img = add_contour(img, img_peduncle)       #
-        img = add_circles(img, xy_grasp, 20, color = (255, 0, 0), thickness = -1)
+        xy_junc = self.get_xy(self.junction_points, frame_id)
+        xy_end = self.get_xy(self.end_points, frame_id)
+        
+        img = self.get_rgb(local = local)
+        tomato, peduncle, background = self.get_segments(local = local)
+        main_peduncle = self.penduncle_main
+        # img_peduncle = self.get_peduncle_image(local = local)
+        
+        
+        
+        img = plot_segments(img, background, tomato, peduncle, thickness = 1)
+        visualize_skeleton(img, main_peduncle, coord_junc = xy_junc, coord_end = xy_end)
+        plot_grasp_location(img, xy_grasp, grasp_angle)
+        
         return img
 
     def get_segments(self, local = False):

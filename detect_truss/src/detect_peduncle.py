@@ -6,14 +6,14 @@ Created on Thu Jul 16 18:16:42 2020
 """
 
 import os
-from detect_crop.util import make_dirs, load_rgb
-from detect_crop.util import change_brightness, plot_timer
+from detect_truss.util import make_dirs, load_rgb
+from detect_truss.util import change_brightness, plot_timer
 
-from detect_crop.ProcessImage import ProcessImage 
-from detect_crop.detect_peduncle import detect_peduncle
+from detect_truss.ProcessImage import ProcessImage 
+from detect_truss.detect_peduncle import detect_peduncle
 
-from detect_crop.timer import Timer
-from detect_crop.counter import Counter
+from detect_truss.timer import Timer
+from detect_truss.counter import Counter
 
 if __name__ == '__main__':
     
@@ -21,7 +21,7 @@ if __name__ == '__main__':
      #  48 #        # tomato file to load
     nDigits = 3
     i_start = 1
-    i_end = 23    
+    i_end = 2    
     N = i_end - i_start
     
     pwd_current = os.path.dirname(__file__)
