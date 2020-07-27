@@ -244,10 +244,16 @@ def save_fig(fig, pwd, name, resolution = 300, title = "", titleSize = 20, ext =
         
         fig.savefig(os.path.join(pwd, name), dpi = resolution, bbox_inches='tight', pad_inches=0)
 
-def add_circles(imRGB, centers, radii = 5, color = (255,255,255), thickness = 5):
+def add_circles(img_rgb, centers, radii = 5, color = (255,255,255), thickness = 5):
+
+    
 
     if isinstance(centers, (list, tuple, np.matrix)):  
         centers = np.array(centers, ndmin=2)   
+        
+    # if empty we can not add any circles
+    if centers.shape[1] == 0:
+        return img_rgb
         
     if not isinstance(radii, (list, np.ndarray)):
         radii = [radii] * centers.shape[0]
@@ -256,9 +262,9 @@ def add_circles(imRGB, centers, radii = 5, color = (255,255,255), thickness = 5)
         col = int(round(center[0]))
         row = int(round(center[1])) # 
 #        center_round = np.round(center).astype(dtype = np.uint8)
-        cv2.circle(imRGB, (col, row), radius, color, thickness)
+        cv2.circle(img_rgb, (col, row), radius, color, thickness)
             
-    return imRGB
+    return img_rgb
 
 def plot_segments(img_rgb, background, tomato, peduncle, pwd=None, 
                   name=None, title="", alpha = 0.7, thickness = 2):

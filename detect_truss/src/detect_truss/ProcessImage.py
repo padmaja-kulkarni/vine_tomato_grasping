@@ -535,7 +535,8 @@ class ProcessImage(object):
         main_peduncle = self.penduncle_main
         # img_peduncle = self.get_peduncle_image(local = local)
         
-        
+        print(xy_junc)
+        print(xy_end)
         
         img = plot_segments(img, background, tomato, peduncle, thickness = 1)
         visualize_skeleton(img, main_peduncle, coord_junc = xy_junc, coord_end = xy_end)
