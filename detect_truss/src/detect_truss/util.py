@@ -249,17 +249,19 @@ def add_circles(img_rgb, centers, radii = 5, color = (255,255,255), thickness = 
 
     if isinstance(centers, (list, tuple, np.matrix)):  
         centers = np.array(centers, ndmin=2)   
-        
+ 
+    # if a single radius is give, we repeat the value
+    if not isinstance(radii, (list, np.ndarray)):
+        radii = [radii] * centers.shape[0]
+       
     # if empty we can not add any circles
     if centers.shape[1] == 0:
         return img_rgb
 
     # centers should be integers        
     centers = np.round(centers).astype(dtype = int) # (col, row)
-    
-    # if a single radius is give, we repeat the value
-    if not isinstance(radii, (list, np.ndarray)):
-        radii = [radii] * centers.shape[0]
+    radii = np.round(radii).astype(dtype = int) # (col, row)    
+
         
     for center, radius in zip(centers, radii):
         cv2.circle(img_rgb, tuple(center), radius, color, thickness) # (col, row)
@@ -318,7 +320,15 @@ def plot_features(img_rgb, tomato = None, peduncle = None, grasp = None,
 
     return added_image
 
-def plot_error(img, centers, error_centers, error_radii = None, com_center = None, com_error = None,  pwd = None, name = None, title = "", resolution = 300, title_size = 20, ext = 'png'):
+def plot_error(img, centers, error_centers, error_radii = None, 
+               com_center=None, 
+               com_error=None,  
+               pwd=None, 
+               name=None, 
+               use_mm = False,
+               title="", 
+               resolution=300, 
+               title_size=20, ext = 'png'):
 
     fig, ax = plt.subplots()
     ax.imshow(img)    
@@ -329,6 +339,11 @@ def plot_error(img, centers, error_centers, error_radii = None, com_center = Non
     plt.imshow(img)
     plt.axis('off')
     plt.title(title)
+    
+    if use_mm:
+        unit = '[mm]'
+    else:
+        unit = '[px]'
     
     # https://stackoverflow.com/a/27227718
     plt.gca().set_axis_off()
@@ -383,7 +398,7 @@ def plot_error(img, centers, error_centers, error_radii = None, com_center = Non
             error_radius = None
         
         if i == i_com:
-            text = 'com: {c:d} px'.format(c=int(round(com_error)))
+            text = 'com: {c:d} {u:s}'.format(c=int(round(com_error)), u=unit)
             kw['bbox']['fc'] = 'k'
             kw['color']= 'w'
             
@@ -392,9 +407,9 @@ def plot_error(img, centers, error_centers, error_radii = None, com_center = Non
             
             if (error_radius is not None):
                 radius_error = int(round(error_radii[i]))
-                text = 'center: {c:d} px \nradius: {r:d} px'.format(c=center_error, r= radius_error)
+                text = 'center: {c:d} {u:s} \nradius: {r:d} {u:s}'.format(c=center_error, r= radius_error, u=unit)
             else:
-                text = 'error:  {c:d} px'.format(c=center_error) # str()
+                text = 'error:  {c:d} {u:s}'.format(c=center_error, u=unit) # str()
         else:
             
             text = 'false positive'

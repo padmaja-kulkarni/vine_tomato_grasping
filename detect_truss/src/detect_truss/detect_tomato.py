@@ -92,7 +92,7 @@ def set_detect_tomato_settings(blur_size = 3,
                                distance_min_mm = 20,
                                dp = 4,
                                param1 = 20,
-                               param2 = 50,
+                               param2 = 70,
                                ratio_threshold = 0.6):   
     
     settings = {}

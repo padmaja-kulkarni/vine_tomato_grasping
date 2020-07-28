@@ -15,8 +15,8 @@ from skimage.morphology import skeletonize
 from timer import Timer
 from counter import Counter
 
-def set_detect_peduncle_settings(branch_length_min_px = 10,
-                              branch_length_min_mm = 2):   
+def set_detect_peduncle_settings(branch_length_min_px = 15,
+                              branch_length_min_mm = 8):   
     
     settings = {}
     settings['branch_length_min_px'] = branch_length_min_px

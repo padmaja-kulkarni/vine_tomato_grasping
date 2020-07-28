@@ -45,6 +45,20 @@ from segment_image import segment_truss, segment_tomato
 
 warnings.filterwarnings('error', category=FutureWarning)
 
+def load_px_per_mm(pwd, img_id):
+    
+    pwd_info = os.path.join(pwd, img_id + '_info.json')    
+    
+    if not os.path.exists(pwd_info):
+        print('Info does not exist for image: ' + img_id + ' continueing without info')
+        return None
+
+    with open(pwd_info, "r") as read_file:
+        data_inf = json.load(read_file) 
+
+    return data_inf['px_per_mm']
+        
+
 class ProcessImage(object):
 
     version = '0.1'
@@ -616,13 +630,13 @@ class ProcessImage(object):
 
 if __name__ == '__main__':
     i_start = 1
-    i_end = 2
+    i_end = 3
     N = i_end - i_start
 
-    save = True
+    save = False
 
     pwd_current = os.path.dirname(__file__)
-    dataset = "real_blue" # "tomato_rot"
+    dataset = "depth_blue" # "real_blue"
 
     pwd_data = os.path.join(pwd_current, "..", "data", dataset)
     pwd_results = os.path.join(pwd_current, "..", "results", dataset)
@@ -638,6 +652,7 @@ if __name__ == '__main__':
         file_name = tomato_name + ".png"
 
         rgb_data = load_rgb(pwd_data, file_name, horizontal = True)
+        px_per_mm = load_px_per_mm(pwd_data, tomato_name)
 
         if save:
             save_img(rgb_data, pwd_results, '01')
@@ -648,7 +663,7 @@ if __name__ == '__main__':
                              pwd = pwd_results,
                              save = save)
 
-        process_image.add_image(rgb_data)
+        process_image.add_image(rgb_data, px_per_mm = px_per_mm)
         success = process_image.process_image()
 
         if False: # success:

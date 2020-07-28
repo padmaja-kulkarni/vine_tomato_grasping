@@ -10,7 +10,7 @@ import numpy as np
 import rospy
 import math
 import cv2
-
+import json
 from cv_bridge import CvBridge, CvBridgeError
 
 # msg
@@ -72,9 +72,13 @@ class ObjectDetection(object):
         self.bridge = CvBridge()
 
         pwd_current = os.path.dirname(__file__) # path to THIS file
-        data_set = 'real_blue'
+        data_set = 'depth_blue'
         self.pwd_results = os.path.join(pwd_current, '..', '..', 'results')
         self.pwd_data = os.path.join(pwd_current, '..', '..', 'detect_truss', 'src', 'data', data_set)
+
+        if not os.path.isdir(self.pwd_data):
+            rospy.loginfo("New path, creating a new folder: " + self.pwd_data)
+            os.makedirs(self.pwd_data)
 
         rospy.loginfo("Storing visiual results in: ", self.pwd_results)
 
@@ -215,6 +219,10 @@ class ObjectDetection(object):
 
         if not self.wait_for_data(5):
             return False
+        
+        # imaformation about the image which will be stored
+        image_info = {}
+        image_info['px_per_mm'] = self.compute_px_per_mm()
 
         # check contents folder
         contents = os.listdir(self.pwd_data)
@@ -227,15 +235,21 @@ class ObjectDetection(object):
             file_name = contents[-1]
             file_id = file_name[:3]
             new_id = int(file_id) + 1
-        
-        new_file_name = str(new_id).zfill(3) + '.png'
-        new_file_path = os.path.join(self.pwd_data, new_file_name)
+            
 
-        if cv2.imwrite(new_file_path, cv2.cvtColor(self.color_image, cv2.COLOR_RGB2BGR)):
-            rospy.loginfo("[OBJECT DETECTION] File %s save successfully to path %s", new_file_name, self.pwd_data)
+        img_file_name = str(new_id).zfill(3) + '.png'
+        json_file_name =  str(new_id).zfill(3) + '_info.json'
+        img_pwd = os.path.join(self.pwd_data, img_file_name)
+        json_pwd = os.path.join(self.pwd_data, json_file_name)
+        
+        with open(json_pwd, "w") as write_file:
+            json.dump(image_info, write_file)        
+        
+        if cv2.imwrite(img_pwd, cv2.cvtColor(self.color_image, cv2.COLOR_RGB2BGR)):
+            rospy.loginfo("[OBJECT DETECTION] File %s save successfully to path %s", img_file_name, self.pwd_data)
             return True
         else:
-            rospy.logwarn("[OBJECT DETECTION] Failed to save image %s to path %s", new_file_name, self.pwd_data)
+            rospy.logwarn("[OBJECT DETECTION] Failed to save image %s to path %s", img_file_name, self.pwd_data)
             return False
 
     def detect_object(self):
@@ -243,14 +257,7 @@ class ObjectDetection(object):
         if not self.wait_for_data(5):
             return False
 
-        heights = self.get_points(field_names = ("z"))
-        height = np.nanmedian(np.array(heights))
-        rospy.loginfo('Height above table: %s [m]', height)
-
-        f = self.color_info.K[0]
-        px_per_mm = f/height/1000
-        rospy.loginfo('Pixels per m: %s [px/m]', px_per_mm)
-
+        px_per_mm = self.compute_px_per_mm()
         self.process_image.add_image(self.color_image, px_per_mm = px_per_mm)
 
         if self.settings is not None:
@@ -437,6 +444,16 @@ class ObjectDetection(object):
         truss = self.create_truss(tomatoes, cage_pose, peduncle)
         self.pub_object_features.publish(truss)
         return True
+        
+    def compute_px_per_mm(self):
+        heights = self.get_points(field_names = ("z"))
+        height = np.nanmedian(np.array(heights))
+        f = self.color_info.K[0]
+        px_per_mm = f/height/1000.0
+        
+        rospy.logdebug('Height above table: %s [m]', height)
+        rospy.logdebug('Pixels per m: %s [px/m]', px_per_mm)
+        return px_per_mm
 
     def create_truss(self, tomatoes, cage_pose, peduncle):
 
