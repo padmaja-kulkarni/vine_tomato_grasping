@@ -55,7 +55,7 @@ class MoveRobot(object):
         self.robot_pose = None
 
         # tolerance
-        self.position_tol = 0.03 # [m]
+        self.position_tol = 0.05 # [m]
         self.orientation_tol = deg2rad(1.0) # [rad]
         self.man_joint_tolerance = deg2rad(1.0) # [rad]
         self.ee_joint_tolerance = 0.0005 # [m]
@@ -282,6 +282,8 @@ class MoveRobot(object):
 
 
     def go_to_pose(self, goal_pose):
+        rospy.logdebug("[MOVE ROBOT] Go to pose")        
+
         if goal_pose is None:
             rospy.logwarn("goal pose is empty!")
             return False
@@ -297,9 +299,15 @@ class MoveRobot(object):
         while success is False:
             attempt = attempt + 1
             
+
             plan = self.man_group.plan()
-            success = self.man_group.execute(plan, wait=True)
-            # rospy.loginfo("[MOVE ROBOT] success: %s", success)
+            
+            # if not plan found... very ugly, what is a better way to do this?
+            if len(plan.joint_trajectory.joint_names) == 0:
+                rospy.logwarn('[MOVE ROBOT] not attempting to go to pose goal, no plan found!')
+                return False
+            
+            self.man_group.execute(plan, wait=True)
     
             # Ensures that there is no residual movement and clear the target
             self.man_group.stop()
@@ -309,8 +317,8 @@ class MoveRobot(object):
             curr_pose = self.man_group.get_current_pose()
             
             orientation_close, position_close = pose_close(goal_pose, curr_pose, self.position_tol, self.orientation_tol)
-            is_all_close = orientation_close and position_close
-            # success = is_all_close
+            is_all_close = position_close # orientation_close and position_close
+            success = is_all_close
             if is_all_close is False:
                 if orientation_close is False:
                     # self.man_group.get_goal_orientation_tolerance()
@@ -318,18 +326,18 @@ class MoveRobot(object):
                     
                 if position_close is False:
                     # self.man_group.get_goal_position_tolerance()
-                    rospy.logdebug("[MOVE ROBOT] Failed to move to pose target, obtained position is not sufficiently close to goal position (tolerance: %s). Attempts remaining: %s", self.position_tol, self.max_attempts - attempt)
+                    rospy.loginfo("[MOVE ROBOT] Failed to move to pose target, obtained position is not sufficiently close to goal position (tolerance: %s). Attempts remaining: %s", self.position_tol, self.max_attempts - attempt)
                     
                 rospy.logdebug("[MOVE ROBOT] Goal pose: %s", pose_to_list(goal_pose.pose))
                 rospy.logdebug("[MOVE ROBOT] Curr pose: %s", pose_to_list(curr_pose.pose))
                 
             if attempt >= self.max_attempts:
-                break
+                return False
 
         return success
 
     def move_to_joint_target(self, group, target):
-
+        rospy.logdebug("[MOVE ROBOT] Go to joint target") 
         to_check = True
 
         # if the target is a named target, get the corresponding joint values
@@ -357,14 +365,15 @@ class MoveRobot(object):
             is_all_close = joint_close(target, current, group.get_goal_joint_tolerance())
             if is_all_close is False:
                 rospy.logwarn("[MOVE ROBOT] Failed to move to joint target: obtained joint values are not sufficiently close to target joint value (tolerance: %s). Attempts remaining %s", group.get_goal_joint_tolerance(), 0)
-                rospy.loginfo("[MOVE ROBOT] Target joint values: %s", target)
-                rospy.loginfo("[MOVE ROBOT] Actual joint values: %s", current)
+                rospy.logdebug("[MOVE ROBOT] Target joint values: %s", target)
+                rospy.logdebug("[MOVE ROBOT] Actual joint values: %s", current)
 
         group.clear_pose_targets()
         # rospy.logdebug("[MOVE ROBOT] Moving to joint target success: %s", success)
         return True # success
 
     def reset(self):
+        rospy.logdebug("[MOVE ROBOT] Resetting robot pose") 
         self.robot_pose = None
         return True
 
