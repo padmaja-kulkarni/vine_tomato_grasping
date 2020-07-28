@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Jul  1 14:21:38 2020
-
-@author: taeke
-"""
-
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
@@ -21,7 +14,7 @@ import numpy as np
 # custom functions
 from util import plot_features
 
-def detect_tomato(img_segment, settings, img_rgb = None,
+def detect_tomato(img_segment, settings, px_per_mm=None, img_rgb=None,
                       save = False, pwd = "", name = ""):
                      
     if img_rgb is None:                     
@@ -29,23 +22,29 @@ def detect_tomato(img_segment, settings, img_rgb = None,
         
 
     # set dimensions
-    dim = img_segment.shape
-    min_radius = dim[1]/settings['radius_min']
-    max_radius = dim[1]/settings['radius_max']
-    min_distance = dim[1]/settings['distance_min']    
+    if px_per_mm:
+        radius_min_px = int(round(px_per_mm*settings['radius_min_mm']))
+        radius_max_px = int(round(px_per_mm*settings['radius_max_mm']))
+        distance_min_px = int(round(px_per_mm*settings['distance_min_mm']))    
+    else:
+        dim = img_segment.shape
+        radius_min_px = dim[1]/settings['radius_min_frac']
+        radius_max_px = dim[1]/settings['radius_max_frac']
+        distance_min_px = dim[1]/settings['distance_min_frac']    
 
     # Hough requires a gradient, thus the image is blurred
-    truss_blurred = cv2.GaussianBlur(img_segment, settings['blur_size'], 0)     
+    blur_size = settings['blur_size']
+    truss_blurred = cv2.GaussianBlur(img_segment, (blur_size,blur_size), 0)     
     
     # fit circles: [x, y, radius]
     circles = cv2.HoughCircles(truss_blurred, 
                                cv2.HOUGH_GRADIENT, 
                                settings['dp'], 
-                               min_distance, 
+                               distance_min_px, 
                                param1 = settings['param1'], 
                                param2 = settings['param2'], 
-                               minRadius = min_radius, 
-                               maxRadius=max_radius) 
+                               minRadius = radius_min_px, 
+                               maxRadius=radius_max_px) 
 
     if circles is None:
         centers = None
@@ -84,24 +83,37 @@ def detect_tomato(img_segment, settings, img_rgb = None,
                                      
     return centers, radii, com
 
-def set_detect_tomato_settings(blur_size = (3,3),
-                               radius_min = 8,
-                               radius_max = 4,
-                               distance_min = 4, # = tomato_radius_max
+def set_detect_tomato_settings(blur_size = 3,
+                               radius_min_frac = 8,
+                               radius_max_frac = 4,
+                               distance_min_frac = 4, # = tomato_radius_max
+                               radius_min_mm = 20,
+                               radius_max_mm = 40,
+                               distance_min_mm = 20,
                                dp = 4,
                                param1 = 20,
                                param2 = 50,
-                               ratio_threshold = 0.5):   
+                               ratio_threshold = 0.6):   
     
     settings = {}
-    settings['blur_size'] = blur_size  
-    settings['radius_min'] = radius_min  
-    settings['radius_max'] = radius_max
-    settings['distance_min'] = distance_min
+
+    # distance in px
+    settings['radius_min_frac'] = radius_min_frac
+    settings['radius_max_frac'] = radius_max_frac
+    settings['distance_min_frac'] = distance_min_frac
+
+    # distance in mm
+    settings['radius_min_mm'] = radius_min_mm
+    settings['radius_max_mm'] = radius_max_mm
+    settings['distance_min_mm'] = distance_min_mm    
+    
+    
     settings['dp'] = dp
     settings['param1'] = param1
     settings['param2'] = param2
     settings['ratio_threshold'] = ratio_threshold
+    settings['blur_size'] = blur_size  
+    
     return settings
 
 def find_overlapping_tomatoes(centers, radii, img_segment, ratio_threshold = 0.5):

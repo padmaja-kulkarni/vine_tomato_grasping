@@ -1,7 +1,17 @@
 # Image processing settings
-std_msgs/Int32 tomato_radius_min
-std_msgs/Int32 tomato_radius_max
-std_msgs/Int32 tomato_distance_min
-std_msgs/Int32 dp
-std_msgs/Int32 param1
-std_msgs/Int32 param2
+# uint32 tomato_radius_min_frac
+# uint32 tomato_radius_max_frac
+# uint32 tomato_distance_min_frac
+
+uint32 tomato_radius_min_mm
+uint32 tomato_radius_max_mm
+uint32 tomato_distance_min_mm
+
+# uint32 dp
+uint32 param1
+uint32 param2
+# float32 ratio_threshold
+# uint32 blur_size
+
+# uint32 branch_length_min_px
+uint32 branch_length_min_mm

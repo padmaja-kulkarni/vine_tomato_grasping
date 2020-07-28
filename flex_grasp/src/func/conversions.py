@@ -7,10 +7,12 @@ Created on Tue Mar 10 10:09:14 2020
 """
 
 from moveit_commander import MoveItCommanderException
-from geometry_msgs.msg import Pose, PoseStamped, Transform, Point, Quaternion
 from moveit_commander.conversions import pose_to_list
-
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
+
+# messages
+from geometry_msgs.msg import PoseStamped, Point, Quaternion
+from flex_grasp.msg import ImageProcessingSettings
 
 def pose_to_lists(pose_msg, orientation_type):
     # print(orientation_type)
@@ -94,3 +96,58 @@ def point_to_pose_stamped(xyz, rpy, frame, time):
     pose_stamped.pose.position.z = xyz[2]
 
     return pose_stamped
+    
+def settings_lib_to_msg(lib):
+    msg = ImageProcessingSettings()
+
+    tom_lib = lib['detect_tomato']
+    pend_lib = lib['detect_peduncle']
+
+    # distances in px
+#    msg.tomato_radius_min_frac = tom_lib['radius_min_frac']
+#    msg.tomato_radius_max_frac = tom_lib['radius_max_frac']
+#    msg.tomato_distance_min_frac = tom_lib['distance_min_frac']
+    
+    # distances in px
+    msg.tomato_radius_min_mm = tom_lib['radius_min_mm']
+    msg.tomato_radius_max_mm = tom_lib['radius_max_mm']
+    msg.tomato_distance_min_mm = tom_lib['distance_min_mm']
+    
+#    msg.dp = tom_lib['dp']
+    msg.param1 = tom_lib['param1']
+    msg.param2 = tom_lib['param2']
+#    msg.blur_size = tom_lib['blur_size']
+#    msg.ratio_threshold = tom_lib['ratio_threshold']
+    
+#    msg.branch_length_min_px = pend_lib['branch_length_min_px']
+    msg.branch_length_min_mm = pend_lib['branch_length_min_mm']   
+    
+    return msg
+
+def settings_msg_to_lib(msg):
+    
+    tom_lib = {} 
+    
+    # distances in px
+#    tom_lib['radius_min_frac'] = msg.tomato_radius_min_frac  
+#    tom_lib['radius_max_frac'] = msg.tomato_radius_max_frac
+#    tom_lib['distance_min_frac'] = msg.tomato_distance_min_frac
+    
+    # distances in mm
+    tom_lib['radius_min_mm'] = msg.tomato_radius_min_mm  
+    tom_lib['radius_max_mm'] = msg.tomato_radius_max_mm
+    tom_lib['distance_min_mm'] = msg.tomato_distance_min_mm    
+    
+#    tom_lib['dp'] = msg.dp
+    tom_lib['param1'] = msg.param1
+    tom_lib['param2'] = msg.param2
+#    tom_lib['blur_size'] = msg.blur_size 
+#    tom_lib['ratio_threshold'] = msg.ratio_threshold
+   
+    
+    pend_lib = {}
+#    pend_lib['branch_length_min_px'] = msg.branch_length_min_px    
+    pend_lib['branch_length_min_mm'] = msg.branch_length_min_mm     
+    
+    lib = {'detect_tomato': tom_lib, 'detect_peduncle': pend_lib}
+    return lib

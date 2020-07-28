@@ -15,6 +15,14 @@ from skimage.morphology import skeletonize
 from timer import Timer
 from counter import Counter
 
+def set_detect_peduncle_settings(branch_length_min_px = 10,
+                              branch_length_min_mm = 2):   
+    
+    settings = {}
+    settings['branch_length_min_px'] = branch_length_min_px
+    settings['branch_length_min_mm'] = branch_length_min_mm
+    return settings
+
 def get_node_id(branch_data, skeleton):
 
     src_node_id = np.unique(branch_data['node-id-src'].values)
@@ -321,12 +329,18 @@ def summarize_img(skeleton_img):
     branch_data = skan.summarize(skeleton) 
     return skeleton, branch_data
 
-def detect_peduncle(peduncle_img, distance_threshold, bg_img = None, 
+def detect_peduncle(peduncle_img, settings, px_per_mm = None, bg_img = None, 
                     save = False, name = "", pwd = ""):
     
     if bg_img is None:
         bg_img = peduncle_img
     
+    
+    if px_per_mm:
+        branch_length_min_px = px_per_mm*settings['branch_length_min_mm']
+    else:
+        branch_length_min_px = settings['branch_length_min_px']
+    print('branch_length_min_px', branch_length_min_px)    
     
     # skeletonize peduncle segment
     skeleton_img = skeletonize_img(peduncle_img)
@@ -335,7 +349,7 @@ def detect_peduncle(peduncle_img, distance_threshold, bg_img = None,
         visualize_skeleton(bg_img.copy(), skeleton_img, name=name+"_01", pwd=pwd)        
     
     # prune all smal branches
-    skeleton_img = threshold_branch_length(skeleton_img, distance_threshold) 
+    skeleton_img = threshold_branch_length(skeleton_img, branch_length_min_px) 
         
     if save:
         visualize_skeleton(bg_img.copy(), skeleton_img, name=name+"_02", pwd=pwd)        

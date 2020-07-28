@@ -38,7 +38,7 @@ from point_2d import make_2d_transform, make_2d_point
 from matplotlib import pyplot as plt
 
 from filter_segments import filter_segments
-from detect_peduncle import detect_peduncle, visualize_skeleton
+from detect_peduncle import detect_peduncle, visualize_skeleton, set_detect_peduncle_settings
 from detect_tomato import detect_tomato, set_detect_tomato_settings
 from segment_image import segment_truss, segment_tomato
 
@@ -73,9 +73,11 @@ class ProcessImage(object):
 
         # image
         # self.width_desired = 1280
-
-        self.detect_tomato_settings = set_detect_tomato_settings()
-
+        settings = {}
+        settings['detect_tomato'] = set_detect_tomato_settings()
+        settings['detect_peduncle'] = set_detect_peduncle_settings()
+        self.settings = settings
+        
         # detect junctions
         self.distance_threshold = 10
 
@@ -174,7 +176,11 @@ class ProcessImage(object):
         bbox = compute_bbox(truss_rotate.data)
         x = bbox[0]
         y = bbox[1]
-
+        
+        if self.px_per_mm:
+            print 'bbox width: ', bbox[2] / self.px_per_mm, '[mm]'
+            print 'bbox height: ', bbox[3] / self.px_per_mm, '[mm]'
+            
         #get origin
         translation = translation_rot2or(self.shape, -angle)
         dist = np.sqrt(translation[0]**2 + translation[1]**2)
@@ -215,7 +221,8 @@ class ProcessImage(object):
             img_bg = self.image_crop.data
 
         centers, radii, com = detect_tomato(self.truss_crop.data,
-                                            self.detect_tomato_settings,
+                                            self.settings['detect_tomato'],
+                                            px_per_mm = self.px_per_mm,
                                             img_rgb=img_bg,
                                             save=self.save,
                                             pwd=self.pwd,
@@ -240,10 +247,8 @@ class ProcessImage(object):
 
     @Timer("detect peduncle", name_space)
     def detect_peduncle(self):
-        distance_threshold = 10
         success = True
-
-
+        
         if self.save:
             img_bg = change_brightness(self.get_segmented_image(local = True), 0.85) # self.image_crop.data # 
         else:
@@ -251,7 +256,8 @@ class ProcessImage(object):
         # bg_img = self.image_crop.data, 0.85)
 
         mask, branch_data, junctions, ends  = detect_peduncle(self.peduncle_crop.data,
-                                                        distance_threshold,
+                                                        self.settings['detect_peduncle'],
+                                                        px_per_mm = self.px_per_mm,
                                                         save = self.save,
                                                         bg_img = img_bg,
                                                         name = '06',
@@ -524,7 +530,7 @@ class ProcessImage(object):
             frame_id = self._ORIGINAL_FRAME_ID
             grasp_angle = self.grasp_angle_global
 
-        # xy_center = self.get_xy(self.centers, frame_id)
+        xy_center = self.get_xy(self.centers, frame_id)
         xy_grasp = self.get_xy(self.grasp_point, frame_id)
         xy_junc = self.get_xy(self.junction_points, frame_id)
         xy_end = self.get_xy(self.end_points, frame_id)
@@ -535,6 +541,7 @@ class ProcessImage(object):
         # img_peduncle = self.get_peduncle_image(local = local)
         
         img = plot_segments(img, background, tomato, peduncle, thickness = 1)
+        add_circles(img, xy_center, radii = self.radii, color = (0,0,0), thickness = 1)
         visualize_skeleton(img, main_peduncle, coord_junc = xy_junc, coord_end = xy_end)
         plot_grasp_location(img, xy_grasp, grasp_angle)
         
@@ -595,20 +602,14 @@ class ProcessImage(object):
         return success
 
     def get_settings(self):
-        return self.detect_tomato_settings
+        return self.settings
 
     def set_settings(self, settings):
-        settings = set_detect_tomato_settings(# blur_size = (3,3),
-                               radius_min = settings['radius_min'],
-                               radius_max = settings['radius_max'],
-                               distance_min = settings['distance_min'], # = tomato_radius_max
-                               dp = settings['dp'],
-                               param1 = settings['param1'],
-                               param2 = settings['param2'],
-                               # ratio_threshold = 0.5
-                               )
-
-        self.detect_tomato_settings = settings
+        
+#        self.settings = settings
+        for key_1 in settings:
+            for key_2 in settings[key_1]:
+                self.settings[key_1][key_2] = settings[key_1][key_2]
 
 # %matplotlib inline
 # %matplotlib qt

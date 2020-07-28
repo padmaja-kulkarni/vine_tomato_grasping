@@ -31,7 +31,7 @@ from flex_grasp.msg import ImageProcessingSettings
 
 # custom func
 from detect_truss.ProcessImage import ProcessImage
-from func.conversions import point_to_pose_stamped
+from func.conversions import point_to_pose_stamped, settings_lib_to_msg, settings_msg_to_lib
 
 from func.utils import camera_info2intrinsics
 
@@ -39,32 +39,6 @@ import pyrealsense2 as rs
 
 # import pathlib
 import os # os.sep
-
-
-def lib2msg(lib):
-    msg = ImageProcessingSettings()
-    # msg.blur_size.data = lib['blur_size']
-    msg.tomato_radius_min.data = lib['radius_min']
-    msg.tomato_radius_max.data = lib['radius_max']
-    msg.tomato_distance_min.data = lib['distance_min']
-    msg.dp.data = lib['dp']
-    msg.param1.data = lib['param1']
-    msg.param2.data = lib['param2']
-    # msg.ratio_threshold.data = lib['ratio_threshold']
-    return msg
-
-def msg2lib(msg):
-    
-    lib = {}
-    # lib['blur_size'] = msg.blur_size.data  
-    lib['radius_min'] = msg.tomato_radius_min.data  
-    lib['radius_max'] = msg.tomato_radius_max.data
-    lib['distance_min'] = msg.tomato_distance_min.data
-    lib['dp'] = msg.dp.data
-    lib['param1'] = msg.param1.data
-    lib['param2'] = msg.param2.data
-    # lib['ratio_threshold'] = msg.ratio_threshold.data
-    return lib
 
 class ObjectDetection(object):
     """ObjectDetection"""
@@ -108,7 +82,7 @@ class ObjectDetection(object):
                      pwd = self.pwd_results,
                      save = False)
 
-        settings = lib2msg(self.process_image.get_settings())
+        settings = settings_lib_to_msg(self.process_image.get_settings())
 
         if self.debug_mode:
             log_level = rospy.DEBUG
@@ -270,17 +244,17 @@ class ObjectDetection(object):
             return False
 
         heights = self.get_points(field_names = ("z"))
-        height = np.median(np.array(heights))
+        height = np.nanmedian(np.array(heights))
         rospy.loginfo('Height above table: %s [m]', height)
 
         f = self.color_info.K[0]
-        px_per_mm = f/height
+        px_per_mm = f/height/1000
         rospy.loginfo('Pixels per m: %s [px/m]', px_per_mm)
 
         self.process_image.add_image(self.color_image, px_per_mm = px_per_mm)
 
         if self.settings is not None:
-            self.process_image.set_settings(msg2lib(self.settings))
+            self.process_image.set_settings(settings_msg_to_lib(self.settings))
 
         self.intrin = camera_info2intrinsics(self.color_info)
 
