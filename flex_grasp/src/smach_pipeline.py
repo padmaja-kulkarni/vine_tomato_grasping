@@ -90,7 +90,7 @@ class DetectObject(smach.State):
         self.pub_obj_detection = rospy.Publisher("object_detection/e_in",
                                       String, queue_size=10, latch=True)
         self.counter = 3
-        self.timeout = 15.0
+        self.timeout = 25.0
         self.object_detected = String()
 
     def execute(self, userdata):

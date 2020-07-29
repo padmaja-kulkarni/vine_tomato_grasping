@@ -206,7 +206,8 @@ def save_img(img, pwd, name, resolution = 300, title = "", titleSize = 20, ext =
         fig = plt.figure() 
         plt.imshow(img)
         plt.axis('off')
-        plt.title(title)
+        if title is not None:
+            plt.title(title)
         
         # https://stackoverflow.com/a/27227718
         plt.gca().set_axis_off()
@@ -216,7 +217,8 @@ def save_img(img, pwd, name, resolution = 300, title = "", titleSize = 20, ext =
         plt.gca().xaxis.set_major_locator(plt.NullLocator())
         plt.gca().yaxis.set_major_locator(plt.NullLocator())
         
-        
+        # make dir if it does not yet exist        
+        make_dirs(pwd)        
         fig.savefig(os.path.join(pwd, name), dpi = resolution, bbox_inches='tight', pad_inches=0)
         
 def save_fig(fig, pwd, name, resolution = 300, title = "", titleSize = 20, ext = 'png'):
@@ -242,6 +244,8 @@ def save_fig(fig, pwd, name, resolution = 300, title = "", titleSize = 20, ext =
             ax.set_yticklabels([])
         plt.margins(0,0) 
         
+        # make dir if it does not yet exist   
+        make_dirs(pwd)
         fig.savefig(os.path.join(pwd, name), dpi = resolution, bbox_inches='tight', pad_inches=0)
 
 def add_circles(img_rgb, centers, radii = 5, color = (255,255,255), thickness = 5, 
@@ -496,7 +500,7 @@ def add_arrows(img_rgb, centers, angles, l =20, color = (255,255,255), thickness
 def plot_grasp_location(img_rgb, loc, angle, l = 30, r = 5, 
                         pwd= None, 
                         name = None, 
-                        title = None,
+                        title = '',
                         ext= 'png', 
                         resolution = 300):
                             
@@ -580,7 +584,7 @@ def plot_timer(timer_dict, N = 1, threshold = 0, ignore_key=None, pwd = None, na
 #    fig.show()
 
 def donut(data, labels, pwd = None, name = None, title = None):
-    
+    data = np.array(data)
     data_rel = data/sum(data)*100    
     
     text = []

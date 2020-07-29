@@ -189,8 +189,22 @@ class ObjectDetection(object):
         self.settings = msg
         rospy.logdebug("[PICK PLACE] Received image processing settings")    
 
-    def received_all_data(self):
-        return (self.color_image is not None) and (self.depth_image is not None) and (self.depth_info is not None) and (self.color_info is not None) and (self.pcl is not None)
+    def received_data(self):
+        received = {}
+        received['color_img'] = self.color_image is not None
+
+        received['depth_img'] = self.depth_image is not None
+        received['depth_info'] = self.depth_info is not None
+        received['color_info'] = self.color_info is not None
+        received['pcl'] = self.pcl is not None
+        
+        all_data = True
+        for key in received:
+            all_data = all_data and received[key]
+            
+        received['all'] = all_data
+            
+        return received
 
     def clear_all_data(self):
         self.color_image = None
@@ -203,15 +217,15 @@ class ObjectDetection(object):
         start_time = rospy.get_time()
 
         while (rospy.get_time() - start_time < timeout):
-
-            if self.received_all_data():
+            received_data = self.received_data()
+            if received_data['all'] is True:
                 self.take_picture = False
                 rospy.logdebug("[OBJECT DETECTION] Received all data")
                 return True
 
             rospy.sleep(0.1)
 
-        rospy.logwarn("[OBJECT DETECTION] Did not receive all data")
+        rospy.logwarn("[OBJECT DETECTION] Did not receive all data %s", received_data)
         return False
 
 
@@ -448,11 +462,13 @@ class ObjectDetection(object):
     def compute_px_per_mm(self):
         heights = self.get_points(field_names = ("z"))
         height = np.nanmedian(np.array(heights))
-        f = self.color_info.K[0]
+        fx = self.color_info.K[0]
+        fy = self.color_info.K[4]
+        f = (fx + fy)/2       
         px_per_mm = f/height/1000.0
         
-        rospy.logdebug('Height above table: %s [m]', height)
-        rospy.logdebug('Pixels per m: %s [px/m]', px_per_mm)
+        rospy.loginfo('Height above table: %s [m]', height)
+        rospy.loginfo('Pixels per mm: %s [px/mm]', px_per_mm)
         return px_per_mm
 
     def create_truss(self, tomatoes, cage_pose, peduncle):

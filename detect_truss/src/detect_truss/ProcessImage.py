@@ -99,7 +99,7 @@ class ProcessImage(object):
         self.buffer_core = tf2_ros.BufferCore(rospy.Time(10))
 
 
-    def add_image(self, data, px_per_mm = None):
+    def add_image(self, data, px_per_mm = None, name = None):
         image = Image(data)
         # scale = image.rescale(self.width_desired)
 
@@ -107,29 +107,32 @@ class ProcessImage(object):
         self.image = image
         self.shape = data.shape[:2]
         self.px_per_mm = px_per_mm
-
-
-        if self.save:
-            save_img(self.image.data, self.pwd, '01', ext = self.ext)
+        
+        if name is not None:
+            self.name = name
 
     @Timer("color space", name_space)
     def color_space(self):
+        pwd = os.path.join(self.pwd, '01_color_space')
         self.image_hue = cv2.cvtColor(self.image.data, cv2.COLOR_RGB2HSV)[:, :, 0]
         # self.image_hue = imHSV[:, :, 0]
+        if self.save:
+            save_img(self.image_hue, pwd, self.name)
 
     @Timer("segment image", name_space)
     def segment_image(self):
+        pwd = os.path.join(self.pwd, '02_segment')
 
         success = True
         if self.use_truss:
             background, tomato, peduncle = segment_truss(self.image_hue,
                                                          save = self.save,
-                                                         pwd = self.pwd,
+                                                         pwd = pwd,
                                                          name = self.name)
         else:
             background, tomato, peduncle = segment_tomato(self.image_hue,
                                                           save = self.save,
-                                                          pwd = self.pwd,
+                                                          pwd = pwd,
                                                           name = self.name)
 
         self.background = Image(background)
@@ -146,12 +149,13 @@ class ProcessImage(object):
             success = False
 
         if self.save:
-            self.save_results('02')
+            self.save_results(self.name, pwd = pwd)
 
         return success
 
     @Timer("filter image", name_space)
-    def filter_img(self):
+    def filter_image(self):
+        pwd = os.path.join(self.pwd, '03_filter')
 
         tomato_f, peduncle_f, background_f = filter_segments(self.tomato.data,
                                                               self.peduncle.data,
@@ -162,7 +166,7 @@ class ProcessImage(object):
         self.background.data = background_f
 
         if self.save:
-            self.save_results('03')
+            self.save_results(self.name, pwd = pwd)
 
         if self.tomato.is_empty():
             warnings.warn("filter segments: no pixel has been classified as tomato")
@@ -172,6 +176,7 @@ class ProcessImage(object):
 
     @Timer("crop image", name_space)
     def rotate_cut_img(self):
+        pwd = os.path.join(self.pwd, '04_crop')
 
         if self.peduncle.is_empty():
             warnings.warn("Cannot rotate based on peduncle, since it does not exist!")
@@ -207,8 +212,8 @@ class ProcessImage(object):
         # make and add transform to the buffer
         transform = make_2d_transform(self._ORIGINAL_FRAME_ID,
                                       self._LOCAL_FRAME_ID,
-                                      xy = xy,
-                                      angle = angle)
+                                      xy=xy,
+                                      angle=angle)
 
         self.buffer_core.set_transform(transform, "default_authority")
         self.bbox = bbox
@@ -220,10 +225,11 @@ class ProcessImage(object):
         self.truss_crop = self.cut(truss_rotate)
 
         if self.save:
-            self.save_results('04', local = True)
+            self.save_results(self.name, pwd=pwd, local=True)
 
     @Timer("detect tomatoes", name_space)
     def detect_tomatoes(self):
+        pwd = os.path.join(self.pwd, '05_tomatoes')
         success = True
 
         if self.peduncle.is_empty():
@@ -236,11 +242,11 @@ class ProcessImage(object):
 
         centers, radii, com = detect_tomato(self.truss_crop.data,
                                             self.settings['detect_tomato'],
-                                            px_per_mm = self.px_per_mm,
+                                            px_per_mm=self.px_per_mm,
                                             img_rgb=img_bg,
                                             save=self.save,
-                                            pwd=self.pwd,
-                                            name='05')
+                                            pwd=pwd,
+                                            name=self.name)
 
         # convert to 2D points
         center_points = []
@@ -261,6 +267,7 @@ class ProcessImage(object):
 
     @Timer("detect peduncle", name_space)
     def detect_peduncle(self):
+        pwd = os.path.join(self.pwd, '06_peduncle')
         success = True
         
         if self.save:
@@ -274,8 +281,8 @@ class ProcessImage(object):
                                                         px_per_mm = self.px_per_mm,
                                                         save = self.save,
                                                         bg_img = img_bg,
-                                                        name = '06',
-                                                        pwd = self.pwd)
+                                                        name = self.name,
+                                                        pwd = pwd)
         # convert to 2D points
         junction_points = []
         for junction in junctions:
@@ -306,6 +313,7 @@ class ProcessImage(object):
 
     @Timer("detect grasp location", name_space)
     def detect_grasp_location(self, strategy = 'cage'):
+        pwd = os.path.join(self.pwd, '07_grasp')
         success = True
 
         if strategy== "cage":
@@ -360,7 +368,7 @@ class ProcessImage(object):
             xy_local = self.get_xy(grasp_point, self._LOCAL_FRAME_ID)
             img_rgb = self.crop(self.image).data
             plot_grasp_location(img_rgb, xy_local, grasp_angle_local, 
-                                l = 20, pwd = self.pwd, name = '06', ext = self.ext)
+                                l=20, pwd=pwd, name =self.name, ext = self.ext)
 
         return success
 
@@ -583,10 +591,14 @@ class ProcessImage(object):
     def get_color_components(self):
         return self.image_hue
 
-    def save_results(self, step, local = False):
+    def save_results(self, name, local = False, pwd = None):
+        if pwd is None:
+            pwd = self.pwd
+            
         tomato, peduncle, background = self.get_segments(local = local)
         img_rgb = self.get_rgb(local = local)
-        plot_segments(img_rgb, background, tomato, peduncle, pwd = self.pwd, name = step)
+        plot_segments(img_rgb, background, tomato, peduncle, pwd = pwd, name = name)
+        
     @Timer("process image")
     def process_image(self):
 
@@ -596,7 +608,7 @@ class ProcessImage(object):
         if success is False:
             return success
 
-        success = self.filter_img()
+        success = self.filter_image()
         if success is False:
             return success
 
@@ -630,10 +642,10 @@ class ProcessImage(object):
 
 if __name__ == '__main__':
     i_start = 1
-    i_end = 3
+    i_end = 22
     N = i_end - i_start
 
-    save = False
+    save = True
 
     pwd_current = os.path.dirname(__file__)
     dataset = "depth_blue" # "real_blue"
@@ -644,6 +656,10 @@ if __name__ == '__main__':
 
     make_dirs(pwd_results)
     make_dirs(pwd_json)
+    
+    process_image = ProcessImage(use_truss = True,
+                     pwd = pwd_results,
+                     save = save)
 
     for count, i_tomato in enumerate(range(i_start, i_end)):
         print("Analyzing image %d out of %d" %(count + 1, N))
@@ -654,16 +670,10 @@ if __name__ == '__main__':
         rgb_data = load_rgb(pwd_data, file_name, horizontal = True)
         px_per_mm = load_px_per_mm(pwd_data, tomato_name)
 
-        if save:
-            save_img(rgb_data, pwd_results, '01')
+#        if save:
+#            save_img(rgb_data, pwd_results, '01')
 
-
-        process_image = ProcessImage(use_truss = True,
-                             name = tomato_name,
-                             pwd = pwd_results,
-                             save = save)
-
-        process_image.add_image(rgb_data, px_per_mm = px_per_mm)
+        process_image.add_image(rgb_data, px_per_mm=px_per_mm, name=tomato_name)
         success = process_image.process_image()
 
         if False: # success:

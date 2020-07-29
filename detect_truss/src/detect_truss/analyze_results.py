@@ -39,7 +39,7 @@ def index_true_positives(centers, centers_key):
 
 
 i_start = 1
-i_end = 3
+i_end = 21
 N = i_end - i_start
 
 pwd_current = os.path.dirname(__file__)

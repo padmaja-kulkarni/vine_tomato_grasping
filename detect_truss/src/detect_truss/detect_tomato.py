@@ -14,6 +14,39 @@ import numpy as np
 # custom functions
 from util import plot_features
 
+def set_detect_tomato_settings(blur_size = 3,
+                               radius_min_frac = 8,
+                               radius_max_frac = 4,
+                               distance_min_frac = 4, # = tomato_radius_max
+                               radius_min_mm = 30,
+                               radius_max_mm = 40,
+                               distance_min_mm = 20,
+                               dp = 4,
+                               param1 = 20,
+                               param2 = 80,
+                               ratio_threshold = 0.6):   
+    
+    settings = {}
+
+    # distance in px
+    settings['radius_min_frac'] = radius_min_frac
+    settings['radius_max_frac'] = radius_max_frac
+    settings['distance_min_frac'] = distance_min_frac
+
+    # distance in mm
+    settings['radius_min_mm'] = radius_min_mm
+    settings['radius_max_mm'] = radius_max_mm
+    settings['distance_min_mm'] = distance_min_mm    
+    
+    
+    settings['dp'] = dp
+    settings['param1'] = param1
+    settings['param2'] = param2
+    settings['ratio_threshold'] = ratio_threshold
+    settings['blur_size'] = blur_size  
+    
+    return settings
+
 def detect_tomato(img_segment, settings, px_per_mm=None, img_rgb=None,
                       save = False, pwd = "", name = ""):
                      
@@ -82,39 +115,6 @@ def detect_tomato(img_segment, settings, px_per_mm=None, img_rgb=None,
 #                                     thickness = thickness, color=tom_color)
                                      
     return centers, radii, com
-
-def set_detect_tomato_settings(blur_size = 3,
-                               radius_min_frac = 8,
-                               radius_max_frac = 4,
-                               distance_min_frac = 4, # = tomato_radius_max
-                               radius_min_mm = 20,
-                               radius_max_mm = 40,
-                               distance_min_mm = 20,
-                               dp = 4,
-                               param1 = 20,
-                               param2 = 70,
-                               ratio_threshold = 0.6):   
-    
-    settings = {}
-
-    # distance in px
-    settings['radius_min_frac'] = radius_min_frac
-    settings['radius_max_frac'] = radius_max_frac
-    settings['distance_min_frac'] = distance_min_frac
-
-    # distance in mm
-    settings['radius_min_mm'] = radius_min_mm
-    settings['radius_max_mm'] = radius_max_mm
-    settings['distance_min_mm'] = distance_min_mm    
-    
-    
-    settings['dp'] = dp
-    settings['param1'] = param1
-    settings['param2'] = param2
-    settings['ratio_threshold'] = ratio_threshold
-    settings['blur_size'] = blur_size  
-    
-    return settings
 
 def find_overlapping_tomatoes(centers, radii, img_segment, ratio_threshold = 0.5):
         
