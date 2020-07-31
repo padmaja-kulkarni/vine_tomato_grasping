@@ -72,7 +72,7 @@ class ObjectDetection(object):
         self.bridge = CvBridge()
 
         pwd_current = os.path.dirname(__file__) # path to THIS file
-        data_set = 'depth_blue'
+        data_set = 'artificial'
         self.pwd_results = os.path.join(pwd_current, '..', '..', 'results')
         self.pwd_data = os.path.join(pwd_current, '..', '..', 'detect_truss', 'src', 'data', data_set)
 
@@ -339,8 +339,8 @@ class ObjectDetection(object):
         angle = -grasp_features['angle'] # minus since camera frame is upside down...
         rpy = [0, 0, angle]
 
-
         xyz = self.deproject(row, col)
+        print(xyz)
         cage_pose =  point_to_pose_stamped(xyz, rpy, self.camera_frame, rospy.Time.now())
 
         return cage_pose
@@ -492,6 +492,7 @@ class ObjectDetection(object):
     def deproject(self, row, col):
         # Deproject
         depth = self.get_depth(row, col)
+        rospy.loginfo("Depth: %s", depth)
         # rospy.logdebug("Corresponding depth: %s", self.depth_image[index])
         # https://github.com/IntelRealSense/librealsense/wiki/Projection-in-RealSense-SDK-2.0
 
@@ -553,6 +554,7 @@ class ObjectDetection(object):
         non_zero = np.nonzero(depth_patch)
         depth_patch_non_zero = depth_patch[non_zero]
 
+        # print('computing mean...')
         return np.mean(depth_patch_non_zero)
 
     def take_action(self):

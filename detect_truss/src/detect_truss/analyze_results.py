@@ -9,7 +9,7 @@ Created on Mon Jul 20 14:22:48 2020
 import os
 import json
 import numpy as np
-from util import load_rgb, plot_features, plot_error, make_dirs, change_brightness
+from util import load_rgb, plot_features, plot_error, make_dirs, plot_features_result
 
 def remove_none_from_list(lst_none):
     return [x for x in lst_none if x is not None]
@@ -24,22 +24,53 @@ def euclidean_dist_list(p1, lst):
         dist.append(euclidean_dist(p1, p2))
         
     return dist
-    
-    
-def index_true_positives(centers, centers_key):
-    
-    i_true = []
-    for center in centers:
-        dist = euclidean_dist_list(center, centers_key)
-        i_true.append(np.argmin(dist))
-        
-    i_false = list(set(range(len(centers_key))) -  set(i_true))  
-    return i_true, i_false
-    
 
+def index_true_positives(lbl_centers, res_centers, dist_tresh):
+    '''
+    - centers: centers ground truth
+    - centers_key: predicted centers
+    - dist_tresh: the maximum alowable distance, for which the predictions may still be labeld as a true possitive
+    '''
+    
+    # create distnace matrix
+    dist = np.full([len(lbl_centers), len(res_centers)], np.nan)
+ 
+    for row, lbl_center in enumerate(lbl_centers):
+        for col, res_center in enumerate(res_centers):
+            dist[row,col] = euclidean_dist(lbl_center, res_center)
+
+    # if the distance is too large, it is a false positive!
+    i_keep = np.amin(dist, axis = 1) < dist_tresh
+    true_pos = np.argmin(dist, axis = 1)[i_keep].tolist()
+    false_pos = list(set(range(len(res_centers))) -  set(true_pos))     
+    false_neg = np.argwhere(np.logical_not(i_keep))[:,0].tolist()  
+    
+    # determine duplicates, one of these is a false negative!
+    duplicates = set([duplicates for duplicates in true_pos if true_pos.count(duplicates) > 1])
+ 
+    rows_remove = []
+    for duplicate in duplicates:
+        col = duplicate
+        
+        # find the rows corresponding to duplicate, cannot
+        rows = [i for i, j in enumerate(true_pos) if j == duplicate]
+        i_keep = np.argmin(dist[rows, col])        
+        i_remove = list(set(range(len(rows))) - set([i_keep]))
+
+        rows_remove = list(np.array(rows)[i_remove])
+        
+        for row_remove in sorted(rows_remove, reverse=True):
+            true_pos.pop(row_remove)
+            
+        false_neg.extend(rows_remove)
+    
+    true_pos_lbl = list(set(range(len(lbl_centers))) - set(false_neg))
+    true_pos_res = true_pos
+        
+    return true_pos_res, true_pos_lbl, false_pos, false_neg
 
 i_start = 1
-i_end = 21
+i_end = 50
 N = i_end - i_start
 
 pwd_current = os.path.dirname(__file__)
@@ -53,6 +84,9 @@ make_dirs(pwd_store)
 
 tomato_error_all = {}
 junction_error_all = {}
+
+dist_thresh_tomato = 15 # [mm]
+dist_thresh_peduncle = 10 # [mm]
 
 for count, i_truss in enumerate(range(i_start, i_end)):
     print("Analyzing image %d out of %d" %(count + 1, N))
@@ -93,19 +127,21 @@ for count, i_truss in enumerate(range(i_start, i_end)):
             if  shape_type != 'circle':
                 print("I do not know what to do with ", label, " of shape type ", shape_type) 
                 
-            points = shape['points']
-            center = points[0]
-            radius = euclidean_dist(points[0], points[1])
-            
-            tomato_lbl['centers'].append(center)
-            tomato_lbl['radii'].append(radius)
+            else:
+                points = shape['points']
+                center = points[0]
+                radius = euclidean_dist(points[0], points[1])
+                
+                tomato_lbl['centers'].append(center)
+                tomato_lbl['radii'].append(radius)
             
         elif label == 'junction':
             if  shape_type != 'point':
                 print("I do not know what to do with ", label, " of shape type ", shape_type)
                 
-            point = shape['points'][0]
-            peduncle_lbl['junctions'].append(point)
+            else:
+                point = shape['points'][0]
+                peduncle_lbl['junctions'].append(point)
     
         elif label == 'end_point' or label == 'end' :
             if shape_type != 'point':
@@ -134,9 +170,9 @@ for count, i_truss in enumerate(range(i_start, i_end)):
     tomato_lbl['com'] = com
     
     #img_rgb = change_brightness(img_rgb.copy(), -0.9) # change_brightness( , 0.8)
-    img_lbl = img_rgb.copy()
-    plot_features(img_lbl, tomato_lbl, peduncle_lbl,  pwd = pwd_store, file_name=truss_name + '_lbl')
-    
+    plot_features(img_rgb.copy(), tomato = tomato_lbl,  pwd = pwd_store, file_name=truss_name + '_tom_lbl')
+    plot_features(img_rgb.copy(), peduncle = peduncle_lbl,  pwd = pwd_store, file_name=truss_name + '_pend_lbl') 
+   
     with open(file_res, "r") as read_file:
         data_results = json.load(read_file)   
         
@@ -144,50 +180,54 @@ for count, i_truss in enumerate(range(i_start, i_end)):
     tomato_res = data_results['tomato']
     peduncle_res = data_results['peduncle']
     
-    # TODO: false negative!?
-    i_true, i_false = index_true_positives(tomato_lbl['centers'], tomato_res['centers'])
+    i_true_pos_res, i_true_pos_lbl, i_false_pos, i_false_neg = index_true_positives(tomato_lbl['centers'], tomato_res['centers'], dist_thresh_tomato * px_per_mm)
         
-    tomato_centers_exists = np.array(tomato_res['centers'])[i_true].tolist()
-    tomato_centers_false  = np.array(tomato_res['centers'])[i_false].tolist()  
+    tomato_pred = {}    
+    tomato_pred['true_pos']  = {}
+    tomato_pred['false_pos'] = {}
+    tomato_pred['com'] = tomato_res['com']
     
-    tomato_radii_exists  = np.array(tomato_res['radii'])[i_true].tolist()
-    tomato_radii_false  = np.array(tomato_res['radii'])[i_false].tolist()  
+    tomato_actual = {}
+    tomato_actual['true_pos'] = {}
+    tomato_actual['false_neg'] = {}    
+    tomato_actual['com'] = tomato_lbl['com']
     
-    tomato_res['centers'] = tomato_centers_exists
-    tomato_res['centers'].extend(tomato_centers_false)
-    
-    tomato_res['radii'] = tomato_radii_exists
-    tomato_res['radii'].extend(tomato_radii_false)
+    for key in ['centers', 'radii']:
         
-    true_pos = len(i_true)
-    false_pos = len(i_false)
-    labeled_pos = len(tomato_lbl['centers'])
-    predict_pos = len(tomato_res['centers'])
+        tomato_pred['true_pos'][key] = np.array(tomato_res[key])[i_true_pos_res].tolist()
+        tomato_pred['false_pos'][key] = np.array(tomato_res[key])[i_false_pos].tolist()  
+        # tomato_pred['false_neg'][key]  = np.array(data_results['tomato'][key])[i_false_neg].tolist() 
+ 
+        tomato_actual['true_pos'][key] = np.array(tomato_lbl[key])[i_true_pos_lbl].tolist()
+        tomato_actual['false_neg'][key] = np.array(tomato_lbl[key])[i_false_neg].tolist()
+        
+    n_true_pos = len(i_true_pos_res)
+    n_false_pos = len(i_false_pos)
+    n_false_neg = len(i_false_neg)    
+    n_labeled_pos = len(tomato_lbl['centers'])
+    n_predict_pos = len(tomato_pred['true_pos']['centers'])
     
     com_error = euclidean_dist(tomato_lbl['com'].tolist()[0], tomato_res['com'][0])/px_per_mm
     
     # compute error
-    tomato_error = {'radii': [], 'centers': [], 'com': com_error, 'true_pos': true_pos, 'false_pos': false_pos, 'labeled_pos': labeled_pos, 'predict_pos': predict_pos}
-    for center_lbl, center_res in zip(tomato_lbl['centers'], tomato_res['centers']):
+    tomato_error = {'radii': [], 'centers': [], 'com': com_error, 'n_true_pos': n_true_pos, 'n_false_pos': n_false_pos, 'n_labeled_pos': n_labeled_pos, 'n_predict_pos': n_predict_pos}
+    for center_lbl, center_res in zip(tomato_actual['true_pos']['centers'], tomato_pred['true_pos']['centers']):
         dist = euclidean_dist(center_lbl, center_res)
-        tomato_error['centers'].append(dist/px_per_mm)
+        value = dist/px_per_mm
+        tomato_error['centers'].append(value)
 
-    for radius_lbl, radius_res in zip(tomato_lbl['radii'], tomato_res['radii']):
+    for radius_lbl, radius_res in zip(tomato_actual['true_pos']['radii'], tomato_pred['true_pos']['radii']):
         dist = abs(radius_lbl - radius_res)
-        tomato_error['radii'].append(dist/px_per_mm)
+        value = dist/px_per_mm
+        tomato_error['radii'].append(value)
   
-    error_false = [None] * false_pos    
-    tomato_error['centers'].extend(error_false)
-    tomato_error['radii'].extend(error_false)
     
     # plot
-    img_tom_res = plot_features(img_res, tomato = tomato_res)
+    img_tom_res = plot_features_result(img_res, tomato_pred = tomato_pred, name=truss_name + '_temp')
     plot_error(img_tom_res, 
-               centers = tomato_res['centers'], 
-               error_centers = tomato_error['centers'], 
-               error_radii =  tomato_error['radii'], 
-               com_center = tomato_res['com'][0],
-               com_error = tomato_error['com'],
+               tomato_pred = tomato_pred, # centers, com,
+               tomato_act = tomato_actual,
+               error = tomato_error, # center radii and com
                pwd = pwd_store, 
                name=truss_name + '_tom_error',
                use_mm = use_mm)
@@ -195,32 +235,40 @@ for count, i_truss in enumerate(range(i_start, i_end)):
     # store
     tomato_error_all[truss_name] = tomato_error
 
+    i_true_pos_res, i_true_pos_lbl, i_false_pos, i_false_neg = index_true_positives(peduncle_lbl['junctions'], peduncle_res['junctions'], dist_thresh_peduncle * px_per_mm)
+        
+    junction_pred = {}    
+    junction_pred['true_pos']  = {}
+    junction_pred['false_pos'] = {}
     
-    i_true, i_false = index_true_positives(peduncle_lbl['junctions'], peduncle_res['junctions'])
+    junction_actual = {}
+    junction_actual['true_pos'] = {}
+    junction_actual['false_neg'] = {}    
     
-    junctions_exist = np.array(peduncle_res['junctions'])[i_true].tolist()
-    junctions_fasle = np.array(peduncle_res['junctions'])[i_false].tolist()
+    for key in ['centers']:
+        
+        junction_pred['true_pos'][key] = np.array(peduncle_res['junctions'])[i_true_pos_res].tolist()
+        junction_pred['false_pos'][key] = np.array(peduncle_res['junctions'])[i_false_pos].tolist()  
+ 
+        junction_actual['true_pos'][key] = np.array(peduncle_lbl['junctions'])[i_true_pos_lbl].tolist()
+        junction_actual['false_neg'][key] = np.array(peduncle_lbl['junctions'])[i_false_neg].tolist()    
     
-    peduncle_res['junctions'] = junctions_exist
-    peduncle_res['junctions'].extend(junctions_fasle)
-    junctions_res = peduncle_res['junctions']  
-
-    true_pos = len(i_true)
-    false_pos = len(i_false)
-    labeled_pos = len(peduncle_lbl['junctions'])
-    predict_pos = len(peduncle_res['junctions'])    
+    n_true_pos = len(i_true_pos_res)
+    n_false_pos = len(i_false_pos)
+    n_labeled_pos = len(peduncle_lbl['junctions'])
+    n_predict_pos = len(peduncle_res['junctions'])
     
-    junctions_error = {'centers': [], 'true_pos' : true_pos, 'false_pos': false_pos, 'labeled_pos': labeled_pos, 'predict_pos': predict_pos}
-    for center_lbl, center_res in zip(peduncle_lbl['junctions'], peduncle_res['junctions']):
+    junctions_error = {'centers': [], 'true_pos' : n_true_pos, 'false_pos': n_false_pos, 'labeled_pos': n_labeled_pos, 'predict_pos': n_predict_pos}
+    for center_lbl, center_res in zip(junction_actual['true_pos']['centers'], junction_pred['true_pos']['centers']):
         dist = euclidean_dist(center_lbl, center_res)
         junctions_error['centers'].append(dist/px_per_mm)
 
-    error_false = [None] * len(junctions_fasle)    
-    junctions_error['centers'].extend(error_false)
     
-    img_penduncle_res = plot_features(img_res, peduncle = peduncle_res)
-    plot_error(img_penduncle_res, peduncle_res['junctions'], 
-               junctions_error['centers'], 
+    img_penduncle_res = plot_features_result(img_res, peduncle = junction_pred)
+    plot_error(img_penduncle_res, 
+               tomato_pred = junction_pred, # centers, com,
+               tomato_act = junction_actual,
+               error = junctions_error,
                pwd = pwd_store, 
                name=truss_name + '_pend_error',
                use_mm = use_mm)
@@ -244,10 +292,10 @@ for key in all_keys:
     tomato_error_centers.extend(tomato_error_all[key]['centers'])
     tomato_error_radii.extend(tomato_error_all[key]['radii'])
     tomato_error_com.append(tomato_error_all[key]['com'])
-    n_true_pos += tomato_error_all[key]['true_pos']
-    n_false_pos += tomato_error_all[key]['false_pos']
-    n_labeled_pos += tomato_error_all[key]['labeled_pos']
-    n_predict_pos += tomato_error_all[key]['predict_pos']    
+    n_true_pos += tomato_error_all[key]['n_true_pos']
+    n_false_pos += tomato_error_all[key]['n_false_pos']
+    n_labeled_pos += tomato_error_all[key]['n_labeled_pos']
+    n_predict_pos += tomato_error_all[key]['n_predict_pos']    
     
 error_tomato_center_mean = np.mean(tomato_error_centers)
 error_tomato_center_std = np.std(tomato_error_centers)

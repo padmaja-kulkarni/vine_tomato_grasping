@@ -18,6 +18,7 @@ tomato_color = (255,0,0)
 peduncle_color = (0, 255, 0)
 junction_color = (255, 0, 255)
 end_color = (255, 255, 0)
+gray_color = (150, 150, 150)
 
 def make_dirs(pwd):
     if not os.path.isdir(pwd):
@@ -262,7 +263,7 @@ def add_circles(img_rgb, centers, radii = 5, color = (255,255,255), thickness = 
     if centers.shape[1] == 0:
         return img_rgb
 
-    # centers should be integers        
+    # centers should be integers       
     centers = np.round(centers).astype(dtype = int) # (col, row)
     radii = np.round(radii).astype(dtype = int) # (col, row)    
 
@@ -297,7 +298,7 @@ def plot_features(img_rgb, tomato = None, peduncle = None, grasp = None,
         img_overlay = add_circles(img_overlay, tomato['centers'], radii = tomato['radii'], color = tomato_color, thickness = -1)
     if peduncle:
         img_overlay = add_circles(img_overlay, peduncle['junctions'], radii = 10, color = junction_color, thickness = -1)    
-        img_overlay = add_circles(img_overlay, peduncle['ends'], radii = 10, color = end_color, thickness = -1)  
+        # img_overlay = add_circles(img_overlay, peduncle['ends'], radii = 10, color = end_color, thickness = -1)  
 
     added_image = cv2.addWeighted(img_rgb, 1,img_overlay,alpha,0)
 
@@ -317,16 +318,57 @@ def plot_features(img_rgb, tomato = None, peduncle = None, grasp = None,
                    
     if peduncle:
         added_image = add_circles(added_image, peduncle['junctions'], radii = 10, color = (0,0,0), thickness = thickness)
-        added_image = add_circles(added_image, peduncle['ends'], radii = 10, color = (0,0,0), thickness = thickness)
+        # added_image = add_circles(added_image, peduncle['ends'], radii = 10, color = (0,0,0), thickness = thickness)
     
     if pwd is not None:
         save_img(added_image, pwd, file_name, title = title)
 
     return added_image
+    
+def plot_features_result(img_rgb, tomato_pred = None, peduncle = None, grasp = None,
+                  alpha = 0.5, thickness = 2, pwd = None, name=None, title=""):
+    
+    img_overlay = np.ones(img_rgb.shape, dtype = np.uint8)
+    if tomato_pred:
+        add_circles(img_overlay, tomato_pred['true_pos']['centers'], radii = tomato_pred['true_pos']['radii'], color = tomato_color, thickness = -1)
+        add_circles(img_overlay, tomato_pred['false_pos']['centers'], radii = tomato_pred['false_pos']['radii'], color = [150, 0,0], thickness = -1)
+    if peduncle:
+        img_overlay = add_circles(img_overlay, peduncle['true_pos']['centers'], radii = 10, color = junction_color, thickness = -1)  
+        # img_overlay = add_circles(img_overlay, peduncle['false_pos']['centers'], radii = 10, color = junction_color, thickness = -1)  
+        # img_overlay = add_circles(img_overlay, peduncle['ends'], radii = 10, color = end_color, thickness = -1)  
 
-def plot_error(img, centers, error_centers, error_radii = None, 
-               com_center=None, 
-               com_error=None,  
+    added_image = cv2.addWeighted(img_rgb, 1,img_overlay,alpha,0)
+
+    if tomato_pred:
+        added_image = add_circles(added_image, tomato_pred['true_pos']['centers'], 
+                                  radii = tomato_pred['true_pos']['radii'], 
+                                  color = (0,0,0), 
+                                  thickness = thickness)
+                                  
+        added_image = add_circles(added_image, tomato_pred['false_pos']['centers'], 
+                                  radii = tomato_pred['false_pos']['radii'], 
+                                  color = (0,0,0),
+                                  thickness = thickness)
+
+        added_image = add_circles(added_image, tomato_pred['com'], radii = 10,
+                          color = (255,255,255), 
+                          thickness = -1)      
+             
+        added_image = add_circles(added_image, tomato_pred['com'], radii = 10,
+                          color = (0,0,0), 
+                          thickness = 3) 
+                   
+    if peduncle:
+        added_image = add_circles(added_image, peduncle['true_pos']['centers'], radii = 10, color = (0,0,0), thickness = thickness)
+        added_image = add_circles(added_image, peduncle['false_pos']['centers'], radii = 10, color = (255,0,0), thickness = thickness)
+        # added_image = add_circles(added_image, peduncle['ends'], radii = 10, color = (0,0,0), thickness = thickness)
+    
+    if pwd is not None:
+        save_img(added_image, pwd, name, title = title)
+
+    return added_image
+
+def plot_error(img, tomato_pred = None, tomato_act = None, error = None,
                pwd=None, 
                name=None, 
                use_mm = False,
@@ -345,9 +387,9 @@ def plot_error(img, centers, error_centers, error_radii = None,
     plt.title(title)
     
     if use_mm:
-        unit = '[mm]'
+        unit = 'mm'
     else:
-        unit = '[px]'
+        unit = 'px'
     
     # https://stackoverflow.com/a/27227718
     plt.gca().set_axis_off()
@@ -357,89 +399,119 @@ def plot_error(img, centers, error_centers, error_radii = None,
     plt.gca().xaxis.set_major_locator(plt.NullLocator())
     plt.gca().yaxis.set_major_locator(plt.NullLocator())
     
-    if com_center:
-        centers = centers[:]
-        error_centers= error_centers[:]
-        centers.append(com_center)
-        error_centers.append(com_error)
-        if error_radii:
-            error_radii = error_radii[:]
-            error_radii.append(None)
+    n_true_pos = len(tomato_pred['true_pos']['centers'])
+    n_false_pos = len(tomato_pred['false_pos']['centers'])
+    n_false_neg = len(tomato_act['false_neg']['centers'])
+    if 'com' in tomato_pred.keys():
+        n_com = len(tomato_pred['com'])
+    else:
+        n_com = 0
     
-    # sort based on height
-    if error_radii is not None:
-        zipped = zip(centers, error_centers, error_radii)
-        zipped.sort(key = lambda x: x[0][1])    
-        centers, error_centers, error_radii = zip(*zipped)
+    centers = []
+    centers.extend(tomato_pred['true_pos']['centers'])
+    centers.extend(tomato_pred['false_pos']['centers']) 
+    centers.extend(tomato_act['false_neg']['centers']) 
+    if 'com' in tomato_pred.keys():
+        centers.extend(tomato_pred['com'])
+    
+    labels = []
+    labels.extend(['true_pos'] * n_true_pos)
+    labels.extend(['false_pos'] * n_false_pos)
+    labels.extend(['false_neg'] * n_false_neg)
+    labels.extend(['com'] * n_com)
+    
+    error_centers = []
+    error_centers.extend(error['centers'])
+    error_centers.extend(n_false_pos * [None]) 
+    error_centers.extend(n_false_neg * [None]) 
+    if 'com' in tomato_pred.keys():
+        error_centers.append(error['com'])
+
+    if 'radii' in error.keys():
+        error_radii_val = error['radii']
     else:
-        zipped = zip(centers, error_centers)
-        zipped.sort(key = lambda x: x[0][1])    
-        centers, error_centers = zip(*zipped)
-        
-    if com_center:
-        i_com = centers.index(com_center)
-    else:
-        i_com = None
+        error_radii_val = [None] * n_true_pos
+    error_radii = []
+    error_radii.extend(error_radii_val)
+    error_radii.extend(n_false_pos * [None]) 
+    error_radii.extend(n_false_neg * [None]) 
+    error_radii.extend(n_com * [None])  
+    
+    # sort based on the y location of the centers
+    zipped = zip(centers, error_centers, error_radii, labels)
+    zipped.sort(key = lambda x: x[0][1])    
+    centers, error_centers, error_radii, labels = zip(*zipped)
     
     # default bbox style
-    bbox_props = dict(boxstyle="square,pad=0.3", fc="w", ec="k", lw=0.72)
+    bbox_props = dict(boxstyle="square,pad=0.3", fc="w", ec="w", lw=0.72)
     kw_default = dict(arrowprops=dict(arrowstyle="-"),
               bbox=bbox_props, va="center", size = 12, color='k') 
         
     h, w = img.shape[:2]
     n = len(centers)+ 1
     y_text = 0 # 1.0/n* h
-    for i, center in enumerate(centers):
+    for center, error_center, error_radius, label in zip(centers, error_centers, error_radii, labels):
 
         # copy default style
         kw = copy.deepcopy(kw_default)
-    
-        error_center = error_centers[i]
-        
-        if error_radii is not None:
-            error_radius = error_radii[i]
-        else:
-            error_radius = None
-        
-        if i == i_com:
-            text = 'com: {c:d} {u:s}'.format(c=int(round(com_error)), u=unit)
-            kw['bbox']['fc'] = 'k'
-            kw['color']= 'w'
             
-        elif error_center is not None:
+        if label == 'true_pos':
+
             center_error = int(round(error_center))
-            
-            if (error_radius is not None):
-                radius_error = int(round(error_radii[i]))
-                text = 'center: {c:d} {u:s} \nradius: {r:d} {u:s}'.format(c=center_error, r= radius_error, u=unit)
+            if error_radius is not None:
+                radius_error = int(round(error_radius))
+                text = 'loc: {c:d}{u:s} \nr: {r:d}{u:s}'.format(c=center_error, r= radius_error, u=unit)
             else:
-                text = 'error:  {c:d} {u:s}'.format(c=center_error, u=unit) # str()
-        else:
+                text = 'loc: {c:d}{u:s}'.format(c=center_error, u=unit)
+            arrow_color = 'k'
+
+        elif label == 'com':
+            center_error = int(round(error_center))
+            text = 'com: {c:d}{u:s}'.format(c=center_error, u=unit)
+            
+            kw['bbox']['fc'] = 'k'
+            kw['bbox']['ec'] = 'k'
+            kw['color']= 'w'       
+            arrow_color = 'k'
+            
+        elif label == 'false_pos':
             
             text = 'false positive'
-            kw['bbox']['fc'] = (1, 0.8, 0.8)
+            kw['bbox']['fc'] = 'r'
             kw['bbox']['ec'] = 'r'
-            kw['color']= 'r'
+            # kw['color']= 'r'
+            arrow_color = 'r'
+            
+        elif label == 'false_neg':
+            
+            text = 'false negative'
+            kw['bbox']['ec'] = 'lightgrey'
+            kw['bbox']['fc'] = 'lightgrey'
+            arrow_color = 'lightgrey'
             
         y = center[1]
         x = center[0]
         
+        if x <= 0.35*w:
+            x_text = 0.6*w # -0.2*w
+        elif x <= 0.5*w:
+            x_text = 0.2*w *0.25 
+        elif x <= 0.65*w:
+            x_text = 0.8*w
+        else: 
+            x_text = 0.2*w  # w
             
-        align_left = 1.0/5.0*w *0.25
-        align_right = 4.0/5.0*w
-        x_text = (x <= w/2.0)*align_left + (x > w/2.0)*align_right
-        y_text = y_text + 1.0/n* h #  # 1.5*(y - h/2.0)   + h/2.0         
+        y_text = y_text + 1.0/n* h      
         
         x_diff = x_text - x
         y_diff = y_text - y
         if (x_diff > 0 and y_diff > 0) or (x_diff < 0 and y_diff < 0):
-            ang = -45 # np.pi/4
+            ang = -45
         else:
             ang = 45      
         
-        
         connectionstyle = "angle,angleA=0,angleB={}".format(ang)
-        kw["arrowprops"].update({"connectionstyle": connectionstyle})
+        kw["arrowprops"].update({"connectionstyle": connectionstyle, 'color': arrow_color})
         plt.annotate(text, xy=(x, y), xytext=(x_text, y_text), **kw) #  
 
 

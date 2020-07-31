@@ -642,10 +642,10 @@ class ProcessImage(object):
 
 if __name__ == '__main__':
     i_start = 1
-    i_end = 22
+    i_end = 50
     N = i_end - i_start
 
-    save = True
+    save = False
 
     pwd_current = os.path.dirname(__file__)
     dataset = "depth_blue" # "real_blue"
