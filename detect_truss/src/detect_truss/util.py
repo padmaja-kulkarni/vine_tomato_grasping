@@ -363,6 +363,14 @@ def plot_features_result(img_rgb, tomato_pred = None, peduncle = None, grasp = N
         added_image = add_circles(added_image, peduncle['false_pos']['centers'], radii = 10, color = (255,0,0), thickness = thickness)
         # added_image = add_circles(added_image, peduncle['ends'], radii = 10, color = (0,0,0), thickness = thickness)
     
+    if grasp:
+        col = grasp['col'] 
+        row = grasp['row']
+        angle = grasp['angle']
+        if (col is not None) and (row is not None) and (angle is not None):
+            plot_grasp_location(added_image, [[col, row]], angle, 
+                            l = 20, r = 15, thickness = 2)
+    
     if pwd is not None:
         save_img(added_image, pwd, name, title = title)
 
@@ -520,66 +528,72 @@ def plot_error(img, tomato_pred = None, tomato_act = None, error = None,
 
 def add_contour(imRGB, mask, color = (255,255,255), thickness = 5):
     contours, hierarchy= cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
-    # segmentPeduncle = self.imRGB.copy()
     cv2.drawContours(imRGB, contours, -1, color, thickness)
     return imRGB
 
-#def plot_circles(img_rgb, centers, radii = 5, pwd = None, name = None, 
-#                 title = "", titleSize = 20, resolution = 300, 
-#                 ext = 'png', color = (255,255,255), thickness = 5):
-#    
-#    plt.rcParams["savefig.format"] = ext 
-#    plt.rcParams["savefig.bbox"] = 'tight' 
-#    plt.rcParams['axes.titlesize'] = titleSize
-#    
-#    fig = plt.figure() 
-#    plt.subplot(1, 1, 1)
-#    
-#    imRGB = add_circles(img_rgb, centers, radii = radii, color = color, thickness = thickness)    
-#
-#    plt.imshow(img_rgb)
-#    plt.title(title)
-#    plt.axis('off')
-#    
-#    if pwd is not None:
-#        fig.savefig(os.path.join(pwd, name), dpi = resolution, pad_inches=0)
-#    return fig
+def compute_line_points(center, angle, l):
+    ' angle in rad'
+    col = center[0]
+    row = center[1]
+    
+    col_start = col + 0.5*l*np.cos(angle)
+    row_start = row + 0.5*l*np.sin(angle)
+    
+    col_end = col - 0.5*l*np.cos(angle)
+    row_end = row - 0.5*l*np.sin(angle)
+        
+    start_point = (int(round(col_start)), int(round(row_start)))
+    end_point = (int(round(col_end)), int(round(row_end)))
+    return start_point, end_point
 
-def add_arrows(img_rgb, centers, angles, l =20, color = (255,255,255), thickness = 1, tip_length = 0.5):
-
-    if isinstance(centers, list):  
+def add_lines(img_rgb, centers, angles, l =20, color = (255,255,255), thickness = 1, is_rad = True):
+    'angle in rad'
+    if isinstance(centers, (list, tuple)):  
         centers = np.array(centers, ndmin=2)          
         
     if not isinstance(angles, (list, tuple)):
         angles = [angles]
         
     for center, angle in zip(centers, angles):
-        angle = angle/180*np.pi
-        col = center[0]
-        row = center[1]
+        if not is_rad:
+            angle = angle/180*np.pi
+        start_point, end_point = compute_line_points(center, angle, l)
+
+        cv2.line(img_rgb, start_point, end_point, color, thickness=thickness)
+    
+def add_arrows(img_rgb, centers, angles, l =20, color=(255,255,255), thickness = 1, tip_length = 0.5, is_rad = True):
+    'angle in rad'
+    if isinstance(centers, (list, tuple)):  
+        centers = np.array(centers, ndmin=2)          
         
-        col_start = col + 0.5*l*np.cos(angle)
-        row_start = row + 0.5*l*np.sin(angle)
+    if not isinstance(angles, (list, tuple)):
+        angles = [angles]
         
-        col_end = col - 0.5*l*np.cos(angle)
-        row_end = row - 0.5*l*np.sin(angle)
-        
-        start_point = (int(round(col_start)), int(round(row_start)))
-        end_point = (int(round(col_end)), int(round(row_end)))
+    for center, angle in zip(centers, angles):
+        if not is_rad:
+            angle = angle/180*np.pi
+        start_point, end_point = compute_line_points(center, angle, l)
 
         cv2.arrowedLine(img_rgb, start_point, end_point, color, thickness, tipLength = tip_length)
     
-def plot_grasp_location(img_rgb, loc, angle, l = 30, r = 5, 
+def plot_grasp_location(img_rgb, loc, angle, 
+                        l = 30, 
+                        r = 10, 
+                        thickness = 2,
                         pwd= None, 
                         name = None, 
                         title = '',
                         ext= 'png', 
                         resolution = 300):
-                            
-    angle = angle * 180 / np.pi
 
-    add_arrows(img_rgb, loc, angle, l = l,  color = (255,255,255), thickness = 2)    
-    add_circles(img_rgb, loc, radii = r,  color = (255,255,255), thickness = -1)  
+    'angle in rad'      
+    loc = loc[0]          
+            
+    start_point, end_point = compute_line_points(loc, angle + np.pi/2, r)
+        
+    add_lines(img_rgb, start_point, angle, l = l,  color = (255,255,255), thickness = thickness)    
+    add_lines(img_rgb, end_point, angle, l = l,  color = (255,255,255), thickness = thickness)
+    # add_circles(img_rgb, loc, radii = r,  color = (255,255,255), thickness = -1)  
 
     if pwd is not None:
         save_img(img_rgb, pwd, name, title = title)

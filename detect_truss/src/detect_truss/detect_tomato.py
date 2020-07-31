@@ -20,7 +20,7 @@ def set_detect_tomato_settings(blur_size = 3,
                                distance_min_frac = 4, # = tomato_radius_max
                                radius_min_mm = 30,
                                radius_max_mm = 40,
-                               distance_min_mm = 20,
+                               distance_min_mm = 0.8*2*30,
                                dp = 4,
                                param1 = 20,
                                param2 = 80,

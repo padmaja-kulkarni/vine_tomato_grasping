@@ -52,18 +52,15 @@ if __name__ == '__main__':
         
         image.color_space()
         image.segment_image()
-        image.filter_img()
+        image.filter_image()
         image.rotate_cut_img()
         image.detect_tomatoes()
-    
-        distance_threshold = 10
         
         segment_img = image.get_segmented_image(local = True)   
         peduncle_img = image.get_peduncle_image(local = True)
         segment_img_bright = change_brightness(segment_img, brightness)
               
-        skeleton_img, branch_center, coord_junc, coord_end = detect_peduncle(peduncle_img, 
-                                                      distance_threshold, 
+        skeleton_img, branch_data, coord_junc, coord_end = detect_peduncle(peduncle_img, 
                                                       bg_img = segment_img_bright, 
                                                       save = True, 
                                                       name = tomato_name, 

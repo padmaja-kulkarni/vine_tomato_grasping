@@ -179,6 +179,7 @@ for count, i_truss in enumerate(range(i_start, i_end)):
     img_res = img_rgb.copy()   
     tomato_res = data_results['tomato']
     peduncle_res = data_results['peduncle']
+    grasp_res = data_results['grasp_location']
     
     i_true_pos_res, i_true_pos_lbl, i_false_pos, i_false_neg = index_true_positives(tomato_lbl['centers'], tomato_res['centers'], dist_thresh_tomato * px_per_mm)
         
@@ -264,7 +265,8 @@ for count, i_truss in enumerate(range(i_start, i_end)):
         junctions_error['centers'].append(dist/px_per_mm)
 
     
-    img_penduncle_res = plot_features_result(img_res, peduncle = junction_pred)
+    img_penduncle_res = plot_features_result(img_res, peduncle = junction_pred,
+                                             grasp = grasp_res)
     plot_error(img_penduncle_res, 
                tomato_pred = junction_pred, # centers, com,
                tomato_act = junction_actual,

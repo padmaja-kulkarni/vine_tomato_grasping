@@ -196,9 +196,9 @@ class ProcessImage(object):
         x = bbox[0]
         y = bbox[1]
         
-        if self.px_per_mm:
-            print 'bbox width: ', bbox[2] / self.px_per_mm, '[mm]'
-            print 'bbox height: ', bbox[3] / self.px_per_mm, '[mm]'
+#        if self.px_per_mm:
+#            print 'bbox width: ', bbox[2] / self.px_per_mm, '[mm]'
+#            print 'bbox height: ', bbox[3] / self.px_per_mm, '[mm]'
             
         #get origin
         translation = translation_rot2or(self.shape, -angle)
@@ -288,53 +288,69 @@ class ProcessImage(object):
         for junction in junctions:
             junction_points.append(make_2d_point(self._LOCAL_FRAME_ID, junction))
 
+        end_points = []
+        for end in ends:
+            end_points.append(make_2d_point(self._LOCAL_FRAME_ID, end))
+
         # convert to 2D points
         end_points = []
         for end in ends:
             end_points.append(make_2d_point(self._LOCAL_FRAME_ID, end))
 
-        junc_branch_center_points = []
-        for center in branch_data['junction']['center']:
-            junc_branch_center_points.append(make_2d_point(self._LOCAL_FRAME_ID, center))
+        for branch_type in branch_data.keys():
+            for i, branch in enumerate(branch_data[branch_type]):
+                for node_type in ['src_node_coord', 'dst_node_coord', 'center_node_coord']:
+                # for i, center in enumerate(branch_data[branch_type][node_type]):
+                    center = branch[node_type]
+                    branch_data[branch_type][i][node_type] = make_2d_point(self._LOCAL_FRAME_ID, center)
 
-        end_branch_center_points = []
-        for center in branch_data['end']['center']:
-            end_branch_center_points.append(make_2d_point(self._LOCAL_FRAME_ID, center))
             
-
-        self.penduncle_main = mask
-        self.junc_branch_center = junc_branch_center_points
-        self.junc_branch_angle = branch_data['junction']['angle'] # degree
-        self.end_branch_center = end_branch_center_points
-        self.end_branch_angle = branch_data['end']['angle'] # degree
         self.junction_points = junction_points
         self.end_points = end_points
+        self.penduncle_main = mask
+        self.branch_data = branch_data
         return success
 
     @Timer("detect grasp location", name_space)
     def detect_grasp_location(self, strategy = 'cage'):
         pwd = os.path.join(self.pwd, '07_grasp')
         success = True
+        minimum_grasp_length = 20 * self.px_per_mm # [10 mm]
 
         if strategy== "cage":
             com = self.get_xy(self.com, self._LOCAL_FRAME_ID)
-            
-
-            if len(self.junc_branch_center) > 0: # self.junc_branch_center:
-                loc = self.get_xy(self.junc_branch_center, self._LOCAL_FRAME_ID)
+    
+            centers = []
+            branches_i = []
+            for i, branch in enumerate(self.branch_data['junction']):
+#                print 'length: ', branch['length']
+#                print 'threshold: ', minimum_grasp_length
+                if branch['length'] > minimum_grasp_length:
+                    centers.append(branch['center_node_coord'])
+                    branches_i.append(i)
+       
+            if len(centers) > 0:
+                loc = self.get_xy(centers, self._LOCAL_FRAME_ID)
                 dist = np.sqrt(np.sum(np.power(loc - com, 2), 1))
-
+                i = np.argmin(dist)
+                branch_i = branches_i[i]
+                grasp_angle_local = self.branch_data['junction'][branch_i]['angle']/180.0*np.pi               
+                
             else:
-                print('Did not detect a junction')
+                print('Did not detect a valid grasping branch')
                 # skeleton = skeletonize(self.penduncle_main/self.imMax)
-                col, row = np.nonzero(self.penduncle_main)
-                loc = np.transpose(np.matrix(np.vstack((row, col))))
-
-                dist = np.sqrt(np.sum(np.power(loc - com, 2), 1))
-
-            i = np.argmin(dist)
-            grasp_angle_local = self.junc_branch_angle[i]/180.0*np.pi
-            grasp_angle_global = self.angle + grasp_angle_local
+#                col, row = np.nonzero(self.penduncle_main)
+#                loc = np.transpose(np.matrix(np.vstack((row, col))))
+#
+#
+#                dist = np.sqrt(np.sum(np.power(loc - com, 2), 1))
+#                i = np.argmin(dist)
+#                grasp_angle_local = 0
+                self.grasp_point = None
+                self.grasp_angle_local= None
+                self.grasp_angle_global = None
+                return False
+                
 
         elif strategy== "pinch":
 
@@ -348,12 +364,12 @@ class ProcessImage(object):
             i = np.argmax(dist)
             
             grasp_angle_local = 0
-            grasp_angle_global = self.angle + grasp_angle_local
+
         else:
             print("Unknown grasping strategy")
             return False
 
-
+        grasp_angle_global = -self.angle + grasp_angle_local
         grasp_point = make_2d_point(self._LOCAL_FRAME_ID, xy = (loc[i, 0], loc[i, 1]))
         # graspR = graspL + [self.box[0], self.box[1]]
         # graspO = rot2or(graspR, self.DIM, np.deg2rad(-self.angle))
@@ -368,7 +384,12 @@ class ProcessImage(object):
             xy_local = self.get_xy(grasp_point, self._LOCAL_FRAME_ID)
             img_rgb = self.crop(self.image).data
             plot_grasp_location(img_rgb, xy_local, grasp_angle_local, 
-                                l=20, pwd=pwd, name =self.name, ext = self.ext)
+                                l=minimum_grasp_length, pwd=pwd, name =self.name, ext = self.ext)
+                                
+            xy_global = self.get_xy(grasp_point, self._ORIGINAL_FRAME_ID)
+            img_rgb = self.image.data
+            plot_grasp_location(img_rgb, xy_global, grasp_angle_global, 
+                                l=minimum_grasp_length, pwd=pwd, name =self.name + '_g', ext = self.ext)
 
         return success
 
@@ -507,10 +528,14 @@ class ProcessImage(object):
             angle = self.grasp_angle_global
             scale = self.scale
 
-        xy = self.get_xy(self.grasp_point, frame_id)
-        graspPixel = np.around(xy/scale).astype(int)
-        row = graspPixel[0,1]
-        col =  graspPixel[0,0]
+        if self.grasp_point is not None:
+            xy = self.get_xy(self.grasp_point, frame_id)
+            graspPixel = np.around(xy/scale).astype(int)
+            row = graspPixel[0,1]
+            col =  graspPixel[0,0]
+        else:
+            row = None
+            col = None
 
         grasp_location = {"row": row, "col": col, "angle": angle}
         return grasp_location
@@ -645,7 +670,7 @@ if __name__ == '__main__':
     i_end = 50
     N = i_end - i_start
 
-    save = False
+    save = True
 
     pwd_current = os.path.dirname(__file__)
     dataset = "depth_blue" # "real_blue"
@@ -670,18 +695,10 @@ if __name__ == '__main__':
         rgb_data = load_rgb(pwd_data, file_name, horizontal = True)
         px_per_mm = load_px_per_mm(pwd_data, tomato_name)
 
-#        if save:
-#            save_img(rgb_data, pwd_results, '01')
 
         process_image.add_image(rgb_data, px_per_mm=px_per_mm, name=tomato_name)
         success = process_image.process_image()
 
-        if False: # success:
-            visual = process_image.get_truss_visualization()
-            save_img(visual, pwd_results, '99')
-
-            visual = process_image.get_truss_visualization(local = True)
-            save_img(visual, pwd_results, '99')
 
 
         json_data = process_image.get_object_features()
@@ -690,9 +707,9 @@ if __name__ == '__main__':
         with open(pwd_json_file, "w") as write_file:
             json.dump(json_data, write_file)
 
-    plot_timer(Timer.timers['main'].copy(), threshold = 0.02, pwd = pwd_results, name = 'main', title = 'Processing time')
+#    plot_timer(Timer.timers['main'].copy(), threshold = 0.02, pwd = pwd_results, name = 'main', title = 'Processing time')
 
-    plot_timer(Timer.timers['peduncle'].copy(), N = N, threshold = 0.02, pwd = pwd_results, name = 'peduncle', title = 'Processing time peduncle')
+#    plot_timer(Timer.timers['peduncle'].copy(), N = N, threshold = 0.02, pwd = pwd_results, name = 'peduncle', title = 'Processing time peduncle')
 
     total_key = "process image"
     time_tot_mean = np.mean(Timer.timers[total_key])/1000
@@ -719,5 +736,5 @@ if __name__ == '__main__':
 
     fig.show()
 
-    fig.savefig(os.path.join(pwd_results, 'time_bar'), dpi = 300) #, bbox_inches='tight', pad_inches=0)
+#    fig.savefig(os.path.join(pwd_results, 'time_bar'), dpi = 300) #, bbox_inches='tight', pad_inches=0)
 
