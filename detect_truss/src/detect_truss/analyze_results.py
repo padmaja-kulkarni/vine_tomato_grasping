@@ -71,6 +71,7 @@ def index_true_positives(lbl_centers, res_centers, dist_tresh):
 
 i_start = 1
 i_end = 50
+save_results= False
 N = i_end - i_start
 
 pwd_current = os.path.dirname(__file__)
@@ -78,9 +79,13 @@ dataset = 'depth_blue' # 'real_blue' # "drawing" #  "empty" # "artificial" #
 
 pwd_lbl = os.path.join(pwd_current, "..", "data", dataset)
 pwd_res = os.path.join(pwd_current, "..", "results", dataset, 'json')
-pwd_store = os.path.join(pwd_current, "..", "results", dataset, 'final')
+if save_results:
+    pwd_store = os.path.join(pwd_current, "..", "results", dataset, 'final')
+    make_dirs(pwd_store)
+else:
+    pwd_store = None
+    
 
-make_dirs(pwd_store)
 
 tomato_error_all = {}
 junction_error_all = {}
@@ -169,9 +174,10 @@ for count, i_truss in enumerate(range(i_start, i_end)):
     com = (radii**3) * centers/(np.sum(radii**3))
     tomato_lbl['com'] = com
     
-    #img_rgb = change_brightness(img_rgb.copy(), -0.9) # change_brightness( , 0.8)
-    plot_features(img_rgb.copy(), tomato = tomato_lbl,  pwd = pwd_store, file_name=truss_name + '_tom_lbl')
-    plot_features(img_rgb.copy(), peduncle = peduncle_lbl,  pwd = pwd_store, file_name=truss_name + '_pend_lbl') 
+    if save_results:
+        plot_features(img_rgb.copy(), tomato = tomato_lbl,  pwd = pwd_store, file_name=truss_name + '_tom_lbl')
+        plot_features(img_rgb.copy(), peduncle = peduncle_lbl,  pwd = pwd_store, file_name=truss_name + '_pend_lbl') 
+        plot_features(img_rgb.copy(), tomato = tomato_lbl, peduncle = peduncle_lbl,  pwd = pwd_store, file_name=truss_name + '_lbl')
    
     with open(file_res, "r") as read_file:
         data_results = json.load(read_file)   
@@ -224,15 +230,16 @@ for count, i_truss in enumerate(range(i_start, i_end)):
   
     
     # plot
-    img_tom_res = plot_features_result(img_res, tomato_pred = tomato_pred, name=truss_name + '_temp')
-    plot_error(img_tom_res, 
-               tomato_pred = tomato_pred, # centers, com,
-               tomato_act = tomato_actual,
-               error = tomato_error, # center radii and com
-               pwd = pwd_store, 
-               name=truss_name + '_tom_error',
-               use_mm = use_mm)
-    
+    if save_results:
+        img_tom_res = plot_features_result(img_res, tomato_pred = tomato_pred, name=truss_name + '_temp')
+        plot_error(img_tom_res, 
+                   tomato_pred = tomato_pred, # centers, com,
+                   tomato_act = tomato_actual,
+                   error = tomato_error, # center radii and com
+                   pwd = pwd_store, 
+                   name=truss_name + '_tom_error',
+                   use_mm = use_mm)
+        
     # store
     tomato_error_all[truss_name] = tomato_error
 
@@ -264,16 +271,17 @@ for count, i_truss in enumerate(range(i_start, i_end)):
         dist = euclidean_dist(center_lbl, center_res)
         junctions_error['centers'].append(dist/px_per_mm)
 
-    
-    img_penduncle_res = plot_features_result(img_res, peduncle = junction_pred,
-                                             grasp = grasp_res)
-    plot_error(img_penduncle_res, 
-               tomato_pred = junction_pred, # centers, com,
-               tomato_act = junction_actual,
-               error = junctions_error,
-               pwd = pwd_store, 
-               name=truss_name + '_pend_error',
-               use_mm = use_mm)
+    # plot
+    if save_results:
+        img_penduncle_res = plot_features_result(img_res, peduncle = junction_pred,
+                                                 grasp = grasp_res)
+        plot_error(img_penduncle_res, 
+                   tomato_pred = junction_pred, # centers, com,
+                   tomato_act = junction_actual,
+                   error = junctions_error,
+                   pwd = pwd_store, 
+                   name=truss_name + '_pend_error',
+                   use_mm = use_mm)
 
     # store
     junction_error_all[truss_name] = junctions_error
