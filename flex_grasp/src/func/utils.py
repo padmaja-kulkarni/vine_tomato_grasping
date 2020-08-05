@@ -6,6 +6,8 @@ Created on Tue Mar 10 10:09:14 2020
 @author: taeke
 """
 
+import cv2
+
 from geometry_msgs.msg import PoseStamped
 from moveit_commander.conversions import pose_to_list
 from geometry_msgs.msg import Pose
@@ -131,3 +133,22 @@ def neg_list(list1):
 
 def deg2rad(deg):
     return float(deg)/180.0*pi
+    
+
+def colored_depth_image(depth_image, min_dist = 0.4, max_dist = 0.7):
+    
+    # remove outliers
+    _, depth_image = cv2.threshold(depth_image, max_dist, 0.0, cv2.THRESH_TRUNC)
+    _, depth_image = cv2.threshold(-depth_image, -min_dist, 0.0, cv2.THRESH_TRUNC)
+    depth_image = -depth_image
+    # _, depth_image = cv2.threshold(depth_image, max_dist, 0.0, cv2.THRESH_TOZERO_INV)
+    
+    norm_depth_image = cv2.normalize(depth_image, None, 
+                                     alpha=0, beta=255, 
+                                     norm_type=cv2.NORM_MINMAX, 
+                                     dtype=cv2.CV_8UC1)
+    
+    # eq_depth_image = cv2.equalizeHist(norm_depth_image)
+    colored_depth_image = cv2.applyColorMap(norm_depth_image, cv2.COLORMAP_JET)
+    
+    return colored_depth_image

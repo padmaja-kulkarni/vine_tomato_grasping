@@ -52,14 +52,15 @@
     <include unless="$(arg camera_sim)" file="$(find realsense2_camera)/launch/rs_rgbd.launch" ns="$(arg robot_name)"> <!-- rs_aligned_depth -->
       <arg name="camera" value="$(arg camera_name)"/>
       <!-- When IR is publsihed, we no longer receive depth info? -->
-      <arg name="enable_infra1" value="false"/>
-      <arg name="enable_infra2" value="false"/>
+      <arg name="enable_infra1"     value="false"/>
+      <arg name="enable_infra2"     value="false"/>
       <arg name="enable_pointcloud" value="true"/>
-      <arg name="align_depth" value="true"/>
-      <arg name="depth_width" value="$(arg depth_width)"/>
-      <arg name="depth_height" value="$(arg depth_height)"/>
-      <arg name="color_width" value="$(arg color_width)"/>
-      <arg name="color_height" value="$(arg color_height)"/>
+      <arg name="align_depth"       value="true"/>
+      <arg name="depth_width"       value="$(arg depth_width)"/>
+      <arg name="depth_height"      value="$(arg depth_height)"/>
+      <arg name="color_width"       value="$(arg color_width)"/>
+      <arg name="color_height"      value="$(arg color_height)"/>
+      <arg name="filters"           value="disparity,spatial,temporal,decimation,pointcloud"/>
     </include>
 
     <!-- Run the robot within a Gazebo simulation. -->

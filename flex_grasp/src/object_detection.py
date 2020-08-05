@@ -34,6 +34,7 @@ from detect_truss.ProcessImage import ProcessImage
 from func.conversions import point_to_pose_stamped, settings_lib_to_msg, settings_msg_to_lib
 
 from func.utils import camera_info2intrinsics
+from func.utils import colored_depth_image
 
 import pyrealsense2 as rs
 
@@ -251,19 +252,30 @@ class ObjectDetection(object):
             new_id = int(file_id) + 1
             
 
-        img_file_name = str(new_id).zfill(3) + '.png'
+        name_rgb = str(new_id).zfill(3) + '_rgb.png'
+        name_depth = str(new_id).zfill(3) + '_depth.png'
         json_file_name =  str(new_id).zfill(3) + '_info.json'
-        img_pwd = os.path.join(self.pwd_data, img_file_name)
+        pwd_rgb = os.path.join(self.pwd_data, name_rgb)
+        pwd_depth = os.path.join(self.pwd_data, name_depth)
         json_pwd = os.path.join(self.pwd_data, json_file_name)
+        
+        rgb_img = self.color_image
+        depth_img = colored_depth_image(self.depth_image)        
         
         with open(json_pwd, "w") as write_file:
             json.dump(image_info, write_file)        
         
-        if cv2.imwrite(img_pwd, cv2.cvtColor(self.color_image, cv2.COLOR_RGB2BGR)):
-            rospy.loginfo("[OBJECT DETECTION] File %s save successfully to path %s", img_file_name, self.pwd_data)
+        if cv2.imwrite(pwd_rgb, cv2.cvtColor(rgb_img, cv2.COLOR_RGB2BGR)):
+            rospy.loginfo("[OBJECT DETECTION] File %s save successfully to path %s", name_rgb, self.pwd_data)
+        else:
+            rospy.logwarn("[OBJECT DETECTION] Failed to save image %s to path %s", name_rgb, self.pwd_data)
+            return False
+            
+        if cv2.imwrite(pwd_depth, depth_img):
+            rospy.loginfo("[OBJECT DETECTION] File %s save successfully to path %s", name_depth, self.pwd_data)
             return True
         else:
-            rospy.logwarn("[OBJECT DETECTION] Failed to save image %s to path %s", img_file_name, self.pwd_data)
+            rospy.logwarn("[OBJECT DETECTION] Failed to save image %s to path %s", name_depth, self.pwd_data)
             return False
 
     def detect_object(self):
