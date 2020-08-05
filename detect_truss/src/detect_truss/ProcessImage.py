@@ -119,7 +119,7 @@ class ProcessImage(object):
         if self.save:
             save_img(self.image_hue, pwd, self.name)
 
-    @Timer("segment image", name_space)
+    @Timer("segmentation", name_space)
     def segment_image(self):
         pwd = os.path.join(self.pwd, '02_segment')
 
@@ -153,7 +153,7 @@ class ProcessImage(object):
 
         return success
 
-    @Timer("filter image", name_space)
+    @Timer("filtering", name_space)
     def filter_image(self):
         pwd = os.path.join(self.pwd, '03_filter')
 
@@ -174,7 +174,7 @@ class ProcessImage(object):
 
         return True
 
-    @Timer("crop image", name_space)
+    @Timer("cropping", name_space)
     def rotate_cut_img(self):
         pwd = os.path.join(self.pwd, '04_crop')
 
@@ -227,7 +227,7 @@ class ProcessImage(object):
         if self.save:
             self.save_results(self.name, pwd=pwd, local=True)
 
-    @Timer("detect tomatoes", name_space)
+    @Timer("tomato detection", name_space)
     def detect_tomatoes(self):
         pwd = os.path.join(self.pwd, '05_tomatoes')
         success = True
@@ -265,7 +265,7 @@ class ProcessImage(object):
         self.radii = radii
         return success
 
-    @Timer("detect peduncle", name_space)
+    @Timer("peduncle detection", name_space)
     def detect_peduncle(self):
         pwd = os.path.join(self.pwd, '06_peduncle')
         success = True
@@ -349,6 +349,12 @@ class ProcessImage(object):
                 self.grasp_point = None
                 self.grasp_angle_local= None
                 self.grasp_angle_global = None
+                
+                if self.save:
+                    img_rgb = self.crop(self.image).data
+                    save_img(img_rgb, pwd=pwd, name =self.name, ext = self.ext)
+                    img_rgb = self.image.data
+                    save_img(img_rgb, pwd=pwd, name =self.name + '_g', ext = self.ext)
                 return False
                 
 
@@ -670,7 +676,7 @@ if __name__ == '__main__':
     i_end = 50
     N = i_end - i_start
 
-    save = True
+    save = False
 
     pwd_current = os.path.dirname(__file__)
     dataset = "depth_blue" # "real_blue"
@@ -706,10 +712,10 @@ if __name__ == '__main__':
         pwd_json_file = os.path.join(pwd_json, tomato_name + '.json')
         with open(pwd_json_file, "w") as write_file:
             json.dump(json_data, write_file)
-
-#    plot_timer(Timer.timers['main'].copy(), threshold = 0.02, pwd = pwd_results, name = 'main', title = 'Processing time')
-
-#    plot_timer(Timer.timers['peduncle'].copy(), N = N, threshold = 0.02, pwd = pwd_results, name = 'peduncle', title = 'Processing time peduncle')
+            
+    if save is not True:
+        plot_timer(Timer.timers['main'].copy(), threshold = 0.02, pwd = pwd_results, name = 'main', title = 'Processing time')
+        plot_timer(Timer.timers['peduncle'].copy(), N = N, threshold = 0.02, pwd = pwd_results, name = 'peduncle', title = 'Processing time peduncle')
 
     total_key = "process image"
     time_tot_mean = np.mean(Timer.timers[total_key])/1000

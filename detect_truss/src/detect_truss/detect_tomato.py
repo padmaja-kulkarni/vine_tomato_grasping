@@ -80,6 +80,10 @@ def detect_tomato(img_segment, settings, px_per_mm=None, img_rgb=None,
                                maxRadius=radius_max_px) 
 
     if circles is None:
+        centers_overlap = None
+        radii_overlap = None
+        com_overlap = None        
+        
         centers = None
         radii = None
         com = None

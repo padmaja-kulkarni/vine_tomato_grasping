@@ -17,23 +17,23 @@ import os # os.sep
 import cv2
 
 # custom functions
-from detect_crop.util import plot_segments
-from detect_crop.util import load_rgb
-from detect_crop.util import make_dirs
+from detect_truss.util import plot_segments
+from detect_truss.util import load_rgb
+from detect_truss.util import make_dirs
 
-from detect_crop.segment_image import segment_truss
+from detect_truss.segment_image import segment_truss
 
 # ls | cat -n | while read n f; do mv "$f" `printf "%03d.png" $n`; done
 if __name__ == '__main__':
 
-    N = 23              # tomato file to load
+    N = 50              # tomato file to load
     extension = ".png"
-    dataset = "real_blue" # "tomato_rot" #  
+    dataset = "depth_blue" # "tomato_rot" #  
     save = True
 
     pwd_current = os.path.dirname(__file__)
     pwd_data = os.path.join(pwd_current, "data", dataset)
-    pwd_results = os.path.join(pwd_current, "results", dataset, "segmentation")
+    pwd_results = os.path.join(pwd_current, "results", dataset, "02_segment")
     
     make_dirs(pwd_results)
     
@@ -60,7 +60,7 @@ if __name__ == '__main__':
         # VISUALIZE
         name = tomato_ID + "_img"
         plot_segments(img_rgb, background, tomato, peduncle, 
-                      file_name = name, pwd = pwd_results)
+                      name = name, pwd = pwd_results)
       
         count = count + 1
         print("completed image %d out of %d" %(count, N))

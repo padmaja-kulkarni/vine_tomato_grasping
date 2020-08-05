@@ -17,7 +17,7 @@ from timer import Timer
 from counter import Counter
 
 def set_detect_peduncle_settings(branch_length_min_px = 15,
-                              branch_length_min_mm = 8):   
+                              branch_length_min_mm = 10):   
     
     settings = {}
     settings['branch_length_min_px'] = branch_length_min_px

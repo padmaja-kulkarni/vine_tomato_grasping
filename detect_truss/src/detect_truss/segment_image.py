@@ -111,6 +111,8 @@ def hue_hist(img_hue, centers, lbl, name, pwd):
     bins = 180
     angle = img_hue.flatten().astype('uint16')*2
     radii, bins, patches = ax.hist(angle, bins=bins, range=(0, 360), color = "black", lw=0)
+    ax.set_xlabel("hue [$^\circ$]")
+    ax.set_ylabel("frequency")    
     save_fig(fig, pwd, name + "_hist", titleSize = 10)        
         
 def label2img(labels, label, dim):

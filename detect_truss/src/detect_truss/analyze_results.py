@@ -16,6 +16,12 @@ def remove_none_from_list(lst_none):
 
 def euclidean_dist(p1, p2):
     'compute the euclidean distance between point_1 and point_2'
+    if p2 == []:
+        return None
+
+    if p1 == []:
+        return None 
+   
     return ((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)**0.5
 
 def euclidean_dist_list(p1, lst):
@@ -70,8 +76,8 @@ def index_true_positives(lbl_centers, res_centers, dist_tresh):
     return true_pos_res, true_pos_lbl, false_pos, false_neg
 
 i_start = 1
-i_end = 50
-save_results= False
+i_end = 3
+save_results= True
 N = i_end - i_start
 
 pwd_current = os.path.dirname(__file__)
@@ -273,8 +279,8 @@ for count, i_truss in enumerate(range(i_start, i_end)):
 
     # plot
     if save_results:
-        img_penduncle_res = plot_features_result(img_res, peduncle = junction_pred,
-                                                 grasp = grasp_res)
+        img_penduncle_res = plot_features_result(img_res, peduncle = junction_pred) # grasp = grasp_res
+        
         plot_error(img_penduncle_res, 
                    tomato_pred = junction_pred, # centers, com,
                    tomato_act = junction_actual,
