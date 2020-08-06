@@ -7,6 +7,7 @@ Created on Tue Mar 10 10:09:14 2020
 """
 
 import cv2
+import numpy as np
 
 from geometry_msgs.msg import PoseStamped
 from moveit_commander.conversions import pose_to_list
@@ -135,20 +136,18 @@ def deg2rad(deg):
     return float(deg)/180.0*pi
     
 
-def colored_depth_image(depth_image, min_dist = 0.4, max_dist = 0.7):
+def colored_depth_image(depth_image, min_dist = 0.5, max_dist = 0.7):
     
     # remove outliers
-    _, depth_image = cv2.threshold(depth_image, max_dist, 0.0, cv2.THRESH_TRUNC)
-    _, depth_image = cv2.threshold(-depth_image, -min_dist, 0.0, cv2.THRESH_TRUNC)
-    depth_image = -depth_image
-    # _, depth_image = cv2.threshold(depth_image, max_dist, 0.0, cv2.THRESH_TOZERO_INV)
+    depth_image[depth_image > max_dist] = max_dist
+    depth_image[depth_image < min_dist] = min_dist
     
-    norm_depth_image = cv2.normalize(depth_image, None, 
-                                     alpha=0, beta=255, 
-                                     norm_type=cv2.NORM_MINMAX, 
-                                     dtype=cv2.CV_8UC1)
+    max_val = 255
+    min_val = 0    
     
-    # eq_depth_image = cv2.equalizeHist(norm_depth_image)
+    norm_depth_image = (depth_image - min_dist)/(max_dist - min_dist) * (max_val - min_val) + min_val
+    norm_depth_image = np.uint8(norm_depth_image)
+
     colored_depth_image = cv2.applyColorMap(norm_depth_image, cv2.COLORMAP_JET)
     
     return colored_depth_image

@@ -106,6 +106,9 @@ class ObjectDetection(object):
 
         self.pub_tomato_image = rospy.Publisher("tomato_image",
                                 Image, queue_size=5, latch=True)
+                                
+        self.pub_depth_image = rospy.Publisher("depth_image",
+                        Image, queue_size=5, latch=True)
 
         self.pub_color_hue = rospy.Publisher("color_hue",
                         Image, queue_size=5, latch=True)
@@ -221,7 +224,8 @@ class ObjectDetection(object):
 
 
     def save_image(self):
-
+        success = True
+        
         if not self.wait_for_data(5):
             return False
         
@@ -259,14 +263,17 @@ class ObjectDetection(object):
             rospy.loginfo("[OBJECT DETECTION] File %s save successfully to path %s", name_rgb, self.pwd_data)
         else:
             rospy.logwarn("[OBJECT DETECTION] Failed to save image %s to path %s", name_rgb, self.pwd_data)
-            return False
+            success = False
             
         if cv2.imwrite(pwd_depth, depth_img):
             rospy.loginfo("[OBJECT DETECTION] File %s save successfully to path %s", name_depth, self.pwd_data)
-            return True
         else:
             rospy.logwarn("[OBJECT DETECTION] Failed to save image %s to path %s", name_depth, self.pwd_data)
-            return False
+            success = False
+            
+        imgmsg_depth = self.bridge.cv2_to_imgmsg(depth_img, encoding="rgb8")
+        self.pub_depth_image.publish(imgmsg_depth)
+        return success
 
     def detect_object(self):
 
@@ -317,14 +324,16 @@ class ObjectDetection(object):
 
         # get images
         img_hue  = self.process_image.get_color_components()
-        
+        img_depth = colored_depth_image(self.depth_image)
 
         # publish results tomato_img
         imgmsg_tomato = self.bridge.cv2_to_imgmsg(img_tomato, encoding="rgb8")
+        imgmsg_depth = self.bridge.cv2_to_imgmsg(img_depth, encoding="rgb8")
         imgmsg_hue = self.bridge.cv2_to_imgmsg(img_hue)
 
         rospy.logdebug("Publishing results")
-        self.pub_tomato_image.publish(imgmsg_tomato)
+        self.pub_tomato_image.publish(imgmsg_tomato)        
+        self.pub_depth_image.publish(imgmsg_depth)
         self.pub_color_hue.publish(imgmsg_hue)
         self.pub_object_features.publish(truss)
         return True
