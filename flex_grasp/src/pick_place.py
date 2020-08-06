@@ -15,7 +15,7 @@ from flex_grasp.msg import Truss
 
 from func.ros_utils import wait_for_success, wait_for_variable, get_transform
 from func.utils import add_pose_stamped
-from func.conversions import pose_to_lists, point_to_pose_stamped, list_to_orientation
+from func.conversions import pose_to_lists, point_to_pose_stamped, list_to_orientation, list_to_position
 
 import tf2_ros
 import tf2_geometry_msgs
@@ -143,6 +143,7 @@ class PickPlace(object):
 
         object_pose = tf2_geometry_msgs.do_transform_pose(self.object_features.cage_location, transform)
         object_position, object_orientation = pose_to_lists(object_pose.pose, 'euler')
+        object_pose.pose.position = list_to_position((object_position[0], object_position[1], 0.085))
         object_pose.pose.orientation = list_to_orientation((0, 0, object_orientation[2]))
 
         # add offsets
