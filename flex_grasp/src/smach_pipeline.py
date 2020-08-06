@@ -53,7 +53,7 @@ class Idle(smach.State):
 
         self.detect_commands =  ["detect_tomato", "detect_truss", "save_image"]
         self.calibrate_commands =  ["calibrate"]
-        self.move_commands =  ["home", "open", "close"]
+        self.move_commands =  ["home", "open", "close", "sleep"]
         self.pick_place_commands = ["pick", "place", "pick_place"]
         self.point_commands = ["point"]
 

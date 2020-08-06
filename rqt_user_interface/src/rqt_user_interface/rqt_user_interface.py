@@ -44,10 +44,11 @@ class RqtFlexGrasp(Plugin):
         # Add widget to the user interface
         context.add_widget(self._widget)
 
-        self.pub_grasp = rospy.Publisher("pipelineState",
+        self.pub_command = rospy.Publisher("pipelineState",
                                       String, queue_size=10, latch=False)
 
         # basic commands
+        self._widget.SleepButton.clicked[bool].connect(self.handle_sleep)
         self._widget.HomeButton.clicked[bool].connect(self.handle_home)
         self._widget.OpenButton.clicked[bool].connect(self.handle_open)
         self._widget.CloseButton.clicked[bool].connect(self.handle_close)
@@ -64,7 +65,7 @@ class RqtFlexGrasp(Plugin):
         self._widget.PlaceButton.clicked[bool].connect(self.handle_place)
 
     def shutdown_plugin(self):
-        self.pub_grasp.unregister()
+        self.pub_command.unregister()
 
     def save_settings(self, plugin_settings, instance_settings):
         # TODO save intrinsic configuration, usually using:
@@ -81,35 +82,38 @@ class RqtFlexGrasp(Plugin):
         # This will enable a setting button (gear icon) in each dock widget title bar
         # Usually used to open a modal configuration dialog
 
-    def handle_calibrate(self):
-        self.pub_grasp.publish("calibrate")
+    def handle_sleep(self):
+        self.pub_command.publish("sleep")
 
     def handle_home(self):
-        self.pub_grasp.publish("home")
+        self.pub_command.publish("home")
 
     def handle_open(self):
-        self.pub_grasp.publish("open")
+        self.pub_command.publish("open")
 
     def handle_close(self):
-        self.pub_grasp.publish("close")
+        self.pub_command.publish("close")
+        
+    def handle_calibrate(self):
+        self.pub_command.publish("calibrate")
 
     def handle_detect_tomato(self):
-        self.pub_grasp.publish("detect_tomato")
+        self.pub_command.publish("detect_tomato")
 
     def handle_detect_truss(self):
-        self.pub_grasp.publish("detect_truss")
+        self.pub_command.publish("detect_truss")
         
     def handle_save_image(self):
-        self.pub_grasp.publish("save_image")
+        self.pub_command.publish("save_image")
 
     def handle_point(self):
-        self.pub_grasp.publish("point")
+        self.pub_command.publish("point")
 
     def handle_pick_place(self):
-        self.pub_grasp.publish("pick_place")
+        self.pub_command.publish("pick_place")
 
     def handle_pick(self):
-        self.pub_grasp.publish("pick")
+        self.pub_command.publish("pick")
 
     def handle_place(self):
-        self.pub_grasp.publish("place")
+        self.pub_command.publish("place")

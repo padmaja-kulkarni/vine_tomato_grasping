@@ -57,7 +57,7 @@ class MoveRobot(object):
         # tolerance
         self.position_tol = 0.05 # [m]
         self.orientation_tol = deg2rad(1.0) # [rad]
-        self.man_joint_tolerance = deg2rad(1.0) # [rad]
+        self.man_joint_tolerance = deg2rad(5.0) # [rad]
         self.ee_joint_tolerance = 0.0005 # [m]
 
         self.initialise_robot()
@@ -252,6 +252,10 @@ class MoveRobot(object):
         # self.grasp_pose = None
         return success
 
+    def sleep_man(self):
+        rospy.logdebug("[MOVE ROBOT] Sleeping manipulator")
+        return self.move_to_joint_target(self.man_group, 'Sleep')
+
     def home_man(self):
         rospy.logdebug("[MOVE ROBOT] Homeing manipulator")
         return self.move_to_joint_target(self.man_group, 'Upright')
@@ -342,7 +346,7 @@ class MoveRobot(object):
 
         # if the target is a named target, get the corresponding joint values
         if type(target) is str:
-            if target == "Closed":
+            if target == "Sleep":
                 to_check = False
             target = group.get_named_target_values(target)
 
@@ -360,17 +364,22 @@ class MoveRobot(object):
             target = target.values()
         else:
             target = group.get_joint_value_target()
-            
+        
+        if (group.get_name() == self.ee_group_name):
+            tol = self.ee_joint_tolerance
+        else:
+            tol = self.man_joint_tolerance
+        
         if to_check:
-            is_all_close = joint_close(target, current, group.get_goal_joint_tolerance())
+            is_all_close = joint_close(target, current, tol)
             if is_all_close is False:
-                rospy.logwarn("[MOVE ROBOT] Failed to move to joint target: obtained joint values are not sufficiently close to target joint value (tolerance: %s). Attempts remaining %s", group.get_goal_joint_tolerance(), 0)
-                rospy.logdebug("[MOVE ROBOT] Target joint values: %s", target)
-                rospy.logdebug("[MOVE ROBOT] Actual joint values: %s", current)
+                rospy.logwarn("[MOVE ROBOT] Failed to move to joint target: obtained joint values are not sufficiently close to target joint value (tolerance: %s). Attempts remaining %s", tol, 0)
+                rospy.loginfo("[MOVE ROBOT] Target joint values: %s", target)
+                rospy.loginfo("[MOVE ROBOT] Actual joint values: %s", current)
+                success = False
 
         group.clear_pose_targets()
-        # rospy.logdebug("[MOVE ROBOT] Moving to joint target success: %s", success)
-        return True # success
+        return success
 
     def reset(self):
         rospy.logdebug("[MOVE ROBOT] Resetting robot pose") 
@@ -385,6 +394,9 @@ class MoveRobot(object):
         if self.command == "move_manipulator":
             success = self.go_to_pose(self.robot_pose)
             self.robot_pose = None
+
+        elif self.command == "sleep":
+            success = self.sleep_man()
 
         elif self.command == "home":
             success = self.home_man()
