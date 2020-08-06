@@ -299,12 +299,15 @@ class ObjectDetection(object):
             tomato_mask, peduncle_mask, _ = self.process_image.get_segments()
 
             cage_pose = self.generate_cage_pose(object_features['grasp_location'])
+            
+            if cage_pose == False:
+                return False
+            
             tomatoes = self.generate_tomatoes(object_features['tomato'])
             peduncle = self.generate_peduncle(object_features['peduncle'], cage_pose) # object_features['peduncle']
             
             self.visualive_tomatoes(tomato_mask)
             self.visualive_peduncle(peduncle_mask)
-            # visualive_tomatoes(self, tomato_mask)
             
             img_tomato = self.process_image.get_truss_visualization(local = True)
 
@@ -342,12 +345,17 @@ class ObjectDetection(object):
     def generate_cage_pose(self, grasp_features):
         row = grasp_features['row'] 
         col = grasp_features['col']
-        angle = grasp_features['angle'] # minus since camera frame is upside down...
-        rospy.loginfo('angle: %s', angle/np.pi * 180) # 
+        angle = grasp_features['angle']
+        rospy.logdebug('angle: %s', angle/np.pi * 180) # 
         rpy = [0, 0, angle]
 
         xyz = self.deproject(row, col)
-        print(xyz)
+        
+        for val in xyz:
+            if np.isnan(val):
+                rospy.logwarn("Failed to compute caging pose!")
+                return False
+        
         cage_pose =  point_to_pose_stamped(xyz, rpy, self.camera_frame, rospy.Time.now())
 
         return cage_pose
@@ -499,17 +507,20 @@ class ObjectDetection(object):
     def deproject(self, row, col):
         # Deproject
         depth = self.get_depth(row, col)
-        # rospy.loginfo("Depth: %s", depth)
-        # rospy.logdebug("Corresponding depth: %s", self.depth_image[index])
-        # https://github.com/IntelRealSense/librealsense/wiki/Projection-in-RealSense-SDK-2.0
+        
+        if np.isnan(depth):
+            rospy.logwarn("Computed depth is nan, can not compute point!")
+            return 3 * [np.nan]
 
+
+        # https://github.com/IntelRealSense/librealsense/wiki/Projection-in-RealSense-SDK-2.0
         pixel = [float(col), float(row)] # [x, y]
         depth = float(depth)
-
         point_depth = rs.rs2_deproject_pixel_to_point(self.intrin, pixel, depth)
         
         uvs = self.gen_patch(row, col)
-        point_pcl = self.get_point(uvs)        
+        point_pcl = self.get_point(uvs)       
+                   
         rospy.logdebug("Point based on deprojection: %s", point_depth)
         rospy.logdebug("Point obtained from point cloud: %s", point_pcl)        
         
@@ -561,7 +572,6 @@ class ObjectDetection(object):
         non_zero = np.nonzero(depth_patch)
         depth_patch_non_zero = depth_patch[non_zero]
 
-        # print('computing mean...')
         return np.mean(depth_patch_non_zero)
 
     def take_action(self):

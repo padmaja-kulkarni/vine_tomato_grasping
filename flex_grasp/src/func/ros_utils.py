@@ -16,13 +16,11 @@ def wait_for_variable(timeout, variable):
 
     while (rospy.get_time() - start_time < timeout):   
         
-        if variable is not None:
-            rospy.logdebug("Received variable")        
+        if variable is not None:  
             return True
             
         rospy.sleep(0.1)
     
-    rospy.logwarn("[POSE TRANSFORM] Did not receive variable")
     return False  
 
 

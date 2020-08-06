@@ -36,7 +36,7 @@ class PickPlace(object):
         self.pre_place_pose = None
         self.place_pose = None        
         
-        
+        self.peduncle_height = 0.082
         self.object_features = None
         
         
@@ -82,8 +82,8 @@ class PickPlace(object):
         if self.use_iiwa:
             rospy.logwarn("No pose trnaform for iiwa available...")
         
-        grasp_xyz =     [0, 0, 0.05] # [m]
-        pre_grasp_xyz = [0, 0, 0.10] # [m]
+        grasp_xyz =     [0, 0, 0.06] # [m]
+        pre_grasp_xyz = [0, 0, 0.12] # [m]
         grasp_rpy = [-pi, pi/2, 0]
         place_rpy = [-pi, pi/2, 0.5]
         frame = self.planning_frame
@@ -130,7 +130,7 @@ class PickPlace(object):
             except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
                 return False
 
-    def transform_pose(self):
+    def transform_pose(self, angle_offset = 0):
         if not wait_for_variable(3, self.object_features):
             rospy.logwarn("[PICK PLACE] Cannot transform pose, since object_features still empty!")
             return False
@@ -143,9 +143,8 @@ class PickPlace(object):
 
         object_pose = tf2_geometry_msgs.do_transform_pose(self.object_features.cage_location, transform)
         object_position, object_orientation = pose_to_lists(object_pose.pose, 'euler')
-        object_pose.pose.position = list_to_position((object_position[0], object_position[1], 0.085))
-        object_pose.pose.orientation = list_to_orientation((0, 0, object_orientation[2]))
-
+        object_pose.pose.position = list_to_position((object_position[0], object_position[1], self.peduncle_height))
+        object_pose.pose.orientation = list_to_orientation((0, 0, object_orientation[2] + angle_offset))
         # add offsets
         self.pre_grasp_pose = add_pose_stamped(self.pre_grasp_trans, object_pose) 
         self.grasp_pose = add_pose_stamped(self.grasp_trans, object_pose) 
@@ -153,9 +152,6 @@ class PickPlace(object):
         self.place_pose = add_pose_stamped(self.place_trans, object_pose)
         
         self.pub_all_poses()
-        
-        # reset
-        self.object_features = None
         return True
 
     def pub_all_poses(self):
@@ -202,7 +198,18 @@ class PickPlace(object):
     def pick(self):
         rospy.logdebug("[PICK PLACE] Picking object")
 
-        success =  self.command_to_pose(self.pre_grasp_pose)
+        success = False
+        attempts = 0
+        while success == False:
+            
+            attempts += 1
+            if attempts > 2:
+                break
+            
+            success =  self.command_to_pose(self.pre_grasp_pose)
+            if not success:
+                rospy.loginfo('trying transform pose with an additional 180deg')
+                self.transform_pose(angle_offset = pi)
 
         if success:
             success = self.apply_pre_grasp_ee()
@@ -245,6 +252,7 @@ class PickPlace(object):
         self.pre_grasp_pose = None
         self.pre_place_pose = None
         self.place_pose = None
+        self.object_features = None
         return True            
             
 
