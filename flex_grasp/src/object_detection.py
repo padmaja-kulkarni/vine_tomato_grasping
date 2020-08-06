@@ -68,7 +68,7 @@ class ObjectDetection(object):
         self.camera_sim = rospy.get_param("camera_sim")
         self.debug_mode = rospy.get_param("object_detection/debug")
 
-        self.patch_size = 7
+        self.patch_size = 5
 
         self.bridge = CvBridge()
 
@@ -104,16 +104,10 @@ class ObjectDetection(object):
         self.pub_object_features = rospy.Publisher("object_features",
                                         Truss, queue_size=5, latch=True)
 
-        self.pub_segment_image = rospy.Publisher("segment_image",
-                                        Image, queue_size=5, latch=True)
-
         self.pub_tomato_image = rospy.Publisher("tomato_image",
                                 Image, queue_size=5, latch=True)
 
         self.pub_color_hue = rospy.Publisher("color_hue",
-                        Image, queue_size=5, latch=True)
-                                
-        self.pub_tomato_mask = rospy.Publisher("tomato_mask",
                         Image, queue_size=5, latch=True)
                                 
         self.pub_peduncle_pcl = rospy.Publisher("peduncle_pcl",
@@ -130,7 +124,6 @@ class ObjectDetection(object):
         # Subscribe
         rospy.Subscriber("~e_in", String, self.e_in_cb)
 
-        # if not self.debug_mode:i
         rospy.Subscriber("camera/color/image_raw", Image, self.color_image_cb)
         rospy.Subscriber("camera/aligned_depth_to_color/image_raw", Image, self.depth_image_cb)
         rospy.Subscriber("camera/color/camera_info", CameraInfo, self.color_info_cb)
@@ -155,7 +148,6 @@ class ObjectDetection(object):
             rospy.logdebug("[OBJECT DETECTION] Received color image message")
             try:
                 self.color_image = self.bridge.imgmsg_to_cv2(msg, "rgb8")
-                # self.color_frame = "camera_color_optical_frame" # msg.header.frame_id
             except CvBridgeError as e:
                 print(e)
 
@@ -167,7 +159,6 @@ class ObjectDetection(object):
                     self.depth_image = self.bridge.imgmsg_to_cv2(msg, "passthrough")
                 else:
                     self.depth_image = self.bridge.imgmsg_to_cv2(msg, "passthrough")/1000.0
-                # self.depth_frame = "camera_depth_optical_frame" # msg.header.frame_id
             except CvBridgeError as e:
                 print(e)
 
@@ -193,7 +184,6 @@ class ObjectDetection(object):
     def received_data(self):
         received = {}
         received['color_img'] = self.color_image is not None
-
         received['depth_img'] = self.depth_image is not None
         received['depth_info'] = self.depth_info is not None
         received['color_info'] = self.color_info is not None
@@ -310,7 +300,6 @@ class ObjectDetection(object):
             # visualive_tomatoes(self, tomato_mask)
             
             img_tomato = self.process_image.get_truss_visualization(local = True)
-            img_segment = self.process_image.get_segmented_image(local = True)
 
         elif not self.use_truss:
             self.process_image.color_space()
@@ -323,7 +312,6 @@ class ObjectDetection(object):
             peduncle = Peduncle()
             
             img_tomato = self.process_image.get_tomato_visualization(local = True)
-            img_segment = self.process_image.get_segmented_image()
 
         truss = self.create_truss(tomatoes, cage_pose, peduncle)
 
@@ -332,23 +320,21 @@ class ObjectDetection(object):
         
 
         # publish results tomato_img
-        imgmsg_segment = self.bridge.cv2_to_imgmsg(img_segment, encoding="rgb8")
         imgmsg_tomato = self.bridge.cv2_to_imgmsg(img_tomato, encoding="rgb8")
         imgmsg_hue = self.bridge.cv2_to_imgmsg(img_hue)
 
         rospy.logdebug("Publishing results")
-        self.pub_segment_image.publish(imgmsg_segment)
         self.pub_tomato_image.publish(imgmsg_tomato)
         self.pub_color_hue.publish(imgmsg_hue)
         self.pub_object_features.publish(truss)
-
         return True
 
 
     def generate_cage_pose(self, grasp_features):
         row = grasp_features['row'] 
         col = grasp_features['col']
-        angle = -grasp_features['angle'] # minus since camera frame is upside down...
+        angle = grasp_features['angle'] # minus since camera frame is upside down...
+        rospy.loginfo('angle: %s', angle/np.pi * 180) # 
         rpy = [0, 0, angle]
 
         xyz = self.deproject(row, col)
@@ -359,7 +345,7 @@ class ObjectDetection(object):
 
     def visualive_tomatoes(self, tomato_mask):
         tomato_pcl = self.segment_pcl(tomato_mask, color = (200,  50,  50, 255))
-        self.pub_tomato_mask.publish(self.bridge.cv2_to_imgmsg(tomato_mask))         
+        # self.pub_tomato_mask.publish(self.bridge.cv2_to_imgmsg(tomato_mask))         
         self.pub_tomato_pcl.publish(tomato_pcl)  
 
     def visualive_peduncle(self, peduncle_mask):
@@ -504,7 +490,7 @@ class ObjectDetection(object):
     def deproject(self, row, col):
         # Deproject
         depth = self.get_depth(row, col)
-        rospy.loginfo("Depth: %s", depth)
+        # rospy.loginfo("Depth: %s", depth)
         # rospy.logdebug("Corresponding depth: %s", self.depth_image[index])
         # https://github.com/IntelRealSense/librealsense/wiki/Projection-in-RealSense-SDK-2.0
 

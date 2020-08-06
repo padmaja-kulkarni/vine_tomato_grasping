@@ -356,7 +356,7 @@ def detect_peduncle(peduncle_img, settings = None, px_per_mm = None, bg_img = No
         branch_length_min_px = px_per_mm*settings['branch_length_min_mm']
     else:
         branch_length_min_px = settings['branch_length_min_px']
-    print('branch_length_min_px', branch_length_min_px)    
+    # print('branch_length_min_px', branch_length_min_px)    
     
     # skeletonize peduncle segment
     skeleton_img = skeletonize_img(peduncle_img)

@@ -196,10 +196,6 @@ class ProcessImage(object):
         x = bbox[0]
         y = bbox[1]
         
-#        if self.px_per_mm:
-#            print 'bbox width: ', bbox[2] / self.px_per_mm, '[mm]'
-#            print 'bbox height: ', bbox[3] / self.px_per_mm, '[mm]'
-            
         #get origin
         translation = translation_rot2or(self.shape, -angle)
         dist = np.sqrt(translation[0]**2 + translation[1]**2)
@@ -300,7 +296,6 @@ class ProcessImage(object):
         for branch_type in branch_data.keys():
             for i, branch in enumerate(branch_data[branch_type]):
                 for node_type in ['src_node_coord', 'dst_node_coord', 'center_node_coord']:
-                # for i, center in enumerate(branch_data[branch_type][node_type]):
                     center = branch[node_type]
                     branch_data[branch_type][i][node_type] = make_2d_point(self._LOCAL_FRAME_ID, center)
 
@@ -312,68 +307,42 @@ class ProcessImage(object):
         return success
 
     @Timer("detect grasp location", name_space)
-    def detect_grasp_location(self, strategy = 'cage'):
+    def detect_grasp_location(self):
         pwd = os.path.join(self.pwd, '07_grasp')
         success = True
-        minimum_grasp_length = 20 * self.px_per_mm # [10 mm]
+        minimum_grasp_length = 20 * self.px_per_mm # [mm]
 
-        if strategy== "cage":
-            com = self.get_xy(self.com, self._LOCAL_FRAME_ID)
-    
-            centers = []
-            branches_i = []
-            for i, branch in enumerate(self.branch_data['junction']):
-#                print 'length: ', branch['length']
-#                print 'threshold: ', minimum_grasp_length
-                if branch['length'] > minimum_grasp_length:
-                    centers.append(branch['center_node_coord'])
-                    branches_i.append(i)
-       
-            if len(centers) > 0:
-                loc = self.get_xy(centers, self._LOCAL_FRAME_ID)
-                dist = np.sqrt(np.sum(np.power(loc - com, 2), 1))
-                i = np.argmin(dist)
-                branch_i = branches_i[i]
-                grasp_angle_local = self.branch_data['junction'][branch_i]['angle']/180.0*np.pi               
-                
-            else:
-                print('Did not detect a valid grasping branch')
-                # skeleton = skeletonize(self.penduncle_main/self.imMax)
-#                col, row = np.nonzero(self.penduncle_main)
-#                loc = np.transpose(np.matrix(np.vstack((row, col))))
-#
-#
-#                dist = np.sqrt(np.sum(np.power(loc - com, 2), 1))
-#                i = np.argmin(dist)
-#                grasp_angle_local = 0
-                self.grasp_point = None
-                self.grasp_angle_local= None
-                self.grasp_angle_global = None
-                
-                if self.save:
-                    img_rgb = self.crop(self.image).data
-                    save_img(img_rgb, pwd=pwd, name =self.name, ext = self.ext)
-                    img_rgb = self.image.data
-                    save_img(img_rgb, pwd=pwd, name =self.name + '_g', ext = self.ext)
-                return False
-                
 
-        elif strategy== "pinch":
+        com = self.get_xy(self.com, self._LOCAL_FRAME_ID)
 
-            # skeleton = skeletonize(self.peduncleL/self.imMax)
-            col, row = np.nonzero(self.penduncle_main)
-            loc = np.transpose(np.matrix(np.vstack((row, col))))
-
-            dist0 = np.sqrt(np.sum(np.power(loc - self.centersL[0,:], 2), 1))
-            dist1 = np.sqrt(np.sum(np.power(loc - self.centersL[1,:], 2), 1))
-            dist = np.minimum(dist0, dist1)
-            i = np.argmax(dist)
+        centers = []
+        branches_i = []
+        for i, branch in enumerate(self.branch_data['junction']):
+            if branch['length'] > minimum_grasp_length:
+                centers.append(branch['center_node_coord'])
+                branches_i.append(i)
+   
+        if len(centers) > 0:
+            loc = self.get_xy(centers, self._LOCAL_FRAME_ID)
+            dist = np.sqrt(np.sum(np.power(loc - com, 2), 1))
+            i = np.argmin(dist)
+            branch_i = branches_i[i]
+            grasp_angle_local = self.branch_data['junction'][branch_i]['angle']/180.0*np.pi               
             
-            grasp_angle_local = 0
-
         else:
-            print("Unknown grasping strategy")
+            print('Did not detect a valid grasping branch')
+
+            self.grasp_point = None
+            self.grasp_angle_local= None
+            self.grasp_angle_global = None
+            
+            if self.save:
+                img_rgb = self.crop(self.image).data
+                save_img(img_rgb, pwd=pwd, name =self.name, ext = self.ext)
+                img_rgb = self.image.data
+                save_img(img_rgb, pwd=pwd, name =self.name + '_g', ext = self.ext)
             return False
+
 
         grasp_angle_global = -self.angle + grasp_angle_local
         grasp_point = make_2d_point(self._LOCAL_FRAME_ID, xy = (loc[i, 0], loc[i, 1]))
@@ -524,7 +493,7 @@ class ProcessImage(object):
         return peduncle
 
     def get_grasp_location(self, local = False):
-        # TODO fix for local frame
+
         if local:
             frame_id = self._LOCAL_FRAME_ID
             angle = self.grasp_angle_local
@@ -655,7 +624,7 @@ class ProcessImage(object):
         if success is False:
             return success
 
-        success = self.detect_grasp_location(strategy = "cage")
+        success = self.detect_grasp_location()
         return success
 
     def get_settings(self):
@@ -672,11 +641,11 @@ class ProcessImage(object):
 # %matplotlib qt
 
 if __name__ == '__main__':
-    i_start = 1
-    i_end = 50
+    i_start = 4
+    i_end = 5
     N = i_end - i_start
 
-    save = False
+    save = True
 
     pwd_current = os.path.dirname(__file__)
     dataset = "depth_blue" # "real_blue"

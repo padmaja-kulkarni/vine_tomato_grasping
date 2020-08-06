@@ -34,7 +34,8 @@
     <arg name="depth_width"         default="1280"/>
     <arg name="depth_height"        default="720"/>
     <arg name="color_width"         default="1280"/> <!-- 1920 -->
-    <arg name="color_height"        default="720"/> <!-- 1080 -->
+    <arg name="color_height"        default="720"/> <!-- 1080 -->\
+    <arg name="filters"             default="disparity,spatial,temporal,decimation,pointcloud"/>
 
     <remap from="/$(arg hardware_interface)_trajectory_controller/follow_joint_trajectory"
            to="/$(arg robot_name)/$(arg hardware_interface)_trajectory_controller/follow_joint_trajectory" />
@@ -60,7 +61,7 @@
       <arg name="depth_height"      value="$(arg depth_height)"/>
       <arg name="color_width"       value="$(arg color_width)"/>
       <arg name="color_height"      value="$(arg color_height)"/>
-      <arg name="filters"           value="disparity,spatial,temporal,decimation,pointcloud"/>
+      <arg name="filters"           value="$(arg filters)"/>
     </include>
 
     <!-- Run the robot within a Gazebo simulation. -->

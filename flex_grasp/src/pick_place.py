@@ -83,7 +83,7 @@ class PickPlace(object):
             rospy.logwarn("No pose trnaform for iiwa available...")
         
         grasp_xyz =     [0, 0, 0.05] # [m]
-        pre_grasp_xyz = [0, 0, 0.09] # [m]
+        pre_grasp_xyz = [0, 0, 0.10] # [m]
         grasp_rpy = [-pi, pi/2, 0]
         place_rpy = [-pi, pi/2, 0.5]
         frame = self.planning_frame
