@@ -246,8 +246,9 @@ class ProcessImage(object):
 
         # convert to 2D points
         center_points = []
-        for center in centers:
-            center_points.append(make_2d_point(self._LOCAL_FRAME_ID, (center[0,0], center[0,1])))
+        if centers is not None:
+            for center in centers:
+                center_points.append(make_2d_point(self._LOCAL_FRAME_ID, (center[0,0], center[0,1])))
 
         if com is not None:
             success is True

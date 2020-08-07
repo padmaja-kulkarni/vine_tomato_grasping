@@ -10,7 +10,7 @@
 
     <!-- Aruco settings -->
     <arg name="use_aruco" default="true" doc="When set to false a tracking simulator will be used"/>
-    <arg name="marker_size" default="0.04" doc="Size of the ArUco marker used, in meters"/>
+    <arg name="marker_size" default="0.039" doc="Size of the ArUco marker used, in meters"/>
     <arg name="marker_id" default="26" doc="The ID of the ArUco marker used"/>
 
     <!-- Robot setting -->
