@@ -265,7 +265,7 @@ class ObjectDetection(object):
             rospy.logwarn("[OBJECT DETECTION] Failed to save image %s to path %s", name_rgb, self.pwd_data)
             success = False
             
-        if cv2.imwrite(pwd_depth, depth_img):
+        if cv2.imwrite(pwd_depth, cv2.cvtColor(depth_img, cv2.COLOR_RGB2BGR)):
             rospy.loginfo("[OBJECT DETECTION] File %s save successfully to path %s", name_depth, self.pwd_data)
         else:
             rospy.logwarn("[OBJECT DETECTION] Failed to save image %s to path %s", name_depth, self.pwd_data)

@@ -143,7 +143,7 @@ class PickPlace(object):
 
         object_pose = tf2_geometry_msgs.do_transform_pose(self.object_features.cage_location, transform)
         object_position, object_orientation = pose_to_lists(object_pose.pose, 'euler')
-        object_pose.pose.position = list_to_position((object_position[0], object_position[1], self.peduncle_height))
+        # object_pose.pose.position = list_to_position((object_position[0], object_position[1], self.peduncle_height))
         object_pose.pose.orientation = list_to_orientation((0, 0, object_orientation[2] + angle_offset))
         # add offsets
         self.pre_grasp_pose = add_pose_stamped(self.pre_grasp_trans, object_pose) 

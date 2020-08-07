@@ -18,6 +18,8 @@ from moveit_commander.conversions import list_to_pose
 import pyrealsense2 as rs
 from math import pi
 
+
+
 def camera_info2intrinsics(camera_info):
 
     # init object
@@ -151,3 +153,5 @@ def colored_depth_image(depth_image, min_dist = 0.5, max_dist = 0.7):
     colored_depth_image = cv2.applyColorMap(norm_depth_image, cv2.COLORMAP_JET)
     
     return colored_depth_image
+    
+
