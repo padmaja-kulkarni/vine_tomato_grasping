@@ -244,7 +244,7 @@ class ProcessImage(object):
                                             pwd=pwd,
                                             name=self.name)
 
-        # convert to 2D points
+        # convert to 2D points        
         center_points = []
         if centers is not None:
             for center in centers:

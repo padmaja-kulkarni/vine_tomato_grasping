@@ -67,9 +67,7 @@ def detect_tomato(img_segment, settings, px_per_mm=None, img_rgb=None,
 
     # Hough requires a gradient, thus the image is blurred
     blur_size = settings['blur_size']
-    truss_blurred = cv2.GaussianBlur(img_segment, (blur_size,blur_size), 0)     
-    
-    print 'param2: ', settings['param2']    
+    truss_blurred = cv2.GaussianBlur(img_segment, (blur_size,blur_size), 0)       
     
     # fit circles: [x, y, radius]
     circles = cv2.HoughCircles(truss_blurred, 
@@ -95,7 +93,7 @@ def detect_tomato(img_segment, settings, px_per_mm=None, img_rgb=None,
         centers_overlap =np.matrix(circles[0][:,0:2])
         radii_overlap = circles[0][:,2]
         com_overlap = (radii_overlap**3) * centers_overlap/(np.sum(radii_overlap**3))
-        n_overlapp = len(radii_overlap)
+        n_overlap = len(radii_overlap)
         
         # remove circles which do not overlapp with the tomato segment
         i_keep = find_overlapping_tomatoes(centers_overlap, 
@@ -104,13 +102,21 @@ def detect_tomato(img_segment, settings, px_per_mm=None, img_rgb=None,
                                            ratio_threshold = settings['ratio_threshold'])
                                    
         
-        centers = centers_overlap[i_keep, :]
-        radii = radii_overlap[i_keep]     
-        com = (radii**3) * centers/(np.sum(radii**3))
-        n = len(radii)
+        n = len(i_keep)
         
-        if n != n_overlapp:
-            print 'removed ', n_overlapp - n, ' tomaotes dased on overlap'
+        if n != n_overlap:
+            print 'removed', n_overlap - n, 'tomaoto(es) based on overlap'        
+        
+        if len(i_keep) == 0:
+            centers = None
+            radii = None
+            com = None
+        else:
+        
+            centers = centers_overlap[i_keep, :]
+            radii = radii_overlap[i_keep]     
+            com = (radii**3) * centers/(np.sum(radii**3))
+
     
     # visualize result
     thickness = 1

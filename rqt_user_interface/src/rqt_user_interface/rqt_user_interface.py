@@ -63,7 +63,7 @@ class RqtFlexGrasp(Plugin):
         self._widget.PickPlaceButton.clicked[bool].connect(self.handle_pick_place)
         self._widget.PickButton.clicked[bool].connect(self.handle_pick)
         self._widget.PlaceButton.clicked[bool].connect(self.handle_place)
-#         self._widget.ExperimentButton.clicked[bool].connect(self.handle_experiment)
+        self._widget.ExperimentButton.clicked[bool].connect(self.handle_experiment)
 
     def shutdown_plugin(self):
         self.pub_command.unregister()
@@ -120,25 +120,4 @@ class RqtFlexGrasp(Plugin):
         self.pub_command.publish("place")
         
     def handle_experiment(self):
-        is_idle_topic = 'pipeline/is_idle'
-        
-        while not rospy.wait_for_message(is_idle_topic, Bool).data:
-            rospy.sleep(0.1)
-        
-        self.pub_command.publish("calibrate")
-            
-        while not rospy.wait_for_message(is_idle_topic, Bool).data:
-            rospy.sleep(0.1)
-            
-        if rospy.wait_for_message(is_idle_topic, Bool).data:
-            self.pub_command.publish("detect_truss")
-            
-        while not rospy.wait_for_message(is_idle_topic, Bool).data:
-            rospy.sleep(0.1)
-            
-        if rospy.wait_for_message(is_idle_topic, Bool).data:
-            self.pub_command.publish("pick_place")
-        
-#def wait_for_true(topic):
-#    
-#    message = rospy.wait_for_message(topic, Bool).data
+        self.pub_command.publish("experiment")

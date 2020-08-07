@@ -10,7 +10,8 @@ from func.ros_utils import wait_for_success
 
 class Initializing(smach.State):
     def __init__(self):
-        smach.State.__init__(self, outcomes=['success','failure', 'complete_failure'])
+        smach.State.__init__(self, outcomes=['success','failure', 'complete_failure'],
+                             output_keys=['command', 'mode'])
         self.timeout = 10.0
 
         self.pub_object_detection = rospy.Publisher("object_detection/e_in",
@@ -31,6 +32,8 @@ class Initializing(smach.State):
         init_calibrate = self.is_initialized("calibration_eye_on_base/calibrate/e_out", self.pub_calibrate)
 
         if init_object_detection & init_pose_transform & init_move_robot & init_calibrate:
+            userdata.mode = 'free'
+            userdata.command = None
             return "success"
         else:
             rospy.logwarn("Failed to initialize")
@@ -48,7 +51,10 @@ class Initializing(smach.State):
 
 class Idle(smach.State):
     def __init__(self):
-        smach.State.__init__(self, outcomes=['calibrate', 'detect', 'move', "pick_place", "point", 'failure'], output_keys=['command'])
+        smach.State.__init__(self, outcomes=['calibrate', 'detect', 'move', "pick_place", "point", 'failure'], 
+                             input_keys=['command', 'mode'],
+                             output_keys=['command', 'mode'])
+                             
         self.command_op_topic = "pipelineState"
 
         self.detect_commands =  ["detect_tomato", "detect_truss", "save_image"]
@@ -62,10 +68,12 @@ class Idle(smach.State):
 
     def execute(self, userdata):
         rospy.logdebug('Executing state Idle')
-
-        self.pub_is_idle.publish(True)
-        command = rospy.wait_for_message(self.command_op_topic, String).data
-        self.pub_is_idle.publish(False)
+    
+        if userdata.mode == 'experiment':
+            command = userdata.command
+        else:
+            command = rospy.wait_for_message(self.command_op_topic, String).data    
+            
     
         if command in self.detect_commands:
             userdata.command = command            
@@ -83,7 +91,9 @@ class Idle(smach.State):
             userdata.command = command
             return "point"
         elif command == "experiment":
-            userdata.command = command            
+            rospy.loginfo('Entering experiment mode!')
+            userdata.mode = 'experiment'     
+            return "calibrate"
         else:
             rospy.logwarn('Unknown command: %s', command)
             return "failure"
@@ -91,7 +101,9 @@ class Idle(smach.State):
 
 class DetectObject(smach.State):
     def __init__(self):
-        smach.State.__init__(self, outcomes=['success', 'transform_pose', 'failure', 'complete_failure'], input_keys=['command'])
+        smach.State.__init__(self, outcomes=['success', 'transform_pose', 'failure', 'complete_failure'], 
+                             input_keys=['mode', 'command'], 
+                             output_keys=['mode', 'command'])
         self.detection_op_topic = "object_detection/e_out"
 
         self.pub_obj_detection = rospy.Publisher("object_detection/e_in",
@@ -124,7 +136,10 @@ class DetectObject(smach.State):
 
 class CalibrateRobot(smach.State):
     def __init__(self):
-        smach.State.__init__(self, outcomes=['success','failure', 'complete_failure'])
+        smach.State.__init__(self, outcomes=['success','failure', 'complete_failure'], 
+                             input_keys=['mode'], 
+                             output_keys=['mode', 'command'])
+                             
         self.calibrate_topic = "calibration_eye_on_base/calibrate/e_out"
 
         self.pub_calibrate = rospy.Publisher("calibration_eye_on_base/calibrate/e_in",
@@ -142,6 +157,8 @@ class CalibrateRobot(smach.State):
         success = wait_for_success(self.calibrate_topic, self.timeout)
 
         if success:
+            if userdata.mode == 'experiment':
+                userdata.command = 'detect_truss'
             return 'success'
         else:
             self.counter = self.counter - 1
@@ -151,7 +168,10 @@ class CalibrateRobot(smach.State):
 
 class PoseTransform(smach.State):
     def __init__(self):
-        smach.State.__init__(self, outcomes=['success','failure','complete_failure'])
+        smach.State.__init__(self, outcomes=['success','failure','complete_failure'], 
+                             input_keys=['mode'], 
+                             output_keys=['mode', 'command'])
+                             
         self.tf_op_topic = "pick_place/e_out"
         self.pub_pose_transform = rospy.Publisher("pick_place/e_in",
                                       String, queue_size=10, latch=True)
@@ -170,6 +190,8 @@ class PoseTransform(smach.State):
 
         # determine success
         if success:
+            if userdata.mode == 'experiment':
+                userdata.command = 'pick_place'
             return 'success'
         else:
             self.counter = self.counter -1
@@ -208,7 +230,9 @@ class MoveRobot(smach.State):
             
 class PickPlace(smach.State):
     def __init__(self):
-        smach.State.__init__(self, outcomes=['success', 'failure', 'complete_failure'], input_keys=['command'])
+        smach.State.__init__(self, outcomes=['success', 'failure', 'complete_failure'], 
+                             input_keys=['command','mode'], 
+                             output_keys=['command', 'mode'])
         self.pick_place_op_topic = "pick_place/e_out"
         self.pub_pick_place = rospy.Publisher("pick_place/e_in",
                                       String, queue_size=10, latch=True)
@@ -228,7 +252,9 @@ class PickPlace(smach.State):
 
         # determine success
         if success:
-            return 'success'
+            if userdata.mode == 'experiment':
+                userdata.command = 'detect_truss'
+            return 'success'                
         else:
             self.counter = self.counter - 1
             if self.counter <=0:
@@ -263,6 +289,16 @@ class Point(smach.State):
             if self.counter <=0:
                 return 'complete_failure'
             return 'failure'
+
+class Reset(smach.State):
+    def __init__(self):
+        smach.State.__init__(self, outcomes=['success', 'failure'], 
+                             output_keys=['mode', 'command'])
+        
+    def execute(self, userdata):
+        userdata.mode = 'free'
+        userdata.command = None
+        return 'success'
 
 # main
 def main():
@@ -301,33 +337,37 @@ def main():
         smach.StateMachine.add('CalibrateRobot', CalibrateRobot(),
                            transitions={'success':'Idle',
                                         'failure': 'Idle',
-                                        'complete_failure':'Idle'})
+                                        'complete_failure':'Reset'})
                                         
         smach.StateMachine.add('PickPlace', PickPlace(),
                            transitions={'success':'Idle',
                                         'failure': 'PickPlace',
-                                        'complete_failure':'Idle'})
+                                        'complete_failure':'Reset'})
                                         
         smach.StateMachine.add('Point', Point(),
                            transitions={'success':'Idle',
                                         'failure': 'Point',
-                                        'complete_failure':'Idle'})
+                                        'complete_failure':'Reset'})
 
         smach.StateMachine.add('DetectObject', DetectObject(),
                                transitions={'success': 'Idle',
                                            'transform_pose':'PoseTransform',
                                             'failure':'DetectObject',
-                                            'complete_failure':'Idle'})
+                                            'complete_failure':'Reset'})
 
         smach.StateMachine.add('PoseTransform', PoseTransform(),
                                transitions={'success':'Idle',
                                             'failure':'DetectObject',
-                                            'complete_failure':'Idle'})
+                                            'complete_failure':'Reset'})
 
         smach.StateMachine.add('MoveRobot', MoveRobot(),
                                transitions={'success':'Idle',
                                             'failure':'MoveRobot',
-                                            'complete_failure': 'Idle'})
+                                            'complete_failure': 'Reset'})
+                                           
+        smach.StateMachine.add('Reset', Reset(),
+                               transitions={'success':'Idle',
+                                            'failure':'total_failure'})
 
     # Execute SMACH plan
     sm.execute()
