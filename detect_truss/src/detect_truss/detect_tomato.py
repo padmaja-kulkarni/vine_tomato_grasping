@@ -56,10 +56,9 @@ def detect_tomato(img_segment, settings, px_per_mm=None, img_rgb=None,
 
     # set dimensions
     if px_per_mm:
-        diameter_min_mm = settings['radius_min_mm'] * 2
         radius_min_px = int(round(px_per_mm*settings['radius_min_mm']))
         radius_max_px = int(round(px_per_mm*settings['radius_max_mm']))
-        distance_min_px = int(round(px_per_mm*diameter_min_mm))    
+        distance_min_px = radius_min_px * 2   
     else:
         dim = img_segment.shape
         radius_min_px = dim[1]/settings['radius_min_frac']
