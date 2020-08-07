@@ -5,7 +5,7 @@
 
 uint32 tomato_radius_min_mm
 uint32 tomato_radius_max_mm
-uint32 tomato_distance_min_mm
+# uint32 tomato_distance_min_mm
 
 # uint32 dp
 uint32 param1

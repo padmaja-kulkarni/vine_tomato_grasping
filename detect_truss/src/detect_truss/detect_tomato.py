@@ -20,7 +20,7 @@ def set_detect_tomato_settings(blur_size = 3,
                                distance_min_frac = 4, # = tomato_radius_max
                                radius_min_mm = 30,
                                radius_max_mm = 40,
-                               distance_min_mm = 0.8*2*30,
+                               # distance_min_mm = 0.8*2*30,
                                dp = 4,
                                param1 = 20,
                                param2 = 80,
@@ -36,7 +36,7 @@ def set_detect_tomato_settings(blur_size = 3,
     # distance in mm
     settings['radius_min_mm'] = radius_min_mm
     settings['radius_max_mm'] = radius_max_mm
-    settings['distance_min_mm'] = distance_min_mm    
+    # settings['distance_min_mm'] = distance_min_mm    
     
     
     settings['dp'] = dp
@@ -56,18 +56,21 @@ def detect_tomato(img_segment, settings, px_per_mm=None, img_rgb=None,
 
     # set dimensions
     if px_per_mm:
+        diameter_min_mm = settings['radius_min_mm'] * 2
         radius_min_px = int(round(px_per_mm*settings['radius_min_mm']))
         radius_max_px = int(round(px_per_mm*settings['radius_max_mm']))
-        distance_min_px = int(round(px_per_mm*settings['distance_min_mm']))    
+        distance_min_px = int(round(px_per_mm*diameter_min_mm))    
     else:
         dim = img_segment.shape
         radius_min_px = dim[1]/settings['radius_min_frac']
         radius_max_px = dim[1]/settings['radius_max_frac']
-        distance_min_px = dim[1]/settings['distance_min_frac']    
+        distance_min_px = radius_min_px * 2
 
     # Hough requires a gradient, thus the image is blurred
     blur_size = settings['blur_size']
     truss_blurred = cv2.GaussianBlur(img_segment, (blur_size,blur_size), 0)     
+    
+    print 'param2: ', settings['param2']    
     
     # fit circles: [x, y, radius]
     circles = cv2.HoughCircles(truss_blurred, 
@@ -93,6 +96,7 @@ def detect_tomato(img_segment, settings, px_per_mm=None, img_rgb=None,
         centers_overlap =np.matrix(circles[0][:,0:2])
         radii_overlap = circles[0][:,2]
         com_overlap = (radii_overlap**3) * centers_overlap/(np.sum(radii_overlap**3))
+        n_overlapp = len(radii_overlap)
         
         # remove circles which do not overlapp with the tomato segment
         i_keep = find_overlapping_tomatoes(centers_overlap, 
@@ -102,9 +106,12 @@ def detect_tomato(img_segment, settings, px_per_mm=None, img_rgb=None,
                                    
         
         centers = centers_overlap[i_keep, :]
-        radii = radii_overlap[i_keep]
-        
+        radii = radii_overlap[i_keep]     
         com = (radii**3) * centers/(np.sum(radii**3))
+        n = len(radii)
+        
+        if n != n_overlapp:
+            print 'removed ', n_overlapp - n, ' tomaotes dased on overlap'
     
     # visualize result
     thickness = 1

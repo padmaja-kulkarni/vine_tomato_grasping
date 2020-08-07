@@ -111,7 +111,7 @@ def settings_lib_to_msg(lib):
     # distances in px
     msg.tomato_radius_min_mm = tom_lib['radius_min_mm']
     msg.tomato_radius_max_mm = tom_lib['radius_max_mm']
-    msg.tomato_distance_min_mm = tom_lib['distance_min_mm']
+    # msg.tomato_distance_min_mm = tom_lib['distance_min_mm']
     
 #    msg.dp = tom_lib['dp']
     msg.param1 = tom_lib['param1']
@@ -136,7 +136,7 @@ def settings_msg_to_lib(msg):
     # distances in mm
     tom_lib['radius_min_mm'] = msg.tomato_radius_min_mm  
     tom_lib['radius_max_mm'] = msg.tomato_radius_max_mm
-    tom_lib['distance_min_mm'] = msg.tomato_distance_min_mm    
+    # tom_lib['distance_min_mm'] = msg.tomato_distance_min_mm    
     
 #    tom_lib['dp'] = msg.dp
     tom_lib['param1'] = msg.param1
