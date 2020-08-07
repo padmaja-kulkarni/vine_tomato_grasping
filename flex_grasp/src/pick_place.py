@@ -36,7 +36,7 @@ class PickPlace(object):
         self.pre_place_pose = None
         self.place_pose = None        
         
-        self.peduncle_height = 0.082
+        self.peduncle_height = 0.075 # [m]
         self.object_features = None
         
         
@@ -82,7 +82,7 @@ class PickPlace(object):
         if self.use_iiwa:
             rospy.logwarn("No pose trnaform for iiwa available...")
         
-        grasp_xyz =     [0, 0, 0.06] # [m]
+        grasp_xyz =     [0, 0, 0.07] # [m]
         pre_grasp_xyz = [0, 0, 0.12] # [m]
         grasp_rpy = [-pi, pi/2, 0]
         place_rpy = [-pi, pi/2, 0.5]
@@ -162,6 +162,10 @@ class PickPlace(object):
     
     def command_to_pose(self, pose):
         rospy.logdebug("[PICK PLACE] Commanding move robot to pose")
+        if pose is None:
+            rospy.logwarn("[PICK PLACE] Cannot command to pose, since the pose is None!")
+            return False
+        
         self.pub_move_robot_pose.publish(pose)
         self.pub_move_robot_command.publish("move_manipulator")
         success = wait_for_success("move_robot/e_out", 10)
@@ -242,7 +246,9 @@ class PickPlace(object):
         if success:
             success = self.command_to_home()
 
-        self.reset_msg()
+        if success:
+            success = self.reset_msg()
+            
         return success
             
             
@@ -325,7 +331,7 @@ class PickPlace(object):
         elif self.state == "picked":
             if self.command == "place" or self.command == "pick_place":
                 success = self.place()
-            if self.command == "pick":
+            elif self.command == "pick":
                 rospy.logwarn("[PICK PLACE] Can not pick object, it still needs to be placed!")
             
         elif self.command == "reset":
@@ -333,7 +339,7 @@ class PickPlace(object):
 
         self.update_state(success)
 
-        if self.command == "pick_place" and self.state == "picked":
+        if self.command == "pick_place" and self.state == "picked" and success is True:
             success = None
 
         # publish success

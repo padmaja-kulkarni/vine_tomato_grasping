@@ -47,7 +47,7 @@
 
 		<node name="pipeline"
 			pkg="flex_grasp"
-			type="smach_pipeline.py"
+			type="pipeline.py"
 			output="screen">
 			<param name ="debug" value="$(arg pipeline_debug)"/>
 		</node>

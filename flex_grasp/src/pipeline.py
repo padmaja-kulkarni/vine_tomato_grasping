@@ -4,7 +4,7 @@ import rospy
 import smach
 import smach_ros
 
-from std_msgs.msg import String
+from std_msgs.msg import String, Bool
 from func.ros_utils import wait_for_success
 
 
@@ -56,12 +56,17 @@ class Idle(smach.State):
         self.move_commands =  ["home", "open", "close", "sleep"]
         self.pick_place_commands = ["pick", "place", "pick_place"]
         self.point_commands = ["point"]
+        
+        self.pub_is_idle = rospy.Publisher("pipeline/is_idle",
+                              Bool, queue_size=10, latch=True)
 
     def execute(self, userdata):
         rospy.logdebug('Executing state Idle')
 
+        self.pub_is_idle.publish(True)
         command = rospy.wait_for_message(self.command_op_topic, String).data
-
+        self.pub_is_idle.publish(False)
+    
         if command in self.detect_commands:
             userdata.command = command            
             return "detect"
@@ -77,6 +82,8 @@ class Idle(smach.State):
         elif command in self.point_commands:
             userdata.command = command
             return "point"
+        elif command == "experiment":
+            userdata.command = command            
         else:
             rospy.logwarn('Unknown command: %s', command)
             return "failure"

@@ -58,7 +58,7 @@ class MoveRobot(object):
         self.position_tol = 0.05 # [m]
         self.orientation_tol = deg2rad(1.0) # [rad]
         self.man_joint_tolerance = deg2rad(5.0) # [rad]
-        self.ee_joint_tolerance = 0.0005 # [m]
+        self.ee_joint_tolerance = 0.001 # [m]
 
         self.initialise_robot()
         self.initialise_enviroment()
