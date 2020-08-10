@@ -109,8 +109,8 @@ class PickPlace(object):
             rospy.logdebug("[PICK PLACE] Received command in message: %s", self.command)
 
             # reset outputting message
-            msg = MoveRobotResult()
-            msg.val = MoveRobotResult.NONE
+            msg = PickPlaceResult()
+            msg.val = PickPlaceResult.NONE
             self.pub_e_out.publish(msg)    
     
     def object_features_cb(self, msg):
@@ -343,7 +343,7 @@ class PickPlace(object):
                   
                         
     def take_action(self):
-        msg = MoveRobotResult()
+        msg = PickPlaceResult()
         result = None
 
         # State dependent actions
