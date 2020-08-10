@@ -65,6 +65,7 @@ class Idle(smach.State):
         self.move_commands =  ['home', 'open', 'close', 'sleep']
         self.pick_place_commands = ['pick', 'place', 'pick_place']
         self.point_commands = ['point']
+        self.reset_commands = ['reset', 'hard_reset']
         
         self.pub_is_idle = rospy.Publisher('pipeline/is_idle',
                               Bool, queue_size=10, latch=True)
@@ -75,7 +76,7 @@ class Idle(smach.State):
         if userdata.mode == 'experiment':
             if userdata.prev_command == None:
                 userdata.command = 'calibrate'
-            elif userdata.prev_command == 'calibrate':
+            elif userdata.prev_command == 'calibrate' or userdata.prev_command == 'reset':
                 userdata.command = 'detect_truss'
             elif userdata.prev_command == 'detect_truss':
                 userdata.command = 'transform'
@@ -279,6 +280,7 @@ class PickPlace(smach.State):
         else:
             self.counter = self.counter - 1
             if self.counter <=0:
+                userdata.prev_command = userdata.command
                 return 'complete_failure'
             return 'failure'
 
@@ -314,11 +316,53 @@ class Point(smach.State):
 class Reset(smach.State):
     def __init__(self):
         smach.State.__init__(self, outcomes=['success', 'failure'], 
-                             output_keys=['mode', 'command'])
+                             input_keys=['mode', 'command','prev_command'], 
+                             output_keys=['mode', 'command', 'prev_command'])
+        
+        self.pub_move_robot = rospy.Publisher('move_robot/e_in',
+                                      String, queue_size=10, latch=True)        
+                                     
+        self.mv_robot_op_topic = 'move_robot/e_out'
+        
+    def execute(self, userdata):
+        
+        if userdata.prev_command == 'pick' or userdata.prev_command == 'place':
+            
+            self.pub_move_robot.publish('open')
+            success = wait_for_success(self.mv_robot_op_topic, 5)
+            
+            if not success:
+                return 'failure'
+                
+            self.pub_move_robot.publish('home')
+            success = wait_for_success(self.mv_robot_op_topic, 10)
+            
+            if not success:
+                return 'failure'
+            
+            userdata.command = None
+            userdata.prev_command = 'reset'            
+            return 'success'
+            
+        elif userdata.prev_command == 'detect_truss':
+            return 'failure'
+            
+        else:
+            userdata.command = None
+            userdata.prev_command = 'reset'
+            return 'success'
+            
+            
+class HardReset(smach.State):
+    def __init__(self):
+        smach.State.__init__(self, outcomes=['success', 'failure'], 
+                             input_keys=['mode', 'command','prev_command'], 
+                             output_keys=['mode', 'command', 'prev_command'])
         
     def execute(self, userdata):
         userdata.mode = 'free'
         userdata.command = None
+        userdata.prev_command = 'hard_reset'
         return 'success'
 
 # main
@@ -387,6 +431,10 @@ def main():
                                             'complete_failure': 'Reset'})
                                            
         smach.StateMachine.add('Reset', Reset(),
+                               transitions={'success':'Idle',
+                                            'failure':'HardReset'})
+
+        smach.StateMachine.add('HardReset', Reset(),
                                transitions={'success':'Idle',
                                             'failure':'total_failure'})
 

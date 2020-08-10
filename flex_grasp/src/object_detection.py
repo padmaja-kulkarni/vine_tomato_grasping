@@ -298,7 +298,7 @@ class ObjectDetection(object):
             object_features = self.process_image.get_object_features()
             tomato_mask, peduncle_mask, _ = self.process_image.get_segments()
 
-            cage_pose = self.generate_cage_pose(object_features['grasp_location'])
+            cage_pose = self.generate_cage_pose(object_features['grasp_location'], peduncle_mask)
             
             if cage_pose == False:
                 return False
@@ -342,7 +342,7 @@ class ObjectDetection(object):
         return True
 
 
-    def generate_cage_pose(self, grasp_features):
+    def generate_cage_pose(self, grasp_features, peduncle_mask):
         row = grasp_features['row'] 
         col = grasp_features['col']
         angle = grasp_features['angle']
@@ -351,10 +351,14 @@ class ObjectDetection(object):
 
         xyz = self.deproject(row, col)
         
-        for val in xyz:
-            if np.isnan(val):
-                rospy.logwarn("Failed to compute caging pose!")
+        if np.isnan(xyz).any():
+            rospy.logwarn("Failed to compute caging pose, will try based on segment!")
+            xyz =  self.deproject(row, col, segment = peduncle_mask)
+            
+            if np.isnan(xyz).any():
+                rospy.loginfo("Failed to compute caging pose!")
                 return False
+            
         
         cage_pose =  point_to_pose_stamped(xyz, rpy, self.camera_frame, rospy.Time.now())
 
@@ -426,9 +430,6 @@ class ObjectDetection(object):
         
         return pc2.create_cloud(self.pcl.header, fields, points)        
         
-          
-
-
     def generate_object(self):
 
         #%%##################
@@ -504,9 +505,9 @@ class ObjectDetection(object):
         points = list(pc2.read_points(self.pcl, skip_nans=False, field_names = field_names, uvs=uvs))   
         return points
 
-    def deproject(self, row, col):
+    def deproject(self, row, col, segment = None):
         # Deproject
-        depth = self.get_depth(row, col)
+        depth = self.get_depth(row, col, segment = segment)
         
         if np.isnan(depth):
             rospy.logwarn("Computed depth is nan, can not compute point!")
@@ -527,6 +528,7 @@ class ObjectDetection(object):
         
         point = point_depth
         return point
+
 
     def gen_patch(self, row, col):
         patch_width = (self.patch_size - 1)/2
@@ -552,27 +554,32 @@ class ObjectDetection(object):
                 
         return uvs
 
-    def get_depth(self, row, col):
-        patch_width = (self.patch_size - 1)/2
-
-        dim = self.depth_image.shape
-        H = dim[0]
-        W = dim[1]
-
-        row_start = max([row - patch_width, 0])
-        row_end = min([row + patch_width, H - 1])
-
-        col_start = max([col - patch_width, 0])
-        col_end = min([col + patch_width, W - 1])
-
-        rows = np.arange(row_start, row_end + 1)
-        cols = np.arange(col_start, col_end + 1)
-
-        depth_patch = self.depth_image[rows[:, np.newaxis], cols]
+    def get_depth(self, row, col, segment = None):
+        
+        if segment is None:
+            patch_width = (self.patch_size - 1)/2
+    
+            dim = self.depth_image.shape
+            H = dim[0]
+            W = dim[1]
+    
+            row_start = max([row - patch_width, 0])
+            row_end = min([row + patch_width, H - 1])
+    
+            col_start = max([col - patch_width, 0])
+            col_end = min([col + patch_width, W - 1])
+    
+            rows = np.arange(row_start, row_end + 1)
+            cols = np.arange(col_start, col_end + 1)
+    
+            depth_patch = self.depth_image[rows[:, np.newaxis], cols]
+        else:
+            depth_patch = self.depth_image[segment > 0]
+            
         non_zero = np.nonzero(depth_patch)
         depth_patch_non_zero = depth_patch[non_zero]
 
-        return np.mean(depth_patch_non_zero)
+        return np.median(depth_patch_non_zero)
 
     def take_action(self):
         success = None

@@ -138,7 +138,7 @@ def deg2rad(deg):
     return float(deg)/180.0*pi
     
 
-def colored_depth_image(depth_image, min_dist = 0.5, max_dist = 0.7):
+def colored_depth_image(depth_image, min_dist = 0.4, max_dist = 0.6):
     
     # remove outliers
     depth_image[depth_image > max_dist] = max_dist
