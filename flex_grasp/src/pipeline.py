@@ -5,8 +5,8 @@ import smach
 import smach_ros
 
 from std_msgs.msg import String, Bool
-from func.ros_utils import wait_for_success
-
+from func.ros_utils import wait_for_success, wait_for_result
+from flex_grasp.msg import MoveRobotResult, PickPlaceResult
 
 class Initializing(smach.State):
     def __init__(self):
@@ -27,8 +27,8 @@ class Initializing(smach.State):
         rospy.logdebug('Executing state Initializing')
 
         init_object_detection = self.is_initialized('object_detection/e_out', self.pub_object_detection)
-        init_pose_transform = self.is_initialized('pick_place/e_out', self.pub_pose_transform)
-        init_move_robot = self.is_initialized('move_robot/e_out', self.pub_move_robot)
+        init_pose_transform = self.is_initialized('pick_place/e_out', self.pub_pose_transform, msg_type = PickPlaceResult)
+        init_move_robot = self.is_initialized('move_robot/e_out', self.pub_move_robot, msg_type = MoveRobotResult)
         init_calibrate = self.is_initialized('calibration_eye_on_base/calibrate/e_out', self.pub_calibrate)
 
         userdata.mode = 'free'
@@ -45,11 +45,16 @@ class Initializing(smach.State):
             rospy.loginfo("init_calibrate %s", init_calibrate)
             return 'failure'
 
-    def is_initialized(self, topic_out, topic_in):
+    def is_initialized(self, topic_out, topic_in, msg_type = None):
         request = String()
         request.data = 'e_init'
         topic_in.publish(request)
-        return wait_for_success(topic_out, self.timeout)
+        
+        if msg_type is not None:
+            return wait_for_result(topic_out, self.timeout, msg_type)
+        else:
+            return wait_for_success(topic_out, self.timeout)
+
 
 class Idle(smach.State):
     def __init__(self):
@@ -226,7 +231,6 @@ class MoveRobot(smach.State):
                                       String, queue_size=10, latch=True)
         self.timeout = 30.0
         self.counter = 3
-        self.mv_robot_result = String()
 
     def execute(self, userdata):
         rospy.logdebug('Executing state Move Robot')
@@ -235,7 +239,7 @@ class MoveRobot(smach.State):
         self.pub_move_robot.publish(userdata.command)
 
         # get response
-        success = wait_for_success(self.mv_robot_op_topic, self.timeout)
+        success = wait_for_result(self.mv_robot_op_topic, self.timeout, MoveRobotResult)
 
         # determine success
         if success:
@@ -260,7 +264,6 @@ class PickPlace(smach.State):
                                       String, queue_size=10, latch=True)
         self.timeout = 30.0
         self.counter = 1
-        self.mv_robot_result = String()
 
     def execute(self, userdata):
         rospy.logdebug('Executing state Pick Place')
@@ -270,7 +273,7 @@ class PickPlace(smach.State):
         self.pub_pick_place.publish(userdata.command)
 
         # get response
-        success = wait_for_success(self.pick_place_op_topic, self.timeout)
+        success = wait_for_result(self.pick_place_op_topic, self.timeout, PickPlaceResult)
 
         # determine success
         if success:

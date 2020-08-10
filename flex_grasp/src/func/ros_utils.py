@@ -49,7 +49,7 @@ def wait_for_success(topic, timeout, node_name = ""):
             rospy.logwarn("Command failed: timeout exceeded while waiting for message on topic %s", topic)
             return False
 
-        rospy.sleep(0.2)
+        rospy.sleep(0.1)
         curr_time = rospy.get_time()
 
     if rospy.is_shutdown():
@@ -58,6 +58,40 @@ def wait_for_success(topic, timeout, node_name = ""):
         rospy.logwarn("Command failed: node did not return success within timeout on topic %s", topic)
     return False
     
+    
+def wait_for_result(topic, timeout, msg_type):
+
+
+    start_time = rospy.get_time()
+    curr_time = rospy.get_time()
+
+    # rospy.logdebug("==WAITING FOR SUCCESS==")
+    # rospy.logdebug("start time: %s", start_time)
+    # rospy.logdebug("current time: %s", curr_time)
+    while (curr_time - start_time < timeout) and not rospy.is_shutdown():
+        # rospy.logdebug("current time: %s", curr_time)
+        try:
+            message = rospy.wait_for_message(topic, msg_type, timeout)
+            if message.val == msg_type.NONE:
+                pass
+            elif message.val == msg_type.SUCCESS:
+                rospy.logdebug("Command succeeded: received success on topic %s", topic)
+                return True
+            else:
+                rospy.logwarn("Command failed: node returned %s on topic %s", message.val, topic)
+                return False
+        except:
+            rospy.logwarn("Command failed: timeout exceeded while waiting for message on topic %s", topic)
+            return False
+
+        rospy.sleep(0.1)
+        curr_time = rospy.get_time()
+
+    if rospy.is_shutdown():
+        pass
+    else:
+        rospy.logwarn("Command failed: node did not return success within timeout on topic %s", topic)
+    return False
     
 def wait_for_param(param, timeout):
 

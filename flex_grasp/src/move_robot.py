@@ -22,10 +22,11 @@ from std_msgs.msg import String
 from geometry_msgs.msg import PoseStamped
 from moveit_msgs.msg import MoveItErrorCodes
 
+from flex_grasp.msg import MoveRobotResult
+from func.move_robot_result import move_robot_result_log
 
 # custom functions
 from func.utils import pose_close, joint_close, deg2rad
-from func.ros_utils import wait_for_param
 
 class MoveRobot(object):
     """MoveRobot"""
@@ -51,7 +52,7 @@ class MoveRobot(object):
         self.state = "idle"
         self.prev_state = None
         self.command = None
-
+        self.error = ''
         self.robot_pose = None
 
         # tolerance
@@ -74,7 +75,7 @@ class MoveRobot(object):
         # Publishers
         latch = True
         self.pub_e_out = rospy.Publisher("~e_out",
-                                   String, queue_size=10, latch=latch)
+                                   MoveRobotResult, queue_size=10, latch=latch)
             
     def robot_pose_cb(self, msg):
         if self.robot_pose is None:
@@ -88,8 +89,8 @@ class MoveRobot(object):
             rospy.logdebug("[MOVE ROBOT] Received new move robot event in message: %s", self.command)
 
             # reset outputting message
-            msg = String()
-            msg.data = ""
+            msg = MoveRobotResult()
+            msg.val = MoveRobotResult.NONE
             self.pub_e_out.publish(msg)
             
 
@@ -291,63 +292,56 @@ class MoveRobot(object):
 
 
     def go_to_pose(self, goal_pose):
-        rospy.logdebug("[MOVE ROBOT] Go to pose")        
-
+        rospy.logdebug("[MOVE ROBOT] Go to pose")
+        
         if goal_pose is None:
-            rospy.logwarn("goal pose is empty!")
-            return False
+            return MoveRobotResult.NO_GOAL_POSE
+            
         if not self.check_frames(goal_pose.header.frame_id):
-            return False
+            return MoveRobotResult.INVALID_FRAME
+            
         if not self.check_ik(goal_pose):
-            return False
+            return MoveRobotResult.NO_IK_SOLUTION
 
         self.man_group.set_pose_target(goal_pose.pose)
+        plan = self.man_group.plan()
         
-        success = False
-        attempt = 0
-        while success is False:
-            attempt = attempt + 1
-            
+        # if not plan found... very ugly, what is a better way to do this?
+        if len(plan.joint_trajectory.joint_names) == 0:
+            rospy.logwarn('[MOVE ROBOT] not attempting to go to pose goal, no plan found!')
+            return MoveRobotResult.PLANNING_FAILED
+        
+        self.man_group.execute(plan, wait=True)
 
-            plan = self.man_group.plan()
-            
-            # if not plan found... very ugly, what is a better way to do this?
-            if len(plan.joint_trajectory.joint_names) == 0:
-                rospy.logwarn('[MOVE ROBOT] not attempting to go to pose goal, no plan found!')
-                return False
-            
-            self.man_group.execute(plan, wait=True)
-    
-            # Ensures that there is no residual movement and clear the target
-            self.man_group.stop()
-            self.man_group.clear_pose_targets()
-            rospy.sleep(1)            
-            
-            curr_pose = self.man_group.get_current_pose()
-            
-            orientation_close, position_close = pose_close(goal_pose, curr_pose, self.position_tol, self.orientation_tol)
-            is_all_close = position_close # orientation_close and position_close
-            success = is_all_close
-            if is_all_close is False:
-                if orientation_close is False:
-                    # self.man_group.get_goal_orientation_tolerance()
-                    rospy.logdebug("[MOVE ROBOT] Failed to move to pose target, obtained orientation is not sufficiently close to goal orientation (tolerance: %s). Attempts remaining: %s",self.orientation_tol, self.max_attempts - attempt) 
-                    
-                if position_close is False:
-                    # self.man_group.get_goal_position_tolerance()
-                    rospy.loginfo("[MOVE ROBOT] Failed to move to pose target, obtained position is not sufficiently close to goal position (tolerance: %s). Attempts remaining: %s", self.position_tol, self.max_attempts - attempt)
-                    
-                rospy.logdebug("[MOVE ROBOT] Goal pose: %s", pose_to_list(goal_pose.pose))
-                rospy.logdebug("[MOVE ROBOT] Curr pose: %s", pose_to_list(curr_pose.pose))
+        # Ensures that there is no residual movement and clear the target
+        self.man_group.stop()
+        self.man_group.clear_pose_targets()
+        rospy.sleep(1)            
+        
+        curr_pose = self.man_group.get_current_pose()
+        
+        orientation_close, position_close = pose_close(goal_pose, curr_pose, self.position_tol, self.orientation_tol)
+        is_all_close = position_close # orientation_close and position_close
+
+        if is_all_close is False:
+            if orientation_close is False:
+                # self.man_group.get_goal_orientation_tolerance()
+                rospy.logdebug("[MOVE ROBOT] Failed to move to pose target, obtained orientation is not sufficiently close to goal orientation (tolerance: %s)",self.orientation_tol)                   
                 
-            if attempt >= self.max_attempts:
-                return False
+            if position_close is False:
+                # self.man_group.get_goal_position_tolerance()
+                rospy.loginfo("[MOVE ROBOT] Failed to move to pose target, obtained position is not sufficiently close to goal position (tolerance: %s)", self.position_tol)
+                
+            rospy.logdebug("[MOVE ROBOT] Goal pose: %s", pose_to_list(goal_pose.pose))
+            rospy.logdebug("[MOVE ROBOT] Curr pose: %s", pose_to_list(curr_pose.pose))
+            return MoveRobotResult.CONTROL_FAILED
 
-        return success
+        return MoveRobotResult.SUCCESS
 
     def move_to_joint_target(self, group, target):
         rospy.logdebug("[MOVE ROBOT] Go to joint target") 
         to_check = True
+        result = MoveRobotResult.SUCCESS
 
         # if the target is a named target, get the corresponding joint values
         if type(target) is str:
@@ -365,7 +359,7 @@ class MoveRobot(object):
         
         #  for some reason group.get_joint_value_target() returns zeros on ee_group_name
         if (group.get_name() == self.ee_group_name):
-            success = True
+            result = MoveRobotResult.SUCCESS
             target = target.values()
         else:
             target = group.get_joint_value_target()
@@ -381,68 +375,63 @@ class MoveRobot(object):
                 rospy.logwarn("[MOVE ROBOT] Failed to move to joint target: obtained joint values are not sufficiently close to target joint value (tolerance: %s). Attempts remaining %s", tol, 0)
                 rospy.loginfo("[MOVE ROBOT] Target joint values: %s", target)
                 rospy.loginfo("[MOVE ROBOT] Actual joint values: %s", current)
-                success = False
+                result = MoveRobotResult.CONTROL_FAILED
 
         group.clear_pose_targets()
-        return success
+        return result
 
     def reset(self):
         rospy.logdebug("[MOVE ROBOT] Resetting robot pose") 
         self.robot_pose = None
-        return True
+        return MoveRobotResult.SUCCESS
 
     def take_action(self):
-        msg = String()
-        success = None
+        msg = MoveRobotResult()
+        result = None
 
         # General actions, non state dependent
         if self.command == "move_manipulator":
-            success = self.go_to_pose(self.robot_pose)
+            result = self.go_to_pose(self.robot_pose)
             self.robot_pose = None
 
         elif self.command == "sleep":
-            success = self.sleep_man()
+            result = self.sleep_man()
 
         elif self.command == "home":
-            success = self.home_man()
+            result = self.home_man()
             
         elif self.command == "grasp":
-            success = self.apply_grasp_ee()
+            result = self.apply_grasp_ee()
 
         elif self.command == "release":
-            success = self.apply_release_ee()
+            result = self.apply_release_ee()
 
         elif self.command == "open":
-            success = self.apply_release_ee()
+            result = self.apply_release_ee()
 
         elif self.command == "close":
-            success = self.close_ee()
+            result = self.close_ee()
             
         elif self.command == "reset":
-            success = self.reset()
+            result = self.reset()
 
         elif self.command == "e_init":
-            success = True
+            result = MoveRobotResult.SUCCESS
             
         elif self.command == None:
             pass
             
         else:
-            rospy.logwarn("Received unknwon command: %s", self.command)
-            success = False
+            rospy.logwarn("Received unknown command: %s", self.command)
+            result = MoveRobotResult.UNKNOWN_COMMAND
 
         # publish success
-        if success is not None:
-            if success == True:
-                msg.data = "e_success"
-                self.command = None
+        if result is not None:
 
-            elif success == False:
-                msg.data = "e_failure"
-                rospy.logwarn("Robot command failed")
-                self.command = None
-
+            move_robot_result_log(result)
+            msg.val = result
             self.pub_e_out.publish(msg)
+            self.command = None
 
 
 def main():
