@@ -171,21 +171,26 @@ class MoveRobot(object):
         self.target_object_name = 'peduncle'
 
         known_objects_prev = None
-        while True:
+        required_object = 'table'
+        found_required_object = False
+        start_time = rospy.get_time()
+        curr_time = rospy.get_time()       
+        timeout = 10
+        
+        while (curr_time - start_time < timeout) and not found_required_object:
             known_objects = self.scene.get_known_object_names()
 
             if not known_objects == known_objects_prev:
                 known_objects_prev = known_objects
                 rospy.logdebug("[MOVE ROBOT] Known objects: %s", known_objects)
 
-                if ('table' in known_objects):
-                    break
+                if (required_object in known_objects):
+                    rospy.logdebug("[MOVE ROBOT] Continueing initialization, required object is present")
+                    found_required_object = True
                 else:
-                    rospy.logwarn("[MOVE ROBOT] Table and wall object not present...")
-                    break
+                    rospy.logwarn("[MOVE ROBOT] Refusing to continue untill %s is present.", required_object)
+                    found_required_object = False
             rospy.sleep(0.1)
-
-        rospy.logdebug("[MOVE ROBOT] Known objects: %s", self.scene.get_known_object_names())
 
 
     def check_ik(self, pose_stamped, timeout=rospy.Duration(5)):
