@@ -327,7 +327,7 @@ class ObjectDetection(object):
 
         # get images
         img_hue  = self.process_image.get_color_components()
-        img_depth = colored_depth_image(self.depth_image)
+        img_depth = colored_depth_image(self.depth_image.copy())
 
         # publish results tomato_img
         imgmsg_tomato = self.bridge.cv2_to_imgmsg(img_tomato, encoding="rgb8")

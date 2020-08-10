@@ -246,26 +246,29 @@ class PickPlace(object):
 
         result = PickPlaceResult()
         attempts = 0
-        while result.val != PickPlaceResult.SUCCESS:
+        while result != PickPlaceResult.SUCCESS:
             
             attempts += 1
             if attempts > 2:
                 break
             
             result =  self.man_pre_grasp()
-            if result.val != PickPlaceResult.SUCCESS:
+            if result != PickPlaceResult.SUCCESS:
                 rospy.loginfo('trying transform pose with an additional 180deg')
                 self.transform_pose(angle_offset = pi)
 
-        if result.val != PickPlaceResult.SUCCESS:
+        if result == PickPlaceResult.SUCCESS:
             result = self.apply_pre_grasp_ee()
         
-        if result.val != PickPlaceResult.SUCCESS:
+        if result == PickPlaceResult.SUCCESS:
             result = self.man_grasp()
         
-        if result.val != PickPlaceResult.SUCCESS:
+        if result == PickPlaceResult.SUCCESS:
             result = self.apply_grasp_ee()
-            
+
+        if result == PickPlaceResult.SUCCESS:
+            result = self.man_pre_grasp()         
+         
         return result
 
 
@@ -274,19 +277,19 @@ class PickPlace(object):
         
         result = self.man_pre_place()
 
-        if result.val != PickPlaceResult.SUCCESS:
+        if result == PickPlaceResult.SUCCESS:
             result = self.man_place()
 
-        if result.val != PickPlaceResult.SUCCESS:
+        if result == PickPlaceResult.SUCCESS:
             result = self.apply_release_ee()
 
-        if result.val != PickPlaceResult.SUCCESS:
+        if result == PickPlaceResult.SUCCESS:
             result = self.man_pre_place()
 
-        if result.val != PickPlaceResult.SUCCESS:
+        if result == PickPlaceResult.SUCCESS:
             result = self.command_to_home()
 
-        if result.val != PickPlaceResult.SUCCESS:
+        if result == PickPlaceResult.SUCCESS:
             result = self.reset_msg()
             
         return result
@@ -377,12 +380,14 @@ class PickPlace(object):
         elif self.command == "reset":
             result = self.reset_msg()
 
-
         success = result == PickPlaceResult.SUCCESS
         self.update_state(success)
-
+        
         if self.command == "pick_place" and self.state == "picked" and success:
             success = None
+            result = None
+
+        
 
         # publish success
         if result is not None:

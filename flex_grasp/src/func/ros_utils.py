@@ -24,7 +24,7 @@ def wait_for_variable(timeout, variable):
     return False  
 
 
-def wait_for_success(topic, timeout, node_name = ""):
+def wait_for_success(topic, timeout):
 
 
     start_time = rospy.get_time()

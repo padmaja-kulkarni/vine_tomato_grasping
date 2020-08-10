@@ -20,8 +20,10 @@ from easy_handeye.handeye_client import HandeyeClient
 
 
 # custom functions
-from func.ros_utils import wait_for_success
+from func.ros_utils import wait_for_result
 from func.conversions import list_to_position, list_to_orientation
+
+from flex_grasp.msg import MoveRobotResult
 
 class Calibration(object):
     """Calibration"""
@@ -160,7 +162,7 @@ class Calibration(object):
             return False
 
         self.pub_move_robot_command.publish("reset")
-        wait_for_success("/px150/move_robot/e_out", 5)
+        wait_for_result("/px150/move_robot/e_out", 5, MoveRobotResult)
 
         for pose in self.pose_array.poses:
             if rospy.is_shutdown():
@@ -177,7 +179,7 @@ class Calibration(object):
             self.pub_move_robot_command.publish("move_manipulator")
 
             # get response
-            success = wait_for_success("/px150/move_robot/e_out", 5)
+            success = wait_for_result("/px150/move_robot/e_out", 5, MoveRobotResult) == MoveRobotResult.SUCCESS
             attempts = 1
 
             if success:
@@ -193,7 +195,7 @@ class Calibration(object):
 
         # reset
         self.pub_move_robot_command.publish("home")
-        success = wait_for_success("/px150/move_robot/e_out", 5) 
+        success = wait_for_result("/px150/move_robot/e_out", 5, MoveRobotResult) == MoveRobotResult.SUCCESS
         
         # compute result
         result = self.client.compute_calibration()

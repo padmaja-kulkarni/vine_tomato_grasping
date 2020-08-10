@@ -207,7 +207,7 @@ class PoseTransform(smach.State):
         self.pub_pose_transform.publish(userdata.command)
 
         # get response
-        success = wait_for_success(self.tf_op_topic, self.timeout)
+        success = wait_for_result(self.tf_op_topic, self.timeout, PickPlaceResult)
 
         # determine success
         if success:
@@ -332,13 +332,13 @@ class Reset(smach.State):
         if userdata.prev_command == 'pick' or userdata.prev_command == 'place':
             
             self.pub_move_robot.publish('open')
-            success = wait_for_success(self.mv_robot_op_topic, 5)
+            success = wait_for_result(self.mv_robot_op_topic, 5, MoveRobotResult)
 
             if not success:
                 return 'failure'
                 
             self.pub_move_robot.publish('home')
-            success = wait_for_success(self.mv_robot_op_topic, 10)
+            success = wait_for_result(self.mv_robot_op_topic, 10, MoveRobotResult)
             
             if not success:
                 return 'failure'
