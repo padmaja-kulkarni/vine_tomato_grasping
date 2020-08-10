@@ -34,8 +34,13 @@
     <arg name="depth_width"         default="848"/> <!-- 1280 -->
     <arg name="depth_height"        default="480"/>  <!-- 720 -->
     <arg name="color_width"         default="1280"/> <!-- 1920 -->
-    <arg name="color_height"        default="720"/> <!-- 1080 -->\
+    <arg name="color_height"        default="720"/> <!-- 1080 -->
     <arg name="filters"             default="disparity,spatial,temporal,pointcloud"/> <!-- disparity,spatial,temporal,decimation,hole_filling,pointcloud -->
+
+    <!-- TODO: should depend on use_iiwa, use_interbotix...-->
+    <arg if="$(arg robot_sim)" name="scene_file" default="$(find flex_gazebo_interbotix)/config/simulation.scene"/>
+    <arg unless="$(arg robot_sim)" name="scene_file" default="$(find flex_gazebo_interbotix)/config/experiment.scene"/>
+
 
     <remap from="/$(arg hardware_interface)_trajectory_controller/follow_joint_trajectory"
            to="/$(arg robot_name)/$(arg hardware_interface)_trajectory_controller/follow_joint_trajectory" />
@@ -188,6 +193,12 @@
       <arg name="use_fake"                  value="false"/>
       <arg name="dof"                       value="5"/>
     </include>
+
+    <node name = "moveit_publish_scene_from_text"
+      pkg= "moveit_ros_planning"
+      type = "moveit_publish_scene_from_text"
+      args= "$(arg scene_file)"
+      ns="$(arg robot_name)"/>
 
 
     <include if="$(arg use_calibration)" file="$(find easy_handeye)/launch/publish.launch">

@@ -330,7 +330,7 @@ class Reset(smach.State):
             
             self.pub_move_robot.publish('open')
             success = wait_for_success(self.mv_robot_op_topic, 5)
-            
+
             if not success:
                 return 'failure'
                 

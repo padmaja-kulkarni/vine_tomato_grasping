@@ -178,7 +178,7 @@ class MoveRobot(object):
                 known_objects_prev = known_objects
                 rospy.logdebug("[MOVE ROBOT] Known objects: %s", known_objects)
 
-                if ('table' in known_objects) and ('wall' in known_objects):
+                if ('table' in known_objects):
                     break
                 else:
                     rospy.logwarn("[MOVE ROBOT] Table and wall object not present...")
