@@ -11,102 +11,146 @@ from func.ros_utils import wait_for_success
 class Initializing(smach.State):
     def __init__(self):
         smach.State.__init__(self, outcomes=['success','failure', 'complete_failure'],
-                             output_keys=['command', 'mode'])
+                             output_keys=['command', 'prev_command', 'mode'])
         self.timeout = 10.0
 
-        self.pub_object_detection = rospy.Publisher("object_detection/e_in",
+        self.pub_object_detection = rospy.Publisher('object_detection/e_in',
                                       String, queue_size=10, latch=True)
-        self.pub_pose_transform = rospy.Publisher("pick_place/e_in",
+        self.pub_pose_transform = rospy.Publisher('pick_place/e_in',
                                     String, queue_size=10, latch=True)
-        self.pub_move_robot = rospy.Publisher("move_robot/e_in",
+        self.pub_move_robot = rospy.Publisher('move_robot/e_in',
                                       String, queue_size=10, latch=True)
-        self.pub_calibrate = rospy.Publisher("calibration_eye_on_base/calibrate/e_in",
+        self.pub_calibrate = rospy.Publisher('calibration_eye_on_base/calibrate/e_in',
                               String, queue_size=10, latch=True)
 
     def execute(self, userdata):
         rospy.logdebug('Executing state Initializing')
 
-        init_object_detection = self.is_initialized("object_detection/e_out", self.pub_object_detection)
-        init_pose_transform = self.is_initialized("pick_place/e_out", self.pub_pose_transform)
-        init_move_robot = self.is_initialized("move_robot/e_out", self.pub_move_robot)
-        init_calibrate = self.is_initialized("calibration_eye_on_base/calibrate/e_out", self.pub_calibrate)
+        init_object_detection = self.is_initialized('object_detection/e_out', self.pub_object_detection)
+        init_pose_transform = self.is_initialized('pick_place/e_out', self.pub_pose_transform)
+        init_move_robot = self.is_initialized('move_robot/e_out', self.pub_move_robot)
+        init_calibrate = self.is_initialized('calibration_eye_on_base/calibrate/e_out', self.pub_calibrate)
+
+        userdata.mode = 'free'
+        userdata.command = None
+        userdata.prev_command = 'initialize'
 
         if init_object_detection & init_pose_transform & init_move_robot & init_calibrate:
-            userdata.mode = 'free'
-            userdata.command = None
-            return "success"
+            return 'success'
         else:
             rospy.logwarn("Failed to initialize")
             rospy.loginfo("init_object_detection %s", init_object_detection)
             rospy.loginfo("init_pose_transform %s", init_pose_transform)
             rospy.loginfo("init_move_robot %s", init_move_robot)
             rospy.loginfo("init_calibrate %s", init_calibrate)
-            return "failure"
+            return 'failure'
 
     def is_initialized(self, topic_out, topic_in):
         request = String()
-        request.data = "e_init"
+        request.data = 'e_init'
         topic_in.publish(request)
         return wait_for_success(topic_out, self.timeout)
 
 class Idle(smach.State):
     def __init__(self):
-        smach.State.__init__(self, outcomes=['calibrate', 'detect', 'move', "pick_place", "point", 'failure'], 
-                             input_keys=['command', 'mode'],
-                             output_keys=['command', 'mode'])
+        smach.State.__init__(self, outcomes=['calibrate', 'detect', 'transform_pose', 'pick_place', 'move', 'point', 'failure'], 
+                             input_keys=['mode', 'command', 'prev_command'],
+                             output_keys=['mode', 'command', 'prev_command'])
                              
-        self.command_op_topic = "pipelineState"
+        self.command_op_topic = 'pipelineState'
 
-        self.detect_commands =  ["detect_tomato", "detect_truss", "save_image"]
-        self.calibrate_commands =  ["calibrate"]
-        self.move_commands =  ["home", "open", "close", "sleep"]
-        self.pick_place_commands = ["pick", "place", "pick_place"]
-        self.point_commands = ["point"]
+        self.detect_commands =  ['detect_tomato', 'detect_truss', 'save_image']
+        self.transform_commands = ['transform']
+        self.calibrate_commands =  ['calibrate']
+        self.move_commands =  ['home', 'open', 'close', 'sleep']
+        self.pick_place_commands = ['pick', 'place', 'pick_place']
+        self.point_commands = ['point']
         
-        self.pub_is_idle = rospy.Publisher("pipeline/is_idle",
+        self.pub_is_idle = rospy.Publisher('pipeline/is_idle',
                               Bool, queue_size=10, latch=True)
 
     def execute(self, userdata):
         rospy.logdebug('Executing state Idle')
     
         if userdata.mode == 'experiment':
-            command = userdata.command
+            if userdata.prev_command == None:
+                userdata.command = 'calibrate'
+            elif userdata.prev_command == 'calibrate':
+                userdata.command = 'detect_truss'
+            elif userdata.prev_command == 'detect_truss':
+                userdata.command = 'transform'
+            elif userdata.prev_command == 'transform':
+                userdata.command = 'pick'
+            elif userdata.prev_command == 'pick':
+                userdata.command = 'place'
+            elif userdata.prev_command == 'place':
+                userdata.command = 'detect_truss'
+        elif userdata.prev_command == 'detect_truss':
+            userdata.command = 'transform'
         else:
-            command = rospy.wait_for_message(self.command_op_topic, String).data    
+            userdata.command = rospy.wait_for_message(self.command_op_topic, String).data    
             
-    
-        if command in self.detect_commands:
-            userdata.command = command            
-            return "detect"
-        elif command in self.move_commands:
-            userdata.command = command
-            return "move"
-        elif command in self.calibrate_commands:
-            userdata.command = command
-            return "calibrate"
-        elif command in self.pick_place_commands:
-            userdata.command = command
-            return "pick_place"
-        elif command in self.point_commands:
-            userdata.command = command
-            return "point"
-        elif command == "experiment":
+        if userdata.command in self.transform_commands:
+            return 'transform_pose'
+        elif userdata.command in self.detect_commands:         
+            return 'detect'
+        elif userdata.command in self.move_commands:
+            return 'move'
+        elif userdata.command in self.calibrate_commands:
+            return 'calibrate'
+        elif userdata.command in self.pick_place_commands:
+            return 'pick_place'
+        elif userdata.command in self.point_commands:
+            return 'point'
+        elif userdata.command == 'experiment':
             rospy.loginfo('Entering experiment mode!')
             userdata.mode = 'experiment'     
-            return "calibrate"
+            userdata.command = 'calibrate'
+            return 'calibrate'
         else:
-            rospy.logwarn('Unknown command: %s', command)
-            return "failure"
+            rospy.logwarn('Unknown command: %s', userdata.command)
+            return 'failure'
 
+class CalibrateRobot(smach.State):
+    def __init__(self):
+        smach.State.__init__(self, outcomes=['success','failure', 'complete_failure'], 
+                             input_keys=['mode', 'command', 'prev_command'], 
+                             output_keys=['mode', 'command', 'prev_command'])
+                             
+        self.calibrate_topic = 'calibration_eye_on_base/calibrate/e_out'
+
+        self.pub_calibrate = rospy.Publisher('calibration_eye_on_base/calibrate/e_in',
+                                      String, queue_size=10, latch=True)
+        self.counter = 1
+        self.timeout = 60.0
+
+    def execute(self, userdata):
+        rospy.logdebug('Executing state Calibrate')
+    
+        # command node
+        self.pub_calibrate.publish(userdata.command)
+
+        # get response
+        success = wait_for_success(self.calibrate_topic, self.timeout)
+
+        if success:
+            userdata.prev_command = userdata.command
+            userdata.command = None
+            return 'success'
+        else:
+            self.counter = self.counter - 1
+            if self.counter <=0:
+                return 'complete_failure'
+            return 'failure'
 
 class DetectObject(smach.State):
     def __init__(self):
-        smach.State.__init__(self, outcomes=['success', 'transform_pose', 'failure', 'complete_failure'], 
-                             input_keys=['mode', 'command'], 
-                             output_keys=['mode', 'command'])
-        self.detection_op_topic = "object_detection/e_out"
+        smach.State.__init__(self, outcomes=['success', 'failure', 'complete_failure'], 
+                             input_keys=['mode', 'command', 'prev_command'], 
+                             output_keys=['mode', 'command', 'prev_command'])
+        self.detection_op_topic = 'object_detection/e_out'
 
-        self.pub_obj_detection = rospy.Publisher("object_detection/e_in",
+        self.pub_obj_detection = rospy.Publisher('object_detection/e_in',
                                       String, queue_size=10, latch=True)
         self.counter = 3
         self.timeout = 25.0
@@ -116,7 +160,6 @@ class DetectObject(smach.State):
         rospy.logdebug('Executing state Detect')
 
         # command node
-        rospy.logdebug("Publishing command: %s", userdata.command)
         self.pub_obj_detection.publish(userdata.command)
 
         # get response
@@ -124,42 +167,14 @@ class DetectObject(smach.State):
         if success:
             
             if userdata.command == 'detect_tomato' or userdata.command == 'save_image':
+                userdata.prev_command = userdata.command
+                userdata.command = None
                 return 'success'
                 
             if userdata.command == 'detect_truss':
-                return 'transform_pose'
-        else:
-            self.counter = self.counter - 1
-            if self.counter <=0:
-                return 'complete_failure'
-            return 'failure'
-
-class CalibrateRobot(smach.State):
-    def __init__(self):
-        smach.State.__init__(self, outcomes=['success','failure', 'complete_failure'], 
-                             input_keys=['mode'], 
-                             output_keys=['mode', 'command'])
-                             
-        self.calibrate_topic = "calibration_eye_on_base/calibrate/e_out"
-
-        self.pub_calibrate = rospy.Publisher("calibration_eye_on_base/calibrate/e_in",
-                                      String, queue_size=10, latch=True)
-        self.counter = 1
-        self.timeout = 60.0
-
-    def execute(self, userdata):
-        rospy.logdebug('Executing state Calibrate')
-
-        # command node
-        self.pub_calibrate.publish("e_start")
-
-        # get response
-        success = wait_for_success(self.calibrate_topic, self.timeout)
-
-        if success:
-            if userdata.mode == 'experiment':
-                userdata.command = 'detect_truss'
-            return 'success'
+                userdata.prev_command = userdata.command
+                userdata.command = None
+                return 'success'
         else:
             self.counter = self.counter - 1
             if self.counter <=0:
@@ -169,11 +184,11 @@ class CalibrateRobot(smach.State):
 class PoseTransform(smach.State):
     def __init__(self):
         smach.State.__init__(self, outcomes=['success','failure','complete_failure'], 
-                             input_keys=['mode'], 
-                             output_keys=['mode', 'command'])
+                             input_keys=['mode', 'command', 'prev_command'], 
+                             output_keys=['mode', 'command', 'prev_command'])
                              
-        self.tf_op_topic = "pick_place/e_out"
-        self.pub_pose_transform = rospy.Publisher("pick_place/e_in",
+        self.tf_op_topic = 'pick_place/e_out'
+        self.pub_pose_transform = rospy.Publisher('pick_place/e_in',
                                       String, queue_size=10, latch=True)
         self.timeout = 40.0
         self.counter = 3
@@ -183,27 +198,30 @@ class PoseTransform(smach.State):
         rospy.logdebug('Executing state Transform')
 
         # command node
-        self.pub_pose_transform.publish("transform")
+        self.pub_pose_transform.publish(userdata.command)
 
         # get response
         success = wait_for_success(self.tf_op_topic, self.timeout)
 
         # determine success
         if success:
-            if userdata.mode == 'experiment':
-                userdata.command = 'pick_place'
+            userdata.prev_command = userdata.command
+            userdata.command = None
             return 'success'
         else:
             self.counter = self.counter -1
             if self.counter <=0:
+                userdata.prev_command = userdata.command
                 return 'complete_failure'
             return 'failure'
 
 class MoveRobot(smach.State):
     def __init__(self):
-        smach.State.__init__(self, outcomes=['success', 'failure', 'complete_failure'], input_keys=['command'])
-        self.mv_robot_op_topic = "move_robot/e_out"
-        self.pub_move_robot = rospy.Publisher("move_robot/e_in",
+        smach.State.__init__(self, outcomes=['success', 'failure', 'complete_failure'], 
+                             input_keys=['mode', 'command', 'prev_command'], 
+                             output_keys=['mode', 'command', 'prev_command'])
+        self.mv_robot_op_topic = 'move_robot/e_out'
+        self.pub_move_robot = rospy.Publisher('move_robot/e_in',
                                       String, queue_size=10, latch=True)
         self.timeout = 30.0
         self.counter = 3
@@ -220,10 +238,13 @@ class MoveRobot(smach.State):
 
         # determine success
         if success:
-            return 'success'
+            userdata.command = None
+            userdata.prev_command = userdata.command
+            return 'success'       
         else:
             self.counter = self.counter - 1
             if self.counter <=0:
+                userdata.prev_command = userdata.command
                 return 'complete_failure'
             return 'failure'
             
@@ -231,10 +252,10 @@ class MoveRobot(smach.State):
 class PickPlace(smach.State):
     def __init__(self):
         smach.State.__init__(self, outcomes=['success', 'failure', 'complete_failure'], 
-                             input_keys=['command','mode'], 
-                             output_keys=['command', 'mode'])
-        self.pick_place_op_topic = "pick_place/e_out"
-        self.pub_pick_place = rospy.Publisher("pick_place/e_in",
+                             input_keys=['mode', 'command','prev_command'], 
+                             output_keys=['mode', 'command', 'prev_command'])
+        self.pick_place_op_topic = 'pick_place/e_out'
+        self.pub_pick_place = rospy.Publisher('pick_place/e_in',
                                       String, queue_size=10, latch=True)
         self.timeout = 30.0
         self.counter = 1
@@ -242,7 +263,7 @@ class PickPlace(smach.State):
 
     def execute(self, userdata):
         rospy.logdebug('Executing state Pick Place')
-        rospy.loginfo("Statemachine publishing command %s", userdata.command)
+        rospy.loginfo('Statemachine publishing command %s', userdata.command)
 
         # command node
         self.pub_pick_place.publish(userdata.command)
@@ -252,8 +273,8 @@ class PickPlace(smach.State):
 
         # determine success
         if success:
-            if userdata.mode == 'experiment':
-                userdata.command = 'detect_truss'
+            userdata.prev_command = userdata.command
+            userdata.command = None
             return 'success'                
         else:
             self.counter = self.counter - 1
@@ -265,8 +286,8 @@ class PickPlace(smach.State):
 class Point(smach.State):
     def __init__(self):
         smach.State.__init__(self, outcomes=['success', 'failure', 'complete_failure'], input_keys=['command'])
-        self.point_op_topic = "point/e_out"
-        self.pub_point = rospy.Publisher("point/e_in",
+        self.point_op_topic = 'point/e_out'
+        self.pub_point = rospy.Publisher('point/e_in',
                                       String, queue_size=10, latch=True)
         self.timeout = 30.0
         self.counter = 3
@@ -276,7 +297,7 @@ class Point(smach.State):
         rospy.logdebug('Executing state Point')
 
         # command node
-        self.pub_point.publish("e_start")
+        self.pub_point.publish('e_start')
 
         # get response
         success = wait_for_success(self.point_op_topic, self.timeout)
@@ -302,11 +323,11 @@ class Reset(smach.State):
 
 # main
 def main():
-    debug_mode = rospy.get_param("pipeline/debug")
+    debug_mode = rospy.get_param('pipeline/debug')
 
     if debug_mode:
         log_level = rospy.DEBUG
-        rospy.loginfo("[PIPELINE] Luanching pipeline node in debug mode")
+        rospy.loginfo('[PIPELINE] Luanching pipeline node in debug mode')
     else:
         log_level = rospy.INFO
 
@@ -327,10 +348,11 @@ def main():
                                             'failure':'Initializing',
                                             'complete_failure':'total_failure'})
         smach.StateMachine.add('Idle', Idle(),
-                               transitions={'detect':'DetectObject',
-                                            'move': 'MoveRobot',
-                                            'calibrate': 'CalibrateRobot',
+                               transitions={'calibrate': 'CalibrateRobot',
+                                            'detect':'DetectObject',                                            
+                                            'transform_pose':'PoseTransform',
                                             'pick_place': 'PickPlace',
+                                            'move': 'MoveRobot',
                                             'point': 'Point',
                                             'failure': 'Idle'})
 
@@ -351,7 +373,6 @@ def main():
 
         smach.StateMachine.add('DetectObject', DetectObject(),
                                transitions={'success': 'Idle',
-                                           'transform_pose':'PoseTransform',
                                             'failure':'DetectObject',
                                             'complete_failure':'Reset'})
 

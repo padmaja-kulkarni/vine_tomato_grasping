@@ -223,11 +223,15 @@ class Calibration(object):
         success = None
         msg = String()
 
-        if (self.event == "e_init"):
+        if (self.event == 'e_init'):
             success = self.init_poses()
 
-        elif (self.event == "e_start"):
+        elif (self.event == 'calibrate'):
             success = self.calibrate()
+            
+        elif self.event is not None:
+            rospy.logwarn("[CALIBRATE] Can not take an action: received unknown command %s!", self.event)
+            success = False
 
 
         # publish success
