@@ -12,16 +12,15 @@
 
 
   <!-- interbotix params-->
-  <xacro:arg name="hardware_interface"      default="PositionJointInterface"/>
   <xacro:arg name="robot_name"              default="px150"/>
   <xacro:arg name="robot_model"             default="px150"/>
 
-  <xacro:arg name="interbotix_origin_xyz"   default="-0.2 0 0.23"/>
-  <xacro:arg name="interbotix_origin_rpy"   default="0.0 0.0 0.0"/>
+  <xacro:arg name="interbotix_origin_xyz"   default="0 0 0"/> <!-- -0.2 0 0.23-->
+  <xacro:arg name="interbotix_origin_rpy"   default="0 0 0"/>
 
   <!-- camera params-->
   <xacro:arg name="camera_name"             default="rs_d435"/>
-  <xacro:arg name="camera_sim"              default="true"/>
+  <xacro:arg name="camera_sim"              default="false"/>
   <xacro:arg name="use_nominal_extrinsics"  default="$(arg camera_sim)"/>
 
   <xacro:arg name="camera_origin_xyz"       default="0.15 -0.02 0.9"/>

@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<robot name="px150" xmlns:xacro="http://ros.org/wiki/xacro">
+
+<!-- This file is used for real world experiments to place the robot at the desired pose-->
+<link name="world"/>
+<joint name="fixed" type="fixed">
+  <parent link="world"/>
+  <child link="$(arg robot_name)/base_link"/>
+  <origin rpy="0 ${radians(3)} 0" xyz="0 0 0.005"/>
+</joint>
+
+</robot>

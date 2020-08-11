@@ -183,8 +183,8 @@ class Calibration(object):
             attempts = 1
 
             if success:
-                # wait a small amount of time for vibrations to stop
-                rospy.sleep(1)
+                # camera delay + wait a small amount of time for vibrations to stop
+                rospy.sleep(1.5)
 
                 for attempt in range(0,attempts):
 
