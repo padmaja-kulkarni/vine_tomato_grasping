@@ -51,7 +51,7 @@ class Initializing(smach.State):
         topic_in.publish(request)
         
         if msg_type is not None:
-            return wait_for_result(topic_out, self.timeout, msg_type)
+            return wait_for_result(topic_out, self.timeout, msg_type) == msg_type.SUCCESS
         else:
             return wait_for_success(topic_out, self.timeout)
 
@@ -62,7 +62,8 @@ class Idle(smach.State):
                              input_keys=['mode', 'command', 'prev_command'],
                              output_keys=['mode', 'command', 'prev_command'])
                              
-        self.command_op_topic = 'pipelineState'
+        self.command_op_topic = 'pipeline_command'
+        rospy.Subscriber("experiment", Bool, self.go_cb)
 
         self.detect_commands =  ['detect_tomato', 'detect_truss', 'save_image']
         self.transform_commands = ['transform']
@@ -71,14 +72,25 @@ class Idle(smach.State):
         self.pick_place_commands = ['pick', 'place', 'pick_place']
         self.point_commands = ['point']
         self.reset_commands = ['reset', 'hard_reset']
-        
-        self.pub_is_idle = rospy.Publisher('pipeline/is_idle',
-                              Bool, queue_size=10, latch=True)
+        self.experiment = False
+
+    def go_cb(self, msg):
+        self.experiment = msg.data
+        rospy.loginfo("[PIPELINE] experiment: %s", self.experiment)
+
 
     def execute(self, userdata):
         rospy.logdebug('Executing state Idle')
-    
-        if userdata.mode == 'experiment':
+        
+        if self.experiment and (userdata.mode != 'experiment'):
+            rospy.loginfo('[PIPELINE] Entering experiment mode!')
+            userdata.mode = 'experiment'
+            userdata.prev_command == None
+        elif (not self.experiment) and userdata.mode == 'experiment':
+            userdata.mode = 'free'
+            
+                
+        if userdata.mode == 'experiment':            
             if userdata.prev_command == None:
                 userdata.command = 'calibrate'
             elif userdata.prev_command == 'calibrate' or userdata.prev_command == 'reset':
@@ -96,6 +108,7 @@ class Idle(smach.State):
         else:
             userdata.command = rospy.wait_for_message(self.command_op_topic, String).data    
             
+
         if userdata.command in self.transform_commands:
             return 'transform_pose'
         elif userdata.command in self.detect_commands:         
@@ -108,11 +121,6 @@ class Idle(smach.State):
             return 'pick_place'
         elif userdata.command in self.point_commands:
             return 'point'
-        elif userdata.command == 'experiment':
-            rospy.loginfo('Entering experiment mode!')
-            userdata.mode = 'experiment'     
-            userdata.command = 'calibrate'
-            return 'calibrate'
         else:
             rospy.logwarn('Unknown command: %s', userdata.command)
             return 'failure'
@@ -164,7 +172,9 @@ class DetectObject(smach.State):
 
     def execute(self, userdata):
         rospy.logdebug('Executing state Detect')
-
+        
+        # This ensures the robot is not in the way of the camera, even with delay.
+        rospy.sleep(1.0)
         # command node
         self.pub_obj_detection.publish(userdata.command)
 
@@ -207,10 +217,10 @@ class PoseTransform(smach.State):
         self.pub_pose_transform.publish(userdata.command)
 
         # get response
-        success = wait_for_result(self.tf_op_topic, self.timeout, PickPlaceResult)
+        result = wait_for_result(self.tf_op_topic, self.timeout, PickPlaceResult)
 
         # determine success
-        if success:
+        if result == PickPlaceResult.SUCCESS:
             userdata.prev_command = userdata.command
             userdata.command = None
             return 'success'
@@ -226,11 +236,11 @@ class MoveRobot(smach.State):
         smach.State.__init__(self, outcomes=['success', 'failure', 'complete_failure'], 
                              input_keys=['mode', 'command', 'prev_command'], 
                              output_keys=['mode', 'command', 'prev_command'])
-        self.mv_robot_op_topic = 'move_robot/e_out'
+        self.out_topic = 'move_robot/e_out'
         self.pub_move_robot = rospy.Publisher('move_robot/e_in',
                                       String, queue_size=10, latch=True)
         self.timeout = 30.0
-        self.counter = 3
+        self.counter = 1
 
     def execute(self, userdata):
         rospy.logdebug('Executing state Move Robot')
@@ -239,10 +249,10 @@ class MoveRobot(smach.State):
         self.pub_move_robot.publish(userdata.command)
 
         # get response
-        success = wait_for_result(self.mv_robot_op_topic, self.timeout, MoveRobotResult)
+        result = wait_for_result(self.out_topic, self.timeout, MoveRobotResult)
 
         # determine success
-        if success:
+        if result == MoveRobotResult.SUCCESS:
             userdata.command = None
             userdata.prev_command = userdata.command
             return 'success'       
@@ -259,7 +269,7 @@ class PickPlace(smach.State):
         smach.State.__init__(self, outcomes=['success', 'failure', 'complete_failure'], 
                              input_keys=['mode', 'command','prev_command'], 
                              output_keys=['mode', 'command', 'prev_command'])
-        self.pick_place_op_topic = 'pick_place/e_out'
+        self.out_topic = 'pick_place/e_out'
         self.pub_pick_place = rospy.Publisher('pick_place/e_in',
                                       String, queue_size=10, latch=True)
         self.timeout = 30.0
@@ -267,16 +277,16 @@ class PickPlace(smach.State):
 
     def execute(self, userdata):
         rospy.logdebug('Executing state Pick Place')
-        rospy.loginfo('Statemachine publishing command %s', userdata.command)
+        rospy.logdebug('Statemachine publishing command %s', userdata.command)
 
         # command node
         self.pub_pick_place.publish(userdata.command)
 
         # get response
-        success = wait_for_result(self.pick_place_op_topic, self.timeout, PickPlaceResult)
+        result = wait_for_result(self.out_topic, self.timeout, PickPlaceResult)
 
         # determine success
-        if success:
+        if result == PickPlaceResult.SUCCESS:
             userdata.prev_command = userdata.command
             userdata.command = None
             return 'success'                
@@ -334,16 +344,16 @@ class Reset(smach.State):
             
             rospy.loginfo("Opening EE")
             self.pub_move_robot.publish('open')
-            success = wait_for_result(self.mv_robot_op_topic, 5, MoveRobotResult)
+            result = wait_for_result(self.mv_robot_op_topic, 5, MoveRobotResult)
 
-            if not success:
+            if result != MoveRobotResult.SUCCESS:
                 return 'failure'
                 
             rospy.loginfo("Homeing manipulator")
             self.pub_move_robot.publish('home')
-            success = wait_for_result(self.mv_robot_op_topic, 10, MoveRobotResult)
+            result = wait_for_result(self.mv_robot_op_topic, 10, MoveRobotResult)
             
-            if not success:
+            if result != MoveRobotResult.SUCCESS:
                 return 'failure'
             
             userdata.command = None

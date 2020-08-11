@@ -54,6 +54,7 @@ class MoveRobot(object):
         self.command = None
         self.error = ''
         self.robot_pose = None
+        self.rate = rospy.Rate(10)
 
         # tolerance
         self.position_tol = 0.05 # [m]
@@ -73,9 +74,8 @@ class MoveRobot(object):
         rospy.Subscriber("~e_in", String, self.e_in_cb)
 
         # Publishers
-        latch = True
         self.pub_e_out = rospy.Publisher("~e_out",
-                                   MoveRobotResult, queue_size=10, latch=latch)
+                                   MoveRobotResult, queue_size=10, latch=True)
             
     def robot_pose_cb(self, msg):
         if self.robot_pose is None:
@@ -191,7 +191,7 @@ class MoveRobot(object):
                 else:
                     rospy.logwarn("[MOVE ROBOT] Refusing to continue untill %s is present.", required_object)
                     found_required_object = False
-            rospy.sleep(0.1)
+            self.rate.sleep()
 
 
     def check_ik(self, pose_stamped, timeout=rospy.Duration(5)):
@@ -234,7 +234,7 @@ class MoveRobot(object):
             if attached_objects[self.target_object_name].link_name == self.ee_link:
                 rospy.logdebug("[MOVE ROBOT] Removing atached objects from ee_link")
                 self.scene.remove_attached_object(self.ee_link, self.target_object_name)
-                rospy.sleep(0.1)
+                self.rate.sleep()
                 self.scene.remove_world_object(self.target_object_name)
                 return True
             else:
@@ -248,7 +248,7 @@ class MoveRobot(object):
         grasping_group = self.ee_group_name
         touch_links = self.robot.get_link_names(group=grasping_group)
         self.scene.attach_box(self.ee_link, self.target_object_name, touch_links=touch_links)
-        rospy.sleep(0.1)
+        self.rate.sleep()
         return True
 
     def go_to_random_pose(self):
@@ -354,7 +354,7 @@ class MoveRobot(object):
         group.set_joint_value_target(target)
 
         plan = group.plan()
-        success = group.execute(plan, wait=True)
+        group.execute(plan, wait=True) # = success?
         group.stop()
     
         current = group.get_current_joint_values()
@@ -441,10 +441,9 @@ def main():
     try:
         move_robot = MoveRobot()
 
-        rate = rospy.Rate(10)
         while not rospy.core.is_shutdown():
             move_robot.take_action()
-            rate.sleep()
+            move_robot.rate.sleep()
 
     except rospy.ROSInterruptException:
         return

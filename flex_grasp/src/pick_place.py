@@ -31,19 +31,18 @@ from math import pi
 
 class PickPlace(object):
     
-    def __init__(self):   
-        
-        
+    def __init__(self):
         self.state = "init"
         self.prev_state = None
         self.command = None
 
+        
         self.pre_grasp_pose = None
         self.grasp_pose = None
         self.pre_place_pose = None
         self.place_pose = None        
         
-        self.peduncle_height = 0.01 # 0.075 # [m]
+        self.peduncle_height = 0.075 # [m] 0.01 # 
         self.object_features = None
         
         
@@ -56,7 +55,8 @@ class PickPlace(object):
             log_level = rospy.INFO
         
         rospy.init_node("pick_place", anonymous=True, log_level=log_level)
-                        
+        self.rate = rospy.Rate(10)               
+               
         self.pub_e_out = rospy.Publisher("~e_out", PickPlaceResult, queue_size=10, latch=True)
                                              
         self.pub_move_robot_command = rospy.Publisher("move_robot/e_in", String, queue_size=10, latch=False)
@@ -179,113 +179,97 @@ class PickPlace(object):
         
     def man_pre_grasp(self):
         rospy.logdebug("[PICK PLACE] Commanding move robot to pre grasp")
-        result = self.command_to_pose(self.pre_grasp_pose)
-        if result == MoveRobotResult.SUCCESS:
-            return PickPlaceResult.SUCCESS
-        else:
-            return PickPlaceResult.MAN_PRE_GRASP_FAILED
+        return self.command_to_pose(self.pre_grasp_pose)
             
     def man_grasp(self):
         rospy.logdebug("[PICK PLACE] Commanding move robot to grasp")
-        if self.command_to_pose(self.grasp_pose):
-            return PickPlaceResult.SUCCESS
-        else:
-            return PickPlaceResult.MAN_GRASP_FAILED
+        return self.command_to_pose(self.grasp_pose)
             
     def man_pre_place(self):
         rospy.logdebug("[PICK PLACE] Commanding move robot to pre place")
-        if self.command_to_pose(self.pre_place_pose):
-            return PickPlaceResult.SUCCESS
-        else:
-            return PickPlaceResult.MAN_PRE_PLACE_FAILED
+        return self.command_to_pose(self.pre_place_pose)
                 
     def man_place(self):
         rospy.logdebug("[PICK PLACE] Commanding move robot to place")
-        if self.command_to_pose(self.place_pose):
-            return PickPlaceResult.SUCCESS
-        else:
-            return PickPlaceResult.MAN_PLACE_FAILED
+        return self.command_to_pose(self.place_pose)
         
     def command_to_home(self):
         rospy.logdebug("[PICK PLACE] Commanding move robot to home")
         self.pub_move_robot_command.publish("home")
-        if wait_for_result("move_robot/e_out", 5, MoveRobotResult):
-            return PickPlaceResult.SUCCESS
-        else:
-            return PickPlaceResult.MAN_HOME_FAILED
-                
+        return wait_for_result("move_robot/e_out", 5, MoveRobotResult)
 
     def apply_pre_grasp_ee(self):
         rospy.logdebug("[PICK PLACE] Aplying pre-grasp with end effector")
         self.pub_move_robot_command.publish("open")
-        if wait_for_result("move_robot/e_out", 5, MoveRobotResult): 
-            return PickPlaceResult.SUCCESS
-        else:
-            return PickPlaceResult.EE_PRE_GRASP_FAILED
-                      
+        return wait_for_result("move_robot/e_out", 5, MoveRobotResult)
                       
     def apply_grasp_ee(self):
         rospy.logdebug("[PICK PLACE] Aplying grasp with end effector")
         self.pub_move_robot_command.publish("grasp")   
-        if wait_for_result("move_robot/e_out", 5, MoveRobotResult): 
-            return PickPlaceResult.SUCCESS
-        else:
-            return PickPlaceResult.EE_GRASP_FAILED
-        
+        return wait_for_result("move_robot/e_out", 5, MoveRobotResult)
         
     def apply_release_ee(self):
         rospy.logdebug("[PICK PLACE] Aplying release with end effector")
         self.pub_move_robot_command.publish("release")
-        if wait_for_result("move_robot/e_out", 5, MoveRobotResult):     
-            return PickPlaceResult.SUCCESS
-        else:
-            return PickPlaceResult.EE_RELEASE_FAILED
+        return wait_for_result("move_robot/e_out", 5, MoveRobotResult)
         
     def pick(self):
         rospy.logdebug("[PICK PLACE] Picking object")
             
-        result = self.man_pre_grasp()
-        if result != PickPlaceResult.SUCCESS:
+        move_robot_result = self.man_pre_grasp()
+        if move_robot_result == MoveRobotResult.PLANNING_FAILED:
             rospy.loginfo('trying transform pose with an additional 180deg')
             self.transform_pose(angle_offset = pi)
-            result = self.man_pre_grasp()
+            move_robot_result = self.man_pre_grasp()
+            
+        if move_robot_result != MoveRobotResult.SUCCESS:
+            return PickPlaceResult.MAN_GRASP_FAILED
 
-        if result == PickPlaceResult.SUCCESS:
-            result = self.apply_pre_grasp_ee()
+        move_robot_result = self.apply_pre_grasp_ee()
+        if move_robot_result != MoveRobotResult.SUCCESS:
+            return PickPlaceResult.EE_PRE_GRASP_FAILED
+            
+        move_robot_result = self.man_grasp()
+        if move_robot_result != MoveRobotResult.SUCCESS:
+            return PickPlaceResult.MAN_GRASP_FAILED
         
-        if result == PickPlaceResult.SUCCESS:
-            result = self.man_grasp()
-        
-        if result == PickPlaceResult.SUCCESS:
-            result = self.apply_grasp_ee()
-
-        if result == PickPlaceResult.SUCCESS:
-            result = self.man_pre_grasp()         
+        move_robot_result = self.apply_grasp_ee()
+        if move_robot_result != MoveRobotResult.SUCCESS:
+            return PickPlaceResult.EE_GRASP_FAILED
+            
+        move_robot_result = self.man_pre_grasp()         
+        if move_robot_result != PickPlaceResult.SUCCESS:
+            return PickPlaceResult.MAN_PRE_GRASP_FAILED
          
-        return result
+        return PickPlaceResult.SUCCESS
 
 
     def place(self):
         rospy.logdebug("[PICK PLACE] Placing object")
         
-        result = self.man_pre_place()
-
-        if result == PickPlaceResult.SUCCESS:
-            result = self.man_place()
-
-        if result == PickPlaceResult.SUCCESS:
-            result = self.apply_release_ee()
-
-        if result == PickPlaceResult.SUCCESS:
-            result = self.man_pre_place()
-
-        if result == PickPlaceResult.SUCCESS:
-            result = self.command_to_home()
-
-        if result == PickPlaceResult.SUCCESS:
-            result = self.reset_msg()
+        move_robot_result = self.man_pre_place()
+        if move_robot_result != MoveRobotResult.SUCCESS:
+            return PickPlaceResult.MAN_PRE_PLACE_FAILED
             
-        return result
+        move_robot_result = self.man_place()
+        if move_robot_result != MoveRobotResult.SUCCESS:
+            return PickPlaceResult.MAN_PLACE_FAILED
+            
+        move_robot_result = self.apply_release_ee()
+        if move_robot_result != MoveRobotResult.SUCCESS:
+            return PickPlaceResult.EE_RELEASE_FAILED
+
+        move_robot_result = self.man_pre_place()
+        if move_robot_result != MoveRobotResult.SUCCESS:
+            return PickPlaceResult.MAN_PRE_PLACE_FAILED
+
+        move_robot_result = self.command_to_home()
+        if move_robot_result != MoveRobotResult.SUCCESS:
+            return PickPlaceResult.MAN_HOME_FAILED
+
+        self.reset_msg()
+            
+        return PickPlaceResult.SUCCESS
             
             
     def reset_msg(self):
@@ -377,10 +361,7 @@ class PickPlace(object):
         self.update_state(success)
         
         if self.command == "pick_place" and self.state == "picked" and success:
-            success = None
             result = None
-
-        
 
         # publish success
         if result is not None:
@@ -394,11 +375,9 @@ class PickPlace(object):
 def main():
     try:
         pick_place = PickPlace()
-        rate = rospy.Rate(10)
-
         while not rospy.core.is_shutdown():
             pick_place.take_action()
-            rate.sleep()
+            pick_place.rate.sleep()
 
     except rospy.ROSInterruptException:
         return

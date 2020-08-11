@@ -76,14 +76,13 @@ def wait_for_result(topic, timeout, msg_type):
                 pass
             elif message.val == msg_type.SUCCESS:
                 rospy.logdebug("Command succeeded: received success on topic %s", topic)
-                return True
+                return message.val
             else:
-                rospy.logwarn("Command failed: node returned %s on topic %s", message.val, topic)
-                return False
+                rospy.logdebug("Command failed: node returned %s on topic %s", message.val, topic)
+                return message.val
         except:
             rospy.logwarn("Command failed: timeout exceeded while waiting for message on topic %s", topic)
-            # return msg_type.TIMEOUT      
-            return False
+            return msg_type.TIMEOUT      
 
         rospy.sleep(0.1)
         curr_time = rospy.get_time()

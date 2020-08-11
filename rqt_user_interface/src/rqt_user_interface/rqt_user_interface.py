@@ -44,9 +44,16 @@ class RqtFlexGrasp(Plugin):
         # Add widget to the user interface
         context.add_widget(self._widget)
 
-        self.pub_command = rospy.Publisher("pipelineState",
+        self.pub_command = rospy.Publisher("pipeline_command",
                                       String, queue_size=10, latch=False)
 
+        self.pub_experiment = rospy.Publisher("experiment",
+                                      Bool, queue_size=1, latch=True)
+
+        self.go = False
+        self._widget.ExperimentButton.setCheckable(True)
+        # self._widget.ExperimentButton.toggle()
+        
         # basic commands
         self._widget.SleepButton.clicked[bool].connect(self.handle_sleep)
         self._widget.HomeButton.clicked[bool].connect(self.handle_home)
@@ -63,7 +70,7 @@ class RqtFlexGrasp(Plugin):
         self._widget.PickPlaceButton.clicked[bool].connect(self.handle_pick_place)
         self._widget.PickButton.clicked[bool].connect(self.handle_pick)
         self._widget.PlaceButton.clicked[bool].connect(self.handle_place)
-        self._widget.ExperimentButton.clicked[bool].connect(self.handle_experiment)
+        self._widget.ExperimentButton.clicked.connect(self.handle_experiment) # [bool].connect(self.handle_experiment)
 
     def shutdown_plugin(self):
         self.pub_command.unregister()
@@ -120,4 +127,12 @@ class RqtFlexGrasp(Plugin):
         self.pub_command.publish("place")
         
     def handle_experiment(self):
-        self.pub_command.publish("experiment")
+#        self.go = not self.go
+#        if self.go:
+#            self.pub_command.publish("experiment")
+#            
+#        
+#        
+        self.experiment = self._widget.ExperimentButton.isChecked()
+        self.pub_experiment.publish(self.experiment)
+        
