@@ -21,6 +21,9 @@ from func.pick_place_result import pick_place_result_log
 from flex_grasp.msg import MoveRobotResult
 from flex_grasp.msg import PickPlaceResult
 
+
+from func.move_robot_result import move_robot_result_log, move_robot_result_string
+
 import tf2_ros
 import tf2_geometry_msgs
 
@@ -172,19 +175,18 @@ class PickPlace(object):
         
         self.pub_move_robot_pose.publish(pose)
         self.pub_move_robot_command.publish("move_manipulator")
-        return wait_for_result("move_robot/e_out", 10, MoveRobotResult)
+        return wait_for_result("move_robot/e_out", 20, MoveRobotResult)
         
     def man_pre_grasp(self):
         rospy.logdebug("[PICK PLACE] Commanding move robot to pre grasp")
-        
-        if self.command_to_pose(self.pre_grasp_pose):
+        result = self.command_to_pose(self.pre_grasp_pose)
+        if result == MoveRobotResult.SUCCESS:
             return PickPlaceResult.SUCCESS
         else:
             return PickPlaceResult.MAN_PRE_GRASP_FAILED
             
     def man_grasp(self):
         rospy.logdebug("[PICK PLACE] Commanding move robot to grasp")
-        
         if self.command_to_pose(self.grasp_pose):
             return PickPlaceResult.SUCCESS
         else:
@@ -192,7 +194,6 @@ class PickPlace(object):
             
     def man_pre_place(self):
         rospy.logdebug("[PICK PLACE] Commanding move robot to pre place")
-        
         if self.command_to_pose(self.pre_place_pose):
             return PickPlaceResult.SUCCESS
         else:
@@ -200,7 +201,6 @@ class PickPlace(object):
                 
     def man_place(self):
         rospy.logdebug("[PICK PLACE] Commanding move robot to place")
-        
         if self.command_to_pose(self.place_pose):
             return PickPlaceResult.SUCCESS
         else:
@@ -243,19 +243,12 @@ class PickPlace(object):
         
     def pick(self):
         rospy.logdebug("[PICK PLACE] Picking object")
-
-        result = PickPlaceResult()
-        attempts = 0
-        while result != PickPlaceResult.SUCCESS:
             
-            attempts += 1
-            if attempts > 2:
-                break
-            
-            result =  self.man_pre_grasp()
-            if result != PickPlaceResult.SUCCESS:
-                rospy.loginfo('trying transform pose with an additional 180deg')
-                self.transform_pose(angle_offset = pi)
+        result = self.man_pre_grasp()
+        if result != PickPlaceResult.SUCCESS:
+            rospy.loginfo('trying transform pose with an additional 180deg')
+            self.transform_pose(angle_offset = pi)
+            result = self.man_pre_grasp()
 
         if result == PickPlaceResult.SUCCESS:
             result = self.apply_pre_grasp_ee()

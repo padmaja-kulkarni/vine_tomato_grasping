@@ -23,7 +23,7 @@ from geometry_msgs.msg import PoseStamped
 from moveit_msgs.msg import MoveItErrorCodes
 
 from flex_grasp.msg import MoveRobotResult
-from func.move_robot_result import move_robot_result_log
+from func.move_robot_result import move_robot_result_log, move_robot_result_string
 
 # custom functions
 from func.utils import pose_close, joint_close, deg2rad
@@ -277,18 +277,20 @@ class MoveRobot(object):
     def apply_release_ee(self):
         rospy.logdebug("[MOVE ROBOT] Aplying release with end effector")
 
-        success = self.open_ee()
-        if success:
-            success = self.remove_attached_target_object()
-        return success
+        result = self.open_ee()
+        if result == MoveRobotResult.SUCCESS:
+            self.remove_attached_target_object()
+        return result
 
     def apply_grasp_ee(self):
         rospy.logdebug("[MOVE ROBOT] Aplying grasping with end effector")
 
         success = self.attach_object()
         if success:
-            success = self.close_ee() # move_to_joint_target(self.ee_group, self.grasp_ee)
-        return success
+            result = self.close_ee() # move_to_joint_target(self.ee_group, self.grasp_ee)
+        else:
+            result = MoveRobotResult.FAILURE
+        return result
 
 
     def go_to_pose(self, goal_pose):
@@ -372,7 +374,7 @@ class MoveRobot(object):
         if to_check:
             is_all_close = joint_close(target, current, tol)
             if is_all_close is False:
-                rospy.logwarn("[MOVE ROBOT] Failed to move to joint target: obtained joint values are not sufficiently close to target joint value (tolerance: %s). Attempts remaining %s", tol, 0)
+                rospy.logwarn("[MOVE ROBOT] Failed to move to joint target: obtained joint values are not sufficiently close to target joint value (tolerance: %s)", tol)
                 rospy.loginfo("[MOVE ROBOT] Target joint values: %s", target)
                 rospy.loginfo("[MOVE ROBOT] Actual joint values: %s", current)
                 result = MoveRobotResult.CONTROL_FAILED
@@ -391,7 +393,9 @@ class MoveRobot(object):
 
         # General actions, non state dependent
         if self.command == "move_manipulator":
+            # rospy.loginfo("[MOVE ROBOT] Going to pose...")
             result = self.go_to_pose(self.robot_pose)
+            # rospy.loginfo("[MOVE ROBOT]  Result: %s", move_robot_result_string(result))
             self.robot_pose = None
 
         elif self.command == "sleep":
@@ -425,9 +429,8 @@ class MoveRobot(object):
             rospy.logwarn("Received unknown command: %s", self.command)
             result = MoveRobotResult.UNKNOWN_COMMAND
 
-        # publish success
+        # publish result
         if result is not None:
-
             move_robot_result_log(result)
             msg.val = result
             self.pub_e_out.publish(msg)

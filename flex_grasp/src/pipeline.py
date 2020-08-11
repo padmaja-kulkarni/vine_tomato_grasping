@@ -331,12 +331,14 @@ class Reset(smach.State):
         
         if userdata.prev_command == 'pick' or userdata.prev_command == 'place':
             
+            rospy.loginfo("Opening EE")
             self.pub_move_robot.publish('open')
             success = wait_for_result(self.mv_robot_op_topic, 5, MoveRobotResult)
 
             if not success:
                 return 'failure'
                 
+            rospy.loginfo("Homeing manipulator")
             self.pub_move_robot.publish('home')
             success = wait_for_result(self.mv_robot_op_topic, 10, MoveRobotResult)
             

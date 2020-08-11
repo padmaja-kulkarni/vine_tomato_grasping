@@ -82,6 +82,7 @@ def wait_for_result(topic, timeout, msg_type):
                 return False
         except:
             rospy.logwarn("Command failed: timeout exceeded while waiting for message on topic %s", topic)
+            # return msg_type.TIMEOUT      
             return False
 
         rospy.sleep(0.1)
