@@ -100,18 +100,18 @@ class Calibration(object):
         pose_array.header.frame_id = self.calibration_frame
         pose_array.header.stamp = rospy.Time.now()
 
-        x_amplitude = 0.05
+        x_amplitude = 0.00
         y_amplitude = 0.08
-        z_amplitude = 0.05
+        z_amplitude = 0.00
 
-        x_min = 0.22
+        x_min = 0.25
         y_min = -y_amplitude
-        z_min = 0.20 # 0.05
+        z_min = 0.30 # 0.05
 
 
         pos_intervals = 1
         if pos_intervals == 1:
-            x_vec = [x_min + x_amplitude]
+            x_vec = [x_min + x_amplitude] # np.linspace(x_min, x_min + 2*x_amplitude, 2) # 
             y_vec = [y_min + y_amplitude]
             z_vec = [z_min + z_amplitude]
         else:
@@ -119,8 +119,8 @@ class Calibration(object):
             y_vec = np.linspace(y_min, y_min + 2*y_amplitude, pos_intervals)
             z_vec = np.linspace(z_min, z_min + 2*z_amplitude, pos_intervals)
 
-        ai_amplitude = 30.0/180*np.pi
-        aj_amplitude = 30.0/180*np.pi
+        ai_amplitude = 35.0/180*np.pi
+        aj_amplitude = 35.0/180*np.pi
 
         rot_intervals = 3
         ai_vec = np.linspace(-ai_amplitude, ai_amplitude, rot_intervals)
