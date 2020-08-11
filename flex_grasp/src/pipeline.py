@@ -329,7 +329,8 @@ class Reset(smach.State):
         
     def execute(self, userdata):
         
-        if userdata.prev_command == 'pick' or userdata.prev_command == 'place':
+        pick_place_commands = ['pick', 'place', 'pick_place']
+        if userdata.prev_command in pick_place_commands:
             
             rospy.loginfo("Opening EE")
             self.pub_move_robot.publish('open')
