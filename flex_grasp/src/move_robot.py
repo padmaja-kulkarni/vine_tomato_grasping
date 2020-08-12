@@ -320,7 +320,9 @@ class MoveRobot(object):
         # Ensures that there is no residual movement and clear the target
         self.man_group.stop()
         self.man_group.clear_pose_targets()
-        # rospy.sleep(0.1)            
+        
+        # This is bad but when removed move_robot does not always wait for a plan to execute.        
+        rospy.sleep(1)            
         
         attempts = 10
         attempt = 1

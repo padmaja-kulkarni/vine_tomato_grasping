@@ -87,7 +87,7 @@ class PickPlace(object):
 
 
         if self.use_iiwa:
-            rospy.logwarn("No pose trnaform for iiwa available...")
+            rospy.logwarn("No pose trnaform for iiwa available!")
         
         grasp_xyz =     [0, 0, 0.055] # [m]
         pre_grasp_xyz = [0, 0, 0.12] # [m]
@@ -171,11 +171,10 @@ class PickPlace(object):
         rospy.logdebug("[PICK PLACE] Commanding move robot to pose")
         if pose is None:
             rospy.logwarn("[PICK PLACE] Cannot command to pose, since the pose is None!")
-            return False
+            return FlexGraspErrorCodes.REQUIRED_DATA_MISSING
         
         self.pub_move_robot_pose.publish(pose)
-        result = self.move_robot_communication.wait_for_result("move_manipulator")
-        return result
+        return self.move_robot_communication.wait_for_result("move_manipulator")
         
     def man_pre_grasp(self):
         rospy.logdebug("[PICK PLACE] Commanding move robot to pre grasp")

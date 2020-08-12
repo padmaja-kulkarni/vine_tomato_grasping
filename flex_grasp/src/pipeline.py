@@ -338,6 +338,14 @@ class Reset(smach.State):
                 flex_grasp_error_log(result, "PIPELINE")
                 return 'failure'
             
+            # this is done since the end-effector might hace preempted in an open state, this wont be noted otherwise...
+            rospy.loginfo("Closing end effector")
+            result = self.communication.wait_for_result('close')
+
+            if result != FlexGraspErrorCodes.SUCCESS:
+                flex_grasp_error_log(result, "PIPELINE")
+                return 'failure'            
+            
             userdata.command = None
             userdata.prev_command = 'reset'            
             return 'success'
