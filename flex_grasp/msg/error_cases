@@ -1,0 +1,15 @@
+Error scenrarios
+
+CASE: Tomato out of reach
+RESULT: Planning failure or IK FAILURE
+ACTION: Go out of experiment mode (if applicable) and ask user to move the tomato in reach
+
+CASE: depth is miscalculated and manipulator tries to move into the table
+RESULT: Planning failure
+ACTION: go to home and continue with experiments
+
+CASE: EE fails to close since it is blocked by the peduncle
+RESULT: control error
+ACTION: Open manipulator
+            -> if success got to home and continue experiments (if applicable)
+            -> if no success ask the user to take action

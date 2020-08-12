@@ -21,8 +21,7 @@ add_message_files(
   Truss.msg
   Peduncle.msg
   ImageProcessingSettings.msg
-  MoveRobotResult.msg
-  PickPlaceResult.msg
+  FlexGraspErrorCodes.msg
 )
 
 generate_messages(

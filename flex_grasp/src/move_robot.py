@@ -21,9 +21,9 @@ from moveit_msgs.srv import GetPositionIK, GetPositionIKRequest
 from std_msgs.msg import String
 from geometry_msgs.msg import PoseStamped
 from moveit_msgs.msg import MoveItErrorCodes
+from flex_grasp.msg import FlexGraspErrorCodes
 
-from flex_grasp.msg import MoveRobotResult
-from func.move_robot_result import move_robot_result_log, move_robot_result_string
+from func.flex_grasp_error import flex_grasp_error_log
 
 # custom functions
 from func.utils import pose_close, joint_close, deg2rad
@@ -75,7 +75,7 @@ class MoveRobot(object):
 
         # Publishers
         self.pub_e_out = rospy.Publisher("~e_out",
-                                   MoveRobotResult, queue_size=10, latch=True)
+                                   FlexGraspErrorCodes, queue_size=10, latch=True)
             
     def robot_pose_cb(self, msg):
         if self.robot_pose is None:
@@ -89,8 +89,8 @@ class MoveRobot(object):
             rospy.logdebug("[MOVE ROBOT] Received new move robot event in message: %s", self.command)
 
             # reset outputting message
-            msg = MoveRobotResult()
-            msg.val = MoveRobotResult.NONE
+            msg = FlexGraspErrorCodes()
+            msg.val = FlexGraspErrorCodes.NONE
             self.pub_e_out.publish(msg)
             
 
@@ -278,7 +278,7 @@ class MoveRobot(object):
         rospy.logdebug("[MOVE ROBOT] Aplying release with end effector")
 
         result = self.open_ee()
-        if result == MoveRobotResult.SUCCESS:
+        if result == FlexGraspErrorCodes.SUCCESS:
             self.remove_attached_target_object()
         return result
 
@@ -289,7 +289,7 @@ class MoveRobot(object):
         if success:
             result = self.close_ee() # move_to_joint_target(self.ee_group, self.grasp_ee)
         else:
-            result = MoveRobotResult.FAILURE
+            result = FlexGraspErrorCodes.FAILURE
         return result
 
 
@@ -297,21 +297,21 @@ class MoveRobot(object):
         rospy.logdebug("[MOVE ROBOT] Go to pose")
         
         if goal_pose is None:
-            return MoveRobotResult.NO_GOAL_POSE
+            return FlexGraspErrorCodes.NO_GOAL_POSE
             
         if not self.check_frames(goal_pose.header.frame_id):
-            return MoveRobotResult.INVALID_FRAME
+            return FlexGraspErrorCodes.INVALID_FRAME
             
         if not self.check_ik(goal_pose):
-            return MoveRobotResult.NO_IK_SOLUTION
+            return FlexGraspErrorCodes.NO_IK_SOLUTION
 
         self.man_group.set_pose_target(goal_pose.pose)
         plan = self.man_group.plan()
         
-        # if not plan found... very ugly, what is a better way to do this?
+        # if no plan found... very ugly, what is a better way to do this?
         if len(plan.joint_trajectory.joint_names) == 0:
             rospy.logwarn('[MOVE ROBOT] not attempting to go to pose goal, no plan found!')
-            return MoveRobotResult.PLANNING_FAILED
+            return FlexGraspErrorCodes.PLANNING_FAILED
         
         self.man_group.execute(plan, wait=True)
 
@@ -336,14 +336,14 @@ class MoveRobot(object):
                 
             rospy.logdebug("[MOVE ROBOT] Goal pose: %s", pose_to_list(goal_pose.pose))
             rospy.logdebug("[MOVE ROBOT] Curr pose: %s", pose_to_list(curr_pose.pose))
-            return MoveRobotResult.CONTROL_FAILED
+            return FlexGraspErrorCodes.CONTROL_FAILED
 
-        return MoveRobotResult.SUCCESS
+        return FlexGraspErrorCodes.SUCCESS
 
     def move_to_joint_target(self, group, target):
         rospy.logdebug("[MOVE ROBOT] Go to joint target") 
         to_check = True
-        result = MoveRobotResult.SUCCESS
+        result = FlexGraspErrorCodes.SUCCESS
 
         # if the target is a named target, get the corresponding joint values
         if type(target) is str:
@@ -361,7 +361,7 @@ class MoveRobot(object):
         
         #  for some reason group.get_joint_value_target() returns zeros on ee_group_name
         if (group.get_name() == self.ee_group_name):
-            result = MoveRobotResult.SUCCESS
+            result = FlexGraspErrorCodes.SUCCESS
             target = target.values()
         else:
             target = group.get_joint_value_target()
@@ -377,7 +377,7 @@ class MoveRobot(object):
                 rospy.logwarn("[MOVE ROBOT] Failed to move to joint target: obtained joint values are not sufficiently close to target joint value (tolerance: %s)", tol)
                 rospy.loginfo("[MOVE ROBOT] Target joint values: %s", target)
                 rospy.loginfo("[MOVE ROBOT] Actual joint values: %s", current)
-                result = MoveRobotResult.CONTROL_FAILED
+                result = FlexGraspErrorCodes.CONTROL_FAILED
 
         group.clear_pose_targets()
         return result
@@ -385,10 +385,10 @@ class MoveRobot(object):
     def reset(self):
         rospy.logdebug("[MOVE ROBOT] Resetting robot pose") 
         self.robot_pose = None
-        return MoveRobotResult.SUCCESS
+        return FlexGraspErrorCodes.SUCCESS
 
     def take_action(self):
-        msg = MoveRobotResult()
+        msg = FlexGraspErrorCodes()
         result = None
 
         # General actions, non state dependent
@@ -420,18 +420,18 @@ class MoveRobot(object):
             result = self.reset()
 
         elif self.command == "e_init":
-            result = MoveRobotResult.SUCCESS
+            result = FlexGraspErrorCodes.SUCCESS
             
         elif self.command == None:
             pass
             
         else:
             rospy.logwarn("Received unknown command: %s", self.command)
-            result = MoveRobotResult.UNKNOWN_COMMAND
+            result = FlexGraspErrorCodes.UNKNOWN_COMMAND
 
         # publish result
         if result is not None:
-            move_robot_result_log(result)
+            flex_grasp_error_log(result)
             msg.val = result
             self.pub_e_out.publish(msg)
             self.command = None

@@ -8,10 +8,16 @@ int32 NONE = -1
 # general errors
 int32 UNKNOWN_COMMAND=100
 int32 TIMEOUT=101
+int32 STATE_ERROR=102
+int32 SHUTDOWN=103
 
-# node specific errors
+# motion failures
 int32 PLANNING_FAILED=200
 int32 CONTROL_FAILED=201
 int32 NO_IK_SOLUTION=202
 int32 INVALID_FRAME=203
 int32 NO_GOAL_POSE=204
+
+
+# transform failures
+int32 TRANSFORM_POSE_FAILED=300

@@ -7,6 +7,7 @@ Created on Fri May 15 12:56:46 2020
 """
 
 import rospy
+from flex_grasp.msg import FlexGraspErrorCodes
 
 # messages
 from std_msgs.msg import String
@@ -24,9 +25,9 @@ def wait_for_variable(timeout, variable):
     return False  
 
 
-def wait_for_success(topic, timeout):
+def wait_for_success(topic, timeout, hz = 10, caller = 'ANONYMOUS'):
 
-
+    rate = rospy.Rate(hz)
     start_time = rospy.get_time()
     curr_time = rospy.get_time()
 
@@ -49,7 +50,7 @@ def wait_for_success(topic, timeout):
             rospy.logwarn("Command failed: timeout exceeded while waiting for message on topic %s", topic)
             return False
 
-        rospy.sleep(0.1)
+        rate.sleep()
         curr_time = rospy.get_time()
 
     if rospy.is_shutdown():
@@ -59,9 +60,9 @@ def wait_for_success(topic, timeout):
     return False
     
     
-def wait_for_result(topic, timeout, msg_type):
+def wait_for_result(topic, timeout, msg_type = FlexGraspErrorCodes, hz = 10):
 
-
+    rate = rospy.Rate(hz)
     start_time = rospy.get_time()
     curr_time = rospy.get_time()
 
@@ -84,7 +85,7 @@ def wait_for_result(topic, timeout, msg_type):
             rospy.logwarn("Command failed: timeout exceeded while waiting for message on topic %s", topic)
             return msg_type.TIMEOUT      
 
-        rospy.sleep(0.1)
+        rate.sleep()
         curr_time = rospy.get_time()
 
     if rospy.is_shutdown():
