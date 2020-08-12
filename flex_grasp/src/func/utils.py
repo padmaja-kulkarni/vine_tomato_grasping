@@ -108,7 +108,7 @@ def add_pose_stamped(pose_stamp_a, pose_stamp_b):
     pose_stamp_c = PoseStamped()
     
     if pose_stamp_a.header.frame_id == pose_stamp_b.header.frame_id:
-        pose_stamp_c.header.frame_id = pose_stamp_a.header.frame_id
+        pose_stamp_c.header = pose_stamp_a.header
     else:
         return None
     

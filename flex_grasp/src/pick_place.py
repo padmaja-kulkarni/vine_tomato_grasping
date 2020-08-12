@@ -89,7 +89,7 @@ class PickPlace(object):
         pre_grasp_xyz = [0, 0, 0.12] # [m]
         grasp_rpy = [-pi, pi/2, 0]
         place_rpy = [-pi, pi/2, 0.5]
-        frame = self.robot_base_frame
+        frame = self.robot_base_frame# robot_base_frame
         time = rospy.Time.now()
 
         pose_transform = {}
@@ -130,33 +130,50 @@ class PickPlace(object):
             rospy.logwarn("[PICK PLACE] Cannot transform pose, since object_features still empty!")
             return FlexGraspErrorCodes.TRANSFORM_POSE_FAILED
             
-        original_frame = self.object_features.cage_location.header.frame_id
-        transform = get_transform(self.robot_base_frame, original_frame, self.tfBuffer)            
+        # transform cage location to planning frame
+        object_pose = self.object_features.cage_location
+        original_frame = object_pose.header.frame_id
+
+        # transform cage location to world frame
+        original_frame = object_pose.header.frame_id
+        transform = get_transform(self.planning_frame, original_frame, self.tfBuffer)            
             
         if transform is None:
             rospy.logwarn("[PICK PLACE] Cannot transform pose, failed to lookup transform!!")
             return FlexGraspErrorCodes.TRANSFORM_POSE_FAILED
 
-        object_pose = tf2_geometry_msgs.do_transform_pose(self.object_features.cage_location, transform)
+        object_pose = tf2_geometry_msgs.do_transform_pose(object_pose, transform)
         object_position, object_orientation = pose_to_lists(object_pose.pose, 'euler')
         object_pose.pose.position = list_to_position((object_position[0], object_position[1], self.peduncle_height))
-        object_pose.pose.orientation = list_to_orientation((0, 0, object_orientation[2] + angle_offset))
+        object_pose.pose.orientation = list_to_orientation((-object_orientation[2] + angle_offset, 0, 0)) # 
+
+        # transfrom add_pose to planning frame
+        for key in self.pose_transform:
+            original_frame = self.pose_transform[key].header.frame_id
+            transform = get_transform(self.planning_frame, original_frame, self.tfBuffer)            
+                
+            if transform is None:
+                rospy.logwarn("[PICK PLACE] Cannot transform pose, failed to lookup transform!!")
+                return FlexGraspErrorCodes.TRANSFORM_POSE_FAILED
+    
+            self.pose_transform[key] = tf2_geometry_msgs.do_transform_pose(self.pose_transform[key], transform)
+        
         
         pose = {}
         for key in self.pose_transform:
             added_pose = add_pose_stamped(self.pose_transform[key], object_pose) 
             if added_pose is None:
                 rospy.logwarn('[PICK PLACE] Failed to add pose stamed: they are defiend with respect to different frames!')
-                return FlexGraspErrorCodes.Failure
+                return FlexGraspErrorCodes.FAILURE
             else:
                 pose[key] = added_pose
             
             
         # tranform to world frame for MoveIt!
-        transform = get_transform(self.planning_frame, self.robot_base_frame, self.tfBuffer) 
-        for key in self.pose_transform:
-            pose[key] = tf2_geometry_msgs.do_transform_pose(pose[key], transform)
-            
+#        transform = get_transform(self.planning_frame, self.robot_base_frame, self.tfBuffer) 
+#        for key in self.pose_transform:
+#            pose[key] = tf2_geometry_msgs.do_transform_pose(pose[key], transform)
+#            
         self.pose = pose
 
         
