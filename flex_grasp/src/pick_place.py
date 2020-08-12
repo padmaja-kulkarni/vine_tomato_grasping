@@ -35,12 +35,6 @@ class PickPlace(object):
         self.state = "init"
         self.prev_state = None
         self.command = None
-
-        
-        self.pre_grasp_pose = None
-        self.grasp_pose = None
-        self.pre_place_pose = None
-        self.place_pose = None        
         
         self.peduncle_height = 0.075 # [m] 0.01 # 
         self.object_features = None
@@ -61,19 +55,7 @@ class PickPlace(object):
         
         self.pub_move_robot_pose = rospy.Publisher("robot_pose", PoseStamped, queue_size=10, latch=False)
         
-        # Initialize Publishers
-        self.pub_pre_grasp_pose = rospy.Publisher('pre_grasp_pose',
-                                        PoseStamped, queue_size=5, latch=True)
-
-        self.pub_grasp_pose = rospy.Publisher('grasp_pose',
-                                        PoseStamped, queue_size=5, latch=True)
-
-        self.pub_pre_place_pose = rospy.Publisher('pre_place_pose',
-                                        PoseStamped, queue_size=5, latch=True)
-
-        self.pub_place_pose = rospy.Publisher('place_pose',
-                                        PoseStamped, queue_size=5, latch=True)
-
+        # init move robot communication
         move_robot_topic = "move_robot"
         self.move_robot_communication = Communication(move_robot_topic, timeout = 15)                   
                    
@@ -83,28 +65,50 @@ class PickPlace(object):
 
         self.use_iiwa = rospy.get_param('use_iiwa')
         self.use_interbotix = rospy.get_param('use_interbotix')
+        
+        self.robot_base_frame = rospy.get_param('robot_base_frame')
         self.planning_frame = rospy.get_param('planning_frame')
 
 
         if self.use_iiwa:
-            rospy.logwarn("No pose trnaform for iiwa available!")
+            rospy.logwarn("No pose transform for iiwa available!")        
         
-        grasp_xyz =     [0, 0, 0.055] # [m]
+        # Initialize Publishers
+        pose_topic = {}
+        pose_topic['pre_grasp'] = 'pre_grasp_pose'
+        pose_topic['grasp'] = 'grasp_pose'        
+        pose_topic['pre_place'] = 'pre_place_pose'        
+        pose_topic['place'] = 'place_pose'
+        
+        pose_pub = {}
+        for key in pose_topic:
+            pose_pub[key] = rospy.Publisher(pose_topic[key], PoseStamped, queue_size=5, latch=True)
+    
+
+        grasp_xyz = [0, 0, 0.055] # [m]
         pre_grasp_xyz = [0, 0, 0.12] # [m]
         grasp_rpy = [-pi, pi/2, 0]
         place_rpy = [-pi, pi/2, 0.5]
-        frame = self.planning_frame
+        frame = self.robot_base_frame
         time = rospy.Time.now()
 
-        self.pre_grasp_trans = point_to_pose_stamped(pre_grasp_xyz, grasp_rpy, frame, time)
-        self.grasp_trans = point_to_pose_stamped(grasp_xyz, grasp_rpy, frame, time)
-        self.pre_place_trans = point_to_pose_stamped(pre_grasp_xyz, place_rpy, frame, time)
-        self.place_trans = point_to_pose_stamped(grasp_xyz, place_rpy, frame, time)
+        pose_transform = {}
+        pose_transform['pre_grasp'] = point_to_pose_stamped(pre_grasp_xyz, grasp_rpy, frame, time)
+        pose_transform['grasp'] = point_to_pose_stamped(grasp_xyz, grasp_rpy, frame, time)
+        pose_transform['pre_place'] = point_to_pose_stamped(pre_grasp_xyz, place_rpy, frame, time)
+        pose_transform['place'] = point_to_pose_stamped(grasp_xyz, place_rpy, frame, time)
+
+        pose = {}
+        for key in pose_pub:
+            pose[key] = None
+
+        self.pose_pub = pose_pub
+        self.pose = pose
+        self.pose_transform = pose_transform
 
         # Tranform
         self.tfBuffer = tf2_ros.Buffer()
         self.listener = tf2_ros.TransformListener(self.tfBuffer)
-        self.trans = None
     
     def e_in_cb(self, msg):
         if self.command is None:
@@ -117,32 +121,17 @@ class PickPlace(object):
             self.pub_e_out.publish(msg)    
     
     def object_features_cb(self, msg):
-        # if self.object_features is None:
-        # if self.command == "transform":
+
         self.object_features = msg
         rospy.logdebug("[PICK PLACE] Received new object feature message")    
-  
-    def get_trans(self):
-        if not (self.object_features is None):
-            try:
-                to_frame = self.planning_frame
-                from_frame = self.object_features.cage_location.header.frame_id
-                if to_frame is None:
-                    rospy.logwarn("Cannot find transform from cage location frame to %s, no header is defined!", to_frame)
-                    return False
-                    
-                self.trans = self.tfBuffer.lookup_transform(to_frame, from_frame, time = rospy.Time.now())
-                return True
-                
-            except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
-                return False
 
     def transform_pose(self, angle_offset = 0):
         if not wait_for_variable(3, self.object_features):
             rospy.logwarn("[PICK PLACE] Cannot transform pose, since object_features still empty!")
             return FlexGraspErrorCodes.TRANSFORM_POSE_FAILED
             
-        transform = get_transform(self.planning_frame, self.object_features.cage_location.header.frame_id, self.tfBuffer)            
+        original_frame = self.object_features.cage_location.header.frame_id
+        transform = get_transform(self.robot_base_frame, original_frame, self.tfBuffer)            
             
         if transform is None:
             rospy.logwarn("[PICK PLACE] Cannot transform pose, failed to lookup transform!!")
@@ -152,20 +141,31 @@ class PickPlace(object):
         object_position, object_orientation = pose_to_lists(object_pose.pose, 'euler')
         object_pose.pose.position = list_to_position((object_position[0], object_position[1], self.peduncle_height))
         object_pose.pose.orientation = list_to_orientation((0, 0, object_orientation[2] + angle_offset))
-        # add offsets
-        self.pre_grasp_pose = add_pose_stamped(self.pre_grasp_trans, object_pose) 
-        self.grasp_pose = add_pose_stamped(self.grasp_trans, object_pose) 
-        self.pre_place_pose = add_pose_stamped(self.pre_place_trans, object_pose)
-        self.place_pose = add_pose_stamped(self.place_trans, object_pose)
+        
+        pose = {}
+        for key in self.pose_transform:
+            added_pose = add_pose_stamped(self.pose_transform[key], object_pose) 
+            if added_pose is None:
+                rospy.logwarn('[PICK PLACE] Failed to add pose stamed: they are defiend with respect to different frames!')
+                return FlexGraspErrorCodes.Failure
+            else:
+                pose[key] = added_pose
+            
+            
+        # tranform to world frame for MoveIt!
+        transform = get_transform(self.planning_frame, self.robot_base_frame, self.tfBuffer) 
+        for key in self.pose_transform:
+            pose[key] = tf2_geometry_msgs.do_transform_pose(pose[key], transform)
+            
+        self.pose = pose
+
         
         self.pub_all_poses()
         return FlexGraspErrorCodes.SUCCESS
 
     def pub_all_poses(self):
-        self.pub_pre_grasp_pose.publish(self.pre_grasp_pose)
-        self.pub_grasp_pose.publish(self.grasp_pose)
-        self.pub_pre_place_pose.publish(self.pre_place_pose)
-        self.pub_place_pose.publish(self.place_pose)
+        for key in self.pose_pub:
+            self.pose_pub[key].publish(self.pose[key])
     
     def command_to_pose(self, pose):
         rospy.logdebug("[PICK PLACE] Commanding move robot to pose")
@@ -178,19 +178,19 @@ class PickPlace(object):
         
     def man_pre_grasp(self):
         rospy.logdebug("[PICK PLACE] Commanding move robot to pre grasp")
-        return self.command_to_pose(self.pre_grasp_pose)
+        return self.command_to_pose(self.pose['pre_grasp'])
             
     def man_grasp(self):
         rospy.logdebug("[PICK PLACE] Commanding move robot to grasp")
-        return self.command_to_pose(self.grasp_pose)
+        return self.command_to_pose(self.pose['grasp'])
             
     def man_pre_place(self):
         rospy.logdebug("[PICK PLACE] Commanding move robot to pre place")
-        return self.command_to_pose(self.pre_place_pose)
+        return self.command_to_pose(self.pose['pre_place'])
                 
     def man_place(self):
         rospy.logdebug("[PICK PLACE] Commanding move robot to place")
-        return self.command_to_pose(self.place_pose)
+        return self.command_to_pose(self.pose['place'])
         
     def command_to_home(self):
         rospy.logdebug("[PICK PLACE] Commanding move robot to home")
@@ -260,20 +260,21 @@ class PickPlace(object):
             
     def reset_msg(self):
         rospy.logdebug("[PICK PLACE] Resetting for next grasp")
-        self.grasp_pose = None
-        self.pre_grasp_pose = None
-        self.pre_place_pose = None
-        self.place_pose = None
+        for key in self.pose:
+            self.pose[key] = None
+            
         self.object_features = None
         return FlexGraspErrorCodes.SUCCESS            
             
 
     def received_all_data(self):
-        success =(self.grasp_pose != None) and (self.pre_grasp_pose != None) and (self.pre_place_pose != None) and (self.place_pose != None)
-        # received_all_data        
+        success = True
+        for key in self.pose:
+            if self.pose[key] is None:
+                success = False
+ 
         return success
 
-            
     ### Log state update
     def log_state_update(self):
         rospy.loginfo("[PICK PLACE] updated move robot state, from %s to %s",

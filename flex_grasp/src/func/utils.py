@@ -110,8 +110,7 @@ def add_pose_stamped(pose_stamp_a, pose_stamp_b):
     if pose_stamp_a.header.frame_id == pose_stamp_b.header.frame_id:
         pose_stamp_c.header.frame_id = pose_stamp_a.header.frame_id
     else:
-        print("frame_id's do not match, returning an empty pose stamped")
-        return pose_stamp_c
+        return None
     
     position_a, orientation_a = pose_to_lists(pose_stamp_a.pose, 'euler')
     position_b, orientation_b = pose_to_lists(pose_stamp_b.pose, 'euler')
