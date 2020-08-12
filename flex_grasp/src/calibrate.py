@@ -28,6 +28,8 @@ from communication import Communication
 
 class Calibration(object):
     """Calibration"""
+    node_name = "CALIBRATION"    
+    
     def __init__(self):
 
 #        robot_name = rospy.get_param("robot_name") 
@@ -70,9 +72,6 @@ class Calibration(object):
 
         self.pub_e_out = rospy.Publisher("~e_out",
                                      FlexGraspErrorCodes, queue_size=10, latch=True)
-
-#        self.pub_move_robot_command = rospy.Publisher("/px150/move_robot/e_in",
-#                                  String, queue_size=10, latch=False)
 
         self.pub_move_robot_pose = rospy.Publisher("/px150/robot_pose",
                                   PoseStamped, queue_size=10, latch=False)
@@ -230,8 +229,8 @@ class Calibration(object):
         # publish success
         if result is not None:
             msg.val = result
-            flex_grasp_error_log(result)
-            self.pub_e_out.publish(msg)            
+            flex_grasp_error_log(result, self.node_name)
+            self.pub_e_out.publish(msg)      
             self.command = None            
 
 

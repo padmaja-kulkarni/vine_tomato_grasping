@@ -38,6 +38,10 @@ def flex_grasp_error_string(val):
         return 'TIMEOUT'
     elif val == FlexGraspErrorCodes.STATE_ERROR:
         return 'STATE_ERROR'
+    elif val == FlexGraspErrorCodes.SHUTDOWN:
+        return 'SHUTDOWN'
+    elif val == FlexGraspErrorCodes.REQUIRED_DATA_MISSING:
+        return 'REQUIRED_DATA_MISSING'
 
     elif val == FlexGraspErrorCodes.PLANNING_FAILED:
         return 'PLANNING_FAILED'        
@@ -55,9 +59,15 @@ def flex_grasp_error_string(val):
     else:
         return 'UNKNOWN_ERROR_CODE: still need to be added!'
         
-def flex_grasp_error_log(val):
+def flex_grasp_error_log(val, node_name = None):
     if val == FlexGraspErrorCodes.SUCCESS:
-        rospy.logdebug("Move robot excuted succesfully")
+        if node_name is None:
+            rospy.logdebug("Excuted succesfully")
+        else:
+            rospy.logdebug("[%s] Excuted succesfully", node_name)
     else:
         string = flex_grasp_error_string(val)
-        rospy.logwarn("Move robot excuted with error: %s", string)
+        if node_name is None:
+            rospy.logwarn("Excuted with error: %s", string)
+        else:
+            rospy.logwarn("[%s] Excuted with error: %s", node_name, string)

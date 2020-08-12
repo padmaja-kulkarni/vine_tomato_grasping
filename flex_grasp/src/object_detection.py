@@ -38,14 +38,18 @@ from func.utils import colored_depth_image
 
 import pyrealsense2 as rs
 
+from flex_grasp.msg import FlexGraspErrorCodes
+from func.flex_grasp_error import flex_grasp_error_log
 # import pathlib
 import os # os.sep
 
 class ObjectDetection(object):
     """ObjectDetection"""
+    node_name = "OBJECT DETECTION"    
+    
     def __init__(self):
 
-        self.event = None
+        self.command = None
 
         self.color_image = None
         self.depth_image = None
@@ -99,7 +103,7 @@ class ObjectDetection(object):
 
         # Publish
         self.pub_e_out = rospy.Publisher("~e_out",
-                                         String, queue_size=10, latch=True)
+                                         FlexGraspErrorCodes, queue_size=10, latch=True)
 
         self.pub_object_features = rospy.Publisher("object_features",
                                         Truss, queue_size=5, latch=True)
@@ -138,12 +142,13 @@ class ObjectDetection(object):
 
 
     def e_in_cb(self, msg):
-        if self.event is None:
-            self.event = msg.data
-            rospy.logdebug("[OBJECT DETECTION] Received object detection event message: %s", self.event)
+        if self.command is None:
+            self.command = msg.data
+            rospy.logdebug("[OBJECT DETECTION] Received object detection command: %s", self.command)
 
-            msg = String()
-            msg.data = ""
+            # reset outputting message
+            msg = FlexGraspErrorCodes()
+            msg.val = FlexGraspErrorCodes.NONE
             self.pub_e_out.publish(msg)
 
     def color_image_cb(self, msg):
@@ -224,10 +229,10 @@ class ObjectDetection(object):
 
 
     def save_image(self):
-        success = True
+        result = FlexGraspErrorCodes.SUCCESS
         
         if not self.wait_for_data(5):
-            return False
+            return FlexGraspErrorCodes.REQUIRED_DATA_MISSING
         
         # imaformation about the image which will be stored
         image_info = {}
@@ -263,22 +268,22 @@ class ObjectDetection(object):
             rospy.loginfo("[OBJECT DETECTION] File %s save successfully to path %s", name_rgb, self.pwd_data)
         else:
             rospy.logwarn("[OBJECT DETECTION] Failed to save image %s to path %s", name_rgb, self.pwd_data)
-            success = False
+            result = FlexGraspErrorCodes.FAILURE
             
         if cv2.imwrite(pwd_depth, cv2.cvtColor(depth_img, cv2.COLOR_RGB2BGR)):
             rospy.loginfo("[OBJECT DETECTION] File %s save successfully to path %s", name_depth, self.pwd_data)
         else:
             rospy.logwarn("[OBJECT DETECTION] Failed to save image %s to path %s", name_depth, self.pwd_data)
-            success = False
+            result = FlexGraspErrorCodes.FAILURE
             
         imgmsg_depth = self.bridge.cv2_to_imgmsg(depth_img, encoding="rgb8")
         self.pub_depth_image.publish(imgmsg_depth)
-        return success
+        return result
 
     def detect_object(self):
 
         if not self.wait_for_data(5):
-            return False
+            return FlexGraspErrorCodes.REQUIRED_DATA_MISSING
 
         px_per_mm = self.compute_px_per_mm()
         self.process_image.add_image(self.color_image, px_per_mm = px_per_mm)
@@ -293,7 +298,7 @@ class ObjectDetection(object):
             
             if not self.process_image.process_image():
                 rospy.logwarn("[OBJECT DETECTION] Failed to process image")
-                return False
+                return FlexGraspErrorCodes.FAILURE
 
             object_features = self.process_image.get_object_features()
             tomato_mask, peduncle_mask, _ = self.process_image.get_segments()
@@ -301,7 +306,7 @@ class ObjectDetection(object):
             cage_pose = self.generate_cage_pose(object_features['grasp_location'], peduncle_mask)
             
             if cage_pose == False:
-                return False
+                return FlexGraspErrorCodes.FAILURE
             
             tomatoes = self.generate_tomatoes(object_features['tomato'])
             peduncle = self.generate_peduncle(object_features['peduncle'], cage_pose) # object_features['peduncle']
@@ -339,7 +344,7 @@ class ObjectDetection(object):
         self.pub_depth_image.publish(imgmsg_depth)
         self.pub_color_hue.publish(imgmsg_hue)
         self.pub_object_features.publish(truss)
-        return True
+        return FlexGraspErrorCodes.SUCCESS
 
 
     def generate_cage_pose(self, grasp_features, peduncle_mask):
@@ -582,10 +587,10 @@ class ObjectDetection(object):
         return np.median(depth_patch_non_zero)
 
     def take_action(self):
-        success = None
-        msg = String()
+        msg = FlexGraspErrorCodes()
+        result = None                
 
-        if (self.event == "detect_tomato"):
+        if (self.command == "detect_tomato"):
             rospy.logdebug("[OBEJCT DETECTION] Detect tomato")
             # if not self.debug_mode:
             #     success = self.generate_object()
@@ -593,37 +598,34 @@ class ObjectDetection(object):
             self.process_image.use_truss = False
             self.use_truss = False
             self.take_picture = True
-            success = self.detect_object()
+            result = self.detect_object()
 
-        elif (self.event == "detect_truss"):
+        elif (self.command == "detect_truss"):
             rospy.logdebug("[OBEJCT DETECTION] Detect truss")
             self.process_image.use_truss = True
             self.use_truss = True
             self.take_picture = True
-            success = self.detect_object()
+            result = self.detect_object()
 
-        elif (self.event == "save_image"):
+        elif (self.command == "save_image"):
             rospy.logdebug("[OBEJCT DETECTION] Take picture")
             self.take_picture = True
-            success = self.save_image()
+            result = self.save_image()
 
-        elif (self.event == "e_init"):
+        elif (self.command == "e_init"):
             self.init = True
-            success = True
+            result = FlexGraspErrorCodes.SUCCESS
+            
+        elif self.command is not None:
+            result = FlexGraspErrorCodes.UNKNOWN_COMMAND
 
         # publish success
-        if success is not None:
-            self.clear_all_data()
-            if success == True:
-                msg.data = "e_success"
-                self.event = None
-
-            elif success == False:
-                msg.data = "e_failure"
-                rospy.logwarn("[OBEJCT DETECTION] failed to execute command %s", self.event)
-                self.event = None
-
+        if result is not None:
+            msg.val = result            
+            flex_grasp_error_log(result, self.node_name)
             self.pub_e_out.publish(msg)
+            self.clear_all_data()
+            self.command = None
 
 def euclidean(v1, v2):
     return sum((p-q)**2 for p, q in zip(v1, v2)) ** .5

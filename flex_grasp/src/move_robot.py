@@ -30,6 +30,8 @@ from func.utils import pose_close, joint_close, deg2rad
 
 class MoveRobot(object):
     """MoveRobot"""
+    node_name = "MOVE_ROBOT"    
+    
     def __init__(self):
         super(MoveRobot, self).__init__()
 
@@ -318,14 +320,20 @@ class MoveRobot(object):
         # Ensures that there is no residual movement and clear the target
         self.man_group.stop()
         self.man_group.clear_pose_targets()
-        rospy.sleep(1)            
+        # rospy.sleep(0.1)            
         
-        curr_pose = self.man_group.get_current_pose()
-        
-        orientation_close, position_close = pose_close(goal_pose, curr_pose, self.position_tol, self.orientation_tol)
-        is_all_close = position_close # orientation_close and position_close
+        attempts = 10
+        attempt = 1
+        all_close = False
+        while (all_close == False) and (attempt <= attempts):        
+            curr_pose = self.man_group.get_current_pose()
+            
+            orientation_close, position_close = pose_close(goal_pose, curr_pose, self.position_tol, self.orientation_tol)
+            all_close = position_close # and orientation_close
+            attempt += 1
+            self.rate.sleep()
 
-        if is_all_close is False:
+        if all_close is False:
             if orientation_close is False:
                 # self.man_group.get_goal_orientation_tolerance()
                 rospy.logdebug("[MOVE ROBOT] Failed to move to pose target, obtained orientation is not sufficiently close to goal orientation (tolerance: %s)",self.orientation_tol)                   
@@ -357,25 +365,36 @@ class MoveRobot(object):
         group.execute(plan, wait=True) # = success?
         group.stop()
     
-        current = group.get_current_joint_values()
-        
-        #  for some reason group.get_joint_value_target() returns zeros on ee_group_name
+        #  group.get_joint_value_target() returns zeros on ee_group_name
+        # target.values() returns values in the wrong order on man_group
         if (group.get_name() == self.ee_group_name):
-            result = FlexGraspErrorCodes.SUCCESS
-            target = target.values()
+            target_val = target.values()
         else:
-            target = group.get_joint_value_target()
+            target_val = group.get_joint_value_target()
+    
+        # oscilations can sause the robot to be at and different pose than desired, thereofre we check several times
+        attempts = 3
+        attempt = 1
+        all_close = False
+        while (all_close == False) and (attempt <= attempts) and to_check:
         
-        if (group.get_name() == self.ee_group_name):
-            tol = self.ee_joint_tolerance
-        else:
-            tol = self.man_joint_tolerance
-        
+            current = group.get_current_joint_values()
+            
+            if (group.get_name() == self.ee_group_name):
+                tol = self.ee_joint_tolerance
+            else:
+                tol = self.man_joint_tolerance
+            
+            if to_check:
+                is_all_close = joint_close(target_val, current, tol)
+                
+            attempt += 1
+            self.rate.sleep()
+                
         if to_check:
-            is_all_close = joint_close(target, current, tol)
             if is_all_close is False:
                 rospy.logwarn("[MOVE ROBOT] Failed to move to joint target: obtained joint values are not sufficiently close to target joint value (tolerance: %s)", tol)
-                rospy.loginfo("[MOVE ROBOT] Target joint values: %s", target)
+                rospy.loginfo("[MOVE ROBOT] Target joint values: %s", target_val)
                 rospy.loginfo("[MOVE ROBOT] Actual joint values: %s", current)
                 result = FlexGraspErrorCodes.CONTROL_FAILED
 
@@ -431,7 +450,7 @@ class MoveRobot(object):
 
         # publish result
         if result is not None:
-            flex_grasp_error_log(result)
+            flex_grasp_error_log(result, self.node_name)
             msg.val = result
             self.pub_e_out.publish(msg)
             self.command = None

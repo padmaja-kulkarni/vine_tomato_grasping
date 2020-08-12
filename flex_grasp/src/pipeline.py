@@ -15,48 +15,43 @@ class Initializing(smach.State):
     def __init__(self):
         smach.State.__init__(self, outcomes=['success','failure', 'complete_failure'],
                              output_keys=['command', 'prev_command', 'mode'])
-        self.timeout = 10.0
+        timeout = 10.0
+        
+        # dict of nodes which need to be initialized!
+        topic = {}
+        topic['object_detection'] = 'object_detection'
+        topic['pick_place'] = 'pick_place'
+        topic['move_robot'] = 'move_robot'
+        topic['calibrate'] = 'calibration_eye_on_base/calibrate'
 
-        self.pub_object_detection = rospy.Publisher('object_detection/e_in',
-                                      String, queue_size=10, latch=True)
-        self.pub_pose_transform = rospy.Publisher('pick_place/e_in',
-                                    String, queue_size=10, latch=True)
-        self.pub_move_robot = rospy.Publisher('move_robot/e_in',
-                                      String, queue_size=10, latch=True)
-        self.pub_calibrate = rospy.Publisher('calibration_eye_on_base/calibrate/e_in',
-                              String, queue_size=10, latch=True)
+        # create for each node a communication channel
+        communication = {}
+        for key in topic:
+            communication[key] = Communication(topic[key], timeout = timeout)  
+
+        self.communication = communication
 
     def execute(self, userdata):
         rospy.logdebug('Executing state Initializing')
-
-        init_object_detection = self.is_initialized('object_detection/e_out', self.pub_object_detection)
-        init_pose_transform = self.is_initialized('pick_place/e_out', self.pub_pose_transform, msg_type = FlexGraspErrorCodes)
-        init_move_robot = self.is_initialized('move_robot/e_out', self.pub_move_robot, msg_type = FlexGraspErrorCodes)
-        init_calibrate = self.is_initialized('calibration_eye_on_base/calibrate/e_out', self.pub_calibrate, msg_type = FlexGraspErrorCodes)
-
-        userdata.mode = 'free'
-        userdata.command = None
-        userdata.prev_command = 'initialize'
-
-        if init_object_detection & init_pose_transform & init_move_robot & init_calibrate:
+        
+        # command all nodes via the initialized communication channels to initialize, wiat for their response
+        result = {}
+        for key in self.communication:
+            result[key] = self.communication[key].wait_for_result('e_init')
+        
+        all_initialized = True
+        for key in result:
+            if result[key] != FlexGraspErrorCodes.SUCCESS:
+                rospy.logwarn("[PIPELINE] Failed to initialize %s", key)
+                all_initialized = False
+        
+        if all_initialized:
+            userdata.mode = 'free'
+            userdata.command = None
+            userdata.prev_command = 'initialize'
             return 'success'
         else:
-            rospy.logwarn("Failed to initialize")
-            rospy.loginfo("init_object_detection %s", init_object_detection)
-            rospy.loginfo("init_pose_transform %s", init_pose_transform)
-            rospy.loginfo("init_move_robot %s", init_move_robot)
-            rospy.loginfo("init_calibrate %s", init_calibrate)
             return 'failure'
-
-    def is_initialized(self, topic_out, topic_in, msg_type = None):
-        request = String()
-        request.data = 'e_init'
-        topic_in.publish(request)
-        
-        if msg_type is not None:
-            return wait_for_result(topic_out, self.timeout, msg_type) == msg_type.SUCCESS
-        else:
-            return wait_for_success(topic_out, self.timeout)
 
 
 class Idle(smach.State):
@@ -74,9 +69,6 @@ class Idle(smach.State):
         self.move_commands =  ['home', 'open', 'close', 'sleep']
         self.pick_place_commands = ['pick', 'place', 'pick_place']
         self.point_commands = ['point']
-        
-                
-        
         self.experiment = False
 
     def go_cb(self, msg):
@@ -163,35 +155,24 @@ class DetectObject(smach.State):
         smach.State.__init__(self, outcomes=['success', 'failure', 'complete_failure'], 
                              input_keys=['mode', 'command', 'prev_command'], 
                              output_keys=['mode', 'command', 'prev_command'])
-        self.detection_op_topic = 'object_detection/e_out'
-
-        self.pub_obj_detection = rospy.Publisher('object_detection/e_in',
-                                      String, queue_size=10, latch=True)
+        topic = 'object_detection'
+        timeout = 25.0
+        self.communication = Communication(topic, timeout = timeout) 
         self.counter = 3
-        self.timeout = 25.0
-        self.object_detected = String()
 
     def execute(self, userdata):
         rospy.logdebug('Executing state Detect')
         
         # This ensures the robot is not in the way of the camera, even with delay.
         rospy.sleep(1.0)
+        
         # command node
-        self.pub_obj_detection.publish(userdata.command)
-
-        # get response
-        success = wait_for_success(self.detection_op_topic, self.timeout)
-        if success:
-            
-            if userdata.command == 'detect_tomato' or userdata.command == 'save_image':
-                userdata.prev_command = userdata.command
-                userdata.command = None
-                return 'success'
-                
-            if userdata.command == 'detect_truss':
-                userdata.prev_command = userdata.command
-                userdata.command = None
-                return 'success'
+        result = self.communication.wait_for_result(userdata.command)
+        
+        if result == FlexGraspErrorCodes.SUCCESS:
+            userdata.prev_command = userdata.command
+            userdata.command = None
+            return 'success'
         else:
             self.counter = self.counter - 1
             if self.counter <=0:
@@ -332,28 +313,29 @@ class Reset(smach.State):
                              input_keys=['mode', 'command','prev_command'], 
                              output_keys=['mode', 'command', 'prev_command'])
         
-        self.pub_move_robot = rospy.Publisher('move_robot/e_in',
-                                      String, queue_size=10, latch=True)        
-                                     
-        self.mv_robot_op_topic = 'move_robot/e_out'
+        topic = 'move_robot'
+        timeout = 30.0
+        self.counter = 1
+        self.communication = Communication(topic, timeout = timeout)
+        
         
     def execute(self, userdata):
         
         pick_place_commands = ['pick', 'place', 'pick_place']
         if userdata.command in pick_place_commands:
             
-            rospy.loginfo("Opening EE")
-            self.pub_move_robot.publish('open')
-            result = wait_for_result(self.mv_robot_op_topic, 5, FlexGraspErrorCodes)
+            rospy.loginfo("Opening end effector")
+            result = self.communication.wait_for_result('open')
 
             if result != FlexGraspErrorCodes.SUCCESS:
+                flex_grasp_error_log(result, "PIPELINE")
                 return 'failure'
                 
             rospy.loginfo("Homeing manipulator")
-            self.pub_move_robot.publish('home')
-            result = wait_for_result(self.mv_robot_op_topic, 10, FlexGraspErrorCodes)
+            result = self.communication.wait_for_result('home')
             
             if result != FlexGraspErrorCodes.SUCCESS:
+                flex_grasp_error_log(result, "PIPELINE")
                 return 'failure'
             
             userdata.command = None

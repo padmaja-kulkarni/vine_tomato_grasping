@@ -29,6 +29,8 @@ from math import pi
 
 class PickPlace(object):
     
+    node_name = 'PICK PLACE'    
+    
     def __init__(self):
         self.state = "init"
         self.prev_state = None
@@ -351,7 +353,7 @@ class PickPlace(object):
         # publish success
         if result is not None:
             msg.val = result
-            flex_grasp_error_log(result)
+            flex_grasp_error_log(result, self.node_name)
             self.pub_e_out.publish(msg)            
             self.command = None
                       
