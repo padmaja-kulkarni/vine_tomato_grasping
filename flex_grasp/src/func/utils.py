@@ -50,42 +50,25 @@ def pose_close(goal, actual, position_tol, orientation_tol):
     """
 
     if type(goal) is list:
-        actual_position = actual[0:3]
-        actual_quat = actual[3:7]
+        pos_actual = np.array(actual[0:3])
+        q_actual = np.array(actual[3:7])
 
-        goal_position = goal[0:3]
-        goal_quat = goal[3:7]
+        pos_goal = np.array(goal[0:3])
+        q_goal = np.array(goal[3:7])
 
         position_close = True
 
         # check position
-        for (pos_goal, pos_act) in zip(goal_position, actual_position):
-            position_difference = abs(pos_goal - pos_act)
-            if abs(position_difference) > position_tol:
-                # print(position_difference)
-                position_close = False
+        diff = np.abs(pos_goal - pos_actual)
+        # print(diff)
+        position_close = np.all(diff < position_tol)
 
-        # check orientation
-        orientation_close_1 = True # actual_quat = goal_quat
-        orientation_close_2 = True # actual_quat = -goal_quat
+        dist = 2*np.inner(q_goal,q_actual)**2 - 1
+        diff = abs(np.arccos(dist))
+        # print(diff)
+        orientation_close = np.all(diff < orientation_tol)
 
-        # actual_quat = goal_quat
-        for (q_goal, q_actual) in zip(goal_quat, actual_quat):
-            orientation_diff_1 = abs(q_goal - q_actual)
-            orientation_diff_2 = abs(q_goal + q_actual)
-            if orientation_diff_1 > orientation_tol:
-                orientation_close_1 = False
-            if orientation_diff_2 > orientation_tol:
-                orientation_close_2 = False
-                
-            if orientation_diff_1 > orientation_tol and orientation_diff_2 > orientation_tol:
-                pass
-                # print(orientation_diff_1)
-                # print(orientation_diff_2)
-               
-        orientation_close = orientation_close_1 or orientation_close_2
-
-        return orientation_close, position_close
+        return position_close, orientation_close
 
     elif type(goal) is PoseStamped:
         return pose_close(goal.pose, actual.pose, position_tol, orientation_tol)
