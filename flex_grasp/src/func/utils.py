@@ -95,11 +95,11 @@ def pose_close(goal, actual, position_tol, orientation_tol):
 
     return True
 
-def joint_close(goal, actual, angle_tolerance):
+def joint_close(goal_state, actual_state, angle_tolerance):
     is_close = True    
     
-    for index in range(len(goal)):
-            if abs(actual[index] - goal[index]) > angle_tolerance:
+    for goal_angle, actual_angle in zip(goal_state, actual_state):
+            if abs(goal_angle - actual_angle) > angle_tolerance:
                 is_close = False
 
     return is_close

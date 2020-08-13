@@ -374,18 +374,23 @@ class MoveRobot(object):
         else:
             target_val = group.get_joint_value_target()
     
+        if (group.get_name() == self.ee_group_name):
+            tol = self.ee_joint_tolerance
+        else:
+            tol = self.man_joint_tolerance    
+    
         # oscilations can sause the robot to be at and different pose than desired, thereofre we check several times
-        attempts = 3
-        attempt = 1
+        attempts = 10
+        attempt = 0
         all_close = False
         while (all_close == False) and (attempt <= attempts) and to_check:
         
             current = group.get_current_joint_values()
             
-            if (group.get_name() == self.ee_group_name):
-                tol = self.ee_joint_tolerance
-            else:
-                tol = self.man_joint_tolerance
+            if len(current) == 0:
+                rospy.logwarn("[MOVE ROBOT] Failed to get current robot state")
+                group.clear_pose_targets()
+                return FlexGraspErrorCodes.CONTROL_FAILED
             
             if to_check:
                 is_all_close = joint_close(target_val, current, tol)
