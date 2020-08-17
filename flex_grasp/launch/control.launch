@@ -14,6 +14,7 @@
 	<arg name="pipeline_debug"					default="false"/>
 	<arg name="object_detection_debug"	default="false"/>
 	<arg name="move_robot_debug"				default="false"/>
+	<arg name="monitor_robot_debug"			default="false"/>
 	<arg name="visualize_object_debug"	default="false"/>
 	<arg name="pick_place_debug" 				default="false"/>
 	<arg name="calibrate_debug" 				default="false"/>
@@ -81,6 +82,14 @@
     	<remap from="/collision_object" to="/$(arg robot_name)/collision_object"/>
 			<param name ="debug" value="$(arg move_robot_debug)"/>
     </node>
+
+		<node name="monitor_robot"
+			pkg="flex_grasp"
+			type="monitor_robot.py"
+			output="screen">
+			<param name ="debug" value="$(arg monitor_robot_debug)"/>
+    </node>
+monitor_robot_debug
 
 		<!--
 		<node name="visualize_object"

@@ -22,6 +22,7 @@ add_message_files(
   Peduncle.msg
   ImageProcessingSettings.msg
   FlexGraspErrorCodes.msg
+  DynamixelErrorCodes.msg
 )
 
 generate_messages(
