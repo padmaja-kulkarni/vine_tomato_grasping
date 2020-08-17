@@ -332,7 +332,8 @@ class MoveRobot(object):
                                           self.position_tol, 
                                           self.orientation_tol, 3)
         
-        # This is bad but when removed move_robot does not always wait for a plan to execute.         
+        # This is bad but when removed move_robot does not always wait for a 
+        # plan to execute, or does not execute a plan at all!         
         rospy.sleep(1)
         return result
 
