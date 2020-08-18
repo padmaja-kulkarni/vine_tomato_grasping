@@ -10,6 +10,7 @@ Created on Tue Mar 31 13:07:08 2020
 import sys
 import rospy
 import moveit_commander
+from communication import Communication
 
 # functions
 from moveit_commander.conversions import pose_to_list
@@ -51,6 +52,7 @@ class MoveRobot(object):
         while rospy.get_time() < 0.1:
             pass
 
+        self.force_robot = False
         self.state = "idle"
         self.prev_state = None
         self.command = None
@@ -78,7 +80,12 @@ class MoveRobot(object):
         # Publishers
         self.pub_e_out = rospy.Publisher("~e_out",
                                    FlexGraspErrorCodes, queue_size=10, latch=True)
-            
+                                   
+                
+        # init monitor robot communication
+        monitor_robot_topic = "monitor_robot"
+        self.monitor_robot_communication = Communication(monitor_robot_topic, timeout = 15)            
+           
     def robot_pose_cb(self, msg):
         if self.robot_pose is None:
             self.robot_pose = msg
@@ -251,7 +258,7 @@ class MoveRobot(object):
         touch_links = self.robot.get_link_names(group=grasping_group)
         self.scene.attach_box(self.ee_link, self.target_object_name, touch_links=touch_links)
         self.rate.sleep()
-        return True
+        return FlexGraspErrorCodes.SUCCESS
 
     def go_to_random_pose(self):
         rospy.logdebug("[MOVE ROBOT] Going to random pose")
@@ -287,15 +294,23 @@ class MoveRobot(object):
     def apply_grasp_ee(self):
         rospy.logdebug("[MOVE ROBOT] Aplying grasping with end effector")
 
-        success = self.attach_object()
-        if success:
+        result = self.attach_object()
+        if result == FlexGraspErrorCodes.SUCCESS:
             result = self.close_ee()
-        else:
-            result = FlexGraspErrorCodes.FAILURE
+
         return result
 
+    def monitor_group(self, group):
+        
+        group_name = group.get_name()
+        if group_name == self.man_group_name:
+            command = "monitor_arm"
+        elif group_name == self.ee_group_name:
+            command = "monitor_gripper"
+            
+        return self.monitor_robot_communication.wait_for_result(command) 
 
-    def go_to_pose(self, goal_pose):
+    def go_to_pose(self, goal_pose, robot_force = False):
         rospy.logdebug("[MOVE ROBOT] Go to pose")
         
         if goal_pose is None:
@@ -306,6 +321,10 @@ class MoveRobot(object):
             
         if not self.check_ik(goal_pose):
             return FlexGraspErrorCodes.NO_IK_SOLUTION
+
+        result = self.monitor_group(self.man_group)
+        if (result is not FlexGraspErrorCodes.SUCCESS) and (not self.force_robot):
+            return result
 
         self.man_group.set_pose_target(goal_pose.pose)
         plan = self.man_group.plan()
@@ -337,35 +356,13 @@ class MoveRobot(object):
         rospy.sleep(1)
         return result
 
-    def wait_for_pose_close(self, group, goal_pose, pos_tol, or_tol, timeout):
-        start_time = rospy.get_time()
-        curr_time = rospy.get_time()           
-        
-        while curr_time - start_time < timeout:
-        
-            current_pose = group.get_current_pose()
-            
-            position_close, orientation_close = pose_close(goal_pose, current_pose, pos_tol, or_tol)
-            if position_close and orientation_close:
-                return FlexGraspErrorCodes.SUCCESS
-                
-            self.rate.sleep()
-            curr_time = rospy.get_time()
-            
-        if orientation_close == False:
-            rospy.logwarn("[MOVE ROBOT] Failed to move to pose target, obtained orientation is not sufficiently close to goal orientation (tolerance: %s)",or_tol)                   
-            
-        if position_close == False:
-            rospy.logwarn("[MOVE ROBOT] Failed to move to pose target, obtained position is not sufficiently close to goal position (tolerance: %s)", pos_tol)
-            
-        rospy.logdebug("[MOVE ROBOT] Goal pose: %s", pose_to_list(goal_pose.pose))
-        rospy.logdebug("[MOVE ROBOT] Curr pose: %s", pose_to_list(current_pose.pose))
-        return FlexGraspErrorCodes.CONTROL_FAILED
-
     def move_to_joint_target(self, group, target):
         rospy.logdebug("[MOVE ROBOT] Go to joint target") 
         to_check = True
-        result = FlexGraspErrorCodes.SUCCESS
+
+        result = self.monitor_group(group)
+        if (result is not FlexGraspErrorCodes.SUCCESS) and (not self.force_robot):
+            return result
 
         # if the target is a named target, get the corresponding joint values
         if type(target) is str:
@@ -394,12 +391,37 @@ class MoveRobot(object):
         else:
             tol = self.man_joint_tolerance    
     
-        # oscilations can sause the robot to be at and different pose than desired, thereofre we check several times
+        # oscilations can cause the robot to be at and different pose than desired, thereofre we check several times
         if to_check:        
             result = self.wait_for_joint_close(group, target_val, tol, 2) 
 
         group.clear_pose_targets()
         return result
+
+    def wait_for_pose_close(self, group, goal_pose, pos_tol, or_tol, timeout):
+        start_time = rospy.get_time()
+        curr_time = rospy.get_time()           
+        
+        while curr_time - start_time < timeout:
+        
+            current_pose = group.get_current_pose()
+            
+            position_close, orientation_close = pose_close(goal_pose, current_pose, pos_tol, or_tol)
+            if position_close and orientation_close:
+                return FlexGraspErrorCodes.SUCCESS
+                
+            self.rate.sleep()
+            curr_time = rospy.get_time()
+            
+        if orientation_close == False:
+            rospy.logwarn("[MOVE ROBOT] Failed to move to pose target, obtained orientation is not sufficiently close to goal orientation (tolerance: %s)",or_tol)                   
+            
+        if position_close == False:
+            rospy.logwarn("[MOVE ROBOT] Failed to move to pose target, obtained position is not sufficiently close to goal position (tolerance: %s)", pos_tol)
+            
+        rospy.logdebug("[MOVE ROBOT] Goal pose: %s", pose_to_list(goal_pose.pose))
+        rospy.logdebug("[MOVE ROBOT] Curr pose: %s", pose_to_list(current_pose.pose))
+        return FlexGraspErrorCodes.CONTROL_FAILED
 
     def wait_for_joint_close(self, group, target, tol, timeout):
         start_time = rospy.get_time()
@@ -444,6 +466,14 @@ class MoveRobot(object):
 
         elif self.command == "sleep":
             result = self.sleep_man()
+            
+        elif self.command == "force_robot":
+            self.force_robot = True
+            result = FlexGraspErrorCodes.SUCCESS
+
+        elif self.command == "do_not_force_robot":
+            self.force_robot = False
+            result = FlexGraspErrorCodes.SUCCESS
 
         elif self.command == "home":
             result = self.home_man()

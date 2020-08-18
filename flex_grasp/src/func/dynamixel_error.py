@@ -42,6 +42,10 @@ def dynamixel_error_string(val):
         return 'OVERHEATING_ERROR'
     elif val == DynamixelErrorCodes.INPUT_VOLTAGE_ERROR:
         return 'INPUT_VOLTAGE_ERROR'
+        
+    elif val == DynamixelErrorCodes.COMMUNICATION_ERROR:
+        return 'COMMUNICATION_ERROR'
+
 
     else:
         return 'UNKNOWN_ERROR_CODE: still need to be added!'

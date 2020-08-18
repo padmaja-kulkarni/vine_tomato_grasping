@@ -56,6 +56,11 @@ def flex_grasp_error_string(val):
         
     elif val == FlexGraspErrorCodes.TRANSFORM_POSE_FAILED:
         return 'TRANSFORM_POSE_FAILED'
+    
+    elif val == FlexGraspErrorCodes.DYNAMIXEL_ERROR:
+        return 'DYNAMIXEL_ERROR'
+    elif val == FlexGraspErrorCodes.DYNAMIXEL_SEVERE_ERROR:      
+        return 'DYNAMIXEL_SEVERE_ERROR'
     else:
         return 'UNKNOWN_ERROR_CODE: still need to be added!'
         

@@ -22,3 +22,7 @@ int32 NO_GOAL_POSE=204
 
 # transform failures
 int32 TRANSFORM_POSE_FAILED=300
+
+# dynamixel error
+int32 DYNAMIXEL_ERROR = 400
+int32 DYNAMIXEL_SEVERE_ERROR = 401

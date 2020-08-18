@@ -7,14 +7,18 @@ Created on Mon Aug 17 16:03:22 2020
 """
 
 import rospy
-
+import numpy as np
 from func.dynamixel_error import dynamixel_error_log
+from func.flex_grasp_error import flex_grasp_error_log
 
 # services
 from interbotix_sdk.srv import RegisterValues, RegisterValuesRequest
 from interbotix_sdk.srv import RobotInfo, RobotInfoRequest
+from interbotix_sdk.srv import Reboot, RebootRequest
+from std_srvs.srv import Empty
 
 # msg
+from std_msgs.msg import String
 from flex_grasp.msg import FlexGraspErrorCodes
 from flex_grasp.msg import DynamixelErrorCodes
 
@@ -39,59 +43,120 @@ class MonitorRobot(object):
 
         # wait until clock is initialized
         while rospy.get_time() < 0.1:
-            pass        
+            pass
         
-        
+        self.command = None
         self.rate = rospy.Rate(self.fequency)        
 
         self.get_robot_info = rospy.ServiceProxy('get_robot_info', RobotInfo)        
         self.get_motor_register_values = rospy.ServiceProxy('get_motor_register_values', RegisterValues)
+        self.torque_joints_on = rospy.ServiceProxy('torque_joints_on', Empty)
+        self.torque_joints_off = rospy.ServiceProxy('torque_joints_off', Empty)
+        self.reboot_motor = rospy.ServiceProxy('reboot_motor', Reboot)
+        
     
-        self.robot_info = self.get_robot_info()
-        rospy.loginfo(self.robot_info)
-        # self.joint_names =  robot_info.joint_names
+        robot_info = self.get_robot_info()
+        rospy.loginfo(robot_info)
+        self.all_joint_names = robot_info.joint_names
+        self.gripper_joint_names = robot_info.joint_names[-1] 
+        self.arm_joint_names = robot_info.joint_names[0:-1]
         
-        self.command = 1
         self.addres = "Shutdown"
-        rospy.sleep(5)
         
-    def get_register_values(self):
-        request = RegisterValuesRequest()
-        request.cmd = self.command
-        request.addr_name = self.addres
+        rospy.Subscriber("~e_in", String, self.e_in_cb)        
+        
+        # Publishers
+        self.pub_e_out = rospy.Publisher("~e_out",
+                                   FlexGraspErrorCodes, queue_size=10, latch=True)        
+        
+    def e_in_cb(self, msg):
+        if self.command is None:
+            self.command = msg.data
+            rospy.logdebug("[%s] Received new command: %s", self.node_name, self.command)
 
-        try:
-            return self.get_motor_register_values(request)
-        except:
-            rospy.logwarn("Unable to get motor register values from request %s", request)
-            return None
+            # reset outputting message
+            msg = FlexGraspErrorCodes()
+            msg.val = FlexGraspErrorCodes.NONE
+            self.pub_e_out.publish(msg)
+        
+    def reboot(self):
+        """" Reboot Dynamixel servo(s)
 
-    def get_shutdown_error_codes(self, register_values):
+        """
+        rospy.loginfo("[%s] Turning off joint torque", self.node_name)
+        self.torque_joints_off()
+        
+        rospy.loginfo("[%s] Rebooting Dynamixel", self.node_name)
+        request = RebootRequest()
+        request.cmd = 1
+        self.reboot_motor(request)
+
+        rospy.loginfo("[%s] Turning off joint torque", self.node_name)        
+        self.torque_joints_on()        
+    
+        return FlexGraspErrorCodes.SUCCESS
+        
+    def get_register_values(self, joints = 'all'):
+        """" Read regirster value(s) from Dynamixel servo(s)
+
+        """
+        
+        register_values = {}
+        if joints == 'all':
+            joint_names = self.all_joint_names
+        elif joints == 'gripper':
+            joint_names = self.gripper_joint_names
+        elif joints == 'arm':
+            joint_names = self.arm_joint_names
+        else:
+            joint_names = joints
+    
+        if not isinstance(joint_names, list): 
+            joint_names = [joint_names]
+    
+        for joint_name in joint_names:
+            request = RegisterValuesRequest()
+            request.cmd = 4 # 4: single motor
+            request.motor_name = joint_name
+            request.addr_name = self.addres
+    
+            try:
+                value = self.get_motor_register_values(request)
+            except:
+                rospy.logwarn("Unable to get motor register values from request %s", request)
+                value = None
+                
+            register_values[joint_name] = value
+        return register_values
+
+    def get_dynamixel_error_codes(self, register_values):
         """" Gets error codes corresponding to the shutdown register values
 
         """
-        if register_values is None:
-            rospy.logwarn("[%s] Did not any shutdown register values!", self.node_name)
-            return DynamixelErrorCodes.Failure
+
         
         # print self.robot_info.joint_names        
         
-        if len(register_values.values) != self.robot_info.num_single_joints:
-            rospy.logwarn("[%s] Did not receive shutdown error codes for all the joints!", self.node_name)
-            return DynamixelErrorCodes.Failure
+#        if len(register_values) != self.robot_info.num_single_joints:
+#            rospy.logwarn("[%s] Did not receive shutdown error codes for all the joints!", self.node_name)
+#            return DynamixelErrorCodes.FAILURE
 
-        shutdown_errors = {}    
+        dynamixel_errors = {}    
     
-        for register_value, joint_name in zip(register_values.values, self.robot_info.joint_names):
-            shutdown_error = self.get_shutdown_error(register_value, joint_name)
-            shutdown_errors[joint_name] = shutdown_error
-            
-            if shutdown_error.val is not DynamixelErrorCodes.SUCCESS:
-                dynamixel_error_log(shutdown_error.val, joint_name, node_name=self.node_name)
+        for joint_name in register_values: # zip(register_values, self.robot_info.joint_names):
+            register_value = register_values[joint_name]
+            if register_value is None:
+                dynamixel_error = DynamixelErrorCodes.COMMUNICATION_ERROR
+            else:
+                dynamixel_error = self.get_dynamixel_error(register_value.values[0], joint_name)
+                
+            dynamixel_errors[joint_name] = dynamixel_error
+            if dynamixel_error is not DynamixelErrorCodes.SUCCESS:
+                dynamixel_error_log(dynamixel_error, joint_name, node_name=self.node_name)
 
-        return shutdown_errors
+        return dynamixel_errors
 
-    def get_shutdown_error(self, register_value, joint_name):
+    def get_dynamixel_error(self, register_value, joint_name):
         """" Gets error codes corresponding to the shutdown register values
 
         """
@@ -101,31 +166,94 @@ class MonitorRobot(object):
             val = DynamixelErrorCodes.INPUT_VOLTAGE_ERROR
         elif not register_bin[5]:
             val = DynamixelErrorCodes.OVERHEATING_ERROR
-        elif register_bin[4]:
-            val = DynamixelErrorCodes.MOTOR_ENCODER_ERROR
         elif not register_bin[3]:
             val = DynamixelErrorCodes.ELECTRICAL_SHOCK_ERROR
+        elif register_bin[4]:
+            val = DynamixelErrorCodes.MOTOR_ENCODER_ERROR
         elif not register_bin[2]: # (default)
             val = DynamixelErrorCodes.OVERLOAD_ERROR
         else:
             val = DynamixelErrorCodes.SUCCESS
 
-        result = DynamixelErrorCodes()
+        # result = DynamixelErrorCodes()
         # result.motor_name = joint_name  
-        result.val = val  
-        return result
+        # result.val = val  
+        return val # result
 
-    def monitor(self):
-        register_values = self.get_register_values()
+    def dynamixel_error_to_flex_grasp_error(self, dynamixel_errors):
         
-        error_codes = self.get_shutdown_error_codes(register_values)
+        error_values = dynamixel_errors.values()       
+        
+        if np.all(DynamixelErrorCodes.SUCCESS == np.array(error_values)):
+            return FlexGraspErrorCodes.SUCCESS    
             
+        elif DynamixelErrorCodes.INPUT_VOLTAGE_ERROR in error_values:
+            return FlexGraspErrorCodes.DYNAMIXEL_SEVERE_ERROR
+            
+        elif DynamixelErrorCodes.OVERHEATING_ERROR in error_values:
+            return FlexGraspErrorCodes.DYNAMIXEL_SEVERE_ERROR   
+            
+        elif DynamixelErrorCodes.ELECTRICAL_SHOCK_ERROR in error_values:
+            return FlexGraspErrorCodes.DYNAMIXEL_SEVERE_ERROR   
+            
+        elif DynamixelErrorCodes.MOTOR_ENCODER_ERROR in error_values:
+            return FlexGraspErrorCodes.DYNAMIXEL_ERROR          
+            
+        elif DynamixelErrorCodes.OVERLOAD_ERROR in error_values:
+            return FlexGraspErrorCodes.DYNAMIXEL_ERROR
+            
+        elif DynamixelErrorCodes.COMMUNICATION_ERROR in error_values: 
+            return FlexGraspErrorCodes.DYNAMIXEL_ERROR
+        else:
+            return FlexGraspErrorCodes.DYNAMIXEL_SEVERE_ERROR
+        
+    def monitor(self, joints = 'gripper'):
+        register_values = self.get_register_values(joints = joints)
+        dynamixel_errors = self.get_dynamixel_error_codes(register_values)
+        result = self.dynamixel_error_to_flex_grasp_error(dynamixel_errors)
+        flex_grasp_error_log(result, node_name = self.node_name)     
+        return result
+        
+    def take_action(self):
+        msg = FlexGraspErrorCodes()
+        result = None
+
+        # actions
+        if self.command == 'monitor_robot':
+            result = self.monitor(joints = 'all')
+
+        elif self.command == 'monitor_gripper':
+            result = self.monitor(joints = 'gripper')
+
+        elif self.command == 'monitor_arm':
+            result = self.monitor(joints = 'arm')
+            
+        elif self.command == 'reboot':
+           result = self.reboot()
+
+        elif self.command == 'e_init':
+            result = FlexGraspErrorCodes.SUCCESS
+            
+        elif self.command == None:
+            pass
+            
+        else:
+            rospy.logwarn("[%s] Received unknown command: %s", self.node_name, self.command)
+            result = FlexGraspErrorCodes.UNKNOWN_COMMAND
+
+        # publish result
+        if result is not None:
+            flex_grasp_error_log(result, self.node_name)
+            msg.val = result
+            self.pub_e_out.publish(msg)
+            self.command = None        
+        
 def main():
     try:
         monitor_robot = MonitorRobot()
 
         while not rospy.core.is_shutdown():
-            monitor_robot.monitor()
+            monitor_robot.take_action()
             monitor_robot.rate.sleep()
 
     except rospy.ROSInterruptException:
