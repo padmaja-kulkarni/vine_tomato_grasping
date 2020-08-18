@@ -79,19 +79,19 @@ class MonitorRobot(object):
             msg.val = FlexGraspErrorCodes.NONE
             self.pub_e_out.publish(msg)
         
-    def reboot(self):
+    def reboot(self, joints = 'all'):
         """" Reboot Dynamixel servo(s)
 
         """
-        rospy.loginfo("[%s] Turning off joint torque", self.node_name)
+        rospy.loginfo("[%s] Turning off all joint torque", self.node_name)
         self.torque_joints_off()
         
-        rospy.loginfo("[%s] Rebooting Dynamixel", self.node_name)
+        rospy.loginfo("[%s] Rebooting Dynamixels", self.node_name)
         request = RebootRequest()
         request.cmd = 1
         self.reboot_motor(request)
 
-        rospy.loginfo("[%s] Turning off joint torque", self.node_name)        
+        rospy.loginfo("[%s] Turning on all joint torque", self.node_name)        
         self.torque_joints_on()        
     
         return FlexGraspErrorCodes.SUCCESS
@@ -133,13 +133,6 @@ class MonitorRobot(object):
         """" Gets error codes corresponding to the shutdown register values
 
         """
-
-        
-        # print self.robot_info.joint_names        
-        
-#        if len(register_values) != self.robot_info.num_single_joints:
-#            rospy.logwarn("[%s] Did not receive shutdown error codes for all the joints!", self.node_name)
-#            return DynamixelErrorCodes.FAILURE
 
         dynamixel_errors = {}    
     

@@ -189,6 +189,11 @@ class Calibration(object):
                     self.client.take_sample()
                 except:
                     rospy.logwarn("[CALIBRATE] Failed to take sample, marker might not be visible.")
+                    
+            elif result == FlexGraspErrorCodes.DYNAMIXEL_ERROR:
+                return result
+            elif result == FlexGraspErrorCodes.DYNAMIXEL_SEVERE_ERROR:
+                return result
 
         # reset
         result = self.move_robot_communication.wait_for_result("home") 

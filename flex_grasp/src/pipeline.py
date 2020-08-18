@@ -91,14 +91,17 @@ class Idle(smach.State):
     def go_cb(self, msg):
         self.experiment = msg.data
         rospy.logdebug("[PIPELINE] experiment: %s", self.experiment)
+        
 
     def execute(self, userdata):
         rospy.logdebug('Executing state Idle')
         
-        if self.experiment and (userdata.mode != 'experiment'):
+        if self.experiment and (userdata.mode == 'free'):
             rospy.loginfo('[PIPELINE] Entering experiment mode!')
             userdata.mode = 'experiment'
-            userdata.prev_command == None
+            userdata.prev_command = None
+        elif (userdata.mode == 'override') and (not self.experiment):
+            userdata.mode = 'free'
         elif (not self.experiment) and userdata.mode == 'experiment':
             userdata.mode = 'free'
             
@@ -116,6 +119,8 @@ class Idle(smach.State):
                 userdata.command = 'place'
             elif userdata.prev_command == 'place':
                 userdata.command = 'detect_truss'
+            else:
+                rospy.logwarn('[PIPELINE] do not know what to do with previous command %s', userdata.prev_command)
         elif userdata.prev_command == 'detect_truss':
             userdata.command = 'transform'
         else:
@@ -193,7 +198,7 @@ class DetectObject(smach.State):
 
 class PoseTransform(smach.State):
     def __init__(self):
-        smach.State.__init__(self, outcomes=['success','failure','complete_failure'], 
+        smach.State.__init__(self, outcomes=['success','failure'], 
                              input_keys=['mode', 'command', 'prev_command'], 
                              output_keys=['mode', 'command', 'prev_command'])
                      
@@ -313,33 +318,30 @@ class ResetDynamixel(smach.State):
         self.monitor_robot_communication = Communication('monitor_robot', timeout = timeout)        
         
     def execute(self, userdata):
-        rospy.loginfo("Forcing robot")
+        rospy.loginfo("[PIPELINE] Forceing robot")
         result = self.move_robot_communication.wait_for_result('force_robot')   
-        if result != FlexGraspErrorCodes.SUCCESS:
-            flex_grasp_error_log(result, "PIPELINE")
-            return 'failure'         
             
-        rospy.loginfo("Opening end effector")
+        rospy.loginfo("[PIPELINE] Opening end effector")
         result = self.move_robot_communication.wait_for_result('open')
-#        if result != FlexGraspErrorCodes.SUCCESS:
-#            flex_grasp_error_log(result, "PIPELINE")
-#            return 'failure'
             
-        rospy.loginfo("Homeing manipulator")
+        rospy.loginfo("[PIPELINE] Homeing manipulator")
         result = self.move_robot_communication.wait_for_result('home')        
-#        if result != FlexGraspErrorCodes.SUCCESS:
-#            flex_grasp_error_log(result, "PIPELINE")
-#            return 'failure'
 
-        rospy.loginfo("Sleeping manipulator")
+        rospy.loginfo("[PIPELINE] Sleep manipulator")
         result = self.move_robot_communication.wait_for_result('sleep')        
-#        if result != FlexGraspErrorCodes.SUCCESS:
-#            flex_grasp_error_log(result, "PIPELINE")
-#            return 'failure'        
-        
+
         result = self.monitor_robot_communication.wait_for_result('reboot')
         
-        result = self.move_robot_communication.wait_for_result('do_not_force_robot')            
+        result = self.move_robot_communication.wait_for_result('do_not_force_robot')
+        
+        # check if error is fixed
+        result = self.monitor_robot_communication.wait_for_result('monitor_robot')
+        if result != FlexGraspErrorCodes.SUCCESS:
+            flex_grasp_error_log(result, "PIPELINE")
+            return 'failure'
+        
+        result = self.move_robot_communication.wait_for_result('sleep') 
+        result = self.move_robot_communication.wait_for_result('home')            
         
         userdata.command = None
         userdata.prev_command = 'reset'            
@@ -363,7 +365,7 @@ class StopMode(smach.State):
                              output_keys=['mode', 'command', 'prev_command'])
         
     def execute(self, userdata):
-        userdata.mode = 'free'
+        userdata.mode = 'override'# 'free'
         userdata.command = None
         userdata.prev_command = 'hard_reset'
         return 'success'
@@ -424,12 +426,11 @@ def main():
         smach.StateMachine.add('DetectObject', DetectObject(),
                                transitions={'success': 'Idle',
                                             'failure':'DetectObject',
-                                            'complete_failure':'ResetArm'})
+                                            'complete_failure':'StopMode'})
 
         smach.StateMachine.add('PoseTransform', PoseTransform(),
                                transitions={'success':'Idle',
-                                            'failure':'DetectObject',
-                                            'complete_failure':'ResetArm'})
+                                            'failure':'RestartMode'})
 
         smach.StateMachine.add('MoveRobot', MoveRobot(),
                                transitions={'success':'Idle',
