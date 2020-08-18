@@ -123,7 +123,7 @@ class MonitorRobot(object):
             try:
                 value = self.get_motor_register_values(request)
             except:
-                rospy.logwarn("Unable to get motor register values from request %s", request)
+                rospy.logwarn("[%s] Unable to get motor register values from request %s", self.node_name, request)
                 value = None
                 
             register_values[joint_name] = value

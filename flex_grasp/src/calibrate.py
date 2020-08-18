@@ -191,8 +191,10 @@ class Calibration(object):
                     rospy.logwarn("[CALIBRATE] Failed to take sample, marker might not be visible.")
                     
             elif result == FlexGraspErrorCodes.DYNAMIXEL_ERROR:
+                print('dynamixel error triggered, returning error')
                 return result
             elif result == FlexGraspErrorCodes.DYNAMIXEL_SEVERE_ERROR:
+                print('dynamixel error triggered, returning error')
                 return result
 
         # reset

@@ -154,9 +154,6 @@ class CalibrateRobot(smach.State):
         topic = 'calibration_eye_on_base/calibrate'
         timeout = 60.0
         self.communication = Communication(topic, timeout = timeout)        
-        
-        self.counter = 1
-        
 
     def execute(self, userdata):
         rospy.logdebug('Executing state Calibrate')
@@ -275,36 +272,38 @@ class PickPlace(smach.State):
 
 class ResetArm(smach.State):
     def __init__(self):
-        smach.State.__init__(self, outcomes=['success', 'failure'], 
+        smach.State.__init__(self, outcomes=['success', 'failure', 'complete_failure'], 
                              input_keys=['mode', 'command','prev_command'], 
                              output_keys=['mode', 'command', 'prev_command'])
         
         topic = 'move_robot'
         timeout = 30.0
-        self.counter = 1
+        self.counter = 3
         self.communication = Communication(topic, timeout = timeout)
         
         
     def execute(self, userdata):
             
-        rospy.loginfo("Opening end effector")
+        rospy.loginfo("[PIPELINE] Opening end effector")
         result = self.communication.wait_for_result('open')
 
-        if result != FlexGraspErrorCodes.SUCCESS:
-            flex_grasp_error_log(result, "PIPELINE")
-            return 'failure'
+        if result == FlexGraspErrorCodes.SUCCESS:       
+            rospy.loginfo("[PIPELINE] Homeing manipulator")
+            result = self.communication.wait_for_result('home')
+        
+        if result == FlexGraspErrorCodes.SUCCESS:
+            userdata.command = None
+            userdata.prev_command = 'reset'  
+            return 'success'
             
-        rospy.loginfo("Homeing manipulator")
-        result = self.communication.wait_for_result('home')
-        
-        if result != FlexGraspErrorCodes.SUCCESS:
+        else:
             flex_grasp_error_log(result, "PIPELINE")
+                       
+            self.counter = self.counter - 1
+            if self.counter <=0:
+                self.counter = 3
+                return 'complete_failure'
             return 'failure'
-                   
-        
-        userdata.command = None
-        userdata.prev_command = 'reset'            
-        return 'success'
         
 class ResetDynamixel(smach.State):
     def __init__(self):
@@ -443,7 +442,8 @@ def main():
                                            
         smach.StateMachine.add('ResetArm', ResetArm(),
                                transitions={'success':'Idle',
-                                            'failure':'StopMode'})
+                                            'failure':'ResetArm',
+                                            'complete_failure':'StopMode'})
  
         smach.StateMachine.add('ResetDynamixel', ResetDynamixel(),
                                transitions={'success':'Idle',
