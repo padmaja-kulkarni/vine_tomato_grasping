@@ -358,11 +358,17 @@ class MoveRobot(object):
 
     def move_to_joint_target(self, group, target):
         rospy.logdebug("[MOVE ROBOT] Go to joint target") 
+        result = FlexGraspErrorCodes.SUCCESS        
+        
+        if self.force_robot:
+            rospy.loginfo("[MOVE ROBOT] Forcing to execute command!")
+        else:
+            result = self.monitor_group(group)
+            if (result != FlexGraspErrorCodes.SUCCESS):
+                return result            
         to_check = True
 
-        result = self.monitor_group(group)
-        if (result is not FlexGraspErrorCodes.SUCCESS) and (not self.force_robot):
-            return result
+
 
         # if the target is a named target, get the corresponding joint values
         if type(target) is str:

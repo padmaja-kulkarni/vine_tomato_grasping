@@ -9,6 +9,24 @@ from flex_grasp.msg import FlexGraspErrorCodes
 from func.flex_grasp_error import flex_grasp_error_log
 from communication import Communication
 
+outcomes = ['success','control_failure', 'planning_failure', 'state_failure', 'dynamixel_failure', 'severe_failure', 'failure']
+
+def error_handling(result):
+    
+    if result == FlexGraspErrorCodes.SUCCESS:
+        return 'success'
+    elif result == FlexGraspErrorCodes.CONTROL_FAILED:
+        return 'control_failure'# 'control_failure'
+    elif result == FlexGraspErrorCodes.PLANNING_FAILED:
+        return 'planning_failure'# 'planning_failure'
+    elif result == FlexGraspErrorCodes.STATE_ERROR:
+        return 'state_failure'
+    elif result == FlexGraspErrorCodes.DYNAMIXEL_ERROR:
+        return 'dynamixel_failure'
+    elif result == FlexGraspErrorCodes.DYNAMIXEL_SEVERE_ERROR:
+        return 'severe_failure'
+    else:
+        return 'failure' # 'unkown_failure'
 
 class Initializing(smach.State):
     def __init__(self):
@@ -118,11 +136,13 @@ class Idle(smach.State):
             return 'point'
         else:
             rospy.logwarn('Unknown command: %s', userdata.command)
+            userdata.command = None
+            userdata.mode = 'free'
             return 'failure'
 
 class CalibrateRobot(smach.State):
     def __init__(self):
-        smach.State.__init__(self, outcomes=['success','failure', 'complete_failure'], 
+        smach.State.__init__(self, outcomes = outcomes, 
                              input_keys=['mode', 'command', 'prev_command'], 
                              output_keys=['mode', 'command', 'prev_command'])
                              
@@ -138,16 +158,9 @@ class CalibrateRobot(smach.State):
     
         # command node
         result = self.communication.wait_for_result(userdata.command)
-
-        if result == FlexGraspErrorCodes.SUCCESS:
-            userdata.prev_command = userdata.command
-            userdata.command = None
-            return 'success'
-        else:
-            self.counter = self.counter - 1
-            if self.counter <=0:
-                return 'complete_failure'
-            return 'failure'
+        userdata.prev_command = userdata.command
+        userdata.command = None        
+        return error_handling(result)
 
 class DetectObject(smach.State):
     def __init__(self):
@@ -188,8 +201,7 @@ class PoseTransform(smach.State):
         topic = 'pick_place'
         timeout = 40.0
         self.communication = Communication(topic, timeout = timeout)
-        
-        self.counter = 3
+
 
     def execute(self, userdata):
         rospy.logdebug('Executing state Transform')
@@ -203,15 +215,11 @@ class PoseTransform(smach.State):
             userdata.command = None
             return 'success'
         else:
-            self.counter = self.counter -1
-            if self.counter <=0:
-                userdata.prev_command = userdata.command
-                return 'complete_failure'
             return 'failure'
 
 class MoveRobot(smach.State):
     def __init__(self):
-        smach.State.__init__(self, outcomes=['success', 'failure', 'dynamixel_failure', 'severe_failure', 'complete_failure'], 
+        smach.State.__init__(self, outcomes=outcomes, 
                              input_keys=['mode', 'command', 'prev_command'], 
                              output_keys=['mode', 'command', 'prev_command'])
 
@@ -224,31 +232,14 @@ class MoveRobot(smach.State):
         rospy.logdebug('Executing state Move Robot')
         result = self.communication.wait_for_result(userdata.command)
 
-        if result == FlexGraspErrorCodes.SUCCESS:
-            pass
-        elif result == FlexGraspErrorCodes.CONTROL_FAILED:
-            return 'failure'# 'control_failure'
-        elif result == FlexGraspErrorCodes.PLANNING_FAILED:
-            return 'failure'# 'planning_failure'
-        elif result == FlexGraspErrorCodes.STATE_ERROR:
-            return 'failure'
-        elif result == FlexGraspErrorCodes.DYNAMIXEL_ERROR:
-            return 'dynamixel_failure'
-        elif result == FlexGraspErrorCodes.DYNAMIXEL_SEVERE_ERROR:
-            return 'severe_failure'
-        else:
-            return 'failure' # 'unkown_failure'
-
-        # determine success
-        if result == FlexGraspErrorCodes.SUCCESS:
-            userdata.command = None
-            userdata.prev_command = userdata.command
-            return 'success'
+        userdata.prev_command = userdata.command
+        userdata.command = None        
+        return error_handling(result)
             
             
 class PickPlace(smach.State):
     def __init__(self):
-        smach.State.__init__(self, outcomes=['success', 'failure', 'dynamixel_failure', 'severe_failure', 'complete_failure'], 
+        smach.State.__init__(self, outcomes=outcomes, 
                              input_keys=['mode', 'command','prev_command'], 
                              output_keys=['mode', 'command', 'prev_command'])
         topic = 'pick_place'
@@ -268,29 +259,16 @@ class PickPlace(smach.State):
             
             result = self.communication.wait_for_result(command)
             flex_grasp_error_log(result)
-            
-            if result == FlexGraspErrorCodes.SUCCESS:
-                pass
-            elif result == FlexGraspErrorCodes.CONTROL_FAILED:
-                return 'failure'# 'control_failure'
-            elif result == FlexGraspErrorCodes.PLANNING_FAILED:
-                return 'failure'# 'planning_failure'
-            elif result == FlexGraspErrorCodes.STATE_ERROR:
-                return 'failure'
-            elif result == FlexGraspErrorCodes.DYNAMIXEL_ERROR:
-                return 'dynamixel_failure'
-            elif result == FlexGraspErrorCodes.DYNAMIXEL_SEVERE_ERROR:
-                return 'severe_failure'
-            else:
-                return 'failure' # 'unkown_failure'
+            outcome = error_handling(result)
+            if outcome != 'success':
+                return outcome
         
         # determine success
-        if result == FlexGraspErrorCodes.SUCCESS:
-            userdata.prev_command = userdata.command
-            userdata.command = None
-            return 'success' 
+        userdata.prev_command = userdata.command
+        userdata.command = None 
+        return outcome
 
-class ArmReset(smach.State):
+class ResetArm(smach.State):
     def __init__(self):
         smach.State.__init__(self, outcomes=['success', 'failure'], 
                              input_keys=['mode', 'command','prev_command'], 
@@ -323,7 +301,7 @@ class ArmReset(smach.State):
         userdata.prev_command = 'reset'            
         return 'success'
         
-class DynamixelReset(smach.State):
+class ResetDynamixel(smach.State):
     def __init__(self):
         smach.State.__init__(self, outcomes=['success', 'failure'], 
                              input_keys=['mode', 'command','prev_command'], 
@@ -343,21 +321,21 @@ class DynamixelReset(smach.State):
             
         rospy.loginfo("Opening end effector")
         result = self.move_robot_communication.wait_for_result('open')
-        if result != FlexGraspErrorCodes.SUCCESS:
-            flex_grasp_error_log(result, "PIPELINE")
-            return 'failure'
+#        if result != FlexGraspErrorCodes.SUCCESS:
+#            flex_grasp_error_log(result, "PIPELINE")
+#            return 'failure'
             
         rospy.loginfo("Homeing manipulator")
         result = self.move_robot_communication.wait_for_result('home')        
-        if result != FlexGraspErrorCodes.SUCCESS:
-            flex_grasp_error_log(result, "PIPELINE")
-            return 'failure'
+#        if result != FlexGraspErrorCodes.SUCCESS:
+#            flex_grasp_error_log(result, "PIPELINE")
+#            return 'failure'
 
         rospy.loginfo("Sleeping manipulator")
         result = self.move_robot_communication.wait_for_result('sleep')        
-        if result != FlexGraspErrorCodes.SUCCESS:
-            flex_grasp_error_log(result, "PIPELINE")
-            return 'failure'        
+#        if result != FlexGraspErrorCodes.SUCCESS:
+#            flex_grasp_error_log(result, "PIPELINE")
+#            return 'failure'        
         
         result = self.monitor_robot_communication.wait_for_result('reboot')
         
@@ -367,18 +345,18 @@ class DynamixelReset(smach.State):
         userdata.prev_command = 'reset'            
         return 'success'
   
-#class Stop(smach.state):    
-#    def __init__(self):
-#        smach.State.__init__(self, outcomes=['success', 'failure'], 
-#                             input_keys=['mode', 'command','prev_command'], 
-#                             output_keys=['mode', 'command', 'prev_command'])
-#        
-#    def execute(self, userdata):
-#        userdata.command = None
-#        userdata.prev_command = 'reset'
-#        return 'success'            
+class RestartMode(smach.State):    
+    def __init__(self):
+        smach.State.__init__(self, outcomes=['success', 'failure'], 
+                             input_keys=['mode', 'command','prev_command'], 
+                             output_keys=['mode', 'command', 'prev_command'])
+        
+    def execute(self, userdata):
+        userdata.command = None
+        userdata.prev_command = 'reset'
+        return 'success'            
             
-class HardReset(smach.State):
+class StopMode(smach.State):
     def __init__(self):
         smach.State.__init__(self, outcomes=['success', 'failure'], 
                              input_keys=['mode', 'command','prev_command'], 
@@ -426,47 +404,55 @@ def main():
 
         smach.StateMachine.add('CalibrateRobot', CalibrateRobot(),
                            transitions={'success':'Idle',
-                                        'failure': 'Idle',
-                                        'complete_failure':'ArmReset'})
+                                            'control_failure': 'ResetArm',
+                                            'planning_failure': 'StopMode',
+                                            'state_failure': 'RestartMode',
+                                            'dynamixel_failure' : 'ResetDynamixel',
+                                            'severe_failure' : 'total_failure',
+                                            'failure':'StopMode'})
                                         
         smach.StateMachine.add('PickPlace', PickPlace(),
                            transitions={'success':'Idle',
-                                        'failure': 'ArmReset',
-                                        'dynamixel_failure' : 'DynamixelReset',
-                                        'severe_failure' : 'total_failure',
-                                        'complete_failure':'ArmReset'})
+                                            'control_failure': 'ResetArm',
+                                            'planning_failure': 'StopMode',
+                                            'state_failure': 'RestartMode',
+                                            'dynamixel_failure' : 'ResetDynamixel',
+                                            'severe_failure' : 'total_failure',
+                                            'failure':'StopMode'})
                                         
 
         smach.StateMachine.add('DetectObject', DetectObject(),
                                transitions={'success': 'Idle',
                                             'failure':'DetectObject',
-                                            'complete_failure':'ArmReset'})
+                                            'complete_failure':'ResetArm'})
 
         smach.StateMachine.add('PoseTransform', PoseTransform(),
                                transitions={'success':'Idle',
                                             'failure':'DetectObject',
-                                            'complete_failure':'ArmReset'})
+                                            'complete_failure':'ResetArm'})
 
         smach.StateMachine.add('MoveRobot', MoveRobot(),
                                transitions={'success':'Idle',
-                                            'failure':'MoveRobot',
-                                            'dynamixel_failure' : 'DynamixelReset', 
+                                            'control_failure': 'ResetArm',
+                                            'planning_failure': 'StopMode',
+                                            'state_failure': 'RestartMode',
+                                            'dynamixel_failure' : 'ResetDynamixel',
                                             'severe_failure' : 'total_failure',
-                                            'complete_failure': 'ArmReset'})
+                                            'failure':'StopMode'})
                                            
-        smach.StateMachine.add('ArmReset', ArmReset(),
+        smach.StateMachine.add('ResetArm', ResetArm(),
                                transitions={'success':'Idle',
-                                            'failure':'HardReset'})
+                                            'failure':'StopMode'})
  
-        smach.StateMachine.add('DynamixelReset', DynamixelReset(),
+        smach.StateMachine.add('ResetDynamixel', ResetDynamixel(),
                                transitions={'success':'Idle',
-                                            'failure':'HardReset'})
+                                            'failure':'StopMode'})
                                            
-#        smach.StateMachine.add('Stop', Stop(),
-#                               transitions={'success':'Idle',
-#                                            'failure':'HardReset'})
+        smach.StateMachine.add('StopMode', StopMode(),
+                               transitions={'success':'Idle',
+                                            'failure':'total_failure'})
 
-        smach.StateMachine.add('HardReset', HardReset(),
+        smach.StateMachine.add('RestartMode', RestartMode(),
                                transitions={'success':'Idle',
                                             'failure':'total_failure'})
 

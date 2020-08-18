@@ -210,8 +210,7 @@ class MonitorRobot(object):
     def monitor(self, joints = 'gripper'):
         register_values = self.get_register_values(joints = joints)
         dynamixel_errors = self.get_dynamixel_error_codes(register_values)
-        result = self.dynamixel_error_to_flex_grasp_error(dynamixel_errors)
-        flex_grasp_error_log(result, node_name = self.node_name)     
+        result = self.dynamixel_error_to_flex_grasp_error(dynamixel_errors)  
         return result
         
     def take_action(self):
@@ -243,7 +242,7 @@ class MonitorRobot(object):
 
         # publish result
         if result is not None:
-            flex_grasp_error_log(result, self.node_name)
+            flex_grasp_error_log(result, node_name = self.node_name)
             msg.val = result
             self.pub_e_out.publish(msg)
             self.command = None        
