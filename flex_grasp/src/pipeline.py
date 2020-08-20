@@ -272,7 +272,7 @@ class PickPlace(smach.State):
 
 class ResetArm(smach.State):
     def __init__(self):
-        smach.State.__init__(self, outcomes=['success', 'failure', 'complete_failure'], 
+        smach.State.__init__(self, outcomes=outcomes, 
                              input_keys=['mode', 'command','prev_command'], 
                              output_keys=['mode', 'command', 'prev_command'])
         
@@ -299,7 +299,7 @@ class ResetArm(smach.State):
             flex_grasp_error_log(result, "PIPELINE")
             rospy.logwarn("[PIPELINE] retry resetarm: %s attempts remaining", attempt_remaining)
 
-        return 'complete_failure'        
+        return error_handling(result)
         
 class ResetDynamixel(smach.State):
     def __init__(self):
@@ -318,9 +318,6 @@ class ResetDynamixel(smach.State):
             
         rospy.loginfo("[PIPELINE] Opening end effector")
         result = self.move_robot_communication.wait_for_result('open')
-            
-#        rospy.loginfo("[PIPELINE] Homeing manipulator")
-#        result = self.move_robot_communication.wait_for_result('home')        
 
         rospy.loginfo("[PIPELINE] Sleep manipulator")
         result = self.move_robot_communication.wait_for_result('sleep')        
@@ -336,6 +333,7 @@ class ResetDynamixel(smach.State):
             return 'failure'
         
         result = self.move_robot_communication.wait_for_result('sleep') 
+        result = self.move_robot_communication.wait_for_result('open')
         result = self.move_robot_communication.wait_for_result('home')            
         
         userdata.command = None
@@ -438,8 +436,12 @@ def main():
                                            
         smach.StateMachine.add('ResetArm', ResetArm(),
                                transitions={'success':'Idle',
-                                            'failure':'ResetArm',
-                                            'complete_failure':'StopMode'})
+                                            'control_failure': 'StopMode',
+                                            'planning_failure': 'StopMode',
+                                            'state_failure': 'StopMode',
+                                            'dynamixel_failure' : 'ResetDynamixel',
+                                            'severe_failure' : 'total_failure',
+                                            'failure':'StopMode'})
  
         smach.StateMachine.add('ResetDynamixel', ResetDynamixel(),
                                transitions={'success':'Idle',

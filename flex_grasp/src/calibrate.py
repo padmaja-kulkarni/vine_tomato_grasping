@@ -110,7 +110,7 @@ class Calibration(object):
 
         x_min = 0.26
         y_min = -y_amplitude
-        z_min = 0.22 # 0.05
+        z_min = 0.21 # 0.05
 
 
         pos_intervals = 1

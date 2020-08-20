@@ -76,14 +76,10 @@ class ObjectDetection(object):
 
         self.bridge = CvBridge()
 
-        pwd_current = os.path.dirname(__file__) # path to THIS file
-        data_set = 'artificial'
-        self.pwd_results = os.path.join(pwd_current, '..', '..', 'results')
-        self.pwd_data = os.path.join(pwd_current, '..', '..', 'detect_truss', 'src', 'data', data_set)
-
-        if not os.path.isdir(self.pwd_data):
-            rospy.loginfo("New path, creating a new folder: " + self.pwd_data)
-            os.makedirs(self.pwd_data)
+        self.pwd_current = os.path.dirname(__file__) # path to THIS file
+        self.data_set = 'default'
+        self.pwd_results = os.path.join(self.pwd_current, '..', '..', 'results')
+        self.pwd_data = os.path.join(self.pwd_current, '..', '..', 'detect_truss', 'src', 'data', self.data_set)
 
         rospy.loginfo("Storing visiual results in: ", self.pwd_results)
 
@@ -136,10 +132,18 @@ class ObjectDetection(object):
         rospy.Subscriber("camera/color/camera_info", CameraInfo, self.color_info_cb)
         rospy.Subscriber("camera/aligned_depth_to_color/camera_info", CameraInfo, self.depth_info_cb)
         rospy.Subscriber("camera/depth_registered/points", PointCloud2, self.point_cloud_cb)        
+        rospy.Subscriber("dataset", String, self.data_set_cb)
         
         
         rospy.Subscriber("image_processing_settings", ImageProcessingSettings, self.image_processing_settings_cb)
 
+    def data_set_cb(self, msg):
+        if self.data_set != msg.data:
+
+            self.data_set = msg.data
+            self.pwd_results = os.path.join(self.pwd_current, '..', '..', 'results')
+            self.pwd_data = os.path.join(self.pwd_current, '..', '..', 'detect_truss', 'src', 'data', self.data_set)
+            rospy.loginfo("[INFO] Stroing results in folder %s", self.data_set)
 
     def e_in_cb(self, msg):
         if self.command is None:
@@ -228,11 +232,14 @@ class ObjectDetection(object):
         return False
 
 
-    def save_image(self):
-        result = FlexGraspErrorCodes.SUCCESS
+    def log_image(self, result_img = None):
         
         if not self.wait_for_data(5):
             return FlexGraspErrorCodes.REQUIRED_DATA_MISSING
+            
+        if not os.path.isdir(self.pwd_data):
+            rospy.loginfo("New path, creating a new folder: " + self.pwd_data)
+            os.makedirs(self.pwd_data)
         
         # imaformation about the image which will be stored
         image_info = {}
@@ -243,19 +250,18 @@ class ObjectDetection(object):
 
         # determine starting number
         if not len(contents):
-            new_id = 1;
+            id_int = 1
         else:
             contents.sort()
             file_name = contents[-1]
             file_id = file_name[:3]
-            new_id = int(file_id) + 1
-            
+            id_int = int(file_id) + 1
+        id_string = str(id_int).zfill(3)
 
-        name_rgb = str(new_id).zfill(3) + '_rgb.png'
-        name_depth = str(new_id).zfill(3) + '_depth.png'
-        json_file_name =  str(new_id).zfill(3) + '_info.json'
-        pwd_rgb = os.path.join(self.pwd_data, name_rgb)
-        pwd_depth = os.path.join(self.pwd_data, name_depth)
+        name_rgb =  id_string+ '_rgb.png'
+        name_depth = id_string + '_depth.png'
+        name_result = id_string + '_result.png'
+        json_file_name =  id_string + '_info.json'
         json_pwd = os.path.join(self.pwd_data, json_file_name)
         
         rgb_img = self.color_image
@@ -263,22 +269,24 @@ class ObjectDetection(object):
         
         with open(json_pwd, "w") as write_file:
             json.dump(image_info, write_file)        
-        
-        if cv2.imwrite(pwd_rgb, cv2.cvtColor(rgb_img, cv2.COLOR_RGB2BGR)):
-            rospy.loginfo("[OBJECT DETECTION] File %s save successfully to path %s", name_rgb, self.pwd_data)
-        else:
-            rospy.logwarn("[OBJECT DETECTION] Failed to save image %s to path %s", name_rgb, self.pwd_data)
-            result = FlexGraspErrorCodes.FAILURE
             
-        if cv2.imwrite(pwd_depth, cv2.cvtColor(depth_img, cv2.COLOR_RGB2BGR)):
-            rospy.loginfo("[OBJECT DETECTION] File %s save successfully to path %s", name_depth, self.pwd_data)
-        else:
-            rospy.logwarn("[OBJECT DETECTION] Failed to save image %s to path %s", name_depth, self.pwd_data)
-            result = FlexGraspErrorCodes.FAILURE
+        result = self.save_image(rgb_img, self.pwd_data, name_rgb)
+        result = self.save_image(depth_img, self.pwd_data, name_depth)
+        if result_img is not None:
+            result = self.save_image(result_img, self.pwd_data, name_result)
             
         imgmsg_depth = self.bridge.cv2_to_imgmsg(depth_img, encoding="rgb8")
         self.pub_depth_image.publish(imgmsg_depth)
         return result
+
+    def save_image(self, img, pwd, name):
+        full_pwd = os.path.join(pwd, name)
+        if cv2.imwrite(full_pwd, cv2.cvtColor(img, cv2.COLOR_RGB2BGR)):
+            rospy.loginfo("[OBJECT DETECTION] File %s save successfully to path %s", name, self.pwd_data)
+            return FlexGraspErrorCodes.SUCCESS
+        else:
+            rospy.logwarn("[OBJECT DETECTION] Failed to save image %s to path %s", name, self.pwd_data)
+            return FlexGraspErrorCodes.FAILURE
 
     def detect_object(self):
 
@@ -333,11 +341,15 @@ class ObjectDetection(object):
         # get images
         img_hue  = self.process_image.get_color_components()
         img_depth = colored_depth_image(self.depth_image.copy())
+        
+        self.log_image(result_img=img_tomato)
 
         # publish results tomato_img
         imgmsg_tomato = self.bridge.cv2_to_imgmsg(img_tomato, encoding="rgb8")
         imgmsg_depth = self.bridge.cv2_to_imgmsg(img_depth, encoding="rgb8")
         imgmsg_hue = self.bridge.cv2_to_imgmsg(img_hue)
+
+        
 
         rospy.logdebug("Publishing results")
         self.pub_tomato_image.publish(imgmsg_tomato)        
@@ -610,7 +622,7 @@ class ObjectDetection(object):
         elif (self.command == "save_image"):
             rospy.logdebug("[OBEJCT DETECTION] Take picture")
             self.take_picture = True
-            result = self.save_image()
+            result = self.log_image()
 
         elif (self.command == "e_init"):
             self.init = True

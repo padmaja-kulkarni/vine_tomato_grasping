@@ -7,7 +7,8 @@ Created on Thu May 28 09:35:43 2020
 """
 
 import rospy
-
+import random
+import numpy as np
 # messages
 from std_msgs.msg import String
 from geometry_msgs.msg import PoseStamped
@@ -90,19 +91,25 @@ class PickPlace(object):
         grasp_xyz = [0, 0, 0.055] # [m]
         pre_grasp_xyz = [0, 0, 0.12] # [m]
         grasp_rpy = [-pi, pi/2, 0]
-        place_rpy = [-pi, pi/2, 0.5]
+        
+        
+        random.seed(0)
         frame = self.robot_base_frame# robot_base_frame
-        time = rospy.Time.now()
+        time = rospy.Time.now()        
 
         pose_transform = {}
         pose_transform['pre_grasp'] = point_to_pose_stamped(pre_grasp_xyz, grasp_rpy, frame, time)
         pose_transform['grasp'] = point_to_pose_stamped(grasp_xyz, grasp_rpy, frame, time)
-        pose_transform['pre_place'] = point_to_pose_stamped(pre_grasp_xyz, place_rpy, frame, time)
-        pose_transform['place'] = point_to_pose_stamped(grasp_xyz, place_rpy, frame, time)
+
 
         pose = {}
         for key in pose_pub:
             pose[key] = None
+
+        
+        self.pre_grasp_xyz = pre_grasp_xyz
+        self.grasp_xyz = grasp_xyz
+        self.grasp_rpy = grasp_rpy
 
         self.pose_pub = pose_pub
         self.pose = pose
@@ -111,6 +118,32 @@ class PickPlace(object):
         # Tranform
         self.tfBuffer = tf2_ros.Buffer()
         self.listener = tf2_ros.TransformListener(self.tfBuffer)
+    
+    def generate_place_pose(self):
+        
+        
+        x = 0.0
+        while x <= 0.17:
+            theta = np.deg2rad(random.randrange(-90, 90, 1)) # [rad]
+            r = random.randrange(15, 22, 1)/100.0 # [m]    
+            
+            x = r * np.cos(theta)
+            y = r * np.sin(theta)
+        
+        orientation = np.deg2rad(random.randrange(90, 270, 1)) + theta # [rad]        
+        
+        place_rpy = [self.grasp_rpy[0], self.grasp_rpy[1], orientation]
+        pre_place_xyz = [x, y, self.pre_grasp_xyz[2] + self.grasp_height]      
+        place_xyz = [x, y, self.grasp_xyz[2] + self.grasp_height]        
+
+        frame = self.robot_base_frame# robot_base_frame
+        time = rospy.Time.now()
+        
+        place_pose = {}
+        place_pose['pre_place'] = point_to_pose_stamped(pre_place_xyz, place_rpy, frame, time)
+        place_pose['place'] = point_to_pose_stamped(place_xyz, place_rpy, frame, time)        
+        return place_pose
+
     
     def e_in_cb(self, msg):
         if self.command is None:
@@ -126,6 +159,19 @@ class PickPlace(object):
 
         self.object_features = msg
         rospy.logdebug("[PICK PLACE] Received new object feature message")    
+
+    def transform_dict(self, pose_dict, to_frame):
+        # transfrom add_pose to planning frame
+        for key in pose_dict:
+            original_frame = pose_dict[key].header.frame_id
+            transform = get_transform(to_frame, original_frame, self.tfBuffer)            
+                
+            if transform is None:
+                rospy.logwarn("[PICK PLACE] Cannot transform pose, failed to lookup transform!!")
+                return FlexGraspErrorCodes.TRANSFORM_POSE_FAILED
+    
+            pose_dict[key] = tf2_geometry_msgs.do_transform_pose(pose_dict[key], transform)
+        return pose_dict
 
     def transform_pose(self, angle_offset = 0):
         if not wait_for_variable(3, self.object_features):
@@ -147,29 +193,38 @@ class PickPlace(object):
         object_pose = tf2_geometry_msgs.do_transform_pose(object_pose, transform)
         object_position, object_orientation = pose_to_lists(object_pose.pose, 'euler')
         object_pose.pose.position = list_to_position((object_position[0], object_position[1], self.grasp_height))
-        object_pose.pose.orientation = list_to_orientation((-object_orientation[2] + angle_offset, 0, 0)) # 
+        
+        object_angle = -object_orientation[2] + angle_offset
+        base_angle = np.arctan2(object_position[1], object_position[0])
+        
+        if object_angle > (-base_angle + 0.5*np.pi) or object_angle < (-base_angle - 0.5*np.pi):
+            pass
+        else:
+            object_angle = object_angle + np.pi
+
+        print "object angle: ", np.rad2deg(object_angle)
+        print "base angle: ", np.rad2deg(base_angle)
+
+        object_pose.pose.orientation = list_to_orientation((object_angle, 0, 0)) # 
 
         # transfrom add_pose to planning frame
-        for key in self.pose_transform:
-            original_frame = self.pose_transform[key].header.frame_id
-            transform = get_transform(self.planning_frame, original_frame, self.tfBuffer)            
-                
-            if transform is None:
-                rospy.logwarn("[PICK PLACE] Cannot transform pose, failed to lookup transform!!")
-                return FlexGraspErrorCodes.TRANSFORM_POSE_FAILED
-    
-            self.pose_transform[key] = tf2_geometry_msgs.do_transform_pose(self.pose_transform[key], transform)
-        
+        pose_transform = self.transform_dict(self.pose_transform, self.planning_frame)
         
         pose = {}
-        for key in self.pose_transform:
-            added_pose = add_pose_stamped(self.pose_transform[key], object_pose) 
+        for key in pose_transform:
+            added_pose = add_pose_stamped(pose_transform[key], object_pose) 
+
             if added_pose is None:
                 rospy.logwarn('[PICK PLACE] Failed to add pose stamed: they are defiend with respect to different frames!')
                 return FlexGraspErrorCodes.FAILURE
             else:
                 pose[key] = added_pose
-            
+  
+  
+        place_poses = self.generate_place_pose()  
+        place_poses = self.transform_dict(place_poses, self.planning_frame)
+        for key in place_poses:
+                pose[key] = place_poses[key]          
             
         # tranform to world frame for MoveIt!
 #        transform = get_transform(self.planning_frame, self.robot_base_frame, self.tfBuffer) 
