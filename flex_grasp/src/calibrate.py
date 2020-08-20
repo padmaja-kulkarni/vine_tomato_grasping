@@ -108,9 +108,9 @@ class Calibration(object):
         y_amplitude = 0.08
         z_amplitude = 0.00
 
-        x_min = 0.25
+        x_min = 0.26
         y_min = -y_amplitude
-        z_min = 0.30 # 0.05
+        z_min = 0.22 # 0.05
 
 
         pos_intervals = 1
@@ -123,8 +123,8 @@ class Calibration(object):
             y_vec = np.linspace(y_min, y_min + 2*y_amplitude, pos_intervals)
             z_vec = np.linspace(z_min, z_min + 2*z_amplitude, pos_intervals)
 
-        ai_amplitude = 35.0/180*np.pi
-        aj_amplitude = 35.0/180*np.pi
+        ai_amplitude = 40.0/180*np.pi
+        aj_amplitude = 40.0/180*np.pi
 
         rot_intervals = 3
         ai_vec = np.linspace(-ai_amplitude, ai_amplitude, rot_intervals)

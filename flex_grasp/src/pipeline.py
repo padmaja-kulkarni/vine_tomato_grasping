@@ -278,32 +278,28 @@ class ResetArm(smach.State):
         
         topic = 'move_robot'
         timeout = 30.0
-        self.counter = 3
+        self.max_attempts = 3
         self.communication = Communication(topic, timeout = timeout)
-        
-        
+    
     def execute(self, userdata):
             
-        rospy.loginfo("[PIPELINE] Opening end effector")
-        result = self.communication.wait_for_result('open')
-
-        if result == FlexGraspErrorCodes.SUCCESS:       
-            rospy.loginfo("[PIPELINE] Homeing manipulator")
-            result = self.communication.wait_for_result('home')
-        
-        if result == FlexGraspErrorCodes.SUCCESS:
-            userdata.command = None
-            userdata.prev_command = 'reset'  
-            return 'success'
+        for attempt_remaining in reversed(range(self.max_attempts)):
+            rospy.loginfo("[PIPELINE] Opening end effector")
+            result = self.communication.wait_for_result('open')
+    
+            if result == FlexGraspErrorCodes.SUCCESS:       
+                rospy.loginfo("[PIPELINE] Homeing manipulator")
+                result = self.communication.wait_for_result('home')
             
-        else:
+            if result == FlexGraspErrorCodes.SUCCESS:
+                userdata.command = None
+                userdata.prev_command = 'reset'  
+                return 'success'
+                
             flex_grasp_error_log(result, "PIPELINE")
-                       
-            self.counter = self.counter - 1
-            if self.counter <=0:
-                self.counter = 3
-                return 'complete_failure'
-            return 'failure'
+            rospy.logwarn("[PIPELINE] retry resetarm: %s attempts remaining", attempt_remaining)
+
+        return 'complete_failure'        
         
 class ResetDynamixel(smach.State):
     def __init__(self):
@@ -323,8 +319,8 @@ class ResetDynamixel(smach.State):
         rospy.loginfo("[PIPELINE] Opening end effector")
         result = self.move_robot_communication.wait_for_result('open')
             
-        rospy.loginfo("[PIPELINE] Homeing manipulator")
-        result = self.move_robot_communication.wait_for_result('home')        
+#        rospy.loginfo("[PIPELINE] Homeing manipulator")
+#        result = self.move_robot_communication.wait_for_result('home')        
 
         rospy.loginfo("[PIPELINE] Sleep manipulator")
         result = self.move_robot_communication.wait_for_result('sleep')        

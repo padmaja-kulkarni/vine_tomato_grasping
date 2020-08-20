@@ -36,7 +36,9 @@ class PickPlace(object):
         self.prev_state = None
         self.command = None
         
-        self.peduncle_height = 0.075 # [m] 0.01 # 
+        surface_height = 0.018
+        peduncle_height = 0.075 # [m]
+        self.grasp_height = peduncle_height - surface_height 
         self.object_features = None
         
         
@@ -144,7 +146,7 @@ class PickPlace(object):
 
         object_pose = tf2_geometry_msgs.do_transform_pose(object_pose, transform)
         object_position, object_orientation = pose_to_lists(object_pose.pose, 'euler')
-        object_pose.pose.position = list_to_position((object_position[0], object_position[1], self.peduncle_height))
+        object_pose.pose.position = list_to_position((object_position[0], object_position[1], self.grasp_height))
         object_pose.pose.orientation = list_to_orientation((-object_orientation[2] + angle_offset, 0, 0)) # 
 
         # transfrom add_pose to planning frame
