@@ -275,6 +275,9 @@ class ObjectDetection(object):
         if result_img is not None:
             result = self.save_image(result_img, self.pwd_data, name_result)
             
+        if result == FlexGraspErrorCodes.SUCCESS:
+            rospy.loginfo("[OBJECT DETECTION] Succesfully logged data of id %s", id_string)
+            
         imgmsg_depth = self.bridge.cv2_to_imgmsg(depth_img, encoding="rgb8")
         self.pub_depth_image.publish(imgmsg_depth)
         return result
@@ -282,7 +285,7 @@ class ObjectDetection(object):
     def save_image(self, img, pwd, name):
         full_pwd = os.path.join(pwd, name)
         if cv2.imwrite(full_pwd, cv2.cvtColor(img, cv2.COLOR_RGB2BGR)):
-            rospy.loginfo("[OBJECT DETECTION] File %s save successfully to path %s", name, self.pwd_data)
+            rospy.logdebug("[OBJECT DETECTION] File %s save successfully to path %s", name, self.pwd_data)
             return FlexGraspErrorCodes.SUCCESS
         else:
             rospy.logwarn("[OBJECT DETECTION] Failed to save image %s to path %s", name, self.pwd_data)
@@ -500,8 +503,8 @@ class ObjectDetection(object):
         f = (fx + fy)/2       
         px_per_mm = f/height/1000.0
         
-        rospy.loginfo('Height above table: %s [m]', height)
-        rospy.loginfo('Pixels per mm: %s [px/mm]', px_per_mm)
+        rospy.logdebug('Height above table: %s [m]', height)
+        rospy.logdebug('Pixels per mm: %s [px/mm]', px_per_mm)
         return px_per_mm
 
     def create_truss(self, tomatoes, cage_pose, peduncle):

@@ -36,6 +36,8 @@ class Initializing(smach.State):
         
         # dict of nodes which need to be initialized!
         topic = {}
+        topic['monitor_robot'] = 'monitor_robot'
+        topic['transform_pose'] = 'transform_pose'
         topic['object_detection'] = 'object_detection'
         topic['pick_place'] = 'pick_place'
         topic['move_robot'] = 'move_robot'
@@ -107,9 +109,9 @@ class Idle(smach.State):
             
                 
         if userdata.mode == 'experiment':            
-            if userdata.prev_command == None:
-                userdata.command = 'calibrate'
-            elif userdata.prev_command == 'calibrate' or userdata.prev_command == 'reset':
+#            if userdata.prev_command == None:
+#                userdata.command = 'calibrate'
+            if userdata.prev_command == None or userdata.prev_command == 'reset':
                 userdata.command = 'detect_truss'
             elif userdata.prev_command == 'detect_truss':
                 userdata.command = 'transform'
@@ -200,7 +202,7 @@ class PoseTransform(smach.State):
                              output_keys=['mode', 'command', 'prev_command'])
                      
                      
-        topic = 'pick_place'
+        topic = 'transform_pose'
         timeout = 40.0
         self.communication = Communication(topic, timeout = timeout)
 
@@ -258,7 +260,6 @@ class PickPlace(smach.State):
             commands = [userdata.command]
         
         for command in commands:
-            
             result = self.communication.wait_for_result(command)
             flex_grasp_error_log(result)
             outcome = error_handling(result)

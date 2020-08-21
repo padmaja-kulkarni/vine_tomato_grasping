@@ -24,6 +24,12 @@ from geometry_msgs.msg import PoseStamped
 from moveit_msgs.msg import MoveItErrorCodes
 from flex_grasp.msg import FlexGraspErrorCodes
 
+from interbotix_sdk.msg import SingleCommand
+from interbotix_sdk.srv import OperatingModes, OperatingModesRequest
+from interbotix_sdk.srv import RobotInfo
+from sensor_msgs.msg import JointState
+
+
 from func.flex_grasp_error import flex_grasp_error_log
 
 # custom functions
@@ -70,6 +76,7 @@ class MoveRobot(object):
         self.initialise_enviroment()
 
         self._compute_ik = rospy.ServiceProxy('compute_ik', GetPositionIK)
+        
 
         # Subscribers
         rospy.Subscriber("robot_pose", PoseStamped, self.robot_pose_cb)
@@ -80,7 +87,7 @@ class MoveRobot(object):
         # Publishers
         self.pub_e_out = rospy.Publisher("~e_out",
                                    FlexGraspErrorCodes, queue_size=10, latch=True)
-                                   
+                                  
                 
         # init monitor robot communication
         monitor_robot_topic = "monitor_robot"
@@ -101,6 +108,12 @@ class MoveRobot(object):
             msg = FlexGraspErrorCodes()
             msg.val = FlexGraspErrorCodes.NONE
             self.pub_e_out.publish(msg)
+
+    ### @brief ROS Subscriber Callback function to update the latest arm joint states
+    ### @param msg - latest JointState message
+    ### @details - the JointState message is mainly used to determine current gripper position
+    def joint_state_cb(self, msg):
+        self.joint_states = msg       
             
 
     def initialise_robot(self):
@@ -150,7 +163,26 @@ class MoveRobot(object):
 #        ee_group.set_goal_orientation_tolerance(self.orientation_tol)
 #        ee_group.set_goal_joint_tolerance(self.ee_joint_tol)
 
-        self.max_attempts = 2
+        rospy.wait_for_service("get_robot_info")
+        srv_robot_info = rospy.ServiceProxy("get_robot_info", RobotInfo)
+        self.resp = srv_robot_info()
+        self.num_joints = self.resp.num_joints
+        self.gripper_index = self.num_joints + 1
+        rospy.loginfo(self.resp)
+        
+        self.set_operating_mode_srv = rospy.ServiceProxy('set_operating_modes', OperatingModes)
+        self.pub_gripper_command = rospy.Publisher("single_joint/command",
+                                   SingleCommand, queue_size=10, latch=True) 
+         
+        self.sub_joint_states = rospy.Subscriber("joint_states", JointState, self.joint_state_cb)
+
+        self.gripper_command = SingleCommand()   
+        self.gripper_command.joint_name = 'gripper'
+        self.gripper_command.cmd = 0
+
+        self.joint_states = JointState()   
+        self.close_pwm_cmd = -250
+        self.open_pwm_cmd = 250
 
         self.man_group_name = man_group_name
         self.ee_group_name = ee_group_name
@@ -277,11 +309,15 @@ class MoveRobot(object):
 
     def open_ee(self):
         rospy.logdebug("[MOVE ROBOT] Opening end effector")
-        return self.move_to_joint_target(self.ee_group, "Open")
+        self.set_operating_mode()
+        return self.move_to_joint_target_pwm(self.open_pwm_cmd)
+        # return self.move_to_joint_target(self.ee_group, "Open")
 
     def close_ee(self):
         rospy.logdebug("[MOVE ROBOT] Closing end effector")
-        return self.move_to_joint_target(self.ee_group, "Closed")
+        self.set_operating_mode()
+        return self.move_to_joint_target_pwm(self.close_pwm_cmd)
+        # return self.move_to_joint_target(self.ee_group, "Closed")
 
     def apply_release_ee(self):
         rospy.logdebug("[MOVE ROBOT] Aplying release with end effector")
@@ -356,6 +392,51 @@ class MoveRobot(object):
         rospy.sleep(1)
         return result
 
+    def set_operating_mode(self):
+        request = OperatingModesRequest()
+        request.cmd = 3 # gripper
+        request.mode = 'pwm'
+        request.use_custom_profiles = False
+        self.set_operating_mode_srv(request)    
+
+    def move_to_joint_target_pwm(self, command, timeout = 2.0):
+        rospy.logdebug("[MOVE ROBOT] Set PWM target") 
+        result = FlexGraspErrorCodes.SUCCESS        
+        
+        if self.force_robot:
+            rospy.loginfo("[MOVE ROBOT] Forcing to execute command!")
+        else:
+            result = self.monitor_group(self.ee_group)
+            if (result != FlexGraspErrorCodes.SUCCESS):
+                return result     
+        
+        self.gripper_command.cmd = command
+        self.pub_gripper_command.publish(self.gripper_command)
+        
+        start_time = rospy.get_time()
+        curr_time = rospy.get_time()        
+        
+        while (curr_time - start_time < timeout) and not rospy.is_shutdown():
+            js_msg = list(self.joint_states.position)
+            if len(js_msg) != 0:
+           
+           
+                if ((self.gripper_command.cmd > 0 and js_msg[self.gripper_index] >= self.EE_OPEN[0]) or
+                   (self.gripper_command.cmd < 0 and js_msg[self.gripper_index] <= self.EE_CLOSED[0])):
+                    self.gripper_command.cmd = 0
+                    self.pub_gripper_command.publish(self.gripper_command)
+                    return FlexGraspErrorCodes.SUCCESS   
+                
+            curr_time = rospy.get_time()   
+            self.rate.sleep()
+
+        if rospy.is_shutdown():
+            return FlexGraspErrorCodes.SHUTDOWN
+
+        rospy.logwarn("[%s], Control failed: gripper did not reach target within allocated time", self.node_name)
+        return FlexGraspErrorCodes.CONTROL_FAILED            
+    
+    
     def move_to_joint_target(self, group, target):
         rospy.logdebug("[MOVE ROBOT] Go to joint target") 
         result = FlexGraspErrorCodes.SUCCESS        
@@ -367,8 +448,6 @@ class MoveRobot(object):
             if (result != FlexGraspErrorCodes.SUCCESS):
                 return result            
         to_check = True
-
-
 
         # if the target is a named target, get the corresponding joint values
         if type(target) is str:
@@ -391,6 +470,8 @@ class MoveRobot(object):
             target_val = target.values()
         else:
             target_val = group.get_joint_value_target()
+                
+            
     
         if (group.get_name() == self.ee_group_name):
             tol = self.ee_joint_tolerance
@@ -399,7 +480,7 @@ class MoveRobot(object):
     
         # oscilations can cause the robot to be at and different pose than desired, thereofre we check several times
         if to_check:        
-            result = self.wait_for_joint_close(group, target_val, tol, 2) 
+            result = self.wait_for_joint_close(group, target_val, tol, 2.0) 
 
         group.clear_pose_targets()
         return result

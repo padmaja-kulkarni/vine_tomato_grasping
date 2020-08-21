@@ -104,45 +104,46 @@ class Calibration(object):
         pose_array.header.frame_id = self.calibration_frame
         pose_array.header.stamp = rospy.Time.now()
 
-        x_amplitude = 0.00
-        y_amplitude = 0.08
+        r_amplitude = 0.00
         z_amplitude = 0.00
 
-        x_min = 0.26
-        y_min = -y_amplitude
-        z_min = 0.21 # 0.05
+        r_min = 0.24
+        z_min = 0.28 # 0.05
 
 
         pos_intervals = 1
         if pos_intervals == 1:
-            x_vec = [x_min + x_amplitude] # np.linspace(x_min, x_min + 2*x_amplitude, 2) # 
-            y_vec = [y_min + y_amplitude]
+            r_vec = [r_min + r_amplitude] # np.linspace(x_min, x_min + 2*x_amplitude, 2) # 
             z_vec = [z_min + z_amplitude]
         else:
-            x_vec = np.linspace(x_min, x_min + 2*x_amplitude, pos_intervals)
-            y_vec = np.linspace(y_min, y_min + 2*y_amplitude, pos_intervals)
+            r_vec = np.linspace(r_min, r_min + 2*r_amplitude, pos_intervals)
             z_vec = np.linspace(z_min, z_min + 2*z_amplitude, pos_intervals)
 
-        ai_amplitude = 40.0/180*np.pi
-        aj_amplitude = 40.0/180*np.pi
+        ai_amplitude = np.deg2rad(40.0)
+        aj_amplitude = np.deg2rad(40.0)
+        ak_amplitude = np.deg2rad(15.0)
 
-        rot_intervals = 3
+        rot_intervals = 2
         ai_vec = np.linspace(-ai_amplitude, ai_amplitude, rot_intervals)
         aj_vec = np.linspace(-aj_amplitude, aj_amplitude, rot_intervals)
+        ak_vec = [-ak_amplitude, ak_amplitude]
 
         poses = []
-
-        for x in x_vec:
-            for y in y_vec:
+        for ak in ak_vec:
+            for r in r_vec:
                 for z in z_vec:
                     for aj in aj_vec:
                         for ai in ai_vec:
+                        
                             pose = Pose()
+                            
+                            x = r*np.cos(ak)
+                            y = r*np.sin(ak)
                             pose.position = list_to_position([x, y, z])
-
-                            ak = np.arctan(y/x)
+    
+                            
                             pose.orientation = list_to_orientation([ai, aj, ak])
-
+    
                             poses.append(pose)
 
         pose_array.poses = poses

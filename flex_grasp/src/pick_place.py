@@ -7,142 +7,64 @@ Created on Thu May 28 09:35:43 2020
 """
 
 import rospy
-import random
-import numpy as np
+
 # messages
 from std_msgs.msg import String
 from geometry_msgs.msg import PoseStamped
-from flex_grasp.msg import Truss
 
-from func.ros_utils import wait_for_variable, get_transform
-from func.utils import add_pose_stamped
-from func.conversions import pose_to_lists, point_to_pose_stamped, list_to_orientation, list_to_position
+
 from func.flex_grasp_error import flex_grasp_error_log
 
 from flex_grasp.msg import FlexGraspErrorCodes
 from communication import Communication
 
-
-import tf2_ros
-import tf2_geometry_msgs
-
-from math import pi
-
 class PickPlace(object):
     
-    node_name = 'PICK PLACE'    
+    node_name = 'PICK PLACE' 
+    frequency = 10
     
     def __init__(self):
         self.state = "init"
         self.prev_state = None
         self.command = None
         
-        surface_height = 0.018
-        peduncle_height = 0.075 # [m]
-        self.grasp_height = peduncle_height - surface_height 
-        self.object_features = None
-        
         
         self.debug_mode = rospy.get_param("pick_place/debug")
         
         if self.debug_mode:
             log_level = rospy.DEBUG
-            rospy.loginfo("[PICK PLACE] Launching pick place node in debug mode")
+            rospy.loginfo("[%s] Launching pick place node in debug mode", self.node_name)
         else:
             log_level = rospy.INFO
         
         rospy.init_node("pick_place", anonymous=True, log_level=log_level)
-        self.rate = rospy.Rate(10)               
+        self.rate = rospy.Rate(self.frequency)               
                
         self.pub_e_out = rospy.Publisher("~e_out", FlexGraspErrorCodes, queue_size=10, latch=True)
-        
-        self.pub_move_robot_pose = rospy.Publisher("robot_pose", PoseStamped, queue_size=10, latch=False)
         
         # init move robot communication
         move_robot_topic = "move_robot"
         self.move_robot_communication = Communication(move_robot_topic, timeout = 15)                   
                    
+        self.pub_move_robot_pose = rospy.Publisher("robot_pose", PoseStamped, queue_size=10, latch=False)                   
+                   
          # Subscribe
         rospy.Subscriber("~e_in", String, self.e_in_cb)
-        rospy.Subscriber("object_features", Truss, self.object_features_cb)
-
-        self.use_iiwa = rospy.get_param('use_iiwa')
-        self.use_interbotix = rospy.get_param('use_interbotix')
+        
+        # create dict which stores all poses        
+        keys = ['pre_grasp', 'grasp', 'pre_place','place']
+        self.pose = dict.fromkeys(keys)
+        
+        # subscibe to corresponding poses
+        values = [x + '_pose' for x in keys]
+        pose_topic = dict(zip(keys, values))
+        
+        for key in pose_topic:
+            rospy.Subscriber(pose_topic[key], PoseStamped, self.pose_in_cb, key)
+        
         
         self.robot_base_frame = rospy.get_param('robot_base_frame')
         self.planning_frame = rospy.get_param('planning_frame')
-
-
-        if self.use_iiwa:
-            rospy.logwarn("No pose transform for iiwa available!")        
-        
-        # Initialize Publishers
-        pose_topic = {}
-        pose_topic['pre_grasp'] = 'pre_grasp_pose'
-        pose_topic['grasp'] = 'grasp_pose'        
-        pose_topic['pre_place'] = 'pre_place_pose'        
-        pose_topic['place'] = 'place_pose'
-        
-        pose_pub = {}
-        for key in pose_topic:
-            pose_pub[key] = rospy.Publisher(pose_topic[key], PoseStamped, queue_size=5, latch=True)
-    
-
-        grasp_xyz = [0, 0, 0.055] # [m]
-        pre_grasp_xyz = [0, 0, 0.12] # [m]
-        grasp_rpy = [-pi, pi/2, 0]
-        
-        
-        random.seed(0)
-        frame = self.robot_base_frame# robot_base_frame
-        time = rospy.Time.now()        
-
-        pose_transform = {}
-        pose_transform['pre_grasp'] = point_to_pose_stamped(pre_grasp_xyz, grasp_rpy, frame, time)
-        pose_transform['grasp'] = point_to_pose_stamped(grasp_xyz, grasp_rpy, frame, time)
-
-
-        pose = {}
-        for key in pose_pub:
-            pose[key] = None
-
-        
-        self.pre_grasp_xyz = pre_grasp_xyz
-        self.grasp_xyz = grasp_xyz
-        self.grasp_rpy = grasp_rpy
-
-        self.pose_pub = pose_pub
-        self.pose = pose
-        self.pose_transform = pose_transform
-
-        # Tranform
-        self.tfBuffer = tf2_ros.Buffer()
-        self.listener = tf2_ros.TransformListener(self.tfBuffer)
-    
-    def generate_place_pose(self):
-        
-        
-        x = 0.0
-        while x <= 0.17:
-            theta = np.deg2rad(random.randrange(-90, 90, 1)) # [rad]
-            r = random.randrange(15, 22, 1)/100.0 # [m]    
-            
-            x = r * np.cos(theta)
-            y = r * np.sin(theta)
-        
-        orientation = np.deg2rad(random.randrange(90, 270, 1)) + theta # [rad]        
-        
-        place_rpy = [self.grasp_rpy[0], self.grasp_rpy[1], orientation]
-        pre_place_xyz = [x, y, self.pre_grasp_xyz[2] + self.grasp_height]      
-        place_xyz = [x, y, self.grasp_xyz[2] + self.grasp_height]        
-
-        frame = self.robot_base_frame# robot_base_frame
-        time = rospy.Time.now()
-        
-        place_pose = {}
-        place_pose['pre_place'] = point_to_pose_stamped(pre_place_xyz, place_rpy, frame, time)
-        place_pose['place'] = point_to_pose_stamped(place_xyz, place_rpy, frame, time)        
-        return place_pose
 
     
     def e_in_cb(self, msg):
@@ -154,92 +76,11 @@ class PickPlace(object):
             msg = FlexGraspErrorCodes()
             msg.val = FlexGraspErrorCodes.NONE
             self.pub_e_out.publish(msg)    
-    
-    def object_features_cb(self, msg):
 
-        self.object_features = msg
-        rospy.logdebug("[PICK PLACE] Received new object feature message")    
+    def pose_in_cb(self, msg, key):
+        rospy.logdebug("[%s] Received %s pose", self.node_name, key)
+        self.pose[key] = msg
 
-    def transform_dict(self, pose_dict, to_frame):
-        # transfrom add_pose to planning frame
-        for key in pose_dict:
-            original_frame = pose_dict[key].header.frame_id
-            transform = get_transform(to_frame, original_frame, self.tfBuffer)            
-                
-            if transform is None:
-                rospy.logwarn("[PICK PLACE] Cannot transform pose, failed to lookup transform!!")
-                return FlexGraspErrorCodes.TRANSFORM_POSE_FAILED
-    
-            pose_dict[key] = tf2_geometry_msgs.do_transform_pose(pose_dict[key], transform)
-        return pose_dict
-
-    def transform_pose(self, angle_offset = 0):
-        if not wait_for_variable(3, self.object_features):
-            rospy.logwarn("[PICK PLACE] Cannot transform pose, since object_features still empty!")
-            return FlexGraspErrorCodes.TRANSFORM_POSE_FAILED
-            
-        # transform cage location to planning frame
-        object_pose = self.object_features.cage_location
-        original_frame = object_pose.header.frame_id
-
-        # transform cage location to world frame
-        original_frame = object_pose.header.frame_id
-        transform = get_transform(self.planning_frame, original_frame, self.tfBuffer)            
-            
-        if transform is None:
-            rospy.logwarn("[PICK PLACE] Cannot transform pose, failed to lookup transform!!")
-            return FlexGraspErrorCodes.TRANSFORM_POSE_FAILED
-
-        object_pose = tf2_geometry_msgs.do_transform_pose(object_pose, transform)
-        object_position, object_orientation = pose_to_lists(object_pose.pose, 'euler')
-        object_pose.pose.position = list_to_position((object_position[0], object_position[1], self.grasp_height))
-        
-        object_angle = -object_orientation[2] + angle_offset
-        base_angle = np.arctan2(object_position[1], object_position[0])
-        
-        if object_angle > (-base_angle + 0.5*np.pi) or object_angle < (-base_angle - 0.5*np.pi):
-            pass
-        else:
-            object_angle = object_angle + np.pi
-
-        print "object angle: ", np.rad2deg(object_angle)
-        print "base angle: ", np.rad2deg(base_angle)
-
-        object_pose.pose.orientation = list_to_orientation((object_angle, 0, 0)) # 
-
-        # transfrom add_pose to planning frame
-        pose_transform = self.transform_dict(self.pose_transform, self.planning_frame)
-        
-        pose = {}
-        for key in pose_transform:
-            added_pose = add_pose_stamped(pose_transform[key], object_pose) 
-
-            if added_pose is None:
-                rospy.logwarn('[PICK PLACE] Failed to add pose stamed: they are defiend with respect to different frames!')
-                return FlexGraspErrorCodes.FAILURE
-            else:
-                pose[key] = added_pose
-  
-  
-        place_poses = self.generate_place_pose()  
-        place_poses = self.transform_dict(place_poses, self.planning_frame)
-        for key in place_poses:
-                pose[key] = place_poses[key]          
-            
-        # tranform to world frame for MoveIt!
-#        transform = get_transform(self.planning_frame, self.robot_base_frame, self.tfBuffer) 
-#        for key in self.pose_transform:
-#            pose[key] = tf2_geometry_msgs.do_transform_pose(pose[key], transform)
-#            
-        self.pose = pose
-
-        
-        self.pub_all_poses()
-        return FlexGraspErrorCodes.SUCCESS
-
-    def pub_all_poses(self):
-        for key in self.pose_pub:
-            self.pose_pub[key].publish(self.pose[key])
     
     def command_to_pose(self, pose):
         rospy.logdebug("[PICK PLACE] Commanding move robot to pose")
@@ -261,7 +102,7 @@ class PickPlace(object):
     def man_pre_place(self):
         rospy.logdebug("[PICK PLACE] Commanding move robot to pre place")
         return self.command_to_pose(self.pose['pre_place'])
-                
+        
     def man_place(self):
         rospy.logdebug("[PICK PLACE] Commanding move robot to place")
         return self.command_to_pose(self.pose['place'])
@@ -290,10 +131,10 @@ class PickPlace(object):
         rospy.logdebug("[PICK PLACE] Picking object")
             
         result = self.man_pre_grasp()
-        if result == FlexGraspErrorCodes.PLANNING_FAILED:
-            rospy.loginfo('trying transform pose with an additional 180deg')
-            self.transform_pose(angle_offset = pi)
-            result = self.man_pre_grasp()
+#        if result == FlexGraspErrorCodes.PLANNING_FAILED:
+#            rospy.loginfo('trying transform pose with an additional 180deg')
+#            self.transform_pose(angle_offset = pi)
+#            result = self.man_pre_grasp()
             
         if result == FlexGraspErrorCodes.SUCCESS:
             result = self.apply_pre_grasp_ee()
@@ -351,7 +192,7 @@ class PickPlace(object):
 
     ### Log state update
     def log_state_update(self):
-        rospy.loginfo("[PICK PLACE] updated move robot state, from %s to %s",
+        rospy.loginfo("[PICK PLACE] updated pick place state, from %s to %s",
                       self.prev_state, self.state)            
             
                   
@@ -365,19 +206,14 @@ class PickPlace(object):
         elif self.state == "init" and self.received_all_data():
             self.prev_state = self.state
             self.state = "idle"
-            self.log_state_update()
+            self.log_state_update()           
 
-        elif (self.state == "idle") and (self.command == "transform") and success:
-            self.prev_state = self.state
-            self.state = "idle"
-            self.log_state_update()            
-
-        elif (self.state == "idle") and ((self.command == "pick") or (self.command == "pick_place")) and success:
+        elif (self.state == "idle") and ((self.command == "pick")) and success:
             self.prev_state = self.state
             self.state = "picked"
             self.log_state_update()
 
-        elif (self.state == "picked") and success:
+        elif (self.state == "picked") and (success == True or success == False):
             self.prev_state = self.state
             self.state = "init"
             self.log_state_update()                  
@@ -388,8 +224,8 @@ class PickPlace(object):
         result = None
 
         # State dependent actions
-        if self.state == "init":
-            if self.command == "pick" or self.command == "pick_place":
+        if self.state == "init" and not self.received_all_data():
+            if self.command == "pick":
                 rospy.logwarn("[PICK PLACE] Can not pick object, it still needs to be detected!")
                 result = FlexGraspErrorCodes.STATE_ERROR
 
@@ -397,19 +233,15 @@ class PickPlace(object):
             rospy.logdebug("[PICK PLACE] executing e_init command")
             result = FlexGraspErrorCodes.SUCCESS
             
-        if self.command == "transform":
-            rospy.logdebug("[PICK PLACE] executing transform command")
-            result = self.transform_pose()
-            
         if self.state == "idle":
-            if self.command == "pick" or self.command == "pick_place":
+            if self.command == "pick":
                 result = self.pick()
             elif self.command == "place":
                 rospy.logwarn("Can not place object, it is not picked!")
                 result = FlexGraspErrorCodes.STATE_ERROR
         
         elif self.state == "picked":
-            if self.command == "place" or self.command == "pick_place":
+            if self.command == "place":
                 result = self.place()
             elif self.command == "pick":
                 rospy.logwarn("[PICK PLACE] Can not pick object, it still needs to be placed!")
@@ -419,10 +251,9 @@ class PickPlace(object):
             result = self.reset_msg()
 
         success = result == FlexGraspErrorCodes.SUCCESS
+        if result == None:
+            success = None
         self.update_state(success)
-        
-        if self.command == "pick_place" and self.state == "picked" and success:
-            result = None
 
         # publish success
         if result is not None:
