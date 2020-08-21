@@ -4,7 +4,7 @@ import rospkg
 
 from qt_gui.plugin import Plugin
 from python_qt_binding import loadUi
-from python_qt_binding.QtWidgets import QWidget
+from python_qt_binding.QtWidgets import QWidget, QMenu
 from std_msgs.msg import String, Bool
 
 class RqtFlexGrasp(Plugin):
@@ -72,6 +72,18 @@ class RqtFlexGrasp(Plugin):
         self._widget.PlaceButton.clicked[bool].connect(self.handle_place)
         self._widget.ExperimentButton.clicked.connect(self.handle_experiment) # [bool].connect(self.handle_experiment)
 
+        self.button = self._widget.TrussTypeButton
+        self.button.clear()
+        self.button.setEditable(True)
+        options = ['simple', 'moderate', 'advanced']
+        for option in options:
+            self.button.addItem(option)
+        self.button.activated.connect(self.menu_action_triggered)
+        
+
+        
+
+
     def shutdown_plugin(self):
         self.pub_command.unregister()
 
@@ -135,4 +147,8 @@ class RqtFlexGrasp(Plugin):
 #        
         self.experiment = self._widget.ExperimentButton.isChecked()
         self.pub_experiment.publish(self.experiment)
+        
+    def menu_action_triggered(self):
+        value =  str(self.button.currentText())
+        print 'triggered', value
         

@@ -81,6 +81,11 @@
     </widget>
    </item>
 
+   <item row="2" column="1">
+    <widget class="QComboBox" name="TrussTypeButton">
+    </widget>
+   </item>
+
    <item row="0" column="2">
     <widget class="QPushButton" name="PointButton">
      <property name="text">
