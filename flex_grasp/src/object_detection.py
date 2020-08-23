@@ -78,13 +78,13 @@ class ObjectDetection(object):
 
         self.pwd_current = os.path.dirname(__file__) # path to THIS file
         self.data_set = 'default'
-        self.pwd_results = os.path.join(self.pwd_current, '..', '..', 'results')
-        self.pwd_data = os.path.join(self.pwd_current, '..', '..', 'detect_truss', 'src', 'data', self.data_set)
+        # self.pwd_data = os.path.join(self.pwd_current, '..', '..', 'detect_truss', 'src', 'data', self.data_set)
+        self.pwd_data = os.path.join('~', 'Documents', 'thesis_data', self.data_set)
 
-        rospy.loginfo("Storing visiual results in: ", self.pwd_results)
+        rospy.loginfo("Storing visiual results in: ", self.pwd_data)
 
         self.process_image = ProcessImage(name = 'ros_tomato',
-                     pwd = self.pwd_results,
+                     pwd = '',
                      save = False)
 
         settings = settings_lib_to_msg(self.process_image.get_settings())
@@ -132,7 +132,7 @@ class ObjectDetection(object):
         rospy.Subscriber("camera/color/camera_info", CameraInfo, self.color_info_cb)
         rospy.Subscriber("camera/aligned_depth_to_color/camera_info", CameraInfo, self.depth_info_cb)
         rospy.Subscriber("camera/depth_registered/points", PointCloud2, self.point_cloud_cb)        
-        rospy.Subscriber("dataset", String, self.data_set_cb)
+        rospy.Subscriber("experiment_pwd", String, self.data_set_cb)
         
         
         rospy.Subscriber("image_processing_settings", ImageProcessingSettings, self.image_processing_settings_cb)
@@ -141,8 +141,8 @@ class ObjectDetection(object):
         if self.data_set != msg.data:
 
             self.data_set = msg.data
-            self.pwd_results = os.path.join(self.pwd_current, '..', '..', 'results')
-            self.pwd_data = os.path.join(self.pwd_current, '..', '..', 'detect_truss', 'src', 'data', self.data_set)
+            self.pwd_data = self.data_set
+            # self.pwd_data = os.path.join(self.pwd_current, '..', '..', 'detect_truss', 'src', 'data', self.data_set)
             rospy.loginfo("[INFO] Stroing results in folder %s", self.data_set)
 
     def e_in_cb(self, msg):
@@ -237,9 +237,15 @@ class ObjectDetection(object):
         if not self.wait_for_data(5):
             return FlexGraspErrorCodes.REQUIRED_DATA_MISSING
             
+            
+        pwd_1 = os.path.join(os.sep, *self.pwd_data.split(os.sep)[0:-1])
+        if not os.path.isdir(pwd_1):
+            rospy.loginfo("New path, creating a new folder: " + pwd_1)
+            os.mkdir(pwd_1)    
+
         if not os.path.isdir(self.pwd_data):
             rospy.loginfo("New path, creating a new folder: " + self.pwd_data)
-            os.makedirs(self.pwd_data)
+            os.mkdir(self.pwd_data)    
         
         # imaformation about the image which will be stored
         image_info = {}
@@ -249,7 +255,7 @@ class ObjectDetection(object):
         contents = os.listdir(self.pwd_data)
 
         # determine starting number
-        if not len(contents):
+        if len(contents) == 0:
             id_int = 1
         else:
             contents.sort()
@@ -265,7 +271,7 @@ class ObjectDetection(object):
         json_pwd = os.path.join(self.pwd_data, json_file_name)
         
         rgb_img = self.color_image
-        depth_img = colored_depth_image(self.depth_image)        
+        depth_img = colored_depth_image(self.depth_image.copy())        
         
         with open(json_pwd, "w") as write_file:
             json.dump(image_info, write_file)        
@@ -366,11 +372,14 @@ class ObjectDetection(object):
         row = grasp_features['row'] 
         col = grasp_features['col']
         angle = grasp_features['angle']
-        rospy.logdebug('angle: %s', angle/np.pi * 180) # 
+        rospy.logdebug('angle: %s', np.rad2deg(angle)) # 
         rpy = [0, 0, angle]
 
         xyz = self.deproject(row, col)
         
+        # print 'row:', row
+        # print 'col:', col
+        # print 'xyz:', xyz
         if np.isnan(xyz).any():
             rospy.logwarn("Failed to compute caging pose, will try based on segment!")
             xyz =  self.deproject(row, col, segment = peduncle_mask)
@@ -530,9 +539,8 @@ class ObjectDetection(object):
         depth = self.get_depth(row, col, segment = segment)
         
         if np.isnan(depth):
-            rospy.logwarn("Computed depth is nan, can not compute point!")
+            rospy.logwarn("[OBJECT DETECTION] Computed depth is nan, can not compute point!")
             return 3 * [np.nan]
-
 
         # https://github.com/IntelRealSense/librealsense/wiki/Projection-in-RealSense-SDK-2.0
         pixel = [float(col), float(row)] # [x, y]
@@ -544,7 +552,6 @@ class ObjectDetection(object):
                    
         rospy.logdebug("Point based on deprojection: %s", point_depth)
         rospy.logdebug("Point obtained from point cloud: %s", point_pcl)        
-        
         
         point = point_depth
         return point

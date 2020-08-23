@@ -49,6 +49,11 @@ class RqtFlexGrasp(Plugin):
 
         self.pub_experiment = rospy.Publisher("experiment",
                                       Bool, queue_size=1, latch=True)
+                                      
+
+        self.pub_experiment_pwd = rospy.Publisher("experiment_pwd",
+                                      String, queue_size=1, latch=True)
+                                      
 
         self.go = False
         self._widget.ExperimentButton.setCheckable(True)
@@ -72,17 +77,50 @@ class RqtFlexGrasp(Plugin):
         self._widget.PlaceButton.clicked[bool].connect(self.handle_place)
         self._widget.ExperimentButton.clicked.connect(self.handle_experiment) # [bool].connect(self.handle_experiment)
 
-        self.button = self._widget.TrussTypeButton
-        self.button.clear()
-        self.button.setEditable(True)
-        options = ['simple', 'moderate', 'advanced']
+        #
+        self.truss_type_button = self._widget.TrussTypeButton
+        self.truss_type_button.clear()
+        self.truss_type_button.setEditable(True)
+        options = ['default', 'simple', 'moderate', 'advanced']
         for option in options:
-            self.button.addItem(option)
-        self.button.activated.connect(self.menu_action_triggered)
+            self.truss_type_button.addItem(option)
+        self.truss_type_button.activated.connect(self.handle_truss_type)
+        self.truss_type = options[0]
+        self.experiment_id = '001'
+        self.update_pwd()
         
+        #
+        self.experiment_id_button = self._widget.ExperimentIDButton
+        self.experiment_id_button.setEditable(True)
+        self.update_id()
+        self.experiment_id_button.activated.connect(self.handle_experiment_id)        
 
-        
+    def update_id(self):
+        # get ids
+        options= []
+        if not os.path.isdir(self.pwd_truss_type):
+            options.append(str(1).zfill(3) + "  (new)")
+        else:
+            contents = os.listdir(self.pwd_truss_type)
+            print(contents)
+            if len(contents) == 0:
+                options.append(str(1).zfill(3) + " (new)")
+            else:
+                contents.sort()
+                for file_name in contents:
+                    file_id = int(file_name[:3])
+                    options.append(str(file_id).zfill(3))
+                options.append(str(file_id + 1).zfill(3) + " (new)")
 
+        # add to menu  
+        self.experiment_id_button.clear()
+        print(options)
+        for option in options:
+            self.experiment_id_button.addItem(option)
+                    
+    def update_pwd(self):
+        truss_type = self.truss_type
+        self.pwd_truss_type = os.path.join(os.sep, 'home', 'taeke', 'Documents', 'thesis_data', truss_type)
 
     def shutdown_plugin(self):
         self.pub_command.unregister()
@@ -139,16 +177,28 @@ class RqtFlexGrasp(Plugin):
         self.pub_command.publish("place")
         
     def handle_experiment(self):
-#        self.go = not self.go
-#        if self.go:
-#            self.pub_command.publish("experiment")
-#            
-#        
-#        
         self.experiment = self._widget.ExperimentButton.isChecked()
         self.pub_experiment.publish(self.experiment)
         
-    def menu_action_triggered(self):
-        value =  str(self.button.currentText())
-        print 'triggered', value
+    def handle_truss_type(self):
+        value =  str(self.truss_type_button.currentText())
+        if self.truss_type != value:
+            self.truss_type = value
+            rospy.loginfo("Updated truss type to %s", self.truss_type)
+            self.update_pwd()
+            self.update_id()
+            self.handle_experiment_id()
+            
+            self.pwd_experiment = os.path.join(self.pwd_truss_type, self.experiment_id)
+            self.pub_experiment_pwd.publish(self.pwd_experiment)
         
+    def handle_experiment_id(self):
+        value =  str(self.experiment_id_button.currentText())[0:3]
+        
+        if self.experiment_id != value:
+            self.experiment_id = value
+            rospy.loginfo("Updated experiment id to %s", self.experiment_id)
+            
+            self.update_pwd()
+            self.pwd_experiment = os.path.join(self.pwd_truss_type, self.experiment_id)
+            self.pub_experiment_pwd.publish(self.pwd_experiment)

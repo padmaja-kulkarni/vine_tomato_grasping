@@ -65,6 +65,8 @@ class MoveRobot(object):
         self.error = ''
         self.robot_pose = None
         self.rate = rospy.Rate(10)
+        self.simulation  = self.debug_mode = rospy.get_param("robot_sim")
+
 
         # tolerance
         self.position_tol = 0.05 # [m]
@@ -77,7 +79,6 @@ class MoveRobot(object):
 
         self._compute_ik = rospy.ServiceProxy('compute_ik', GetPositionIK)
         
-
         # Subscribers
         rospy.Subscriber("robot_pose", PoseStamped, self.robot_pose_cb)
         
@@ -163,26 +164,27 @@ class MoveRobot(object):
 #        ee_group.set_goal_orientation_tolerance(self.orientation_tol)
 #        ee_group.set_goal_joint_tolerance(self.ee_joint_tol)
 
-        rospy.wait_for_service("get_robot_info")
-        srv_robot_info = rospy.ServiceProxy("get_robot_info", RobotInfo)
-        self.resp = srv_robot_info()
-        self.num_joints = self.resp.num_joints
-        self.gripper_index = self.num_joints + 1
-        rospy.loginfo(self.resp)
+        if not self.simulation:
+            rospy.wait_for_service("get_robot_info")
+            srv_robot_info = rospy.ServiceProxy("get_robot_info", RobotInfo)
+            self.resp = srv_robot_info()
+            self.num_joints = self.resp.num_joints
+            self.gripper_index = self.num_joints + 1
+            rospy.loginfo(self.resp)
         
-        self.set_operating_mode_srv = rospy.ServiceProxy('set_operating_modes', OperatingModes)
-        self.pub_gripper_command = rospy.Publisher("single_joint/command",
-                                   SingleCommand, queue_size=10, latch=True) 
-         
-        self.sub_joint_states = rospy.Subscriber("joint_states", JointState, self.joint_state_cb)
-
-        self.gripper_command = SingleCommand()   
-        self.gripper_command.joint_name = 'gripper'
-        self.gripper_command.cmd = 0
-
-        self.joint_states = JointState()   
-        self.close_pwm_cmd = -250
-        self.open_pwm_cmd = 250
+            self.set_operating_mode_srv = rospy.ServiceProxy('set_operating_modes', OperatingModes)
+            self.pub_gripper_command = rospy.Publisher("single_joint/command",
+                                       SingleCommand, queue_size=10, latch=True) 
+             
+            self.sub_joint_states = rospy.Subscriber("joint_states", JointState, self.joint_state_cb)
+    
+            self.gripper_command = SingleCommand()   
+            self.gripper_command.joint_name = 'gripper'
+            self.gripper_command.cmd = 0
+    
+            self.joint_states = JointState()   
+            self.close_pwm_cmd = -250
+            self.open_pwm_cmd = 250
 
         self.man_group_name = man_group_name
         self.ee_group_name = ee_group_name
@@ -309,15 +311,20 @@ class MoveRobot(object):
 
     def open_ee(self):
         rospy.logdebug("[MOVE ROBOT] Opening end effector")
-        self.set_operating_mode()
-        return self.move_to_joint_target_pwm(self.open_pwm_cmd)
-        # return self.move_to_joint_target(self.ee_group, "Open")
+        if self.simulation:
+            return self.move_to_joint_target(self.ee_group, "Open")
+        else:
+            self.set_operating_mode()
+            return self.move_to_joint_target_pwm(self.open_pwm_cmd)
 
     def close_ee(self):
         rospy.logdebug("[MOVE ROBOT] Closing end effector")
-        self.set_operating_mode()
-        return self.move_to_joint_target_pwm(self.close_pwm_cmd)
-        # return self.move_to_joint_target(self.ee_group, "Closed")
+        if self.simulation:
+            return self.move_to_joint_target(self.ee_group, "Closed")
+        else:
+            self.set_operating_mode()
+            return self.move_to_joint_target_pwm(self.close_pwm_cmd)
+        # 
 
     def apply_release_ee(self):
         rospy.logdebug("[MOVE ROBOT] Aplying release with end effector")

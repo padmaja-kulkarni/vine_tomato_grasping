@@ -31,10 +31,16 @@
     <arg name="object_name"         default="truss"/>
     <arg name="object_dimension"    default="3d"/>
 
-    <arg name="depth_width"         default="848"/> <!--  -->
-    <arg name="depth_height"        default="480"/>  <!-- 720 -->
+    <!-- camera -->
     <arg name="color_width"         default="1280"/> <!-- 1920 -->
     <arg name="color_height"        default="720"/> <!-- 1080 -->
+
+    <!-- TODO: simulation should also work for different rgb and depth resolution-->
+    <arg unless="$(arg robot_sim)" name="depth_width" default="848"/>
+    <arg unless="$(arg robot_sim)" name="depth_height" default="480"/>
+    <arg if="$(arg robot_sim)" name="depth_width" default="$(arg color_width)"/>
+    <arg if="$(arg robot_sim)" name="depth_height" default="$(arg color_height)"/>
+
     <arg name="filters"             default="disparity,spatial,temporal,pointcloud"/> <!-- disparity,spatial,temporal,decimation,hole_filling,pointcloud -->
 
     <!-- TODO: should depend on use_iiwa, use_interbotix...-->
@@ -43,17 +49,16 @@
 
 
     <remap from="/$(arg hardware_interface)_trajectory_controller/follow_joint_trajectory"
-           to="/$(arg robot_name)/$(arg hardware_interface)_trajectory_controller/follow_joint_trajectory" />
+           to="/$(arg robot_name)/$(arg hardware_interface)_trajectory_controller/follow_joint_trajectory"/>
 
-    <rosparam param="$(arg robot_name)/object_x" subst_value="true">$(arg object_x)</rosparam>
-    <rosparam param="$(arg robot_name)/object_y" subst_value="true">$(arg object_y)</rosparam>
-    <rosparam param="$(arg robot_name)/object_angle" subst_value="true">$(arg object_angle)</rosparam>
+    <group ns="$(arg robot_name)">
+      <param name="use_iiwa"        value="$(arg use_iiwa)"/>
+      <param name="use_sdh"         value="$(arg use_sdh)"/>
+      <param name="use_interbotix"  value="$(arg use_interbotix)"/>
 
-    <rosparam param="$(arg robot_name)/use_iiwa" subst_value="true">$(arg use_iiwa)</rosparam>
-    <rosparam param="$(arg robot_name)/use_sdh" subst_value="true">$(arg use_sdh)</rosparam>
-    <rosparam param="$(arg robot_name)/use_interbotix" subst_value="true">$(arg use_interbotix)</rosparam>
-
-    <rosparam param="$(arg robot_name)/camera_sim" subst_value="true">$(arg camera_sim)</rosparam>
+      <param name="camera_sim"      value="$(arg camera_sim)"/>
+      <param name="robot_sim"       value="$(arg robot_sim)"/>
+    </group>
 
     <include unless="$(arg camera_sim)" file="$(find realsense2_camera)/launch/rs_rgbd.launch" ns="$(arg robot_name)"> <!-- rs_aligned_depth -->
       <arg name="camera" value="$(arg camera_name)"/>

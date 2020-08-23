@@ -48,20 +48,24 @@ class MonitorRobot(object):
         self.command = None
         self.rate = rospy.Rate(self.fequency)        
 
-        self.get_robot_info = rospy.ServiceProxy('get_robot_info', RobotInfo)        
-        self.get_motor_register_values = rospy.ServiceProxy('get_motor_register_values', RegisterValues)
-        self.torque_joints_on = rospy.ServiceProxy('torque_joints_on', Empty)
-        self.torque_joints_off = rospy.ServiceProxy('torque_joints_off', Empty)
-        self.reboot_motor = rospy.ServiceProxy('reboot_motor', Reboot)
+        self.simulation  = self.debug_mode = rospy.get_param("robot_sim")
         
-    
-        robot_info = self.get_robot_info()
-        rospy.loginfo(robot_info)
-        self.all_joint_names = robot_info.joint_names
-        self.gripper_joint_names = robot_info.joint_names[-1] 
-        self.arm_joint_names = robot_info.joint_names[0:-1]
+        if not self.simulation:
+            rospy.wait_for_service("get_robot_info")
+            self.get_robot_info = rospy.ServiceProxy('get_robot_info', RobotInfo)        
+            self.get_motor_register_values = rospy.ServiceProxy('get_motor_register_values', RegisterValues)
+            self.torque_joints_on = rospy.ServiceProxy('torque_joints_on', Empty)
+            self.torque_joints_off = rospy.ServiceProxy('torque_joints_off', Empty)
+            self.reboot_motor = rospy.ServiceProxy('reboot_motor', Reboot)
+            
         
-        self.addres = "Shutdown"
+            robot_info = self.get_robot_info()
+            rospy.loginfo(robot_info)
+            self.all_joint_names = robot_info.joint_names
+            self.gripper_joint_names = robot_info.joint_names[-1] 
+            self.arm_joint_names = robot_info.joint_names[0:-1]
+            
+            self.addres = "Shutdown"
         
         rospy.Subscriber("~e_in", String, self.e_in_cb)        
         
@@ -83,6 +87,9 @@ class MonitorRobot(object):
         """" Reboot Dynamixel servo(s)
 
         """
+        if self.simulation:
+            return FlexGraspErrorCodes.SUCCESS
+            
         rospy.loginfo("[%s] Turning off all joint torque", self.node_name)
         self.torque_joints_off()
         
@@ -201,6 +208,9 @@ class MonitorRobot(object):
             return FlexGraspErrorCodes.DYNAMIXEL_SEVERE_ERROR
         
     def monitor(self, joints = 'gripper'):
+        if self.simulation:
+            return FlexGraspErrorCodes.SUCCESS
+        
         register_values = self.get_register_values(joints = joints)
         dynamixel_errors = self.get_dynamixel_error_codes(register_values)
         result = self.dynamixel_error_to_flex_grasp_error(dynamixel_errors)  
