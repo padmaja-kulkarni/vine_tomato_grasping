@@ -22,9 +22,9 @@ class RqtFlexGrasp(Plugin):
                       dest="quiet",
                       help="Put plugin in silent mode")
         args, unknowns = parser.parse_known_args(context.argv())
-        if not args.quiet:
-            print 'arguments: ', args
-            print 'unknowns: ', unknowns
+#        if not args.quiet:
+#            print 'arguments: ', args
+#            print 'unknowns: ', unknowns
 
         # Create QWidget
         self._widget = QWidget()
@@ -102,7 +102,6 @@ class RqtFlexGrasp(Plugin):
             options.append(str(1).zfill(3) + "  (new)")
         else:
             contents = os.listdir(self.pwd_truss_type)
-            print(contents)
             if len(contents) == 0:
                 options.append(str(1).zfill(3) + " (new)")
             else:
@@ -114,7 +113,6 @@ class RqtFlexGrasp(Plugin):
 
         # add to menu  
         self.experiment_id_button.clear()
-        print(options)
         for option in options:
             self.experiment_id_button.addItem(option)
                     
