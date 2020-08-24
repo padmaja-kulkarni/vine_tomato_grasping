@@ -328,7 +328,18 @@ class ProcessImage(object):
             dist = np.sqrt(np.sum(np.power(loc - com, 2), 1))
             i = np.argmin(dist)
             branch_i = branches_i[i]
-            grasp_angle_local = self.branch_data['junction'][branch_i]['angle']/180.0*np.pi               
+            grasp_angle_local = self.branch_data['junction'][branch_i]['angle']/180.0*np.pi          
+            
+            grasp_angle_global = -self.angle + grasp_angle_local
+            grasp_point = make_2d_point(self._LOCAL_FRAME_ID, xy = (loc[i, 0], loc[i, 1]))
+            # graspR = graspL + [self.box[0], self.box[1]]
+            # graspO = rot2or(graspR, self.DIM, np.deg2rad(-self.angle))
+    
+            self.grasp_point = grasp_point
+            # self.graspR = graspR
+            # self.graspO = graspO
+            self.grasp_angle_local = grasp_angle_local
+            self.grasp_angle_global = grasp_angle_global
             
         else:
             print('Did not detect a valid grasping branch')
@@ -342,19 +353,10 @@ class ProcessImage(object):
                 save_img(img_rgb, pwd=pwd, name =self.name, ext = self.ext)
                 img_rgb = self.image.data
                 save_img(img_rgb, pwd=pwd, name =self.name + '_g', ext = self.ext)
-            return False
+            # return False
 
 
-        grasp_angle_global = -self.angle + grasp_angle_local
-        grasp_point = make_2d_point(self._LOCAL_FRAME_ID, xy = (loc[i, 0], loc[i, 1]))
-        # graspR = graspL + [self.box[0], self.box[1]]
-        # graspO = rot2or(graspR, self.DIM, np.deg2rad(-self.angle))
 
-        self.grasp_point = grasp_point
-        # self.graspR = graspR
-        # self.graspO = graspO
-        self.grasp_angle_local = grasp_angle_local
-        self.grasp_angle_global = grasp_angle_global
 
         if self.save:
             xy_local = self.get_xy(grasp_point, self._LOCAL_FRAME_ID)
@@ -385,7 +387,8 @@ class ProcessImage(object):
         return points_new
 
     def get_xy(self, points, target_frame_id):
-
+        if points is None:
+            return None
         points_new = self.transform_points(points, target_frame_id)
 
         if isinstance(points, list):
@@ -566,7 +569,9 @@ class ProcessImage(object):
         img = plot_segments(img, background, tomato, peduncle, thickness = 1)
         add_circles(img, xy_center, radii = self.radii, color = (0,0,0), thickness = 1)
         visualize_skeleton(img, main_peduncle, coord_junc = xy_junc, coord_end = xy_end)
-        plot_grasp_location(img, xy_grasp, grasp_angle)
+        
+        if (xy_grasp is not None) and (grasp_angle is not None):
+            plot_grasp_location(img, xy_grasp, grasp_angle)
         
         return img
 
@@ -642,11 +647,11 @@ class ProcessImage(object):
 # %matplotlib qt
 
 if __name__ == '__main__':
-    i_start = 4
-    i_end = 5
+    i_start = 1
+    i_end = 53
     N = i_end - i_start
 
-    save = True
+    save = False
 
     pwd_current = os.path.dirname(__file__)
     dataset = "depth_blue" # "real_blue"

@@ -76,8 +76,8 @@ def index_true_positives(lbl_centers, res_centers, dist_tresh):
     return true_pos_res, true_pos_lbl, false_pos, false_neg
 
 i_start = 1
-i_end = 3
-save_results= True
+i_end = 53
+save_results= False
 N = i_end - i_start
 
 pwd_current = os.path.dirname(__file__)

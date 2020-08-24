@@ -5,13 +5,6 @@ Created on Fri May 22 12:04:59 2020
 @author: taeke
 """
 
-# -*- coding: utf-8 -*-
-"""
-Created on Wed May 20 13:32:31 2020
-
-@author: taeke
-"""
-
 ## imports ##
 import os # os.sep
 import cv2
@@ -26,9 +19,9 @@ from detect_truss.segment_image import segment_truss
 # ls | cat -n | while read n f; do mv "$f" `printf "%03d.png" $n`; done
 if __name__ == '__main__':
 
-    N = 50              # tomato file to load
+    N = 5           # tomato file to load
     extension = ".png"
-    dataset = "depth_blue" # "tomato_rot" #  
+    dataset = "failures" # "tomato_rot" #  "depth_blue" #
     save = True
 
     pwd_current = os.path.dirname(__file__)
@@ -64,14 +57,3 @@ if __name__ == '__main__':
       
         count = count + 1
         print("completed image %d out of %d" %(count, N))
-        
-        #        truss = cv2.bitwise_or(tomato,peduncle)
-#        peduncle_empty = np.zeros(tomato.shape, dtype = np.uint8)
-#    
-#
-#        
-#
-#        name = tomato_ID + "_img_1"
-#        plot_segments(img_rgb, background, truss, peduncle_empty, 
-#                                      file_name = name, pwd = pwd_results)   
-#    

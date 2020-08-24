@@ -46,9 +46,13 @@ class TransformPose(object):
         # params
         surface_height = 0.018
         peduncle_height = 0.075 # [m]
-        grasp_xyz = [0, 0, 0.055] # [m]
-        pre_grasp_xyz = [0, 0, 0.12] # [m]
+        grasp_xyz = [0, 0, 0.065] # [m]
+        pre_grasp_xyz = [0, 0, 0.11] # [m]
         grasp_rpy = [-np.pi, np.pi/2, 0]        
+        
+        self.r_min = 0.15
+        self.r_max = 0.23        
+        self.x_min = 0.17
         
         # params from server
         self.robot_base_frame = rospy.get_param('robot_base_frame')
@@ -113,12 +117,12 @@ class TransformPose(object):
         self.object_features = msg
         rospy.logdebug("[PICK PLACE] Received new object feature message")  
 
-    def generate_place_pose(self):
+    def generate_place_pose(self, pre_place_height, place_height):
         
         x = 0.0
-        while x <= 0.17:
+        while x <= self.x_min:
             theta = np.deg2rad(random.randrange(-90, 90, 1)) # [rad]
-            r = random.randrange(15, 22, 1)/100.0 # [m]    
+            r = self.r_min + random.random()*(self.r_max - self.r_min) # [m]    
             
             x = r * np.cos(theta)
             y = r * np.sin(theta)
@@ -126,8 +130,8 @@ class TransformPose(object):
         orientation = np.deg2rad(random.randrange(90, 270, 1)) + theta # [rad]        
         
         place_rpy = [self.grasp_rpy[0], self.grasp_rpy[1], orientation]
-        pre_place_xyz = [x, y, self.pre_grasp_xyz[2] + self.grasp_height]      
-        place_xyz = [x, y, self.grasp_xyz[2] + self.grasp_height]        
+        pre_place_xyz = [x, y, pre_place_height]      
+        place_xyz = [x, y, place_height]        
 
         frame = self.robot_base_frame# robot_base_frame
         time = rospy.Time.now()
@@ -155,11 +159,8 @@ class TransformPose(object):
             rospy.logwarn("[PICK PLACE] Cannot transform pose, since object_features still empty!")
             return FlexGraspErrorCodes.TRANSFORM_POSE_FAILED
             
-        # transform cage location to planning frame
-        object_pose = self.object_features.cage_location
-        original_frame = object_pose.header.frame_id
-
         # transform cage location to world frame
+        object_pose = self.object_features.cage_location
         original_frame = object_pose.header.frame_id
         transform = get_transform(self.planning_frame, original_frame, self.tfBuffer)            
             
@@ -198,16 +199,12 @@ class TransformPose(object):
                 pose[key] = added_pose
   
   
-        place_poses = self.generate_place_pose()  
+        place_poses = self.generate_place_pose(pose['pre_grasp'].pose.position.z, pose['grasp'].pose.position.z)  
         place_poses = self.transform_dict(place_poses, self.planning_frame)
         for key in place_poses:
                 pose[key] = place_poses[key]          
             
-        # tranform to world frame for MoveIt!
-#        transform = get_transform(self.planning_frame, self.robot_base_frame, self.tfBuffer) 
-#        for key in self.pose_transform:
-#            pose[key] = tf2_geometry_msgs.do_transform_pose(pose[key], transform)
-#            
+
         self.pose = pose
 
         

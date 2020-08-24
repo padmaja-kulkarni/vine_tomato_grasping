@@ -79,7 +79,7 @@ class ObjectDetection(object):
         self.pwd_current = os.path.dirname(__file__) # path to THIS file
         self.data_set = 'default'
         # self.pwd_data = os.path.join(self.pwd_current, '..', '..', 'detect_truss', 'src', 'data', self.data_set)
-        self.pwd_data = os.path.join('~', 'Documents', 'thesis_data', self.data_set)
+        self.pwd_data = os.path.join(os.sep, 'home', 'taeke', 'Documents', 'thesis_data', self.data_set)
 
         rospy.loginfo("Storing visiual results in: ", self.pwd_data)
 
@@ -320,11 +320,7 @@ class ObjectDetection(object):
             object_features = self.process_image.get_object_features()
             tomato_mask, peduncle_mask, _ = self.process_image.get_segments()
 
-            cage_pose = self.generate_cage_pose(object_features['grasp_location'], peduncle_mask)
-            
-            if cage_pose == False:
-                return FlexGraspErrorCodes.FAILURE
-            
+            cage_pose = self.generate_cage_pose(object_features['grasp_location'], peduncle_mask)            
             tomatoes = self.generate_tomatoes(object_features['tomato'])
             peduncle = self.generate_peduncle(object_features['peduncle'], cage_pose) # object_features['peduncle']
             
@@ -364,6 +360,8 @@ class ObjectDetection(object):
         self.pub_tomato_image.publish(imgmsg_tomato)        
         self.pub_depth_image.publish(imgmsg_depth)
         self.pub_color_hue.publish(imgmsg_hue)
+        if cage_pose == False:
+            return FlexGraspErrorCodes.FAILURE
         self.pub_object_features.publish(truss)
         return FlexGraspErrorCodes.SUCCESS
 
@@ -372,6 +370,10 @@ class ObjectDetection(object):
         row = grasp_features['row'] 
         col = grasp_features['col']
         angle = grasp_features['angle']
+        if angle is None:
+            rospy.logwarn("Failed to compute caging pose: object detection returned None!")
+            return False
+        
         rospy.logdebug('angle: %s', np.rad2deg(angle)) # 
         rpy = [0, 0, angle]
 

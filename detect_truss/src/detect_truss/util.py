@@ -709,3 +709,9 @@ def make_autopct(values):
         val = int(round(pct*total/100.0)) # [ms]
         return '{p:.2f}%  ({v:d} ms)'.format(p=pct,v=val)
     return my_autopct
+    
+def angular_difference(x, y):
+    '''
+    compute the difference between two angles x, y
+    '''
+    return np.abs(np.arctan2(np.sin(x-y), np.cos(x-y)))
