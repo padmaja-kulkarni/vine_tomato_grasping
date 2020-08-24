@@ -15,45 +15,76 @@ from matplotlib import colors
 # custom functions
 from util import bin2img
 from util import save_fig
+from util import angular_difference
     
-def k_means_hue(img_hue, n_clusters):
+def k_means_hue(img_hue, n_clusters, centers = None):
 
     # convert hue value to angles, and place on unit circle
     angle = np.deg2rad(2*np.float32(img_hue.flatten()))
     data = np.stack((np.cos(angle), np.sin(angle)), axis = 1)
+    
+    if centers is not None:
+        labels = np.array(assign_labels(img_hue, centers)[:,0], dtype=np.int32)
+        flags = cv2.KMEANS_USE_INITIAL_LABELS #  + cv2.KMEANS_PP_CENTERS
+    else:
+        labels = None
+        flags = cv2.KMEANS_PP_CENTERS
+
  
     # Define criteria = ( type, max_iter = 10 , epsilon = 1.0 )
     criteria = (cv2.TERM_CRITERIA_EPS, 10, np.sin(np.deg2rad(1.0)))
-    compactness,labels,centers_xy = cv2.kmeans(data, 
-                                               n_clusters, 
-                                               None, 
-                                               criteria, 
-                                               attempts = 3, 
-                                               flags = cv2.KMEANS_PP_CENTERS) 
+    compactness,labels,centers_xy = cv2.kmeans(data=data, 
+                                               K=n_clusters, 
+                                               bestLabels=labels,
+                                               criteria=criteria, 
+                                               attempts=1, 
+                                               flags=flags) 
 
     # convert the centers from xy to angles
-    centers = np.rad2deg(np.arctan2(centers_xy[:, 1], centers_xy[:, 0]))    
+    centers = np.arctan2(centers_xy[:, 1], centers_xy[:, 0])   
     return centers, labels
+
+
+def assign_labels(img_hue, centers):
+    angles = np.deg2rad(2*np.float32(img_hue.flatten()))    
+    
+    centers = np.matrix(centers)
+    angles = np.transpose(np.matrix(angles))
+    dist = angular_difference(angles, centers)
+    labels = np.array(np.argmin(dist, axis=1))
+    return labels
 
 def segment_truss(img_hue, save = "False", name = "", pwd = ""):
     
     n = 3
-    centers, labels = k_means_hue(img_hue, n)
+    center = {}
+    center['tomato'] = np.deg2rad(0) # [rad]
+    center['peduncle'] = np.deg2rad(120)
+    center['background'] = np.deg2rad(240) # [rad]    
+    centers = center.values()    
+    
+    centers, labels = k_means_hue(img_hue, n, centers = centers) # centers
+       
     
     # determine which center corresponds to which segment
     lbl = {}
-    lbl["peduncle"] = np.argmax(centers)
-    lbl["background"] = np.argmin(centers)
-    lbl["tomato"] = list(set(range(0, n)) - set(lbl.values()))[0]
+    lbl["tomato"] = np.argmin(angular_difference(centers, center['tomato']))
+    lbl["background"] = np.argmin(angular_difference(centers, center['background']))
+    lbl["peduncle"] = list(set(range(0, n)) - set(lbl.values()))[0]
+    
     
     # compute masks
-    dim = img_hue.shape
-    tomato = label2img(labels, lbl["tomato"], dim)     
-    peduncle = label2img(labels, lbl["peduncle"], dim)   
-    background = label2img(labels, lbl["background"], dim)  
-    
+    dim = img_hue.shape 
+    tomato = label2img(labels, lbl["tomato"], dim)   
+    if np.abs(centers[lbl["background"]] - centers[lbl["peduncle"]]) < np.deg2rad(10):
+        print "did not detect a peduncle"    
+        peduncle = bin2img(np.zeros(dim))
+        background = cv2.bitwise_not(tomato)
+    else:   
+        peduncle = label2img(labels, lbl["peduncle"], dim)   
+        background = label2img(labels, lbl["background"], dim)  
     if save:
-        hue_hist(img_hue, centers, lbl, name, pwd)
+        hue_hist(img_hue, np.rad2deg(centers), lbl, name, pwd)
     
     return background, tomato, peduncle
         
