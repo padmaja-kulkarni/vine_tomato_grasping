@@ -38,7 +38,7 @@
     <!-- control -->
     <arg name="arm_operating_mode"  default="position"/> <!-- velocity-->
     <arg name="use_pid_cntlrs"      default="false"/>
-    <arg name="gains_filepath"      default="$(find interbotix_sdk)/pid_config/$(arg robot_name)_pid.yaml"/>
+    <arg name="gains_filepath"      default="$(find flex_grasp)/config/$(arg robot_name)_pid.yaml"/>
     <rosparam if="$(arg use_pid_cntlrs)"
       command="load"
       file="$(arg gains_filepath)"
