@@ -173,7 +173,6 @@ class MoveRobot(object):
             self.resp = srv_robot_info()
             self.num_joints = self.resp.num_joints
             self.gripper_index = self.num_joints + 1
-            rospy.loginfo(self.resp)
         
             self.set_operating_mode_srv = rospy.ServiceProxy('set_operating_modes', OperatingModes)
             self.pub_gripper_command = rospy.Publisher("single_joint/command",

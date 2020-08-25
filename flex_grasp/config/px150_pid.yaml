@@ -27,6 +27,6 @@
 # [waist, shoulder, elbow, wrist_angle, wrist_rotate, gripper]
 Kp_vec: [1, 4, 2, 1, 1]                       # Proportional gain vector
 Ki_vec: [0, 0, 0, 0, 0]                       # Integral gain vector
-Kd_vec: [0, 80, 40, 0, 0]                       # Derivative gain vector
+Kd_vec: [0, 60, 30, 0, 0]                       # Derivative gain vector
 umin_vec: [-3.14, -3.14, -3.14, -3.14, -3.14] # Min allowable controller output (-PI rad/s)
 umax_vec: [3.14, 3.14, 3.14, 3.14, 3.14]      # Max allowable controller output (PI rad/s)
