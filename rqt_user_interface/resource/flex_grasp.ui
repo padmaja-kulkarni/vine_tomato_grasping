@@ -32,6 +32,14 @@
    </item>
 
    <item row="2" column="0">
+    <widget class="QPushButton" name="ReadyButton">
+     <property name="text">
+      <string>Ready</string>
+     </property>
+    </widget>
+   </item>
+
+   <item row="3" column="0">
     <widget class="QPushButton" name="OpenButton">
      <property name="text">
       <string>Open</string>
@@ -39,7 +47,7 @@
     </widget>
    </item>
 
-   <item row="3" column="0">
+   <item row="4" column="0">
     <widget class="QPushButton" name="CloseButton">
      <property name="text">
       <string>Close</string>
@@ -47,7 +55,7 @@
     </widget>
    </item>
 
-   <item row="4" column="0">
+   <item row="5" column="0">
     <widget class="QPushButton" name="CalibrateButton">
      <property name="text">
       <string>Calibrate</string>

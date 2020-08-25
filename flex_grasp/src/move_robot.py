@@ -7,6 +7,7 @@ Created on Tue Mar 31 13:07:08 2020
 """
 
 # packages
+import numpy as np
 import sys
 import rospy
 import moveit_commander
@@ -155,10 +156,12 @@ class MoveRobot(object):
         # Allow 5 seconds per planning attempt
         man_group.set_planning_time(5)
 
+        man_group.set_max_velocity_scaling_factor(0.8)
+        man_group.set_max_acceleration_scaling_factor(0.4)
         # Allow some leeway in position (meters) and orientation (radians) PLANNING!
-#        man_group.set_goal_position_tolerance(self.position_tol)
-#        man_group.set_goal_orientation_tolerance(self.orientation_tol)
-#        man_group.set_goal_joint_tolerance(self.man_joint_tolerance)
+        man_group.set_goal_position_tolerance(0.005)
+        man_group.set_goal_orientation_tolerance(np.deg2rad(0.5))
+        man_group.set_goal_joint_tolerance(np.deg2rad(0.5))
 #        
 #        ee_group.set_goal_position_tolerance(self.position_tol)
 #        ee_group.set_goal_orientation_tolerance(self.orientation_tol)
@@ -308,6 +311,10 @@ class MoveRobot(object):
     def home_man(self):
         rospy.logdebug("[MOVE ROBOT] Homeing manipulator")
         return self.move_to_joint_target(self.man_group, 'Upright')
+
+    def ready_man(self):
+        rospy.logdebug("[MOVE ROBOT] Moving manipulator to ready joint target")
+        return self.move_to_joint_target(self.man_group, 'Home')
 
     def open_ee(self):
         rospy.logdebug("[MOVE ROBOT] Opening end effector")
@@ -571,6 +578,9 @@ class MoveRobot(object):
 
         elif self.command == "home":
             result = self.home_man()
+
+        elif self.command == "ready":
+            result = self.ready_man()            
             
         elif self.command == "grasp":
             result = self.apply_grasp_ee()

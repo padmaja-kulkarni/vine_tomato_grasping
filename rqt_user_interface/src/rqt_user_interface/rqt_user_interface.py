@@ -62,6 +62,7 @@ class RqtFlexGrasp(Plugin):
         # basic commands
         self._widget.SleepButton.clicked[bool].connect(self.handle_sleep)
         self._widget.HomeButton.clicked[bool].connect(self.handle_home)
+        self._widget.ReadyButton.clicked[bool].connect(self.handle_ready)
         self._widget.OpenButton.clicked[bool].connect(self.handle_open)
         self._widget.CloseButton.clicked[bool].connect(self.handle_close)
         self._widget.CalibrateButton.clicked[bool].connect(self.handle_calibrate)
@@ -143,6 +144,9 @@ class RqtFlexGrasp(Plugin):
 
     def handle_home(self):
         self.pub_command.publish("home")
+        
+    def handle_ready(self):
+        self.pub_command.publish("ready")
 
     def handle_open(self):
         self.pub_command.publish("open")
