@@ -23,17 +23,15 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 # custom functions
-from detect_crop.util import save_img
-from detect_crop.util import stack_segments
-from detect_crop.util import segmentation_otsu_test
-from detect_crop.util import make_dirs
-from detect_crop.util import rgb2hsi
+from detect_truss.util import save_img
+from detect_truss.util import stack_segments
+from detect_truss.util import make_dirs
 
 
 
 
 #%% init
-N = 23 #  48 #        # tomato file to load
+N = 11 #  48 #        # tomato file to load
 nDigits = 3
 
 plt.rcParams["image.cmap"] = 'plasma'
@@ -42,7 +40,7 @@ plt.rcParams["savefig.bbox"] = 'tight'
 plt.rcParams['axes.titlesize'] = 20
 
 pathCurrent = os.path.dirname(__file__)
-dataSet = "real_blue" # "tomato_cases" # 
+dataSet = 'failures' # "real_blue" # "tomato_cases" # 
 
 pwdData = os.path.join(pathCurrent, "data", dataSet)
 pwdResults = os.path.join(pathCurrent, "results", dataSet, "color_space")
@@ -53,7 +51,7 @@ make_dirs(pwdResults)
 imMax = 255
 count = 0
 
-for iTomato in range(1, N + 1):
+for iTomato in range(1, N):
 
     tomatoID = str(iTomato).zfill(nDigits)
     tomatoName = tomatoID # "tomato" + "_RGB_" + 
@@ -69,7 +67,7 @@ for iTomato in range(1, N + 1):
     # imHSL = np.dstack((np.dstack((imHLS[:,:,0], imHLS[:,:,2])), imHLS[:,:,1]))
     # imHSI = rgb2hsi(imRGB)    
     
-    # imLAB = cv2.cvtColor(imRGB, cv2.COLOR_RGB2LAB)    
+    imLAB = cv2.cvtColor(imRGB, cv2.COLOR_RGB2LAB)    
     
 
     save_img(imHSV[:,:,0], pwdResults, tomatoID + "_H")
@@ -79,4 +77,4 @@ for iTomato in range(1, N + 1):
     # save_img(imHSI[:,:,1], pwdResults, tomatoID + "HSI_1S")
     # save_img(imHSV[:,:,2], pwdResults, tomatoID + "HSV_2V")
     # save_img(imLAB[:,:,0], pwdResults, tomatoID + "_L")
-    # save_img(imLAB[:,:,1], pwdResults, tomatoID + "_A")  
+    save_img(imLAB[:,:,1], pwdResults, tomatoID + "_A")  

@@ -131,10 +131,6 @@ class PickPlace(object):
         rospy.logdebug("[PICK PLACE] Picking object")
             
         result = self.man_pre_grasp()
-#        if result == FlexGraspErrorCodes.PLANNING_FAILED:
-#            rospy.loginfo('trying transform pose with an additional 180deg')
-#            self.transform_pose(angle_offset = pi)
-#            result = self.man_pre_grasp()
             
         if result == FlexGraspErrorCodes.SUCCESS:
             result = self.apply_pre_grasp_ee()

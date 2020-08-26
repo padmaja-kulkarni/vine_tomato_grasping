@@ -20,12 +20,12 @@ if __name__ == '__main__':
     #%% init
      #  48 #        # tomato file to load
     nDigits = 3
-    i_start = 1
-    i_end = 2    
+    i_start = 9
+    i_end = 10 
     N = i_end - i_start
     
     pwd_current = os.path.dirname(__file__)
-    dataset ='real_blue' # "drawing" #  "empty" # "artificial" # 
+    dataset = 'failures'#'real_blue' # "drawing" #  "empty" # "artificial" # 
     
     pwd_data = os.path.join(pwd_current, "data", dataset)
     pwd_results = os.path.join(pwd_current, "results", dataset, "detect_peduncle")

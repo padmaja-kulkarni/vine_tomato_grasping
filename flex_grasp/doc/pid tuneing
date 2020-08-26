@@ -1,0 +1,5 @@
+Default PID values
+
+P: < 1000
+I: 0
+D: 4000

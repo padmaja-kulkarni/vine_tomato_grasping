@@ -115,6 +115,7 @@ class ProcessImage(object):
     def color_space(self):
         pwd = os.path.join(self.pwd, '01_color_space')
         self.image_hue = cv2.cvtColor(self.image.data, cv2.COLOR_RGB2HSV)[:, :, 0]
+        self.image_a = cv2.cvtColor(self.image.data, cv2.COLOR_RGB2LAB)[:, :, 1]
         # self.image_hue = imHSV[:, :, 0]
         if self.save:
             save_img(self.image_hue, pwd, self.name)
@@ -124,16 +125,11 @@ class ProcessImage(object):
         pwd = os.path.join(self.pwd, '02_segment')
 
         success = True
-        if self.use_truss:
-            background, tomato, peduncle = segment_truss(self.image_hue,
-                                                         save = self.save,
-                                                         pwd = pwd,
-                                                         name = self.name)
-        else:
-            background, tomato, peduncle = segment_tomato(self.image_hue,
-                                                          save = self.save,
-                                                          pwd = pwd,
-                                                          name = self.name)
+        background, tomato, peduncle = segment_truss(self.image_hue,
+                                                     img_a = self.image_a,
+                                                     save = self.save,
+                                                     pwd = pwd,
+                                                     name = self.name)
 
         self.background = Image(background)
         self.tomato = Image(tomato)

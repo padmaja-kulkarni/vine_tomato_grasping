@@ -1,0 +1,34 @@
+Conclsuion:
+shoulder:         ID: 2
+shoulder_shadow:  ID: 3 Homing Offset: 8
+elbow:            ID: 4
+elbow_shadow:     ID: 5 Homing Offset: 11
+
+POSE 1 (SLEEP):
+ID 002  Present Position  894   78.59 [°]
+ID 003  Present Position  908   79.82 [°]
+difference = +12
+
+ID 004  Present Position  998   87.74 [°]
+ID 003  Present Position  986   86.68 [°]
+difference = -12
+
+
+POSE 2 (UPRIGHT)
+ID 002  Present Position  2030    178.46 [°]
+ID 003  Present Position  2038    179.16 [°]
+difference = +8
+
+ID 004  Present Position  1573    138.29 [°]
+ID 003  Present Position  1562    137.32 [°]
+difference = -11
+
+
+POSE 3 (LIE FORWARDS)
+ID 002  Present Position  3311    291.08 [°]
+ID 003  Present Position  3319    291.78 [°]
+difference = +8
+
+ID 004  Present Position  3450    303.30 [°]
+ID 003  Present Position  3439    302.33 [°]
+difference = -11

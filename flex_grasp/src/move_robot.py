@@ -156,8 +156,8 @@ class MoveRobot(object):
         # Allow 5 seconds per planning attempt
         man_group.set_planning_time(5)
 
-        man_group.set_max_velocity_scaling_factor(0.8)
-        man_group.set_max_acceleration_scaling_factor(0.4)
+        man_group.set_max_velocity_scaling_factor(1)
+        man_group.set_max_acceleration_scaling_factor(0.8)
         # Allow some leeway in position (meters) and orientation (radians) PLANNING!
         man_group.set_goal_position_tolerance(0.005)
         man_group.set_goal_orientation_tolerance(np.deg2rad(0.5))
@@ -548,6 +548,17 @@ class MoveRobot(object):
         rospy.loginfo("[MOVE ROBOT] Actual joint values: %s", current)
         return FlexGraspErrorCodes.CONTROL_FAILED
 
+    def wait_for_robot_pose(self,timeout = 1):
+        start_time = rospy.get_time()
+        while (rospy.get_time() - start_time < timeout):   
+            if self.robot_pose is not None:  
+                return FlexGraspErrorCodes.SUCCESS
+                
+            rospy.sleep(0.1)
+        
+        return FlexGraspErrorCodes.NO_GOAL_POSE 
+    
+
     def reset(self):
         rospy.logdebug("[MOVE ROBOT] Resetting robot pose") 
         self.robot_pose = None
@@ -560,7 +571,9 @@ class MoveRobot(object):
         # General actions, non state dependent
         if self.command == "move_manipulator":
             # rospy.loginfo("[MOVE ROBOT] Going to pose...")
-            result = self.go_to_pose(self.robot_pose)
+            result = self.wait_for_robot_pose()
+            if result == FlexGraspErrorCodes.SUCCESS:
+                result = self.go_to_pose(self.robot_pose)
             # rospy.loginfo("[MOVE ROBOT]  Result: %s", move_robot_result_string(result))
             self.robot_pose = None
 
