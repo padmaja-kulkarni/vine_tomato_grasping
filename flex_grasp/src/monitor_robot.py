@@ -119,7 +119,7 @@ class MonitorRobot(object):
             rospy.loginfo("[%s], %s gain: %s", self.node_name, key, control_gains[key])
 
         # set control gains
-        target_control_gains = {'P': 1500, 'I' : 0, 'D': 3600}
+        target_control_gains = {'P': 1000, 'I' : 100, 'D': 3600}
         for key in target_control_gains:
             adress_name = self.control_mode + '_' + key + '_Gain'
             val = target_control_gains[key]
