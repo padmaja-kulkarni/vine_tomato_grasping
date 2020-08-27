@@ -37,12 +37,6 @@
 
     <!-- control -->
     <arg name="arm_operating_mode"  default="position"/> <!-- velocity-->
-    <arg name="use_pid_cntlrs"      default="false"/>
-    <arg name="gains_filepath"      default="$(find flex_grasp)/config/$(arg robot_name)_pid.yaml"/>
-    <rosparam if="$(arg use_pid_cntlrs)"
-      command="load"
-      file="$(arg gains_filepath)"
-      ns="$(arg robot_name)"/>
 
     <!-- TODO: simulation should also work for different rgb and depth resolution-->
     <arg unless="$(arg robot_sim)" name="depth_width" default="848"/>
@@ -201,7 +195,7 @@
       <arg name="arm_operating_mode"        value="$(arg arm_operating_mode)"/>
       <arg name="arm_profile_velocity"      value="131"/>
       <arg name="arm_profile_acceleration"  value="15"/>
-      <arg name="use_pid_cntlrs"            value="$(arg use_pid_cntlrs)"/>
+      <arg name="use_pid_cntlrs"            value="false"/>
       <arg name="use_gazebo"                value="false"/>
       <arg name="use_actual"                value="$(arg use_actual)"/>
       <arg name="use_fake"                  value="false"/>

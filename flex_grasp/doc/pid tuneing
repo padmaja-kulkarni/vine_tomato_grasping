@@ -1,5 +1,5 @@
-Default PID values
+Default PID values;
 
-P: < 1000
+P: 640
 I: 0
-D: 4000
+D: 3600

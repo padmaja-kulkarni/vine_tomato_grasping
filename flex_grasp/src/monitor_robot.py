@@ -67,7 +67,8 @@ class MonitorRobot(object):
             self.gripper_joint_names = robot_info.joint_names[-1] 
             self.arm_joint_names = robot_info.joint_names[0:-1]
             
-            self.shutdown_addres = "Shutdown"
+            # self.shutdown_addres = "Shutdown"
+            self.shutdown_addres = "Hardware_Error_Status" 
             self.present_temperature_addres = "Present_Temperature"
             temperature_limit_addres = "Temperature_Limit"
             
@@ -79,7 +80,8 @@ class MonitorRobot(object):
             self.temperature_error_threshold = {key:temperature_limit[key] - 2 for key in temperature_limit.keys()}
             self.temperature_warning_threshold = {key:65 for key in temperature_limit.keys()}
         
-            self.initialize_pid()
+            self.gain_param_names = {"P": "Kp_vec", "I": "Ki_vec", "D": "Kd_vec"}
+            self.initialize_control_gains()
             
 #            velocity_p_gain = self.get_register_values("Velocity_P_Gain")
 #            velocity_i_gain = self.get_register_values("Velocity_I_Gain")
@@ -102,35 +104,50 @@ class MonitorRobot(object):
             msg.val = FlexGraspErrorCodes.NONE
             self.pub_e_out.publish(msg)
         
-    def initialize_pid(self):
+    def get_control_gains(self):
+        for key in self.control_gains:
+            adress_name = self.control_mode + '_' + key + '_Gain'
+            self.control_gains[key] = self.get_register_values(adress_name)
+            rospy.loginfo("[%s], %s gain: %s", self.node_name, key, self.control_gains[key])
+        
+    def initialize_control_gains(self):
         rospy.loginfo('===SETTING PID VALUES===')
         
+        # possible control gains depend on controller type
         if self.control_mode == "Velocity":
-            control_gains = dict.fromkeys(['P', 'I'])
+            self.control_gains = dict.fromkeys(['P', 'I'])
         elif self.control_mode == "Position":
-            control_gains = dict.fromkeys(['P', 'I', 'D'])
+            self.control_gains = dict.fromkeys(['P', 'I', 'D'])
         else:
             rospy.logwarn('[%s] Unknown control mode', self.node_name)
-            
-        # get control gains
-        for key in control_gains:
-            adress_name = self.control_mode + '_' + key + '_Gain'
-            control_gains[key] = self.get_register_values(adress_name)
-            rospy.loginfo("[%s], %s gain: %s", self.node_name, key, control_gains[key])
 
         # set control gains
-        target_control_gains = {'P': 1000, 'I' : 100, 'D': 3600}
+        target_control_gains = {}
+        for key in self.control_gains:
+            if rospy.has_param(self.gain_param_names[key]):
+                param = rospy.get_param(self.gain_param_names[key])
+                
+                if len(param) != len(self.arm_joint_names):
+                    rospy.logwarn("[%s] Cannot set PID values, they do not match the joints! %s, %s", self.node_name, param, self.all_joint_names)
+                    return False
+                gains_per_joint = dict(zip(self.arm_joint_names,param))
+                target_control_gains[key] = gains_per_joint
+                
+        # setting register values requires joint torques to be turned off
+        rospy.loginfo("[%s] Turning of joint torques to set PID values", self.node_name)
+        self.torque_joints_off()
+        
         for key in target_control_gains:
             adress_name = self.control_mode + '_' + key + '_Gain'
             val = target_control_gains[key]
             rospy.loginfo('[%s] Setting %s gain of %s control to %s', self.node_name, key, self.control_mode, val)
-            self.set_register_values(adress_name, val)
+            self.set_register_values(adress_name, val, joints=val.keys())
+            
+        rospy.loginfo("[%s] Turning joint torques back on", self.node_name)
+        self.torque_joints_on() 
 
         # get control gains
-        for key in control_gains:
-            adress_name = self.control_mode + '_' + key + '_Gain'
-            control_gains[key] = self.get_register_values(adress_name)
-            rospy.loginfo("[%s], %s gain: %s", self.node_name, key, control_gains[key])        
+        self.get_control_gains()        
         
     def reboot(self, joints = 'all'):
         """" Reboot Dynamixel servo(s)
@@ -149,7 +166,7 @@ class MonitorRobot(object):
 
         rospy.loginfo("[%s] Turning on all joint torque", self.node_name)        
         self.torque_joints_on()        
-        self.initialize_pid()
+        self.initialize_control_gains()
     
         return FlexGraspErrorCodes.SUCCESS
         
@@ -157,9 +174,7 @@ class MonitorRobot(object):
         """" Set register value(s) of Dynamixel servo(s)
 
         """
-        self.torque_joints_off()
-        # rospy.sleep(0.5)
-        response = {}
+
         if joints == 'all':
             joint_names = self.all_joint_names
         elif joints == 'gripper':
@@ -177,16 +192,14 @@ class MonitorRobot(object):
             request.cmd = 4 # 4: single motor
             request.motor_name = joint_name
             request.addr_name = adres
-            request.value = value
-#            try:
-            response[joint_name] = self.set_motor_register_values(request)
-#            register_values[joint_name] = response.values[0]
-#            except:
-#                rospy.logwarn("[%s] Unable to set motor register values from request %s", self.node_name, request)
-#                register_values[joint_name] = None
-                
-        self.torque_joints_on() 
-        return response
+            if isinstance(value, dict):
+                request.value = value[joint_name]
+            else:
+                request.value = value
+
+            self.set_motor_register_values(request)
+
+        return True
     def get_register_values(self, adres, joints = 'all'):
         """" Read regirster value(s) from Dynamixel servo(s)
 
@@ -218,7 +231,6 @@ class MonitorRobot(object):
                 rospy.logwarn("[%s] Unable to get motor register values from request %s", self.node_name, request)
                 register_values[joint_name] = None
                 
-            
         return register_values
 
     def get_dynamixel_error_codes(self, register_values):
@@ -247,23 +259,21 @@ class MonitorRobot(object):
         """
         register_bin_string = '{0:08b}'.format(register_value)
         register_bin = [int(x) for x in list(register_bin_string)] # '{0:08b}'.format(register_value)
+        print(register_bin)
         if register_bin[7]:
             val = DynamixelErrorCodes.INPUT_VOLTAGE_ERROR
-        elif not register_bin[5]:
+        elif register_bin[5]: # not
             val = DynamixelErrorCodes.OVERHEATING_ERROR
-        elif not register_bin[3]:
+        elif register_bin[3]: # not
             val = DynamixelErrorCodes.ELECTRICAL_SHOCK_ERROR
         elif register_bin[4]:
             val = DynamixelErrorCodes.MOTOR_ENCODER_ERROR
-        elif not register_bin[2]: # (default)
+        elif register_bin[2]: # not
             val = DynamixelErrorCodes.OVERLOAD_ERROR
         else:
             val = DynamixelErrorCodes.SUCCESS
 
-        # result = DynamixelErrorCodes()
-        # result.motor_name = joint_name  
-        # result.val = val  
-        return val # result
+        return val
 
     def dynamixel_error_to_flex_grasp_error(self, dynamixel_errors):
         
@@ -292,7 +302,7 @@ class MonitorRobot(object):
         else:
             return FlexGraspErrorCodes.DYNAMIXEL_SEVERE_ERROR
         
-    def read_dynamixel_errors(self, joints = 'gripper'):
+    def read_dynamixel_errors(self, joints = 'all'):
         if self.simulation:
             return FlexGraspErrorCodes.SUCCESS
         

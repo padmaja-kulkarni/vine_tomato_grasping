@@ -73,7 +73,6 @@ def k_means_hue_a(img_hue, img_a, n_clusters, centers = None):
     centers_out = {}
     centers_out['angles'] = np.arctan2(centers_xy[:, 1], centers_xy[:, 0]) 
     centers_out['a'] = centers_xy[:, 2]
-    print(centers_out)
     return centers_out, labels
 
 def normalize_image(img):

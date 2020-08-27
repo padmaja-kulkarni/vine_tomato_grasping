@@ -8,7 +8,12 @@
 	<arg name="robot_base_frame" 				default="px150/base_link"/>
 
 	<!-- <arg name="use_truss" 							default="true"/> -->
-
+	<arg name="set_pid_controls"      default="true"/>
+	<arg name="gains_filepath"      default="$(find flex_grasp)/config/$(arg robot_name)_pid.yaml"/>
+	<rosparam if="$(arg set_pid_controls)"
+		command="load"
+		file="$(arg gains_filepath)"
+		ns="$(arg robot_name)"/>
 
 	<!-- debug settings -->
 	<arg name="pipeline_debug"					default="false"/>
