@@ -33,7 +33,7 @@ class MonitorRobot(object):
         
         if self.debug_mode:
             log_level = rospy.DEBUG
-            rospy.loginfo("[%s] Luanching move robot in debug mode", self.node_name)
+            rospy.loginfo("[%s] Launching move robot in debug mode", self.node_name)
         else:
             log_level = rospy.INFO
 
@@ -78,15 +78,10 @@ class MonitorRobot(object):
                     self.reboot()
                     temperature_limit = self.get_register_values(temperature_limit_addres)
             self.temperature_error_threshold = {key:temperature_limit[key] - 2 for key in temperature_limit.keys()}
-            self.temperature_warning_threshold = {key:65 for key in temperature_limit.keys()}
+            self.temperature_warning_threshold = {key:60 for key in temperature_limit.keys()}
         
             self.gain_param_names = {"P": "Kp_vec", "I": "Ki_vec", "D": "Kd_vec"}
             self.initialize_control_gains()
-            
-#            velocity_p_gain = self.get_register_values("Velocity_P_Gain")
-#            velocity_i_gain = self.get_register_values("Velocity_I_Gain")
-#            print(velocity_p_gain)
-#            print(velocity_i_gain)
             
         rospy.Subscriber("~e_in", String, self.e_in_cb)        
         
@@ -259,7 +254,7 @@ class MonitorRobot(object):
         """
         register_bin_string = '{0:08b}'.format(register_value)
         register_bin = [int(x) for x in list(register_bin_string)] # '{0:08b}'.format(register_value)
-        print(register_bin)
+        rospy.logdebug("[%s] binary %s for joint %s", self.node_name, register_bin, joint_name)
         if register_bin[7]:
             val = DynamixelErrorCodes.INPUT_VOLTAGE_ERROR
         elif register_bin[5]: # not
