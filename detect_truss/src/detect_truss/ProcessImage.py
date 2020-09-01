@@ -126,10 +126,10 @@ class ProcessImage(object):
 
         success = True
         background, tomato, peduncle = segment_truss(self.image_hue,
-                                                     img_a = self.image_a,
-                                                     save = self.save,
-                                                     pwd = pwd,
-                                                     name = self.name)
+                                                     img_a=self.image_a,
+                                                     save=self.save,
+                                                     pwd=pwd,
+                                                     name=self.name)
 
         self.background = Image(background)
         self.tomato = Image(tomato)
@@ -307,7 +307,7 @@ class ProcessImage(object):
     def detect_grasp_location(self):
         pwd = os.path.join(self.pwd, '07_grasp')
         success = True
-        minimum_grasp_length = 20 * self.px_per_mm # [mm]
+        minimum_grasp_length = 15 * self.px_per_mm # [mm]
 
 
         com = self.get_xy(self.com, self._LOCAL_FRAME_ID)
@@ -350,9 +350,6 @@ class ProcessImage(object):
                 img_rgb = self.image.data
                 save_img(img_rgb, pwd=pwd, name =self.name + '_g', ext = self.ext)
             # return False
-
-
-
 
         if self.save:
             xy_local = self.get_xy(grasp_point, self._LOCAL_FRAME_ID)
