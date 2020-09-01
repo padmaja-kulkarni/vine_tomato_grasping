@@ -19,7 +19,7 @@ from detect_truss.segment_image import segment_truss
 # ls | cat -n | while read n f; do mv "$f" `printf "%03d.png" $n`; done
 if __name__ == '__main__':
 
-    N = 2         # tomato file to load
+    N = 13        # tomato file to load
     extension = ".png"
     dataset ="failures" # "tomato_rot" #  "depth_blue" #  
     save = True
@@ -32,7 +32,7 @@ if __name__ == '__main__':
     
     count = 0
     
-    for i_tomato in range(1, N):
+    for i_tomato in range(11, N):
     
         tomato_ID = str(i_tomato).zfill(3)
         tomato_name = tomato_ID
@@ -42,11 +42,9 @@ if __name__ == '__main__':
         img_rgb = load_rgb(pwd_data, file_name, horizontal = True)
     
         # color spaces
-        img_hsv = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2HSV)
-        img_hue = img_hsv[:, :, 0] # hue
+        img_hue = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2HSV)[:, :, 0]
+        img_a = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2LAB)[:, :, 1]
         
-        img_lab = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2LAB)    
-        img_a = img_lab[:, :, 1]
         background, tomato, peduncle = segment_truss(img_hue,
                                                      img_a=img_a,
                                                      save = save, 
