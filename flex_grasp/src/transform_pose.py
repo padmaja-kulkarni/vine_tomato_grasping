@@ -11,7 +11,7 @@ import random
 import numpy as np
 
 # msgs
-from std_msgs.msg import String
+from std_msgs.msg import String, Float32
 from flex_grasp.msg import Truss
 from flex_grasp.msg import FlexGraspErrorCodes
 from geometry_msgs.msg import PoseStamped
@@ -44,8 +44,8 @@ class TransformPose(object):
         self.rate = rospy.Rate(self.frequency)   
         
         # params
-        surface_height = 0.018
-        peduncle_height = 0.075 # [m]
+        self.surface_height = 0.018
+        self.peduncle_height = 0.075 # [m]
         grasp_xyz = [0, 0, 0.065] # [m]
         pre_grasp_xyz = [0, 0, 0.11] # [m]
         grasp_rpy = [-np.pi, np.pi/2, 0]        
@@ -58,13 +58,18 @@ class TransformPose(object):
         self.robot_base_frame = rospy.get_param('robot_base_frame')
         self.planning_frame = rospy.get_param('planning_frame')
         
-        self.grasp_height = peduncle_height - surface_height 
         self.object_features = None
         self.command = None
+        
+        peduncle_height_pub = rospy.Publisher('peduncle_height', Float32, queue_size=5, latch=True)        
+        msg = Float32()
+        msg.data = self.peduncle_height
+        peduncle_height_pub.publish(msg)
         
         # Subscribe
         rospy.Subscriber("~e_in", String, self.e_in_cb)
         rospy.Subscriber("object_features", Truss, self.object_features_cb)
+        rospy.Subscriber("peduncle_height", Float32, self.peduncle_height_cb)
         
         self.pub_e_out = rospy.Publisher("~e_out", FlexGraspErrorCodes, queue_size=10, latch=True)
 
@@ -116,6 +121,12 @@ class TransformPose(object):
     def object_features_cb(self, msg):
         self.object_features = msg
         rospy.logdebug("[PICK PLACE] Received new object feature message")  
+
+    def peduncle_height_cb(self, msg):
+        self.peduncle_height = msg.data
+        rospy.logdebug("[PICK PLACE] Received new peduncle height: %s", self.peduncle_height)  
+        if self.object_features is not None:
+            self.transform_pose()
 
     def generate_place_pose(self, pre_place_height, place_height):
         
@@ -170,7 +181,9 @@ class TransformPose(object):
 
         object_pose = tf2_geometry_msgs.do_transform_pose(object_pose, transform)
         object_position, object_orientation = pose_to_lists(object_pose.pose, 'euler')
-        object_pose.pose.position = list_to_position((object_position[0], object_position[1], self.grasp_height))
+        
+        grasp_height = self.peduncle_height - self.surface_height 
+        object_pose.pose.position = list_to_position((object_position[0], object_position[1], grasp_height))
         
         object_angle = -object_orientation[2] + angle_offset
         base_angle = np.arctan2(object_position[1], object_position[0])

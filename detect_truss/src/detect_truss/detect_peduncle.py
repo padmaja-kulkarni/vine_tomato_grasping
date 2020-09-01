@@ -376,8 +376,8 @@ def detect_peduncle(peduncle_img, settings = None, px_per_mm = None, bg_img = No
     all_juncions, _ = get_node_coord(skeleton_img)
     
     # determine main peduncle   
-    skeleton_img, i_keep = filter_branch_length(skeleton_img)    
-    branch_data = branch_data.loc[i_keep]
+#    skeleton_img, i_keep = filter_branch_length(skeleton_img)    
+#    branch_data = branch_data.loc[i_keep]
     
     # get end points
     _, coord_end = get_node_coord(skeleton_img)

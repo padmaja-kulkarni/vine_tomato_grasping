@@ -86,7 +86,6 @@ class ProcessImage(object):
         self.name = name
 
         # image
-        # self.width_desired = 1280
         settings = {}
         settings['detect_tomato'] = set_detect_tomato_settings()
         settings['detect_peduncle'] = set_detect_peduncle_settings()
