@@ -15,11 +15,13 @@ from detect_truss.util import load_rgb
 from detect_truss.util import make_dirs
 
 from detect_truss.segment_image import segment_truss
+from detect_truss.ProcessImage import ProcessImage
+
 
 # ls | cat -n | while read n f; do mv "$f" `printf "%03d.png" $n`; done
 if __name__ == '__main__':
 
-    N = 13        # tomato file to load
+    N = 14        # tomato file to load
     extension = ".png"
     dataset ="failures" # "tomato_rot" #  "depth_blue" #  
     save = True
@@ -31,8 +33,12 @@ if __name__ == '__main__':
     make_dirs(pwd_results)
     
     count = 0
+
+    process_image = ProcessImage(use_truss = True,
+                     pwd=pwd_results,
+                     save=save)    
     
-    for i_tomato in range(11, N):
+    for i_tomato in range(13, N):
     
         tomato_ID = str(i_tomato).zfill(3)
         tomato_name = tomato_ID
@@ -41,20 +47,26 @@ if __name__ == '__main__':
 
         img_rgb = load_rgb(pwd_data, file_name, horizontal = True)
     
-        # color spaces
-        img_hue = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2HSV)[:, :, 0]
-        img_a = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2LAB)[:, :, 1]
+    
+        process_image.add_image(img_rgb, name=tomato_name)
+        process_image.color_space()
+        process_image.segment_image()
+        process_image.filter_image()
         
-        background, tomato, peduncle = segment_truss(img_hue,
-                                                     img_a=img_a,
-                                                     save = save, 
-                                                     name = tomato_name, 
-                                                     pwd = pwd_results) 
+        # color spaces
+#        img_hue = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2HSV)[:, :, 0]
+#        img_a = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2LAB)[:, :, 1]
+#        
+#        background, tomato, peduncle = segment_truss(img_hue,
+#                                                     img_a=img_a,
+#                                                     save = save, 
+#                                                     name = tomato_name, 
+#                                                     pwd = pwd_results) 
         
         # VISUALIZE
-        name = tomato_ID + "_img"
-        plot_segments(img_rgb, background, tomato, peduncle, 
-                      name = name, pwd = pwd_results)
+#        name = tomato_ID + "_img"
+#        plot_segments(img_rgb, background, tomato, peduncle, 
+#                      name = name, pwd = pwd_results)
       
         count = count + 1
         print("completed image %d out of %d" %(count, N))

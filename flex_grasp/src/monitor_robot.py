@@ -323,7 +323,7 @@ class MonitorRobot(object):
                 rospy.logwarn("[%s] Temperature on %s is %sC, error will be triggered!", self.node_name, joint, val)   
                 FlexGraspErrorCodes.DYNAMIXEL_SEVERE_ERROR
             else:
-                rospy.loginfo("[%s] Temperature on %s is %sC", self.node_name, joint, val)
+                rospy.logdebug("[%s] Temperature on %s is %sC", self.node_name, joint, val)
                 
         return FlexGraspErrorCodes.SUCCESS
         
