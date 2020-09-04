@@ -221,6 +221,7 @@ def save_img(img, pwd, name, resolution = 300, title = "", titleSize = 20, ext =
         # make dir if it does not yet exist        
         make_dirs(pwd)        
         fig.savefig(os.path.join(pwd, name), dpi = resolution, bbox_inches='tight', pad_inches=0)
+        plt.close(fig)
         
 def save_fig(fig, pwd, name, resolution = 300, title = "", titleSize = 20, ext = 'png'):
         
@@ -248,6 +249,7 @@ def save_fig(fig, pwd, name, resolution = 300, title = "", titleSize = 20, ext =
         # make dir if it does not yet exist   
         make_dirs(pwd)
         fig.savefig(os.path.join(pwd, name), dpi = resolution, bbox_inches='tight', pad_inches=0)
+        plt.close(fig)
 
 def add_circles(img_rgb, centers, radii = 5, color = (255,255,255), thickness = 5, 
                 pwd = None, name = None, title = ""):
