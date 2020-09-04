@@ -20,7 +20,7 @@ if __name__ == '__main__':
     # %% init
     nDigits = 3
     i_start = 1
-    i_end = 50
+    i_end = 2
     N = i_end - i_start
 
     use_ransac = False

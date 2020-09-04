@@ -49,7 +49,7 @@ def make_2d_transform(from_frame_id, to_frame_id, xy = (0,0), angle = 0):
     return transform_stamped
 
 def make_2d_point(frame_id, xy = None):
-    
+
     pose_stamped = PoseStamped()    
     
     if xy is None:
@@ -59,7 +59,13 @@ def make_2d_point(frame_id, xy = None):
     pose_stamped.pose.position.x = xy[0]
     pose_stamped.pose.position.y = xy[1]
     return pose_stamped
-    
+
+def make_2d_points(frame_id, XY):
+    pose_stamped_list = []
+    for xy in XY:
+        pose_stamped_list.append(make_2d_point(frame_id, xy))
+
+    return pose_stamped_list
 
 class Point2D(object):
     

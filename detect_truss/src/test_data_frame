@@ -1,0 +1,16 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Jul 16 18:16:42 2020
+
+@author: taeke
+"""
+
+import pandas as pd
+
+df = pd.DataFrame([[1, 'a'],[2, 'b'],[3, 'c'],[4, 'd']], columns=['val1', 'val2'])
+
+print(df)
+# print(df.columns)
+for i, row in df.iterrows():
+    # print 'index:', i
+    print 'row:', row.name

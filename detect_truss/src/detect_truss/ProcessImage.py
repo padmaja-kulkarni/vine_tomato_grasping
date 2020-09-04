@@ -31,7 +31,7 @@ from util import stack_segments
 from util import plot_timer, plot_grasp_location
 from util import change_brightness, plot_segments
 
-from point_2d import make_2d_transform, make_2d_point
+from point_2d import make_2d_transform, make_2d_point, make_2d_points
 
 from matplotlib import pyplot as plt
 
@@ -301,11 +301,14 @@ class ProcessImage(object):
         for end in ends:
             end_points.append(make_2d_point(self._LOCAL_FRAME_ID, end))
 
-        for branch_type in branch_data.keys():
+        for branch_type in branch_data:
             for i, branch in enumerate(branch_data[branch_type]):
-                for node_type in ['src_node_coord', 'dst_node_coord', 'center_node_coord']:
-                    center = branch[node_type]
-                    branch_data[branch_type][i][node_type] = make_2d_point(self._LOCAL_FRAME_ID, center)
+                for lbl in ['coords', 'src_node_coord', 'dst_node_coord', 'center_node_coord']:
+                    coord = branch[lbl]
+                    if lbl == 'coords':
+                        branch_data[branch_type][i][lbl] = make_2d_points(self._LOCAL_FRAME_ID, coord)
+                    else:
+                        branch_data[branch_type][i][lbl] = make_2d_point(self._LOCAL_FRAME_ID, coord)
 
         self.junction_points = junction_points
         self.end_points = end_points
@@ -321,19 +324,32 @@ class ProcessImage(object):
 
         com = self.get_xy(self.com, self._LOCAL_FRAME_ID)
 
-        centers = []
+        coords = []
         branches_i = []
-        for i, branch in enumerate(self.branch_data['junction']):
+        for i, branch in enumerate(self.branch_data['junction-junction']):
             if branch['length'] > minimum_grasp_length:
-                centers.append(branch['center_node_coord'])
-                branches_i.append(i)
+                coords = branch['coords']
+                coords.extend(coords)
+                branches_i.extend([i] * len(coords))
 
-        if len(centers) > 0:
-            loc = self.get_xy(centers, self._LOCAL_FRAME_ID)
+
+        if len(branches_i) > 0:
+            loc = self.get_xy(coords, self._LOCAL_FRAME_ID)
+
+            branch_image = np.zeros(self.bbox[2:4], dtype=np.int8)
+            coords = np.array(loc, dtype=int)
+            for coord in coords:
+                branch_image[coord[1], coord[0]] = 255
+
+            fig = plt.figure()
+            plt.imshow(branch_image)
+            plt.show()
+
+
             dist = np.sqrt(np.sum(np.power(loc - com, 2), 1))
             i = np.argmin(dist)
             branch_i = branches_i[i]
-            grasp_angle_local = self.branch_data['junction'][branch_i]['angle'] / 180.0 * np.pi
+            grasp_angle_local = self.branch_data['junction-junction'][branch_i]['angle'] / 180.0 * np.pi
 
             grasp_angle_global = -self.angle + grasp_angle_local
             grasp_point = make_2d_point(self._LOCAL_FRAME_ID, xy=(loc[i, 0], loc[i, 1]))
@@ -648,7 +664,7 @@ class ProcessImage(object):
 
 if __name__ == '__main__':
     i_start = 1
-    i_end = 50
+    i_end = 2
     N = i_end - i_start
 
     save = True

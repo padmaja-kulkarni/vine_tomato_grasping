@@ -289,19 +289,18 @@ def visualize_skeleton(img, skeleton_img, coord_junc=None,
     add_circles(img, coord_end, color=end_color, thickness=-1, radii=3)
 
     if branch_data:
-
         branch_center = {}
         branch_angle = {}
-        for branch_type in ['junction', 'end']:
+        for branch_type in branch_data:
             branch_center[branch_type] = []
             branch_angle[branch_type] = []
             for branch in branch_data[branch_type]:
                 branch_center[branch_type].append(branch['center_node_coord'])
                 branch_angle[branch_type].append(branch['angle'])
 
-        add_arrows(img, branch_center['junction'], branch_angle['junction'],
+        add_arrows(img, branch_center['junction-junction'], branch_angle['junction-junction'],
                    l=20, color=junc_color, thickness=2, tip_length=0.5, is_rad=False)
-        add_arrows(img, branch_center['end'], branch_angle['end'],
+        add_arrows(img, branch_center['junction-endpoint'], branch_angle['junction-endpoint'],
                    l=20, color=end_color, thickness=2, tip_length=0.5, is_rad=False)
 
     if pwd:
@@ -309,14 +308,14 @@ def visualize_skeleton(img, skeleton_img, coord_junc=None,
 
 
 @Timer("get center branch", name_space='peduncle', append=False)
-def get_branch_center(branch_data, skeleton_img):
+def get_branch_center(branch_data, skeleton, skeleton_img):
     col, row = np.nonzero(skeleton_img)
     loc = np.transpose(np.matrix(np.vstack((row, col))))
-    all_branch = {'junction': [], 'end': []}
+    all_branch = {'junction-junction': [], 'junction-endpoint': []}
 
-    for i, row in branch_data.iterrows():
-        new_branch = {}
+    for i_row, row in branch_data.iterrows(): # iterrows():
 
+        # px_coords = skeleton.path_coordinates(i).astype(int)
         # new_branch = {'src_node_coord' : , 'dst_node_coord' :, 'center_node_coord':, 'angle': [], 'length': []}        
 
         dst_node_coord = np.array((row['coord-dst-{1}'], row['coord-dst-{0}']))
@@ -329,17 +328,20 @@ def get_branch_center(branch_data, skeleton_img):
         i = np.argmin(dist)
         center_node_coord = [loc[i, 0], loc[i, 1]]
 
-        new_branch['src_node_coord'] = src_node_coord
-        new_branch['dst_node_coord'] = dst_node_coord
-        new_branch['center_node_coord'] = center_node_coord
-        new_branch['angle'] = angle
-        new_branch['length'] = length
+        # branch_index = branch_data.index[i]
+        coords = skeleton.path_coordinates(i_row)
+        new_branch = {'coords': np.column_stack((coords[:, 1], coords[:, 0])),
+                      'src_node_coord': src_node_coord,
+                      'dst_node_coord': dst_node_coord,
+                      'center_node_coord': center_node_coord,
+                      'angle': angle,
+                      'length': length}
 
         if row['branch-type'] == 1:  # junction-to-endpoint
-            all_branch['end'].append(new_branch)
+            all_branch['junction-endpoint'].append(new_branch)
 
         else:
-            all_branch['junction'].append(new_branch)
+            all_branch['junction-junction'].append(new_branch)
 
     return all_branch
 
@@ -445,6 +447,9 @@ def detect_peduncle(peduncle_img, settings=None, px_per_mm=None, bg_img=None,
     skeleton_img, i_keep = filter_branch_length(skeleton_img)
     branch_data = branch_data.loc[i_keep]
 
+    # skeleton = skan.Skeleton(skeleton_img)
+    # branch_data = skan.summarize(skeleton)
+
     # get end points
     _, coord_end = get_node_coord(skeleton_img)
 
@@ -452,7 +457,19 @@ def detect_peduncle(peduncle_img, settings=None, px_per_mm=None, bg_img=None,
     coord_junc = get_locations_on_mask(skeleton_img, all_juncions)
 
     # get the centers of the obtained branches
-    branch_data = get_branch_center(branch_data, skeleton_img)
+    branch_data = get_branch_center(branch_data, skeleton, skeleton_img)
+
+    # branch_image = np.zeros(skeleton_img.shape, dtype=np.int8)
+    # for branch in branch_data['junction-junction']:
+    #     coords = branch['coords'].astype(int)
+    #
+    #     for coord in coords:
+    #         branch_image[coord[1], coord[0]] = 255
+    #
+    # fig = plt.figure()
+    # plt.imshow(branch_image)
+    # plt.show()
+
 
     if save:
         visualize_skeleton(bg_img.copy(), skeleton_img, coord_junc=coord_junc,
