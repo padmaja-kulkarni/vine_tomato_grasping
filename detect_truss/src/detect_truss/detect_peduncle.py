@@ -277,19 +277,23 @@ def visualize_skeleton(img, skeleton_img, skeletonize=False, coord_junc=None,
     if skeletonize:
         skeleton_img = skeletonize_img(skeleton_img)
 
-    if (coord_junc is None) and (coord_end is None):
-        coord_junc, coord_end = get_node_coord(skeleton_img)
-
-    elif coord_junc is None:
-        coord_junc, _ = get_node_coord(skeleton_img)
-
-    elif coord_end is None:
-        _, coord_end = get_node_coord(skeleton_img)
-
     contours, hierarchy = cv2.findContours(skeleton_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
     cv2.drawContours(img, contours, -1, pend_color, 2)
-    add_circles(img, coord_junc, color=junc_color, thickness=-1, radii=3)
-    add_circles(img, coord_end, color=end_color, thickness=-1, radii=3)
+
+    if len(np.argwhere(skeleton_img)) > 2:
+
+        if (coord_junc is None) and (coord_end is None):
+            coord_junc, coord_end = get_node_coord(skeleton_img)
+
+        elif coord_junc is None:
+            coord_junc, _ = get_node_coord(skeleton_img)
+
+        elif coord_end is None:
+            _, coord_end = get_node_coord(skeleton_img)
+
+        add_circles(img, coord_junc, color=junc_color, thickness=-1, radii=3)
+        add_circles(img, coord_end, color=end_color, thickness=-1, radii=3)
+
 
     if branch_data:
         branch_center = {}
