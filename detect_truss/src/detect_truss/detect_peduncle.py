@@ -268,11 +268,14 @@ def node_coord_angle(src, dst):
     return angle
 
 
-def visualize_skeleton(img, skeleton_img, coord_junc=None,
+def visualize_skeleton(img, skeleton_img, skeletonize=False, coord_junc=None,
                        coord_end=None, branch_data=None, name="", pwd=None):
     junc_color = (100, 0, 200)
     end_color = (200, 0, 0)
     pend_color = (0, 150, 30)
+
+    if skeletonize:
+        skeleton_img = skeletonize_img(skeleton_img)
 
     if (coord_junc is None) and (coord_end is None):
         coord_junc, coord_end = get_node_coord(skeleton_img)

@@ -320,32 +320,39 @@ class ProcessImage(object):
     def detect_grasp_location(self):
         pwd = os.path.join(self.pwd, '07_grasp')
         success = True
-        minimum_grasp_length = 15 * self.px_per_mm  # [mm]
+
+        if self.px_per_mm is not None:
+            minimum_grasp_length = 15.0 * self.px_per_mm  # [px]
+        else:
+            minimum_grasp_length = 30.0  # [px]
 
         com = self.get_xy(self.com, self._LOCAL_FRAME_ID)
 
         coords = []
         branches_i = []
-        for i, branch in enumerate(self.branch_data['junction-junction']):
+        for branch_i, branch in enumerate(self.branch_data['junction-junction']):
             if branch['length'] > minimum_grasp_length:
-                coords = branch['coords']
-                coords.extend(coords)
-                branches_i.extend([i] * len(coords))
+                branch_coords = branch['coords']
+
+                # filter coords near end and start node
+                branch_locs = self.get_xy(branch_coords, self._LOCAL_FRAME_ID)
+                branch_src_node_loc = self.get_xy(branch['src_node_coord'], self._LOCAL_FRAME_ID)
+                branch_dst_node_loc = self.get_xy(branch['dst_node_coord'], self._LOCAL_FRAME_ID)
+
+                i_keep = []
+                for ii, branch_loc in enumerate(branch_locs):
+                    src_node_dist = np.sqrt(np.sum(np.power(branch_loc - branch_src_node_loc, 2), 1))
+                    dst_node_dist = np.sqrt(np.sum(np.power(branch_loc - branch_dst_node_loc, 2), 1))
+                    if (dst_node_dist > 0.5*minimum_grasp_length) and (src_node_dist > 0.5*minimum_grasp_length):
+                        i_keep.append(ii)
+
+                branch_coords_keep = [branch_coords[i] for i in i_keep]
+                coords.extend(branch_coords_keep)
+                branches_i.extend([branch_i] * len(branch_coords_keep))
 
 
         if len(branches_i) > 0:
             loc = self.get_xy(coords, self._LOCAL_FRAME_ID)
-
-            branch_image = np.zeros(self.bbox[2:4], dtype=np.int8)
-            coords = np.array(loc, dtype=int)
-            for coord in coords:
-                branch_image[coord[1], coord[0]] = 255
-
-            fig = plt.figure()
-            plt.imshow(branch_image)
-            plt.show()
-
-
             dist = np.sqrt(np.sum(np.power(loc - com, 2), 1))
             i = np.argmin(dist)
             branch_i = branches_i[i]
@@ -375,11 +382,32 @@ class ProcessImage(object):
         if self.save:
             xy_local = self.get_xy(grasp_point, self._LOCAL_FRAME_ID)
             img_rgb = self.crop(self.image).data
+
+            branch_image = np.zeros((self.bbox[3], self.bbox[2]), dtype=np.uint8)
+            locs = np.rint(self.get_xy(coords, self._LOCAL_FRAME_ID)).astype(np.int) # , dtype=int
+            for loc in locs:
+                branch_image[loc[1], loc[0]] = 255
+            visualize_skeleton(img_rgb, branch_image)
+
             plot_grasp_location(img_rgb, xy_local, grasp_angle_local,
                                 l=minimum_grasp_length, pwd=pwd, name=self.name, ext=self.ext)
 
             xy_global = self.get_xy(grasp_point, self._ORIGINAL_FRAME_ID)
             img_rgb = self.image.data
+
+            branch_image = np.zeros(img_rgb.shape[0:2], dtype=np.uint8)
+            locs = np.rint(self.get_xy(coords, self._ORIGINAL_FRAME_ID)).astype(np.int)
+            for loc in locs:
+                branch_image[loc[1], loc[0]] = 255
+
+            # branch_image = Image(branch_image)
+            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+            # branch_image.open_close(kernel)
+            # cv2.morphologyEx(branch_image, cv2.MORPH_CLOSE, kernel)
+
+            branch_image = cv2.dilate(branch_image, kernel, iterations=1)
+            visualize_skeleton(img_rgb, branch_image, skeletonize=True)
+
             plot_grasp_location(img_rgb, xy_global, grasp_angle_global,
                                 l=minimum_grasp_length, pwd=pwd, name=self.name + '_g', ext=self.ext)
 
@@ -664,14 +692,14 @@ class ProcessImage(object):
 
 if __name__ == '__main__':
     i_start = 1
-    i_end = 2
+    i_end = 20
     N = i_end - i_start
 
     save = True
-
-    pwd_root = os.path.join(os.sep, "media", "taeke", "backup", "thesis_data",
+    drive = "UBUNTU 16_0" # "backup"
+    pwd_root = os.path.join(os.sep, "media", "taeke", drive, "thesis_data",
                                "detect_truss")
-    dataset = "depth_blue"  # "real_blue"
+    dataset = "real_blue" # "depth_blue"  #
 
     pwd_data = os.path.join(pwd_root, "data", dataset)
     pwd_results = os.path.join(pwd_root, "results", dataset)
