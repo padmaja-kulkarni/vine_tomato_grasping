@@ -22,7 +22,7 @@ from timer import Timer
 from util import add_border
 
 from util import translation_rot2or
-from util import add_circles
+from util import add_circles, plot_features
 
 from util import make_dirs
 from util import save_img
@@ -38,6 +38,7 @@ from matplotlib import pyplot as plt
 from filter_segments import filter_segments
 from detect_peduncle import detect_peduncle, detect_peduncle, visualize_skeleton, set_detect_peduncle_settings
 from detect_tomato import detect_tomato, set_detect_tomato_settings
+from compute_grasp import set_compute_grap_settings
 from segment_image import segment_truss
 
 warnings.filterwarnings('error', category=FutureWarning)
@@ -99,6 +100,7 @@ class ProcessImage(object):
         settings = {}
         settings['detect_tomato'] = set_detect_tomato_settings()
         settings['detect_peduncle'] = set_detect_peduncle_settings()
+        settings['grasp_location'] = set_compute_grap_settings()
         self.settings = settings
 
         # detect junctions
@@ -321,17 +323,19 @@ class ProcessImage(object):
         pwd = os.path.join(self.pwd, '07_grasp')
         success = True
 
-        if self.px_per_mm is not None:
-            minimum_grasp_length = 15.0 * self.px_per_mm  # [px]
-        else:
-            minimum_grasp_length = 30.0  # [px]
-
         com = self.get_xy(self.com, self._LOCAL_FRAME_ID)
+        settings = self.settings['grasp_location']
+
+        # set dimensions
+        if self.px_per_mm is not None:
+            minimum_grasp_length_px = self.px_per_mm * settings['grasp_length_min_mm']
+        else:
+            minimum_grasp_length_px = settings['grasp_length_min_px']
 
         coords = []
         branches_i = []
         for branch_i, branch in enumerate(self.branch_data['junction-junction']):
-            if branch['length'] > minimum_grasp_length:
+            if branch['length'] > minimum_grasp_length_px:
                 branch_coords = branch['coords']
 
                 # filter coords near end and start node
@@ -343,7 +347,7 @@ class ProcessImage(object):
                 for ii, branch_loc in enumerate(branch_locs):
                     src_node_dist = np.sqrt(np.sum(np.power(branch_loc - branch_src_node_loc, 2), 1))
                     dst_node_dist = np.sqrt(np.sum(np.power(branch_loc - branch_dst_node_loc, 2), 1))
-                    if (dst_node_dist > 0.5*minimum_grasp_length) and (src_node_dist > 0.5*minimum_grasp_length):
+                    if (dst_node_dist > 0.5*minimum_grasp_length_px) and (src_node_dist > 0.5*minimum_grasp_length_px):
                         i_keep.append(ii)
 
                 branch_coords_keep = [branch_coords[i] for i in i_keep]
@@ -359,13 +363,9 @@ class ProcessImage(object):
             grasp_angle_local = self.branch_data['junction-junction'][branch_i]['angle'] / 180.0 * np.pi
 
             grasp_angle_global = -self.angle + grasp_angle_local
-            grasp_point = make_2d_point(self._LOCAL_FRAME_ID, xy=(loc[i, 0], loc[i, 1]))
-            # graspR = graspL + [self.box[0], self.box[1]]
-            # graspO = rot2or(graspR, self.DIM, np.deg2rad(-self.angle))
+            grasp_point = make_2d_point(self._LOCAL_FRAME_ID, xy=loc[i, :]) # , loc[i, 1])
 
             self.grasp_point = grasp_point
-            # self.graspR = graspR
-            # self.graspO = graspO
             self.grasp_angle_local = grasp_angle_local
             self.grasp_angle_global = grasp_angle_global
 
@@ -599,6 +599,7 @@ class ProcessImage(object):
             frame_id = self._ORIGINAL_FRAME_ID
             grasp_angle = self.grasp_angle_global
 
+        xy_com = self.get_xy(self.com, frame_id)
         xy_center = self.get_xy(self.centers, frame_id)
         xy_grasp = self.get_xy(self.grasp_point, frame_id)
         xy_junc = self.get_xy(self.junction_points, frame_id)
@@ -610,7 +611,9 @@ class ProcessImage(object):
         # img_peduncle = self.get_peduncle_image(local = local)
 
         img = plot_segments(img, background, tomato, peduncle, thickness=1)
-        add_circles(img, xy_center, radii=self.radii, color=(0, 0, 0), thickness=1)
+        # add_circles(img, xy_center, radii=self.radii, color=(0, 0, 0), thickness=1)
+        tomato = {'centers': xy_center, 'radii': self.radii, 'com': xy_com}
+        img = plot_features(img, tomato=tomato, alpha=0.6, thickness=1, radii=5)
         visualize_skeleton(img, main_peduncle, coord_junc=xy_junc, coord_end=xy_end)
 
         if (xy_grasp is not None) and (grasp_angle is not None):

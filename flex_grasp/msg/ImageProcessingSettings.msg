@@ -15,3 +15,6 @@ uint32 param2
 
 # uint32 branch_length_min_px
 uint32 branch_length_min_mm
+
+
+uint32 grasp_length_min_mm

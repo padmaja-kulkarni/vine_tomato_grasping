@@ -133,8 +133,6 @@ class ObjectDetection(object):
         rospy.Subscriber("camera/aligned_depth_to_color/camera_info", CameraInfo, self.depth_info_cb)
         rospy.Subscriber("camera/depth_registered/points", PointCloud2, self.point_cloud_cb)        
         rospy.Subscriber("experiment_pwd", String, self.data_set_cb)
-        
-        
         rospy.Subscriber("image_processing_settings", ImageProcessingSettings, self.image_processing_settings_cb)
 
     def data_set_cb(self, msg):

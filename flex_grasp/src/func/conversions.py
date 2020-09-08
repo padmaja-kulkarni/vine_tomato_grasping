@@ -102,6 +102,7 @@ def settings_lib_to_msg(lib):
 
     tom_lib = lib['detect_tomato']
     pend_lib = lib['detect_peduncle']
+    grasp_lib = lib['grasp_location']
 
     # distances in px
 #    msg.tomato_radius_min_frac = tom_lib['radius_min_frac']
@@ -120,8 +121,10 @@ def settings_lib_to_msg(lib):
 #    msg.ratio_threshold = tom_lib['ratio_threshold']
     
 #    msg.branch_length_min_px = pend_lib['branch_length_min_px']
-    msg.branch_length_min_mm = pend_lib['branch_length_min_mm']   
-    
+    msg.branch_length_min_mm = pend_lib['branch_length_min_mm']
+
+    msg.grasp_length_min_mm = grasp_lib['grasp_length_min_mm']
+
     return msg
 
 def settings_msg_to_lib(msg):
