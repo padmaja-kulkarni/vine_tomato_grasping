@@ -37,6 +37,7 @@ def coords_to_nodes(pixel_coordinates, coords):
 
     return np.array(nodes)
 
+
 def get_path(from_node, to_node, pred, dist, timeout=1000):
     path = []
     length = 0
@@ -60,12 +61,14 @@ def get_path_coordinates(path, pixel_coordinates):
 
     return row, col
 
+
 def get_fit_error(row_true, col_true, param):
 
     row_fit = func(col_true, *param)
     return np.sum((row_true - row_fit) ** 2)**0.5
 
-def show_path(path, pixel_coordinates, shape, param=None, show=False):
+
+def show_path(path, pixel_coordinates, shape, subpath=None, param=None, show=False):
     img = np.zeros(shape)
     row, col = get_path_coordinates(path, pixel_coordinates)
     img[row, col] = 255
@@ -80,6 +83,10 @@ def show_path(path, pixel_coordinates, shape, param=None, show=False):
         i_keep = np.logical_and(row > 0, row < shape[0])
 
         img[row[i_keep], col[i_keep]] = 125
+
+    if subpath is not None:
+        row, col = get_path_coordinates(subpath, pixel_coordinates)
+        img[row, col] = 125
 
     if show:
         plt.figure()
@@ -98,7 +105,7 @@ def main():
     # %% init
     nDigits = 3
     i_start = 1
-    i_end = 40
+    i_end = 50
     N = i_end - i_start
 
     use_ransac = False
@@ -156,11 +163,11 @@ def main():
         graph, pixel_coordinates, degree_image  = skan.skeleton_to_csgraph(skeleton_img)
 
         # compute paths
-        dist, pred = csgraph.shortest_path(graph, return_predecessors=True)
+        dist, pred = csgraph.shortest_path(graph, directed=False, return_predecessors=True)
 
         # all paths starting at an endpoint
         end_coords = np.argwhere(degree_image == 1)
-        junc_coords = np.argwhere(degree_image == 3)
+        junc_coords = np.argwhere(degree_image >= 3)
 
         end_nodes = coords_to_nodes(pixel_coordinates, end_coords)
         junc_nodes = coords_to_nodes(pixel_coordinates, junc_coords)
@@ -169,103 +176,87 @@ def main():
             visualize_skeleton(segment_img_bright.copy(), skeleton_img, coord_junc=junc_coords[:, [1, 0]],
                            coord_end=end_coords[:, [1, 0]], name=tomato_name + "_02", pwd=pwd_results)
 
+        # initialize
+        best_path = []
+        best_length = 0
 
-        # reserve memory
-        n = len(end_coords)
-        length_mat = np.full([n, n], np.nan)
-        path_mat = np.full([n, n], np.nan)
-        reward_mat = np.full([n, n], np.nan)
+        for start_node in end_nodes:
+            for to_node in end_nodes:
 
-
-        for i, from_node in enumerate(end_nodes):
-            for j, to_node in enumerate(end_nodes):
-
-                # cstree = csgraph.reconstruct_path(csgraph=skeleton.graph, predecessors=pred[from_node], directed=False)
-                # path, length = get_path(from_node, to_node, pred, dist)
-                paths = []
-                lengths = []
-                path = []
-                length = 0
                 count = 0
-                angle = None
-                junc_end_coord = pixel_coordinates[from_node]
-                init_junc_end_coord = junc_end_coord
+                angle_total = None
+                from_node = start_node
+                coord = pixel_coordinates[from_node]
+                init_coord = coord
+                length = 0
+                sublength = 0
+                path = []
+                subpath = []
 
-                while (to_node != -9999) and (count < timeout):
-                    if (to_node == junc_nodes).any() or np.any(to_node == end_nodes).any():
-                        new_junc_end_coord = pixel_coordinates[to_node]
-                        angle_new = node_coord_angle(junc_end_coord, new_junc_end_coord)
+                while count < timeout:
 
-                        if angle is None:
+                    from_node = pred[to_node, from_node]
+                    if from_node == -9999:
+                        break
+
+                    if (from_node == junc_nodes).any() or np.any(from_node == end_nodes).any():
+                        # show_path(path, pixel_coordinates, skeleton_img.shape, subpath=subpath, show=True)
+                        new_coord = pixel_coordinates[from_node]
+                        angle_new = node_coord_angle(coord, new_coord)
+
+                        if angle_total is None:
                             diff = 0
                         else:
-                            diff = abs(angle - angle_new)
+                            diff = abs(angle_total - angle_new)
 
                         if diff < 45:
-                            # walk over branch
-                            angle_total = node_coord_angle(init_junc_end_coord, new_junc_end_coord)  # angle_new
-                            length += dist[(from_node, to_node)]
+                            angle_total = node_coord_angle(init_coord, new_coord)  # angle_new
 
+                            path.extend(subpath)
+                            length += sublength
+
+                            subpath = []
+                            sublength = 0
                         else:
                             # reset path
-                            print 'Reset! difference is:', diff
-                            junc_end_coord = pixel_coordinates[from_node]
-                            init_junc_end_coord = junc_end_coord
-                            paths.append(path)
-                            lengths.append(length)
-                            path = []
-                            angle_total = None
+                            if length >= best_length:
+                                best_path = path
+                                best_length = length
+
+                            new_coord = pixel_coordinates[from_node]
+                            init_coord = new_coord
+                            path = subpath
+                            length = sublength
+
+                            subpath = []
                             length = 0
 
-                        angle = angle_total
+                            angle_total = None
 
-                    path.append(to_node)
+                        # angle = angle_total
+                        coord = new_coord
+
+                    sublength += dist[(from_node, to_node)]
+                    subpath.append(from_node)
                     count += 1
-                    to_node = pred[(from_node, to_node)]
 
-                paths.append(path)
-                lengths.append(length)
+                if length >= best_length:
+                    best_path = path
+                    best_length = length
 
-                if len(paths) > 2:
-                    ii = np.argmax(np.array(lengths))
-                    length = lengths[ii]
-                    length_mat[i, j] = length
-                    print length
-                    # path_mat[i, j] = paths[ii]
-                else:
-                    length_mat[i, j] = 0
-                    # path_mat[i, j] = []
-                    #
-                # if len(path) > 3:
-                #     row, col = get_path_coordinates(path, pixel_coordinates)
-                #     param, cov = optimize.curve_fit(func, col, row)
-                #     error = get_fit_error(row, col, param)
-                #
-                #     curvature = curvature_splines(col, y=row, error=0.25)
-                #     plt.figure()
-                #     plt.plot(curvature)
-                #     print param
-                #     fig = show_path(path, pixel_coordinates, skeleton_img.shape, param=param, show=False)
-                # else:
-                #     error = 9999
 
-                # reward = length**1.2/error
-                # print "error", error
-                # print "reward", reward
-                # error_mat[i, j] = error
-                # reward_mat[i, j] = reward
 
-        i = np.where(np.isinf(length_mat), -np.Inf, length_mat).argmax()
-        # i = np.where(np.isinf(reward_mat), -np.Inf, reward_mat).argmax()
-        from_i, to_i = np.unravel_index(i, reward_mat.shape)
-        from_coord = end_coords[from_i]
-        to_coord = end_coords[to_i]
+        # i = np.where(np.isinf(length_mat), -np.Inf, length_mat).argmax()
+        # # i = np.where(np.isinf(reward_mat), -np.Inf, reward_mat).argmax()
+        # from_i, to_i = np.unravel_index(i, reward_mat.shape)
+        # from_coord = end_coords[from_i]
+        # to_coord = end_coords[to_i]
+        #
+        # from_node = np.argmin(np.sum((pixel_coordinates - from_coord) ** 2, axis=1))
+        # to_node = np.argmin(np.sum((pixel_coordinates - to_coord) ** 2, axis=1))
 
-        from_node = np.argmin(np.sum((pixel_coordinates - from_coord) ** 2, axis=1))
-        to_node = np.argmin(np.sum((pixel_coordinates - to_coord) ** 2, axis=1))
-
-        path, length = get_path(from_node, to_node, pred, dist)
-        path_img = show_path(path, pixel_coordinates, skeleton_img.shape)
+        # path, length = get_path(from_node, to_node, pred, dist)
+        path_img = show_path(best_path, pixel_coordinates, skeleton_img.shape)
 
         visualize_skeleton(segment_img_bright.copy(), path_img, coord_junc=junc_coords[:, [1, 0]],
                            coord_end=end_coords[:, [1, 0]], name=tomato_name + "_03",
