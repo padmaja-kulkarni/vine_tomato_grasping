@@ -253,6 +253,9 @@ def save_fig(fig, pwd, name, resolution=300, title="", titleSize=20, ext='png'):
 
 def add_circles(img_rgb, centers, radii=5, color=(255, 255, 255), thickness=5,
                 pwd=None, name=None, title=""):
+    '''
+        centers: circle centers expressed in [col, row]
+    '''
     if isinstance(centers, (list, tuple, np.matrix)):
         centers = np.array(centers, ndmin=2)
 
@@ -261,6 +264,9 @@ def add_circles(img_rgb, centers, radii=5, color=(255, 255, 255), thickness=5,
         radii = [radii] * centers.shape[0]
 
     # if empty we can not add any circles
+    if centers.shape[0] == 0:
+        return img_rgb
+
     if centers.shape[1] == 0:
         return img_rgb
 

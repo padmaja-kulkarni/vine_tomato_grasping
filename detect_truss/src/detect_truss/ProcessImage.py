@@ -36,7 +36,7 @@ from point_2d import make_2d_transform, make_2d_point, make_2d_points
 from matplotlib import pyplot as plt
 
 from filter_segments import filter_segments
-from detect_peduncle import detect_peduncle, detect_peduncle, visualize_skeleton, set_detect_peduncle_settings
+from detect_peduncle_2 import detect_peduncle, visualize_skeleton, set_detect_peduncle_settings
 from detect_tomato import detect_tomato, set_detect_tomato_settings
 from compute_grasp import set_compute_grap_settings
 from segment_image import segment_truss
@@ -81,7 +81,7 @@ class ProcessImage(object):
         self.use_truss = use_truss
         self.pwd = pwd
         self.name = name
-        self.use_ransac = False
+        # self.use_ransac = False
 
         self.scale = None
         self.image = None
@@ -281,26 +281,21 @@ class ProcessImage(object):
             img_bg = self.image_crop.data
         # bg_img = self.image_crop.data, 0.85)
 
-        mask, branch_data, junctions, ends = detect_peduncle(self.peduncle_crop.data,
-                                                             self.settings['detect_peduncle'],
-                                                             px_per_mm=self.px_per_mm,
-                                                             save=self.save,
-                                                             bg_img=img_bg,
-                                                             use_ransac=self.use_ransac,
-                                                             name=self.name,
-                                                             pwd=pwd)
+        mask, branch_data, junc_coords, end_coords = detect_peduncle(self.peduncle_crop.data,
+                                            self.settings['detect_peduncle'],
+                                            px_per_mm=self.px_per_mm,
+                                            save=self.save,
+                                            bg_img=img_bg,
+                                            name=self.name,
+                                            pwd=pwd)
+
         # convert to 2D points
         junction_points = []
-        for junction in junctions:
+        for junction in junc_coords:
             junction_points.append(make_2d_point(self._LOCAL_FRAME_ID, junction))
 
         end_points = []
-        for end in ends:
-            end_points.append(make_2d_point(self._LOCAL_FRAME_ID, end))
-
-        # convert to 2D points
-        end_points = []
-        for end in ends:
+        for end in end_coords:
             end_points.append(make_2d_point(self._LOCAL_FRAME_ID, end))
 
         for branch_type in branch_data:
@@ -347,13 +342,13 @@ class ProcessImage(object):
                 for ii, branch_loc in enumerate(branch_locs):
                     src_node_dist = np.sqrt(np.sum(np.power(branch_loc - branch_src_node_loc, 2), 1))
                     dst_node_dist = np.sqrt(np.sum(np.power(branch_loc - branch_dst_node_loc, 2), 1))
-                    if (dst_node_dist > 0.5*minimum_grasp_length_px) and (src_node_dist > 0.5*minimum_grasp_length_px):
+                    if (dst_node_dist > 0.5 * minimum_grasp_length_px) and (
+                            src_node_dist > 0.5 * minimum_grasp_length_px):
                         i_keep.append(ii)
 
                 branch_coords_keep = [branch_coords[i] for i in i_keep]
                 coords.extend(branch_coords_keep)
                 branches_i.extend([branch_i] * len(branch_coords_keep))
-
 
         if len(branches_i) > 0:
             loc = self.get_xy(coords, self._LOCAL_FRAME_ID)
@@ -363,7 +358,7 @@ class ProcessImage(object):
             grasp_angle_local = self.branch_data['junction-junction'][branch_i]['angle'] / 180.0 * np.pi
 
             grasp_angle_global = -self.angle + grasp_angle_local
-            grasp_point = make_2d_point(self._LOCAL_FRAME_ID, xy=loc[i, :]) # , loc[i, 1])
+            grasp_point = make_2d_point(self._LOCAL_FRAME_ID, xy=loc[i, :])  # , loc[i, 1])
 
             self.grasp_point = grasp_point
             self.grasp_angle_local = grasp_angle_local
@@ -384,13 +379,13 @@ class ProcessImage(object):
             img_rgb = self.crop(self.image).data
 
             branch_image = np.zeros((self.bbox[3], self.bbox[2]), dtype=np.uint8)
-            locs = np.rint(self.get_xy(coords, self._LOCAL_FRAME_ID)).astype(np.int) # , dtype=int
+            locs = np.rint(self.get_xy(coords, self._LOCAL_FRAME_ID)).astype(np.int)  # , dtype=int
             for loc in locs:
                 branch_image[loc[1], loc[0]] = 255
             visualize_skeleton(img_rgb, branch_image)
 
             plot_grasp_location(img_rgb, xy_local, grasp_angle_local,
-                                l=minimum_grasp_length, pwd=pwd, name=self.name, ext=self.ext)
+                                l=minimum_grasp_length_px, pwd=pwd, name=self.name, ext=self.ext)
 
             xy_global = self.get_xy(grasp_point, self._ORIGINAL_FRAME_ID)
             img_rgb = self.image.data
@@ -409,7 +404,7 @@ class ProcessImage(object):
             visualize_skeleton(img_rgb, branch_image, skeletonize=True)
 
             plot_grasp_location(img_rgb, xy_global, grasp_angle_global,
-                                l=minimum_grasp_length, pwd=pwd, name=self.name + '_g', ext=self.ext)
+                                l=minimum_grasp_length_px, pwd=pwd, name=self.name + '_g', ext=self.ext)
 
         return success
 
@@ -522,6 +517,7 @@ class ProcessImage(object):
         else:
             return self.rescale(self.penduncle_main)
 
+
     def get_peduncle(self, local=False):
         #        peduncle_mask = self.get_peduncle_image(local = local)
         #        penduncle_main = self.get_main_peduncle_image(local = local)
@@ -533,10 +529,11 @@ class ProcessImage(object):
         else:
             frame_id = self._ORIGINAL_FRAME_ID
 
-        junction_points = self.get_xy(self.junction_points, frame_id).tolist()
-        end_points = self.get_xy(self.end_points, frame_id).tolist()
+        junc_xy = self.get_xy(self.junction_points, frame_id).tolist()
+        end_xy = self.get_xy(self.end_points, frame_id).tolist()
+        # junc_xy, end_xy = self.get_node_xy(local=local)
+        peduncle = {'junctions': junc_xy, 'ends': end_xy}
 
-        peduncle = {'junctions': junction_points, 'ends': end_points}
         return peduncle
 
     def get_grasp_location(self, local=False):
@@ -602,8 +599,8 @@ class ProcessImage(object):
         xy_com = self.get_xy(self.com, frame_id)
         xy_center = self.get_xy(self.centers, frame_id)
         xy_grasp = self.get_xy(self.grasp_point, frame_id)
-        xy_junc = self.get_xy(self.junction_points, frame_id)
-        xy_end = self.get_xy(self.end_points, frame_id)
+        xy_junc = self.get_xy(self.junction_points, frame_id).tolist()
+        xy_end = self.get_xy(self.end_points, frame_id).tolist()
 
         img = self.get_rgb(local=local)
         tomato, peduncle, background = self.get_segments(local=local)
@@ -617,7 +614,12 @@ class ProcessImage(object):
         visualize_skeleton(img, main_peduncle, coord_junc=xy_junc, coord_end=xy_end)
 
         if (xy_grasp is not None) and (grasp_angle is not None):
-            plot_grasp_location(img, xy_grasp, grasp_angle)
+            settings = self.settings['grasp_location']
+            if self.px_per_mm is not None:
+                minimum_grasp_length_px = self.px_per_mm * settings['grasp_length_min_mm']
+            else:
+                minimum_grasp_length_px = settings['grasp_length_min_px']
+            plot_grasp_location(img, xy_grasp, grasp_angle, l = minimum_grasp_length_px)
 
         return img
 
@@ -683,26 +685,23 @@ class ProcessImage(object):
         return self.settings
 
     def set_settings(self, settings):
-
+        ''' Overwirte the settings given '''
         #        self.settings = settings
         for key_1 in settings:
             for key_2 in settings[key_1]:
                 self.settings[key_1][key_2] = settings[key_1][key_2]
 
 
-# %matplotlib inline
-# %matplotlib qt
-
 if __name__ == '__main__':
     i_start = 1
-    i_end = 20
+    i_end = 50
     N = i_end - i_start
 
-    save = True
-    drive = "UBUNTU 16_0" # "backup"
+    save = False
+    drive = "backup" # "UBUNTU 16_0"  #
     pwd_root = os.path.join(os.sep, "media", "taeke", drive, "thesis_data",
-                               "detect_truss")
-    dataset = "real_blue" # "depth_blue"  #
+                            "detect_truss")
+    dataset = "depth_blue"  # "real_blue"  #
 
     pwd_data = os.path.join(pwd_root, "data", dataset)
     pwd_results = os.path.join(pwd_root, "results", dataset)
@@ -715,7 +714,7 @@ if __name__ == '__main__':
                                  pwd=pwd_results,
                                  save=save)
 
-    process_image.use_ransac = False
+    # process_image.use_ransac = False
 
     for count, i_tomato in enumerate(range(i_start, i_end)):
         print("Analyzing image ID %d (%d/%d)" % (i_tomato, count + 1, N))
@@ -737,8 +736,8 @@ if __name__ == '__main__':
 
     if save is not True:
         plot_timer(Timer.timers['main'].copy(), threshold=0.02, pwd=pwd_results, name='main', title='Processing time')
-        plot_timer(Timer.timers['peduncle'].copy(), N=N, threshold=0.02, pwd=pwd_results, name='peduncle',
-                   title='Processing time peduncle')
+        # plot_timer(Timer.timers['peduncle'].copy(), N=N, threshold=0.02, pwd=pwd_results, name='peduncle',
+        #            title='Processing time peduncle')
 
     total_key = "process image"
     time_tot_mean = np.mean(Timer.timers[total_key]) / 1000
@@ -751,7 +750,7 @@ if __name__ == '__main__':
     time_max = max(time_s)
 
     print 'Processing time: {mean:.2f}s +- {std:.2f}s (n = {n:d})'.format(mean=time_tot_mean, std=time_tot_std, n=N)
-    print 'Processing time leas between {time_min:.2f}s and {time_max:.2f}s (n = {n:d})'.format(time_min=time_min,
+    print 'Processing time lies between {time_min:.2f}s and {time_max:.2f}s (n = {n:d})'.format(time_min=time_min,
                                                                                                 time_max=time_max, n=N)
 
     width = 0.5
@@ -765,5 +764,4 @@ if __name__ == '__main__':
     # plt.rc('ytick', labelsize=16)
 
     fig.show()
-
-#    fig.savefig(os.path.join(pwd_results, 'time_bar'), dpi = 300) #, bbox_inches='tight', pad_inches=0)
+    fig.savefig(os.path.join(pwd_results, 'time_bar'), dpi = 300) #, bbox_inches='tight', pad_inches=0)

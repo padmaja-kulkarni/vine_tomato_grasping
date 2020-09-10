@@ -267,8 +267,7 @@ def node_coord_angle(src, dst):
     angle = np.rad2deg(np.arctan2((dst[1] - src[1]), (dst[0] - src[0])))
     return angle
 
-
-def visualize_skeleton(img, skeleton_img, skeletonize=False, coord_junc=None,
+def visualize_skeleton(img, skeleton_img, skeletonize=False, coord_junc=None, junc_nodes=None, end_nodes=None,
                        coord_end=None, branch_data=None, name="", pwd=None):
     junc_color = (100, 0, 200)
     end_color = (200, 0, 0)
@@ -294,7 +293,6 @@ def visualize_skeleton(img, skeleton_img, skeletonize=False, coord_junc=None,
         add_circles(img, coord_junc, color=junc_color, thickness=-1, radii=3)
         add_circles(img, coord_end, color=end_color, thickness=-1, radii=3)
 
-
     if branch_data:
         branch_center = {}
         branch_angle = {}
@@ -309,6 +307,18 @@ def visualize_skeleton(img, skeleton_img, skeletonize=False, coord_junc=None,
                    l=20, color=junc_color, thickness=2, tip_length=0.5, is_rad=False)
         add_arrows(img, branch_center['junction-endpoint'], branch_angle['junction-endpoint'],
                    l=20, color=end_color, thickness=2, tip_length=0.5, is_rad=False)
+
+    if (junc_nodes is not None) or (end_nodes is not None):
+        plt.figure()
+        plt.imshow(img)
+        if junc_nodes is not None:
+            for junc_node, coord in zip(junc_nodes, coord_junc):
+                plt.text(coord[0], coord[1], str(junc_node))
+
+        if end_nodes is not None:
+            for end_node, coord in zip(end_nodes, coord_end):
+                plt.text(coord[0], coord[1], str(end_node))
+        plt.show()
 
     if pwd:
         save_img(img, pwd, name)

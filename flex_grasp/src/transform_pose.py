@@ -45,7 +45,7 @@ class TransformPose(object):
         
         # params
         self.surface_height = 0.018
-        self.peduncle_height = 0.075 # [m]
+        self.peduncle_height = 0.080 # [m]
         grasp_xyz = [0, 0, 0.065] # [m]
         pre_grasp_xyz = [0, 0, 0.11] # [m]
         grasp_rpy = [-np.pi, np.pi/2, 0]        
