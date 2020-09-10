@@ -99,17 +99,12 @@ class Calibration(object):
     def aruco_tracker_cb(self, msg):
         pass
 
-    def init_poses(self):
-        pose_array = PoseArray()
-        pose_array.header.frame_id = self.calibration_frame
-        pose_array.header.stamp = rospy.Time.now()
-
+    def init_poses_1(self):
         r_amplitude = 0.00
         z_amplitude = 0.00
 
         r_min = 0.24
         z_min = 0.28 # 0.05
-
 
         pos_intervals = 1
         if pos_intervals == 1:
@@ -128,22 +123,52 @@ class Calibration(object):
         aj_vec = np.linspace(-aj_amplitude, aj_amplitude, rot_intervals)
         ak_vec = [-ak_amplitude, ak_amplitude]
 
+        return self.generate_poses(r_vec, z_vec, ai_vec, aj_vec, ak_vec)
+
+    def init_poses_2(self):
+
+        angle = np.deg2rad(7) # [deg]
+        r_amplitude = 0.09
+        z_amplitude = 0.00
+
+        r_min = 0.10
+        z_min = 0.10  # 0.05
+
+        pos_intervals = 3
+        if pos_intervals == 1:
+            r_vec = [r_min + r_amplitude]  # np.linspace(x_min, x_min + 2*x_amplitude, 2) #
+            z_vec = [z_min + z_amplitude]
+        else:
+            r_vec = np.linspace(r_min, r_min + 2 * r_amplitude, pos_intervals)
+            z_vec = np.linspace(z_min, z_min + 2 * z_amplitude, pos_intervals) + np.tan(angle)*r_vec
+
+        ak_amplitude = np.deg2rad(15.0)
+
+        rot_intervals = 2
+        ai_vec = [np.deg2rad(0)]
+        aj_vec = [np.deg2rad(90)]
+        ak_vec = [-ak_amplitude, ak_amplitude]
+        return self.generate_poses_2(r_vec, z_vec, ai_vec, aj_vec, ak_vec)
+
+    def generate_poses(self, r_vec, z_vec, ai_vec, aj_vec, ak_vec):
+        pose_array = PoseArray()
+        pose_array.header.frame_id = self.calibration_frame
+        pose_array.header.stamp = rospy.Time.now()
+
         poses = []
         for ak in ak_vec:
             for r in r_vec:
                 for z in z_vec:
                     for aj in aj_vec:
                         for ai in ai_vec:
-                        
                             pose = Pose()
-                            
-                            x = r*np.cos(ak)
-                            y = r*np.sin(ak)
+
+                            x = r * np.cos(ak)
+                            y = r * np.sin(ak)
                             pose.position = list_to_position([x, y, z])
-    
-                            
+
                             pose.orientation = list_to_orientation([ai, aj, ak])
-    
+
                             poses.append(pose)
 
         pose_array.poses = poses
@@ -153,7 +178,35 @@ class Calibration(object):
         return FlexGraspErrorCodes.SUCCESS
 
 
-    def calibrate(self):
+    def generate_poses_2(self, r_vec, z_vec, ai_vec, aj_vec, ak_vec):
+        pose_array = PoseArray()
+        pose_array.header.frame_id = self.calibration_frame
+        pose_array.header.stamp = rospy.Time.now()
+
+        poses = []
+        for ak in ak_vec:
+            for r, z in zip(r_vec, z_vec):
+                for aj in aj_vec:
+                    for ai in ai_vec:
+                        pose = Pose()
+
+                        x = r * np.cos(ak)
+                        y = r * np.sin(ak)
+                        pose.position = list_to_position([x, y, z])
+
+                        pose.orientation = list_to_orientation([ai, aj, ak])
+
+                        poses.append(pose)
+
+        pose_array.poses = poses
+
+        self.pub_pose_array.publish(pose_array)
+        self.pose_array = pose_array
+        return FlexGraspErrorCodes.SUCCESS
+
+
+
+    def calibrate(self, track_marker=True):
 
         # does pose array contain something?
         if self.pose_array is None:
@@ -183,13 +236,13 @@ class Calibration(object):
             result = self.move_robot_communication.wait_for_result("move_manipulator") # timout = 5?
 
             if result == FlexGraspErrorCodes.SUCCESS:
-                # camera delay + wait a small amount of time for vibrations to stop
-                rospy.sleep(1.5)
-
-                try:
-                    self.client.take_sample()
-                except:
-                    rospy.logwarn("[CALIBRATE] Failed to take sample, marker might not be visible.")
+                if track_marker:
+                    # camera delay + wait a small amount of time for vibrations to stop
+                    rospy.sleep(1.5)
+                    try:
+                        self.client.take_sample()
+                    except:
+                        rospy.logwarn("[CALIBRATE] Failed to take sample, marker might not be visible.")
                     
             elif result == FlexGraspErrorCodes.DYNAMIXEL_ERROR:
                 print('dynamixel error triggered, returning error')
@@ -202,16 +255,19 @@ class Calibration(object):
         result = self.move_robot_communication.wait_for_result("home") 
         
         # compute calibration transform
-        calibration_transform = self.client.compute_calibration()
-
-        if calibration_transform.valid:
-            rospy.loginfo("[CALIBRATE] Found valid transfrom")
-            self.broadcast(calibration_transform)
-            self.client.save()
+        if not track_marker:
             return FlexGraspErrorCodes.SUCCESS
         else:
-            rospy.logwarn("[CALIBRATE] Computed calibration is invalid")
-            return FlexGraspErrorCodes.FAILURE
+            calibration_transform = self.client.compute_calibration()
+
+            if calibration_transform.valid:
+                rospy.loginfo("[CALIBRATE] Found valid transfrom")
+                self.broadcast(calibration_transform)
+                self.client.save()
+                return FlexGraspErrorCodes.SUCCESS
+            else:
+                rospy.logwarn("[CALIBRATE] Computed calibration is invalid")
+                return FlexGraspErrorCodes.FAILURE
 
     def broadcast(self, result):
         rospy.loginfo("Broadcasting result")
@@ -225,11 +281,20 @@ class Calibration(object):
         result = None
 
         if (self.command == 'e_init'):
-            result = self.init_poses()
+            result = FlexGraspErrorCodes.SUCCESS
 
         elif (self.command == 'calibrate'):
-            result = self.calibrate()
-            
+            result = self.init_poses_1()
+
+            if result == FlexGraspErrorCodes.SUCCESS:
+                result = self.calibrate()
+
+        elif (self.command == 'calibrate_height'):
+            result = self.init_poses_2()
+
+            if result == FlexGraspErrorCodes.SUCCESS:
+                result = self.calibrate(track_marker=False)
+
         elif self.command is not None:
             rospy.logwarn("[CALIBRATE] Can not take an action: received unknown command %s!", self.command)
             result = FlexGraspErrorCodes.UNKNOWN_COMMAND

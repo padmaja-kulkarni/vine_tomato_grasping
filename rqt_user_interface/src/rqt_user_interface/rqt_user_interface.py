@@ -66,6 +66,7 @@ class RqtFlexGrasp(Plugin):
         self._widget.OpenButton.clicked[bool].connect(self.handle_open)
         self._widget.CloseButton.clicked[bool].connect(self.handle_close)
         self._widget.CalibrateButton.clicked[bool].connect(self.handle_calibrate)
+        self._widget.CalibrateHeightButton.clicked[bool].connect(self.handle_calibrate_height)
 
         # tasks
         # self._widget.DetectTomatoButton.clicked[bool].connect(self.handle_detect_tomato)
@@ -156,6 +157,9 @@ class RqtFlexGrasp(Plugin):
         
     def handle_calibrate(self):
         self.pub_command.publish("calibrate")
+
+    def handle_calibrate_height(self):
+        self.pub_command.publish("calibrate_height")
 
     def handle_detect_tomato(self):
         self.pub_command.publish("detect_tomato")

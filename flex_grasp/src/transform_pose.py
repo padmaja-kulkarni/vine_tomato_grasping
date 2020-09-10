@@ -46,8 +46,13 @@ class TransformPose(object):
         # params
         self.surface_height = 0.018
         self.peduncle_height = 0.080 # [m]
-        grasp_xyz = [0, 0, 0.065] # [m]
-        pre_grasp_xyz = [0, 0, 0.11] # [m]
+        self.sack_angle = np.deg2rad(10.0)
+
+
+        self.grasp_height = 0.065
+        self.pre_grasp_height = 0.11
+        grasp_xyz = [0, 0, self.grasp_height] # [m]
+        pre_grasp_xyz = [0, 0, self.pre_grasp_height] # [m]
         grasp_rpy = [-np.pi, np.pi/2, 0]        
         
         self.r_min = 0.15
@@ -128,7 +133,7 @@ class TransformPose(object):
         if self.object_features is not None:
             self.transform_pose()
 
-    def generate_place_pose(self, pre_place_height, place_height):
+    def generate_place_pose(self): # pre_place_height, place_height
         
         x = 0.0
         while x <= self.x_min:
@@ -139,12 +144,17 @@ class TransformPose(object):
             y = r * np.sin(theta)
         
         orientation = np.deg2rad(random.randrange(90, 270, 1)) + theta # [rad]        
-        
+
+        pre_place_height = self.peduncle_height - self.surface_height + self.pre_grasp_height
+        place_height = self.peduncle_height - self.surface_height + self.grasp_height
+        print 'place height: ', place_height
+        print 'pre place height: ', pre_place_height
+
         place_rpy = [self.grasp_rpy[0], self.grasp_rpy[1], orientation]
-        pre_place_xyz = [x, y, pre_place_height]      
+        pre_place_xyz = [x, y, pre_place_height]
         place_xyz = [x, y, place_height]        
 
-        frame = self.robot_base_frame# robot_base_frame
+        frame = self.robot_base_frame # robot_base_frame
         time = rospy.Time.now()
         
         place_pose = {}
@@ -181,10 +191,12 @@ class TransformPose(object):
 
         object_pose = tf2_geometry_msgs.do_transform_pose(object_pose, transform)
         object_position, object_orientation = pose_to_lists(object_pose.pose, 'euler')
-        
-        grasp_height = self.peduncle_height - self.surface_height 
+
+
+        grasp_height = self.peduncle_height - self.surface_height #
         object_pose.pose.position = list_to_position((object_position[0], object_position[1], grasp_height))
-        
+
+        # orietnation
         object_angle = -object_orientation[2] + angle_offset
         base_angle = np.arctan2(object_position[1], object_position[0])
         
@@ -206,21 +218,26 @@ class TransformPose(object):
             added_pose = add_pose_stamped(pose_transform[key], object_pose) 
 
             if added_pose is None:
-                rospy.logwarn('[PICK PLACE] Failed to add pose stamed: they are defiend with respect to different frames!')
+                rospy.logwarn('[PICK PLACE] Failed to add pose stamed: they are defined with respect to different frames!')
                 return FlexGraspErrorCodes.FAILURE
             else:
                 pose[key] = added_pose
   
-  
-        place_poses = self.generate_place_pose(pose['pre_grasp'].pose.position.z, pose['grasp'].pose.position.z)  
+        print 'grasp height: ', pose['grasp'].pose.position.z
+        print 'pre grasp height: ', pose['pre_grasp'].pose.position.z
+        place_poses = self.generate_place_pose()
         place_poses = self.transform_dict(place_poses, self.planning_frame)
         for key in place_poses:
                 pose[key] = place_poses[key]          
-            
+
+        # compensate
+        for key in pose:
+            x = pose[key].pose.position.x
+            y = pose[key].pose.position.x
+            r = x ** 2 + y ** 2
+            pose[key].pose.position.z += np.tan(self.sack_angle) * r
 
         self.pose = pose
-
-        
         self.pub_all_poses()
         return FlexGraspErrorCodes.SUCCESS
 
