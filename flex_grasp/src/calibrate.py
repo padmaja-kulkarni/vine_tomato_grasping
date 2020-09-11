@@ -127,12 +127,18 @@ class Calibration(object):
 
     def init_poses_2(self):
 
-        angle = np.deg2rad(7) # [deg]
-        r_amplitude = 0.09
+        surface_height = 0.019
+        height_finger = 0.040  # [m]
+        finger_link2ee_link = 0.023  # [m]
+        grasp_height = height_finger + finger_link2ee_link - surface_height
+
+
+        sag_angle = np.deg2rad(6.0) # [deg]
+        r_amplitude = 0.08
         z_amplitude = 0.00
 
         r_min = 0.10
-        z_min = 0.10  # 0.05
+        z_min = grasp_height  # 0.05
 
         pos_intervals = 3
         if pos_intervals == 1:
@@ -140,7 +146,7 @@ class Calibration(object):
             z_vec = [z_min + z_amplitude]
         else:
             r_vec = np.linspace(r_min, r_min + 2 * r_amplitude, pos_intervals)
-            z_vec = np.linspace(z_min, z_min + 2 * z_amplitude, pos_intervals) + np.tan(angle)*r_vec
+            z_vec = np.linspace(z_min, z_min + 2 * z_amplitude, pos_intervals) + np.tan(sag_angle)*r_vec
 
         ak_amplitude = np.deg2rad(15.0)
 

@@ -376,24 +376,22 @@ class ProcessImage(object):
 
         if self.save:
             xy_local = self.get_xy(grasp_point, self._LOCAL_FRAME_ID)
-            img_rgb = self.crop(self.image).data
+            img_rgb = self.crop(self.image).data.astype(np.uint8)
 
-            branch_image = np.zeros((self.bbox[3], self.bbox[2]), dtype=np.uint8)
+            branch_image = np.zeros(img_rgb.shape[0:2], dtype=np.uint8)
             locs = np.rint(self.get_xy(coords, self._LOCAL_FRAME_ID)).astype(np.int)  # , dtype=int
-            for loc in locs:
-                branch_image[loc[1], loc[0]] = 255
-            visualize_skeleton(img_rgb, branch_image)
+            branch_image[locs[:, 1], locs[:, 0]] = 255
+            img_rgb = visualize_skeleton(img_rgb, branch_image)
 
             plot_grasp_location(img_rgb, xy_local, grasp_angle_local,
                                 l=minimum_grasp_length_px, pwd=pwd, name=self.name, ext=self.ext)
 
             xy_global = self.get_xy(grasp_point, self._ORIGINAL_FRAME_ID)
-            img_rgb = self.image.data
+            img_rgb = np.array(self.image.data).astype(np.uint8)
 
             branch_image = np.zeros(img_rgb.shape[0:2], dtype=np.uint8)
             locs = np.rint(self.get_xy(coords, self._ORIGINAL_FRAME_ID)).astype(np.int)
-            for loc in locs:
-                branch_image[loc[1], loc[0]] = 255
+            branch_image[locs[:, 1], locs[:, 0]] = 255
 
             # branch_image = Image(branch_image)
             kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
@@ -401,7 +399,7 @@ class ProcessImage(object):
             # cv2.morphologyEx(branch_image, cv2.MORPH_CLOSE, kernel)
 
             branch_image = cv2.dilate(branch_image, kernel, iterations=1)
-            visualize_skeleton(img_rgb, branch_image, skeletonize=True)
+            img_rgb = visualize_skeleton(img_rgb, branch_image, skeletonize=True)
 
             plot_grasp_location(img_rgb, xy_global, grasp_angle_global,
                                 l=minimum_grasp_length_px, pwd=pwd, name=self.name + '_g', ext=self.ext)
@@ -693,15 +691,15 @@ class ProcessImage(object):
 
 
 if __name__ == '__main__':
-    i_start = 1
-    i_end = 50
+    i_start = 18
+    i_end = 19
     N = i_end - i_start
 
-    save = False
+    save = True
     drive = "backup" # "UBUNTU 16_0"  #
     pwd_root = os.path.join(os.sep, "media", "taeke", drive, "thesis_data",
                             "detect_truss")
-    dataset = "depth_blue"  # "real_blue"  #
+    dataset = "drawing" # "depth_blue"  # "real_blue"  #
 
     pwd_data = os.path.join(pwd_root, "data", dataset)
     pwd_results = os.path.join(pwd_root, "results", dataset)

@@ -573,7 +573,7 @@ def add_lines(img_rgb, centers, angles, l=20, color=(255, 255, 255), thickness=1
             angle = angle / 180 * np.pi
         start_point, end_point = compute_line_points(center, angle, l)
 
-        cv2.line(img_rgb, start_point, end_point, color, thickness=thickness)
+        img_rgb = cv2.line(img_rgb.copy(), start_point, end_point, color, thickness=thickness)
 
 
 def add_arrows(img_rgb, centers, angles, l=20, color=(255, 255, 255), thickness=1, tip_length=0.5, is_rad=True):

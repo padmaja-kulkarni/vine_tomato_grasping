@@ -134,15 +134,15 @@ class MoveRobot(object):
 
         man_planning_frame = man_group.get_planning_frame()
         ee_planning_frame = ee_group.get_planning_frame()
-
-        rospy.logdebug("[MOVE ROBOT] Manipulator planning frame: %s", man_planning_frame)
-        rospy.logdebug("[MOVE ROBOT] End effector planning frame: %s", ee_planning_frame)
-
         ee_link = man_group.get_end_effector_link()
 
+        rospy.logdebug("[MOVE ROBOT] Manipulator planning frame: %s", man_planning_frame)
+        rospy.loginfo("[MOVE ROBOT] Manipulator end effector link: %s", ee_link) # px150/ee_arm_link
+        rospy.logdebug("[MOVE ROBOT] End effector planning frame: %s", ee_planning_frame)
+
+
         manipulator_joint_names = man_group.get_joints()
-        ee_joint_names = ee_group.get_named_target_values(
-            "Closed").keys()  # the ee_group contains joints we cannot actually control?
+        ee_joint_names = ee_group.get_named_target_values("Closed").keys()  # the ee_group contains joints we cannot actually control?
 
         EE_CLOSED = ee_group.get_named_target_values("Closed").values()
         EE_OPEN = ee_group.get_named_target_values("Open").values()
@@ -232,7 +232,7 @@ class MoveRobot(object):
                     found_required_object = True
                 else:
                     rospy.logwarn("[MOVE ROBOT] Refusing to continue untill %s is present.", required_object)
-                    found_required_object = False
+                    found_required_object = True # False
             self.rate.sleep()
 
     def check_ik(self, pose_stamped, timeout=rospy.Duration(5)):

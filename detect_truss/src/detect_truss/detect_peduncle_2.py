@@ -14,6 +14,14 @@ from util import add_circles, add_arrows
 from util import save_img, save_fig
 from util import remove_blobs, bin2img, img2bin
 
+
+def set_detect_peduncle_settings(branch_length_min_px=15,
+                                 branch_length_min_mm=10):
+    settings = {'branch_length_min_px': branch_length_min_px,
+                'branch_length_min_mm': branch_length_min_mm}
+    return settings
+
+
 def get_locations_on_mask(mask, coords, allowable_distance=1):
     mask_coords = np.argwhere(mask)
     coord_keep = []
@@ -58,12 +66,6 @@ def threshold_branch_length(skeleton_img, distance_threshold):
     i_remove = b_remove.to_numpy().nonzero()[0] # np.argwhere(b_remove)[:, 0]
 
     return update_skeleton(skeleton_img, skeleton, i_remove)
-
-def set_detect_peduncle_settings(branch_length_min_px=15,
-                                 branch_length_min_mm=10):
-    settings = {'branch_length_min_px': branch_length_min_px,
-                'branch_length_min_mm': branch_length_min_mm}
-    return settings
 
 
 def get_node_coord(skeleton_img):
@@ -154,7 +156,7 @@ def visualize_skeleton(img, skeleton_img, skeletonize=False, coord_junc=None, ju
         skeleton_img = skeletonize_img(skeleton_img)
 
     contours, hierarchy = cv2.findContours(skeleton_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
-    cv2.drawContours(img, contours, -1, pend_color, 2)
+    img = cv2.drawContours(img.copy(), contours, -1, pend_color, 2)
 
     if len(np.argwhere(skeleton_img)) > 2:
 
@@ -199,7 +201,7 @@ def visualize_skeleton(img, skeleton_img, skeletonize=False, coord_junc=None, ju
 
     if pwd:
         save_img(img, pwd, name)
-
+    return img
 
 def node_coord_angle(src, dst):
     return np.rad2deg(np.arctan2((dst[0] - src[0]), (dst[1] - src[1])))
