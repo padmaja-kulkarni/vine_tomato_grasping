@@ -16,6 +16,7 @@ from matplotlib.offsetbox import (OffsetImage, AnnotationBbox)
 
 tomato_color = (255, 0, 0)
 peduncle_color = (0, 255, 0)
+background_color = (0, 0, 255)
 junction_color = (255, 0, 255)
 end_color = (255, 255, 0)
 gray_color = (150, 150, 150)
@@ -171,7 +172,7 @@ def label_img(data, centers):
     return np.expand_dims(labels, axis=1)
 
 
-def stack_segments(imRGB, background, tomato, peduncle):
+def stack_segments(imRGB, background, tomato, peduncle, use_image_colours=True):
     # stack segments
 
     [h, w] = imRGB.shape[:2]
@@ -188,11 +189,17 @@ def stack_segments(imRGB, background, tomato, peduncle):
     pixelLabel[peduncle > 0] = peduncleLabel
 
     # get class colors
-    colorBackground = np.uint8(np.mean(imRGB[pixelLabel == backgroundLabel], 0))
-    colorTomato = np.uint8(np.mean(imRGB[pixelLabel == tomatoLabel], 0))
-    colorPeduncle = np.uint8(np.mean(imRGB[pixelLabel == peduncleLabel], 0))
-    color = np.vstack([colorBackground, colorTomato, colorPeduncle])
+    if use_image_colours:
+        color_background = np.uint8(np.mean(imRGB[pixelLabel == backgroundLabel], 0))
+        color_tomato = np.uint8(np.mean(imRGB[pixelLabel == tomatoLabel], 0))
+        color_peduncle = np.uint8(np.mean(imRGB[pixelLabel == peduncleLabel], 0))
 
+    else:
+        color_background = background_color
+        color_tomato = tomato_color
+        color_peduncle = peduncle_color
+
+    color = np.vstack([color_background, color_tomato, color_peduncle]).astype(np.uint8)
     # visualize
     res = color[pixelLabel.flatten()]
     res2 = res.reshape((h, w, 3))
@@ -225,7 +232,7 @@ def save_img(img, pwd, name, resolution=300, title="", titleSize=20, ext='png'):
     plt.close(fig)
 
 
-def save_fig(fig, pwd, name, resolution=300, title="", titleSize=20, ext='png'):
+def save_fig(fig, pwd, name, resolution=300, no_ticks=True, title="", titleSize=20, ext='png'):
     SMALL_SIZE = 8
     MEDIUM_SIZE = 15
     BIGGER_SIZE = 20
@@ -240,9 +247,16 @@ def save_fig(fig, pwd, name, resolution=300, title="", titleSize=20, ext='png'):
     for ax in fig.get_axes():
         ax.label_outer()
 
-    for ax in fig.get_axes():
-        # ax.yaxis.set_major_locator(plt.nulllocator())\
-        ax.set_yticklabels([])
+    if no_ticks:
+        for ax in fig.get_axes():
+            # ax.yaxis.set_major_locator(plt.nulllocator())\
+            ax.set_yticklabels([])
+    else:
+        # We change the fontsize of minor ticks label
+        ax.tick_params(axis='both', which='major', labelsize=10)
+        ax.tick_params(axis='both', which='minor', labelsize=8)
+
+
     plt.margins(0, 0)
 
     # make dir if it does not yet exist
@@ -283,13 +297,16 @@ def add_circles(img_rgb, centers, radii=5, color=(255, 255, 255), thickness=5,
     return img_rgb
 
 
-def plot_segments(img_rgb, background, tomato, peduncle, pwd=None,
+def plot_segments(img_rgb, background, tomato, peduncle, show_background=False, pwd=None, use_image_colours=True,
                   name=None, title="", alpha=0.7, thickness=2):
-    img_segments = stack_segments(img_rgb, background, tomato, peduncle)
+    img_segments = stack_segments(img_rgb, background, tomato, peduncle, use_image_colours=use_image_colours)
 
     added_image = cv2.addWeighted(img_rgb, 1 - alpha, img_segments, alpha, 0)
     added_image = add_contour(added_image, tomato, color=tomato_color, thickness=thickness)
     added_image = add_contour(added_image, peduncle, color=peduncle_color, thickness=thickness)
+
+    if show_background:
+        added_image = add_contour(added_image, background, color=background_color, thickness=thickness)
 
     if pwd is not None:
         save_img(added_image, pwd, name, title=title)

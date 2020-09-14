@@ -126,10 +126,14 @@ class ProcessImage(object):
             self.name = name
 
     @Timer("color space", name_space)
-    def color_space(self):
+    def color_space(self, compute_a=True):
         pwd = os.path.join(self.pwd, '01_color_space')
         self.image_hue = cv2.cvtColor(self.image.data, cv2.COLOR_RGB2HSV)[:, :, 0]
-        self.image_a = cv2.cvtColor(self.image.data, cv2.COLOR_RGB2LAB)[:, :, 1]
+        if compute_a:
+            self.image_a = cv2.cvtColor(self.image.data, cv2.COLOR_RGB2LAB)[:, :, 1]
+        else:
+            self.image_a = None
+
         # self.image_hue = imHSV[:, :, 0]
         if self.save:
             save_img(self.image_hue, pwd, self.name)
