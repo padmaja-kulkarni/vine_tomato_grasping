@@ -136,15 +136,17 @@ class ProcessImage(object):
 
         # self.image_hue = imHSV[:, :, 0]
         if self.save:
-            save_img(self.image_hue, pwd, self.name)
+            save_img(self.image_hue, pwd, self.name + '_h')
+            save_img(self.image_a, pwd, self.name + '_a')
 
     @Timer("segmentation", name_space)
-    def segment_image(self):
-        pwd = os.path.join(self.pwd, '02_segment')
+    def segment_image(self, radius=1.0):
+        pwd = os.path.join(self.pwd, '02_segment', str(radius))
 
         success = True
         background, tomato, peduncle = segment_truss(self.image_hue,
                                                      img_a=self.image_a,
+                                                     radius=radius,
                                                      save=self.save,
                                                      pwd=pwd,
                                                      name=self.name)
@@ -695,15 +697,15 @@ class ProcessImage(object):
 
 
 if __name__ == '__main__':
-    i_start = 18
-    i_end = 19
+    i_start = 1
+    i_end = 50
     N = i_end - i_start
 
-    save = True
+    save = False
     drive = "backup" # "UBUNTU 16_0"  #
     pwd_root = os.path.join(os.sep, "media", "taeke", drive, "thesis_data",
                             "detect_truss")
-    dataset = "drawing" # "depth_blue"  # "real_blue"  #
+    dataset = "depth_blue"  # "real_blue"  # "drawing" #
 
     pwd_data = os.path.join(pwd_root, "data", dataset)
     pwd_results = os.path.join(pwd_root, "results", dataset)

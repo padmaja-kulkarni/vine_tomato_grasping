@@ -12,6 +12,7 @@ import numpy as np
 import warnings
 import copy
 from matplotlib import pyplot as plt
+import matplotlib as mpl
 from matplotlib.offsetbox import (OffsetImage, AnnotationBbox)
 
 tomato_color = (255, 0, 0)
@@ -206,11 +207,18 @@ def stack_segments(imRGB, background, tomato, peduncle, use_image_colours=True):
 
     return res2
 
+def grey_2_rgb(img_grey, vmin=0, vmax=255):
+    norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
+    cmap = mpl.cm.hot
+    mapping = mpl.cm.ScalarMappable(norm=norm, cmap=cmap)
+    img_rgb = (vmax*mapping.to_rgba(img_grey)[:, :, 0:3]).astype(np.uint8)
+    return img_rgb
 
-def save_img(img, pwd, name, resolution=300, title="", titleSize=20, ext='png'):
+def save_img(img, pwd, name, resolution=300, title="", titleSize=20, ext='png', color_map='plasma'):
     plt.rcParams["savefig.format"] = ext
     plt.rcParams["savefig.bbox"] = 'tight'
     plt.rcParams['axes.titlesize'] = titleSize
+    plt.rcParams['image.cmap'] = color_map
 
     fig = plt.figure()
     plt.imshow(img)

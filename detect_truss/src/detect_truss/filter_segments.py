@@ -13,22 +13,23 @@ from util import remove_blobs
 def filter_segments(tomato, peduncle, background):
     # tomato
     # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (filterDiameterTom, filterDiameterTom))
-    # tomatoFiltered = tomato # cv2.morphologyEx(cv2.morphologyEx(tomato, cv2.MORPH_OPEN, kernel),cv2.MORPH_CLOSE, kernel)    
+    # tomato_filtered = tomato # cv2.morphologyEx(cv2.morphologyEx(tomato, cv2.MORPH_OPEN, kernel),cv2.MORPH_CLOSE, kernel)    
     
     # remove blobs truss
     truss = cv2.bitwise_or(tomato, peduncle)
-    trussFiltered = remove_blobs(truss)
-    peduncleFiltered = cv2.bitwise_and(trussFiltered, peduncle)
-    tomatoFiltered = cv2.bitwise_and(trussFiltered, tomato)
+    truss_filtered = remove_blobs(truss)
+    peduncle_filtered = cv2.bitwise_and(truss_filtered, peduncle)
+    tomato_filtered = cv2.bitwise_and(truss_filtered, tomato)
     
     # peduncle
-    # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (filterDiameterPend, filterDiameterPend))
-    # peduncleFiltered = cv2.morphologyEx(cv2.morphologyEx(peduncle, cv2.MORPH_OPEN, kernel),cv2.MORPH_CLOSE, kernel)    
+    filter_diameter_pend = 3
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (filter_diameter_pend, filter_diameter_pend))
+    peduncle_filtered = cv2.morphologyEx(cv2.morphologyEx(peduncle_filtered, cv2.MORPH_OPEN, kernel),cv2.MORPH_CLOSE, kernel)
     
     # remove blobs peduncle
-    peduncleFiltered = remove_blobs(peduncleFiltered)
-    tomatoFiltered = cv2.bitwise_and(trussFiltered, cv2.bitwise_not(peduncleFiltered))
-    trussFiltered = cv2.bitwise_or(tomatoFiltered, peduncleFiltered)
-    backgroundFiltered = cv2.bitwise_not(truss)    
+    peduncle_filtered = remove_blobs(peduncle_filtered)
+    tomato_filtered = cv2.bitwise_and(truss_filtered, cv2.bitwise_not(peduncle_filtered))
+    truss_filtered = cv2.bitwise_or(tomato_filtered, peduncle_filtered)
+    background_filtered = cv2.bitwise_not(truss_filtered)
     
-    return tomatoFiltered, peduncleFiltered, backgroundFiltered
+    return tomato_filtered, peduncle_filtered, background_filtered

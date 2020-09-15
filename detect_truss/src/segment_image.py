@@ -20,9 +20,9 @@ from detect_truss.ProcessImage import ProcessImage
 # ls | cat -n | while read n f; do mv "$f" `printf "%03d.png" $n`; done
 if __name__ == '__main__':
 
-    N = 16  # tomato file to load
+    N = 2  # tomato file to load
     extension = ".png"
-    dataset = "depth_blue"  # "failures"  # "tomato_rot" #
+    dataset ="failures" #  "depth_blue"  #
     save = True
 
     pwd_current = os.path.dirname(__file__)
@@ -47,7 +47,7 @@ if __name__ == '__main__':
         img_rgb = load_rgb(pwd_data, file_name, horizontal=True)
         process_image.add_image(img_rgb, name=tomato_name)
         process_image.color_space(compute_a=True)
-        process_image.segment_image()
+        process_image.segment_image(radius=3.0)
         process_image.filter_image()
         count = count + 1
         print("completed image %d out of %d" % (count, N))
