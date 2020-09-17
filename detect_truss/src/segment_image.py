@@ -20,9 +20,12 @@ from detect_truss.ProcessImage import ProcessImage
 # ls | cat -n | while read n f; do mv "$f" `printf "%03d.png" $n`; done
 if __name__ == '__main__':
 
-    N = 2  # tomato file to load
+    i_start = 1  # tomato file to load
+    i_end = 2
+    N = i_end - i_start
+
     extension = ".png"
-    dataset ="failures" #  "depth_blue"  #
+    dataset = "depth_blue"  # "failures" #
     save = True
 
     pwd_current = os.path.dirname(__file__)
@@ -32,22 +35,23 @@ if __name__ == '__main__':
     pwd_results = os.path.join(pwd_root, "results", dataset)
 
     make_dirs(pwd_results)
-
-    count = 0
-
     process_image = ProcessImage(use_truss=True,
                                  pwd=pwd_results,
                                  save=save)
+    radii = [1.5]  # 0.5, 1.0, 1.5, 2.0, 3.0
 
-    for i_tomato in range(1, N):
-        tomato_ID = str(i_tomato).zfill(3)
-        tomato_name = tomato_ID
-        file_name = tomato_name + extension
+    for radius in radii:
+        for count, i_tomato in enumerate(range(i_start, i_end)):
+            print("Analyzing image ID %d (%d/%d)" % (i_tomato, count + 1, N))
 
-        img_rgb = load_rgb(pwd_data, file_name, horizontal=True)
-        process_image.add_image(img_rgb, name=tomato_name)
-        process_image.color_space(compute_a=True)
-        process_image.segment_image(radius=3.0)
-        process_image.filter_image()
-        count = count + 1
-        print("completed image %d out of %d" % (count, N))
+            tomato_ID = str(i_tomato).zfill(3)
+            tomato_name = tomato_ID
+            file_name = tomato_name + extension
+
+            img_rgb = load_rgb(pwd_data, file_name, horizontal=True)
+            process_image.add_image(img_rgb, name=tomato_name)
+            process_image.color_space(compute_a=True)
+            process_image.segment_image(radius=radius)
+            process_image.filter_image(folder_name=str(radius))
+            count = count + 1
+            print("completed image %d out of %d" % (count, N))

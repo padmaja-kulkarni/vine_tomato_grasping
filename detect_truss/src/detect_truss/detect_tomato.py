@@ -114,8 +114,6 @@ def detect_tomato(img_segment, settings, px_per_mm=None, img_rgb=None,
         tomato_overlap = {'centers': centers_overlap, 'radii': radii_overlap, 'com': com_overlap}
         plot_features(img_rgb, tomato_overlap, pwd=pwd, file_name=name + '_1', thickness=thickness)
         plot_features(img_rgb, tomato, pwd=pwd, file_name=name + '_2', thickness=thickness)
-    #        plot_circles(img_rgb, centers, radii, pwd = pwd, name = name,
-    #                                     thickness = thickness, color=tom_color)
 
     return centers, radii, com
 

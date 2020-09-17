@@ -377,6 +377,9 @@ def summarize_img(skeleton_img):
 
 
 def mad(data, axis=None):
+    '''
+    mean absolute deviation
+    '''
     return np.mean(np.absolute(data - np.median(data, axis)), axis)
 
 

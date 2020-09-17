@@ -9,11 +9,12 @@ import skan
 import scipy.sparse.csgraph as csgraph
 import scipy.optimize as optimize
 from matplotlib import pyplot as plt
+from sklearn import linear_model
 
 from util import add_circles, add_arrows
 from util import save_img, save_fig
 from util import remove_blobs, bin2img, img2bin
-
+from sklearn.metrics.pairwise import euclidean_distances
 
 def set_detect_peduncle_settings(branch_length_min_px=15,
                                  branch_length_min_mm=10):
@@ -44,9 +45,6 @@ def update_skeleton(skeleton_img, skeleton, i_remove):
         rows = px_coords[:, 0]
         cols = px_coords[:, 1]
         skeleton_prune_img[rows, cols] = 0
-
-        # for px_coord in px_coords:
-        #     skeleton_prune_img[px_coord[0], px_coord[1]] = 0
 
     ## closing
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
@@ -92,7 +90,7 @@ def get_node_coord(skeleton_img):
 
 
 def distance(coords, coord):
-    ''' euclidian distance between coordinates two numpy array'''
+    """ euclidean distance between coordinates two numpy array"""
     return np.sum((coords - coord) ** 2, axis=1)
 
 def coords_to_nodes(pixel_coordinates, coords):
@@ -101,6 +99,74 @@ def coords_to_nodes(pixel_coordinates, coords):
         nodes.append(np.argmin(distance(pixel_coordinates, coord)))
 
     return np.array(nodes)
+
+
+def mean_absolute_deviation(data, axis=None):
+    """
+    mean absolute deviation
+    """
+    return np.mean(np.absolute(data - np.median(data, axis)), axis)
+
+
+def fit_ransac(peduncle_img, bg_img=None, save=False, name="", pwd=""):
+    pend_color = np.array([0, 150, 30])
+    stem_color = np.array([110, 255, 128])
+    # skeletonize peduncle segment
+    shape = peduncle_img.shape
+
+    factor = 5
+    mask_index = np.argwhere(peduncle_img)
+    cols = mask_index[:, 1].reshape(-1, 1)  # x, spould be 2D
+    rows = mask_index[:, 0]  # y
+
+    i = range(0, len(rows), factor)
+    fit_cols = cols[i]  # x, spould be 2D
+    fit_rows = rows[i]  # y
+
+    # Robustly fit linear model with RANSAC algorithm
+    mad = mean_absolute_deviation(rows)
+    residual_threshold = 0.8*mad
+    ransac = linear_model.RANSACRegressor(max_trials=1000, residual_threshold=residual_threshold)
+    ransac.fit(fit_cols, fit_rows)
+
+    # predict on full data set
+    rows_pred = ransac.predict(cols)
+
+    # idenitfy in and outliers
+    data_train = np.stack((rows, cols[:, 0]), axis=1)
+    data_pred = np.stack((rows_pred, cols[:, 0]), axis=1)
+    dist = euclidean_distances(data_train, data_pred)
+    inlier_mask = np.min(dist, axis=1) < residual_threshold
+    outlier_mask = np.logical_not(inlier_mask)
+
+    coord_inlier = [rows[inlier_mask], cols[inlier_mask, 0]]
+    coord_outlier = [rows[outlier_mask], cols[outlier_mask, 0]]
+
+    img_inlier = np.zeros(shape, dtype=np.uint8)
+    img_outlier = np.zeros(shape, dtype=np.uint8)
+
+    img_inlier[tuple(coord_inlier)] = 255
+    img_outlier[tuple(coord_outlier)] = 255
+
+    inlier_contours, hierarchy = cv2.findContours(img_inlier, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
+    outlier_contours, hierarchy = cv2.findContours(img_outlier, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
+
+    fig = plt.figure()
+    plt.imshow(bg_img)
+    for contour in inlier_contours:
+        plt.plot(contour[:, 0,0], contour[:,0, 1], linestyle='-', linewidth=1, color=pend_color.astype(float)/255)
+    for contour in outlier_contours:
+        plt.plot(contour[:, 0,0], contour[:,0, 1], linestyle='-', linewidth=1, color=stem_color.astype(float)/255)
+
+    line_cols = np.arange(fit_cols.min(), fit_cols.max())[:, np.newaxis]
+    line_rows = ransac.predict(line_cols)
+    plt.plot(line_cols, line_rows, color='navy', linewidth=2, label='RANSAC regressor')
+    plt.legend(loc='lower right')
+    if pwd is not None:
+        save_fig(fig, pwd, name, title="RANSAC")
+
+
+    return img_inlier
 
 
 def get_path(from_node, to_node, pred, dist, timeout=1000):
@@ -203,8 +269,10 @@ def visualize_skeleton(img, skeleton_img, skeletonize=False, coord_junc=None, ju
         save_img(img, pwd, name)
     return img
 
+
 def node_coord_angle(src, dst):
     return np.rad2deg(np.arctan2((dst[0] - src[0]), (dst[1] - src[1])))
+
 
 def skeletonize_img(img):
     return bin2img(skeletonize(img2bin(img)))
@@ -324,6 +392,7 @@ def get_branch_center(branch_data, dist_mat, pixel_coordinates, skeleton_img):
 
     return all_branch
 
+
 def detect_peduncle(peduncle_img, settings=None, px_per_mm=None, bg_img=None, save=False, name="", pwd=""):
 
     if settings is None:
@@ -343,6 +412,9 @@ def detect_peduncle(peduncle_img, settings=None, px_per_mm=None, bg_img=None, sa
     if save:
         visualize_skeleton(bg_img.copy(), skeleton_img, coord_junc=junc_coords, coord_end=end_coords,
                            name=name + "_01", pwd=pwd)
+
+    if save:
+        fit_ransac(peduncle_img, bg_img=bg_img.copy(), save=True, name=name + "_ransac", pwd=pwd)
 
     skeleton_img = threshold_branch_length(skeleton_img, branch_length_min_px)
     junc_coords, end_coords = get_node_coord(skeleton_img)

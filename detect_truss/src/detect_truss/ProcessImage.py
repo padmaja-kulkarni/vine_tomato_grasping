@@ -140,7 +140,7 @@ class ProcessImage(object):
             save_img(self.image_a, pwd, self.name + '_a')
 
     @Timer("segmentation", name_space)
-    def segment_image(self, radius=1.0):
+    def segment_image(self, radius=1.5):
         pwd = os.path.join(self.pwd, '02_segment', str(radius))
 
         success = True
@@ -169,8 +169,11 @@ class ProcessImage(object):
         return success
 
     @Timer("filtering", name_space)
-    def filter_image(self):
+    def filter_image(self, folder_name=None):
         pwd = os.path.join(self.pwd, '03_filter')
+        if folder_name is not None:
+            pwd = os.path.join(pwd, folder_name)
+
 
         tomato_f, peduncle_f, background_f = filter_segments(self.tomato.data,
                                                              self.peduncle.data,
@@ -698,10 +701,10 @@ class ProcessImage(object):
 
 if __name__ == '__main__':
     i_start = 1
-    i_end = 50
+    i_end = 2
     N = i_end - i_start
 
-    save = False
+    save = True
     drive = "backup" # "UBUNTU 16_0"  #
     pwd_root = os.path.join(os.sep, "media", "taeke", drive, "thesis_data",
                             "detect_truss")

@@ -259,6 +259,7 @@ def save_fig(fig, pwd, name, resolution=300, no_ticks=True, title="", titleSize=
         for ax in fig.get_axes():
             # ax.yaxis.set_major_locator(plt.nulllocator())\
             ax.set_yticklabels([])
+            ax.set_xticklabels([])
     else:
         # We change the fontsize of minor ticks label
         ax.tick_params(axis='both', which='major', labelsize=10)
@@ -295,9 +296,12 @@ def add_circles(img_rgb, centers, radii=5, color=(255, 255, 255), thickness=5,
     # centers should be integers       
     centers = np.round(centers).astype(dtype=int)  # (col, row)
     radii = np.round(radii).astype(dtype=int)  # (col, row)
+    # ax = plt.gca()
 
     for center, radius in zip(centers, radii):
-        cv2.circle(img_rgb, tuple(center), radius, color, thickness)  # (col, row)
+        cv2.circle(img_rgb, tuple(center), radius, color, thickness)  # (col, row)\
+        # mpl.patches.Circle(center, radius, color=color)
+        # ax.
 
     if pwd is not None:
         save_img(img_rgb, pwd, name, title="", titleSize=20, ext='png')
@@ -305,21 +309,26 @@ def add_circles(img_rgb, centers, radii=5, color=(255, 255, 255), thickness=5,
     return img_rgb
 
 
-def plot_segments(img_rgb, background, tomato, peduncle, show_background=False, pwd=None, use_image_colours=True,
-                  name=None, title="", alpha=0.7, thickness=2):
+def plot_segments(img_rgb, background, tomato, peduncle, fig=None,show_background=False, pwd=None,
+                  use_image_colours=True, name=None, title="", alpha=0.7, thickness=1.0):
+
+    if fig is None:
+        fig = plt.figure()
+
     img_segments = stack_segments(img_rgb, background, tomato, peduncle, use_image_colours=use_image_colours)
-
     added_image = cv2.addWeighted(img_rgb, 1 - alpha, img_segments, alpha, 0)
-    added_image = add_contour(added_image, tomato, color=tomato_color, thickness=thickness)
-    added_image = add_contour(added_image, peduncle, color=peduncle_color, thickness=thickness)
+    plt.imshow(added_image)
 
+    # plot all contours
     if show_background:
-        added_image = add_contour(added_image, background, color=background_color, thickness=thickness)
+        add_contour(background, color=background_color, thickness=thickness)
+    add_contour(tomato, color=tomato_color, thickness=thickness)
+    add_contour(peduncle, color=peduncle_color, thickness=thickness)
 
     if pwd is not None:
-        save_img(added_image, pwd, name, title=title)
+        save_fig(fig, pwd, name, title=title)
 
-    return added_image
+    return fig
 
 
 def plot_features(img_rgb, tomato=None, peduncle=None, grasp=None,
@@ -563,10 +572,11 @@ def plot_error(img, tomato_pred=None, tomato_act=None, error=None,
         fig.savefig(os.path.join(pwd, name), dpi=resolution, bbox_inches='tight', pad_inches=0)
 
 
-def add_contour(imRGB, mask, color=(255, 255, 255), thickness=5):
+def add_contour(mask, color=(255, 255, 255), thickness=5):
     contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
-    cv2.drawContours(imRGB, contours, -1, color, thickness)
-    return imRGB
+    for contour in contours:
+        plt.plot(contour[:, 0, 0], contour[:, 0, 1], linestyle='-', linewidth=thickness, color=np.array(color).astype(float)/255)
+    # # cv2.drawContours(imRGB, contours, -1, color, thickness)
 
 
 def compute_line_points(center, angle, l):

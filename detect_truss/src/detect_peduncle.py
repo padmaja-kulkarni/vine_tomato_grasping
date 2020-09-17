@@ -20,15 +20,15 @@ def main():
     # %% init
     nDigits = 3
     i_start = 1
-    i_end = 25
+    i_end = 50
     N = i_end - i_start
 
     save = True
 
-    drive = "UBUNTU 16_0" # "backup"
+    drive = "backup" #  "UBUNTU 16_0" #
     pwd_current = os.path.join(os.sep, "media", "taeke", drive, "thesis_data",
                                "detect_truss")
-    dataset = 'real_blue' #  'depth_blue'  # "drawing" #  "empty" # "artificial" # 'failures'#
+    dataset = 'depth_blue' #  'depth_blue'  # "drawing" #  "empty" # "artificial" # 'failures'#
 
     pwd_data = os.path.join(pwd_current, "data", dataset)
     pwd_results = os.path.join(pwd_current, "results", dataset, "06_peduncle")

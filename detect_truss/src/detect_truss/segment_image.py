@@ -228,10 +228,14 @@ def a_hist(img_a, centers, lbl, bins=80,  a_min=-1.0, a_max=1.0, name="", pwd=""
     save_fig(fig, pwd, name + "_a_hist", titleSize=10)
 
 def both_hist(img_hue, img_a, centers, lbl, a_bins=80, pwd="", name="", hue_min = 0, hue_max = 180, hue_radius=1.0,
-              a_min=-1.0, a_max=1.0):
+              a_min=-1.0, a_max=1.0, true_scale=False):
 
-    hue_height = 2*np.pi*hue_radius/2*500  # 180*scale
-    a_height = 500  # 80*scale
+    a_height = 500
+    if true_scale:
+        hue_height = 2*np.pi*hue_radius/2*a_height  # 180*scale
+    else:
+        hue_height = 2 * 500
+
     hue_step = float(hue_max - hue_min)/float(hue_height)
     a_step = float(a_max - a_min)/float(a_height)
 
@@ -252,9 +256,7 @@ def both_hist(img_hue, img_a, centers, lbl, a_bins=80, pwd="", name="", hue_min 
 
     scale = 4.0
     hue_bins = 180*scale
-    # hue_step = float(hue_min - hue_max)/float(hue_bins)
     a_bins = a_bins*scale
-    # a_step = float(a_max - a_min)/float(a_bins)
 
     hist, _, _, _ = plt.hist2d(x, y, range=my_range, bins=[a_bins/scale, hue_bins/scale])
     hist[hist > 0] = np.log(hist[hist > 0])
@@ -266,15 +268,15 @@ def both_hist(img_hue, img_a, centers, lbl, a_bins=80, pwd="", name="", hue_min 
     img_hist_rgb = cv2.resize(img_hist_rgb, new_shape,  interpolation=cv2.INTER_NEAREST)
 
     # overlay with histogram
-    img = plot_segments(img_hist_rgb, background, tomato, peduncle, show_background=True, alpha=0.1, thickness=1, use_image_colours=False)
+    fig = plot_segments(img_hist_rgb, background, tomato, peduncle, show_background=True, alpha=0.1, thickness=1,
+                        use_image_colours=False)
 
     # plot cluster centers
     centers_hue = np.rad2deg(centers['hue'])
     centers_hue[centers_hue < 0] += 360
     hue_coords = (centers_hue / 2) / hue_step  # [rad]
     a_coords = (centers['a'] - a_min) / a_step
-    fig = plt.figure()
-    plt.imshow(img)
+
 
     for label in lbl:
         i = lbl[label]
