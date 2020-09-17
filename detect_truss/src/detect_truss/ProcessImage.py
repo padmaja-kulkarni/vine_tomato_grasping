@@ -390,10 +390,10 @@ class ProcessImage(object):
             branch_image = np.zeros(img_rgb.shape[0:2], dtype=np.uint8)
             locs = np.rint(self.get_xy(coords, self._LOCAL_FRAME_ID)).astype(np.int)  # , dtype=int
             branch_image[locs[:, 1], locs[:, 0]] = 255
-            img_rgb = visualize_skeleton(img_rgb, branch_image)
+            visualize_skeleton(img_rgb, branch_image)
 
-            plot_grasp_location(img_rgb, xy_local, grasp_angle_local,
-                                l=minimum_grasp_length_px, pwd=pwd, name=self.name, ext=self.ext)
+            plot_grasp_location(xy_local, grasp_angle_local,
+                                l=minimum_grasp_length_px, pwd=pwd, name=self.name)
 
             xy_global = self.get_xy(grasp_point, self._ORIGINAL_FRAME_ID)
             img_rgb = np.array(self.image.data).astype(np.uint8)
@@ -410,8 +410,8 @@ class ProcessImage(object):
             branch_image = cv2.dilate(branch_image, kernel, iterations=1)
             img_rgb = visualize_skeleton(img_rgb, branch_image, skeletonize=True)
 
-            plot_grasp_location(img_rgb, xy_global, grasp_angle_global,
-                                l=minimum_grasp_length_px, pwd=pwd, name=self.name + '_g', ext=self.ext)
+            plot_grasp_location(xy_global, grasp_angle_global,
+                                l=minimum_grasp_length_px, pwd=pwd, name=self.name + '_g')
 
         return success
 

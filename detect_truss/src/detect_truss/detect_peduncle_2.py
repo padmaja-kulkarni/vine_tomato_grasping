@@ -11,7 +11,7 @@ import scipy.optimize as optimize
 from matplotlib import pyplot as plt
 from sklearn import linear_model
 
-from util import add_circles, add_arrows
+from util import add_circles, add_arrows, add_contour
 from util import save_img, save_fig
 from util import remove_blobs, bin2img, img2bin
 from sklearn.metrics.pairwise import euclidean_distances
@@ -221,8 +221,11 @@ def visualize_skeleton(img, skeleton_img, skeletonize=False, coord_junc=None, ju
     if skeletonize:
         skeleton_img = skeletonize_img(skeleton_img)
 
-    contours, hierarchy = cv2.findContours(skeleton_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
-    img = cv2.drawContours(img.copy(), contours, -1, pend_color, 2)
+    fig = plt.figure()
+    plt.imshow(img)
+    add_contour(skeleton_img, pend_color, thickness=2)
+    # contours, hierarchy = cv2.findContours(skeleton_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
+    # img = cv2.drawContours(img.copy(), contours, -1, pend_color, 2)
 
     if len(np.argwhere(skeleton_img)) > 2:
 
@@ -235,8 +238,8 @@ def visualize_skeleton(img, skeleton_img, skeletonize=False, coord_junc=None, ju
         elif coord_end is None:
             _, coord_end = get_node_coord(skeleton_img)
 
-        add_circles(img, coord_junc, color=junc_color, thickness=-1, radii=3)
-        add_circles(img, coord_end, color=end_color, thickness=-1, radii=3)
+        add_circles(coord_junc, fc=junc_color, thickness=-1, radii=3)
+        add_circles(coord_end, fc=end_color, thickness=-1, radii=3)
 
     if branch_data:
         branch_center = {}
@@ -248,14 +251,12 @@ def visualize_skeleton(img, skeleton_img, skeletonize=False, coord_junc=None, ju
                 branch_center[branch_type].append(branch['center_node_coord'])
                 branch_angle[branch_type].append(branch['angle'])
 
-        add_arrows(img, branch_center['junction-junction'], branch_angle['junction-junction'],
-                   l=20, color=junc_color, thickness=2, tip_length=0.5, is_rad=False)
-        add_arrows(img, branch_center['junction-endpoint'], branch_angle['junction-endpoint'],
-                   l=20, color=end_color, thickness=2, tip_length=0.5, is_rad=False)
+        add_arrows(branch_center['junction-junction'], branch_angle['junction-junction'],
+                   l=20, color=junc_color, thickness=2, is_rad=False)
+        add_arrows(branch_center['junction-endpoint'], branch_angle['junction-endpoint'],
+                   l=20, color=end_color, thickness=2, is_rad=False)
 
     if (junc_nodes is not None) or (end_nodes is not None):
-        plt.figure()
-        plt.imshow(img)
         if junc_nodes is not None:
             for junc_node, coord in zip(junc_nodes, coord_junc):
                 plt.text(coord[0], coord[1], str(junc_node))
@@ -266,7 +267,7 @@ def visualize_skeleton(img, skeleton_img, skeletonize=False, coord_junc=None, ju
         plt.show()
 
     if pwd:
-        save_img(img, pwd, name)
+        save_fig(fig, pwd, name)
     return img
 
 

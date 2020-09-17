@@ -80,8 +80,8 @@ def index_true_positives(lbl_centers, res_centers, dist_tresh):
 
 
 i_start = 1
-i_end = 50
-save_results = False
+i_end = 2
+save_results = True
 N = i_end - i_start
 
 drive = "backup"  # "UBUNTU 16_0"  #

@@ -22,6 +22,10 @@ junction_color = (255, 0, 255)
 end_color = (255, 255, 0)
 gray_color = (150, 150, 150)
 
+background_layer = 0
+bottom_layer = 1 # contours
+middle_layer = 5
+top_layer = 10  # text
 
 def make_dirs(pwd):
     if not os.path.isdir(pwd):
@@ -274,7 +278,7 @@ def save_fig(fig, pwd, name, resolution=300, no_ticks=True, title="", titleSize=
     plt.close(fig)
 
 
-def add_circles(img_rgb, centers, radii=5, color=(255, 255, 255), thickness=5,
+def add_circles(centers, radii=5, fc=(255, 255, 255), ec=(0, 0, 0), thickness=5, alpha=1.0,
                 pwd=None, name=None, title=""):
     '''
         centers: circle centers expressed in [col, row]
@@ -288,25 +292,29 @@ def add_circles(img_rgb, centers, radii=5, color=(255, 255, 255), thickness=5,
 
     # if empty we can not add any circles
     if centers.shape[0] == 0:
-        return img_rgb
+        return
 
     if centers.shape[1] == 0:
-        return img_rgb
+        return
+
+    fc = np.array(fc).astype(float)/255
+    ec = np.array(ec).astype(float) / 255
 
     # centers should be integers       
     centers = np.round(centers).astype(dtype=int)  # (col, row)
     radii = np.round(radii).astype(dtype=int)  # (col, row)
-    # ax = plt.gca()
+    ax = plt.gca()
 
     for center, radius in zip(centers, radii):
-        cv2.circle(img_rgb, tuple(center), radius, color, thickness)  # (col, row)\
-        # mpl.patches.Circle(center, radius, color=color)
-        # ax.
+        # cv2.circle(img_rgb, tuple(center), radius, color, thickness)  # (col, row)\
+        circle_border = mpl.patches.Circle(center, radius, ec=ec, fill=False, linewidth=thickness, zorder=middle_layer)
+        circle_face = mpl.patches.Circle(center, radius, alpha=alpha, fc=fc, fill=True, zorder=middle_layer)
+
+        ax.add_artist(circle_border)
+        ax.add_artist(circle_face)
 
     if pwd is not None:
-        save_img(img_rgb, pwd, name, title="", titleSize=20, ext='png')
-
-    return img_rgb
+        save_fig(plt.gcf(), pwd, name, title="", titleSize=20, ext='png')
 
 
 def plot_segments(img_rgb, background, tomato, peduncle, fig=None,show_background=False, pwd=None,
@@ -333,80 +341,41 @@ def plot_segments(img_rgb, background, tomato, peduncle, fig=None,show_backgroun
 
 def plot_features(img_rgb, tomato=None, peduncle=None, grasp=None,
                   alpha=0.6, thickness=2, pwd=None, file_name=None, title="", radii=10):
-    img_overlay = np.ones(img_rgb.shape, dtype=np.uint8)
-    if tomato:
-        img_overlay = add_circles(img_overlay, tomato['centers'], radii=tomato['radii'], color=tomato_color,
-                                  thickness=-1)
-    if peduncle:
-        img_overlay = add_circles(img_overlay, peduncle['junctions'], radii=radii, color=junction_color, thickness=-1)
-        # img_overlay = add_circles(img_overlay, peduncle['ends'], radii = 10, color = end_color, thickness = -1)  
 
-    added_image = cv2.addWeighted(img_rgb, 1, img_overlay, alpha, 0)
+    fig = plt.figure()
+    plt.imshow(img_rgb)
 
     if tomato:
-        added_image = add_circles(added_image, tomato['centers'],
-                                  radii=tomato['radii'],
-                                  color=(0, 0, 0),  # tomato_color,
-                                  thickness=thickness)
-
-        added_image = add_circles(added_image, tomato['com'], radii=radii,
-                                  color=(255, 255, 255),
-                                  thickness=-1)
-
-        added_image = add_circles(added_image, tomato['com'], radii=radii,
-                                  color=(0, 0, 0),
-                                  thickness=3)
+        add_circles(tomato['centers'], radii=tomato['radii'], fc=tomato_color, ec=(0, 0, 0), thickness=thickness, alpha=alpha)
+        add_circles(tomato['com'], radii=radii, fc=(255, 255, 255), ec=(0, 0, 0), thickness=3)
 
     if peduncle:
-        added_image = add_circles(added_image, peduncle['junctions'], radii=radii, color=(0, 0, 0), thickness=thickness)
-        # added_image = add_circles(added_image, peduncle['ends'], radii = 10, color = (0,0,0), thickness = thickness)
+        add_circles(peduncle['junctions'], radii=radii, fc=(0, 0, 0), thickness=thickness)
+        add_circles(peduncle['ends'], radii=radii, fc=(0, 0, 0), thickness=thickness)
 
     if pwd is not None:
-        save_img(added_image, pwd, file_name, title=title)
+        save_fig(fig, pwd, file_name, title=title)
 
-    return added_image
+    return fig
 
 
 def plot_features_result(img_rgb, tomato_pred=None, peduncle=None, grasp=None,
                          alpha=0.5, thickness=2, pwd=None, name=None, title=""):
-    img_overlay = np.ones(img_rgb.shape, dtype=np.uint8)
+
+    fig = plt.figure()
+    plt.imshow(img_rgb)
+    
     if tomato_pred:
-        add_circles(img_overlay, tomato_pred['true_pos']['centers'], radii=tomato_pred['true_pos']['radii'],
-                    color=tomato_color, thickness=-1)
-        add_circles(img_overlay, tomato_pred['false_pos']['centers'], radii=tomato_pred['false_pos']['radii'],
-                    color=[150, 0, 0], thickness=-1)
-    if peduncle:
-        img_overlay = add_circles(img_overlay, peduncle['true_pos']['centers'], radii=10, color=junction_color,
-                                  thickness=-1)
-        # img_overlay = add_circles(img_overlay, peduncle['false_pos']['centers'], radii = 10, color = junction_color, thickness = -1)  
-        # img_overlay = add_circles(img_overlay, peduncle['ends'], radii = 10, color = end_color, thickness = -1)  
 
-    added_image = cv2.addWeighted(img_rgb, 1, img_overlay, alpha, 0)
-
-    if tomato_pred:
-        added_image = add_circles(added_image, tomato_pred['true_pos']['centers'],
-                                  radii=tomato_pred['true_pos']['radii'],
-                                  color=(0, 0, 0),
-                                  thickness=thickness)
-
-        added_image = add_circles(added_image, tomato_pred['false_pos']['centers'],
-                                  radii=tomato_pred['false_pos']['radii'],
-                                  color=(0, 0, 0),
-                                  thickness=thickness)
-
-        added_image = add_circles(added_image, tomato_pred['com'], radii=10,
-                                  color=(255, 255, 255),
-                                  thickness=-1)
-
-        added_image = add_circles(added_image, tomato_pred['com'], radii=10,
-                                  color=(0, 0, 0),
-                                  thickness=3)
+        add_circles(tomato_pred['true_pos']['centers'], radii=tomato_pred['true_pos']['radii'], fc=tomato_color,
+                    ec=(0, 0, 0), thickness=thickness, alpha=alpha)
+        add_circles(tomato_pred['false_pos']['centers'], radii=tomato_pred['false_pos']['radii'], fc=tomato_color,
+                    ec=(0, 0, 0), thickness=thickness, alpha=alpha)
+        add_circles(tomato_pred['com'], radii=10, fc=(255, 255, 255), ec=(0, 0, 0), thickness=3)
 
     if peduncle:
-        added_image = add_circles(added_image, peduncle['true_pos']['centers'], radii=10, color=(0, 0, 0),
-                                  thickness=thickness)
-        added_image = add_circles(added_image, peduncle['false_pos']['centers'], radii=10, color=(255, 0, 0),
-                                  thickness=thickness)
+        add_circles(peduncle['false_pos']['centers'], radii=10, fc=junction_color, ec=(0, 0, 0), thickness=thickness)
+        add_circles(peduncle['true_pos']['centers'], radii=10, fc=junction_color, ec=(0, 0, 0), thickness=thickness)
         # added_image = add_circles(added_image, peduncle['ends'], radii = 10, color = (0,0,0), thickness = thickness)
 
     if grasp:
@@ -573,9 +542,11 @@ def plot_error(img, tomato_pred=None, tomato_act=None, error=None,
 
 
 def add_contour(mask, color=(255, 255, 255), thickness=5):
+    color = np.array(color).astype(float) / 255
     contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
     for contour in contours:
-        plt.plot(contour[:, 0, 0], contour[:, 0, 1], linestyle='-', linewidth=thickness, color=np.array(color).astype(float)/255)
+        plt.plot(contour[:, 0, 0], contour[:, 0, 1], linestyle='-', linewidth=thickness, color=color,
+                 zorder=bottom_layer)
     # # cv2.drawContours(imRGB, contours, -1, color, thickness)
 
 
@@ -595,7 +566,7 @@ def compute_line_points(center, angle, l):
     return start_point, end_point
 
 
-def add_lines(img_rgb, centers, angles, l=20, color=(255, 255, 255), thickness=1, is_rad=True):
+def add_lines(centers, angles, l=20, color=(255, 255, 255), thickness=1, is_rad=True):
     'angle in rad'
     if isinstance(centers, (list, tuple)):
         centers = np.array(centers, ndmin=2)
@@ -603,56 +574,57 @@ def add_lines(img_rgb, centers, angles, l=20, color=(255, 255, 255), thickness=1
     if not isinstance(angles, (list, tuple)):
         angles = [angles]
 
+    color = np.array(color).astype(float)/255
+
     for center, angle in zip(centers, angles):
         if not is_rad:
             angle = angle / 180 * np.pi
         start_point, end_point = compute_line_points(center, angle, l)
 
-        img_rgb = cv2.line(img_rgb.copy(), start_point, end_point, color, thickness=thickness)
+        # cv2.line(img_rgb.copy(), start_point, end_point, color, thickness=thickness)
+        plt.plot([start_point[0], end_point[0]], [start_point[1], end_point[1]], color=color, linewidth=thickness)
 
-
-def add_arrows(img_rgb, centers, angles, l=20, color=(255, 255, 255), thickness=1, tip_length=0.5, is_rad=True):
-    'angle in rad'
+def add_arrows(centers, angles, l=20, color=(255, 255, 255), thickness=1, head_width=5, head_length=7, is_rad=True):
+    """
+    angle in rad
+    """
     if isinstance(centers, (list, tuple)):
         centers = np.array(centers, ndmin=2)
 
     if not isinstance(angles, (list, tuple)):
         angles = [angles]
 
+    color = np.array(color).astype(float)/255
+
     for center, angle in zip(centers, angles):
         if not is_rad:
             angle = angle / 180 * np.pi
         start_point, end_point = compute_line_points(center, angle, l)
 
-        cv2.arrowedLine(img_rgb, start_point, end_point, color, thickness, tipLength=tip_length)
+        # cv2.arrowedLine(start_point, end_point, color, thickness, tipLength=tip_length)
+        plt.arrow(start_point[0], start_point[1], end_point[0] - start_point[0], end_point[1] - start_point[1],
+                  color=color, lw=thickness, head_width=head_width, head_length=head_length)
 
 
-def plot_grasp_location(img_rgb, loc, angle,
-                        l=30,
-                        r=10,
-                        thickness=2,
-                        pwd=None,
-                        name=None,
-                        title='',
-                        ext='png',
-                        resolution=300):
-    'angle in rad'
+def plot_grasp_location(loc, angle, l=30, r=10, thickness=2, pwd=None, name=None, title=''):
+    """
+        angle in rad
+    """
+
     loc = loc[0]
-
     start_point, end_point = compute_line_points(loc, angle + np.pi / 2, r)
 
-    add_lines(img_rgb, start_point, angle, l=l, color=(255, 255, 255), thickness=thickness)
-    add_lines(img_rgb, end_point, angle, l=l, color=(255, 255, 255), thickness=thickness)
-    # add_circles(img_rgb, loc, radii = r,  color = (255,255,255), thickness = -1)  
+    add_lines(start_point, angle, l=l, color=(255, 255, 255), thickness=thickness)
+    add_lines(end_point, angle, l=l, color=(255, 255, 255), thickness=thickness)
 
     if pwd is not None:
-        save_img(img_rgb, pwd, name, title=title)
-
-    return img_rgb
+        save_fig(plt.gcf(), pwd, name, title=title)
 
 
 def pipi(angle):
-    # cast angle to range [-180, 180]
+    """
+    cast angle to range [-180, 180]
+    """
     return (angle + 180) % 360 - 180
 
 
