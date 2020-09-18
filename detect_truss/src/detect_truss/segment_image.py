@@ -268,8 +268,8 @@ def both_hist(img_hue, img_a, centers, lbl, a_bins=80, pwd="", name="", hue_min 
     img_hist_rgb = cv2.resize(img_hist_rgb, new_shape,  interpolation=cv2.INTER_NEAREST)
 
     # overlay with histogram
-    fig = plot_segments(img_hist_rgb, background, tomato, peduncle, show_background=True, alpha=0.1, thickness=1,
-                        use_image_colours=False)
+    fig = plot_segments(img_hist_rgb, background, tomato, peduncle, show_background=True, alpha=0.1, linewidth=1,
+                        show_axis=True, use_image_colours=False)
 
     # plot cluster centers
     centers_hue = np.rad2deg(centers['hue'])

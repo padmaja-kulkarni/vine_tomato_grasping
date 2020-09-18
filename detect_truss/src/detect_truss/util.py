@@ -13,9 +13,12 @@ import warnings
 import copy
 from matplotlib import pyplot as plt
 import matplotlib as mpl
-from matplotlib.offsetbox import (OffsetImage, AnnotationBbox)
 
-tomato_color = (255, 0, 0)
+import utils.color_maps as color_maps
+
+from matplotlib.backends.backend_agg import FigureCanvasAgg
+
+tomato_color = (255, 82, 82)
 peduncle_color = (0, 255, 0)
 background_color = (0, 0, 255)
 junction_color = (255, 0, 255)
@@ -222,10 +225,15 @@ def save_img(img, pwd, name, resolution=300, title="", titleSize=20, ext='png', 
     plt.rcParams["savefig.format"] = ext
     plt.rcParams["savefig.bbox"] = 'tight'
     plt.rcParams['axes.titlesize'] = titleSize
-    plt.rcParams['image.cmap'] = color_map
+    # plt.rcParams['image.cmap'] = color_map
+
+    if color_map == 'HSV':
+        color_map = color_maps.hsv_color_scale()
+    elif color_map == 'Lab':
+        color_map = color_maps.lab_color_scale()
 
     fig = plt.figure()
-    plt.imshow(img)
+    plt.imshow(img, cmap=color_map)
     plt.axis('off')
     if title is not None:
         plt.title(title)
@@ -278,7 +286,7 @@ def save_fig(fig, pwd, name, resolution=300, no_ticks=True, title="", titleSize=
     plt.close(fig)
 
 
-def add_circles(centers, radii=5, fc=(255, 255, 255), ec=(0, 0, 0), thickness=5, alpha=1.0,
+def add_circles(centers, radii=5, fc=(255, 255, 255), ec=(0, 0, 0), linewidth=1, alpha=1.0,
                 pwd=None, name=None, title=""):
     '''
         centers: circle centers expressed in [col, row]
@@ -286,7 +294,7 @@ def add_circles(centers, radii=5, fc=(255, 255, 255), ec=(0, 0, 0), thickness=5,
     if isinstance(centers, (list, tuple, np.matrix)):
         centers = np.array(centers, ndmin=2)
 
-        # if a single radius is give, we repeat the value
+    # if a single radius is give, we repeat the value
     if not isinstance(radii, (list, np.ndarray)):
         radii = [radii] * centers.shape[0]
 
@@ -300,38 +308,38 @@ def add_circles(centers, radii=5, fc=(255, 255, 255), ec=(0, 0, 0), thickness=5,
     fc = np.array(fc).astype(float)/255
     ec = np.array(ec).astype(float) / 255
 
+    fc = np.append(fc, alpha)
+    ec = np.append(ec, 1)
+
     # centers should be integers       
     centers = np.round(centers).astype(dtype=int)  # (col, row)
     radii = np.round(radii).astype(dtype=int)  # (col, row)
     ax = plt.gca()
 
     for center, radius in zip(centers, radii):
-        # cv2.circle(img_rgb, tuple(center), radius, color, thickness)  # (col, row)\
-        circle_border = mpl.patches.Circle(center, radius, ec=ec, fill=False, linewidth=thickness, zorder=middle_layer)
-        circle_face = mpl.patches.Circle(center, radius, alpha=alpha, fc=fc, fill=True, zorder=middle_layer)
-
+        circle_border = mpl.patches.Circle(center, radius, ec=ec, fc=fc, fill=True, linewidth=linewidth,
+                                           zorder=middle_layer)
         ax.add_artist(circle_border)
-        ax.add_artist(circle_face)
 
     if pwd is not None:
         save_fig(plt.gcf(), pwd, name, title="", titleSize=20, ext='png')
 
 
-def plot_segments(img_rgb, background, tomato, peduncle, fig=None,show_background=False, pwd=None,
-                  use_image_colours=True, name=None, title="", alpha=0.7, thickness=1.0):
+def plot_segments(img_rgb, background, tomato, peduncle, fig=None, show_background=False, pwd=None,
+                  use_image_colours=True, show_axis=False, name=None, title="", alpha=0.7, linewidth=0.5):
 
     if fig is None:
         fig = plt.figure()
 
     img_segments = stack_segments(img_rgb, background, tomato, peduncle, use_image_colours=use_image_colours)
     added_image = cv2.addWeighted(img_rgb, 1 - alpha, img_segments, alpha, 0)
-    plt.imshow(added_image)
+    plot_image(added_image, show_axis=show_axis)
 
     # plot all contours
     if show_background:
-        add_contour(background, color=background_color, thickness=thickness)
-    add_contour(tomato, color=tomato_color, thickness=thickness)
-    add_contour(peduncle, color=peduncle_color, thickness=thickness)
+        add_contour(background, color=background_color, linewidth=linewidth)
+    add_contour(tomato, color=tomato_color, linewidth=linewidth)
+    add_contour(peduncle, color=peduncle_color, linewidth=linewidth)
 
     if pwd is not None:
         save_fig(fig, pwd, name, title=title)
@@ -339,74 +347,91 @@ def plot_segments(img_rgb, background, tomato, peduncle, fig=None,show_backgroun
     return fig
 
 
-def plot_features(img_rgb, tomato=None, peduncle=None, grasp=None,
-                  alpha=0.6, thickness=2, pwd=None, file_name=None, title="", radii=10):
+def plot_image(img, show_axis=False):
+    """
+        plot image
+    """
+    plt.imshow(img)
 
-    fig = plt.figure()
-    plt.imshow(img_rgb)
+    if not show_axis:
+        plt.axis('off')
+
+        # https://stackoverflow.com/a/27227718
+        plt.gca().set_axis_off()
+        plt.subplots_adjust(top=1, bottom=0, right=1, left=0, hspace=0, wspace=0)
+        plt.margins(0, 0)
+        plt.gca().xaxis.set_major_locator(plt.NullLocator())
+        plt.gca().yaxis.set_major_locator(plt.NullLocator())
+
+def plot_features(img_rgb=None, tomato=None, peduncle=None, grasp=None,
+                  alpha=0.4, linewidth=1, pwd=None, file_name=None, title="", radii=8):
+
+    if img_rgb is not None:
+        fig = plt.figure()
+        plot_image(img_rgb)
+    else:
+        fig = plt.gcf()
 
     if tomato:
-        add_circles(tomato['centers'], radii=tomato['radii'], fc=tomato_color, ec=(0, 0, 0), thickness=thickness, alpha=alpha)
-        add_circles(tomato['com'], radii=radii, fc=(255, 255, 255), ec=(0, 0, 0), thickness=3)
+        add_circles(tomato['centers'], radii=tomato['radii'], fc=tomato_color, ec=(0, 0, 0), linewidth=linewidth, alpha=alpha)
+        add_circles(tomato['com'], radii=radii, fc=(255, 255, 255), ec=(0, 0, 0), linewidth=linewidth)
 
     if peduncle:
-        add_circles(peduncle['junctions'], radii=radii, fc=(0, 0, 0), thickness=thickness)
-        add_circles(peduncle['ends'], radii=radii, fc=(0, 0, 0), thickness=thickness)
-
-    if pwd is not None:
-        save_fig(fig, pwd, file_name, title=title)
-
-    return fig
-
-
-def plot_features_result(img_rgb, tomato_pred=None, peduncle=None, grasp=None,
-                         alpha=0.5, thickness=2, pwd=None, name=None, title=""):
-
-    fig = plt.figure()
-    plt.imshow(img_rgb)
-    
-    if tomato_pred:
-
-        add_circles(tomato_pred['true_pos']['centers'], radii=tomato_pred['true_pos']['radii'], fc=tomato_color,
-                    ec=(0, 0, 0), thickness=thickness, alpha=alpha)
-        add_circles(tomato_pred['false_pos']['centers'], radii=tomato_pred['false_pos']['radii'], fc=tomato_color,
-                    ec=(0, 0, 0), thickness=thickness, alpha=alpha)
-        add_circles(tomato_pred['com'], radii=10, fc=(255, 255, 255), ec=(0, 0, 0), thickness=3)
-
-    if peduncle:
-        add_circles(peduncle['false_pos']['centers'], radii=10, fc=junction_color, ec=(0, 0, 0), thickness=thickness)
-        add_circles(peduncle['true_pos']['centers'], radii=10, fc=junction_color, ec=(0, 0, 0), thickness=thickness)
-        # added_image = add_circles(added_image, peduncle['ends'], radii = 10, color = (0,0,0), thickness = thickness)
+        add_circles(peduncle['junctions'], radii=radii, fc=junction_color, linewidth=linewidth)
 
     if grasp:
         col = grasp['col']
         row = grasp['row']
         angle = grasp['angle']
-        if (col is not None) and (row is not None) and (angle is not None):
-            plot_grasp_location(added_image, [[col, row]], angle,
-                                l=20, r=15, thickness=2)
+        plot_grasp_location([[col, row]], angle, l=20, r=15, linewidth=2)
 
     if pwd is not None:
-        save_img(added_image, pwd, name, title=title)
-
-    return added_image
+        save_fig(fig, pwd, file_name, title=title)
 
 
-def plot_error(img, tomato_pred=None, tomato_act=None, error=None,
+def plot_features_result(img_rgb, tomato_pred=None, peduncle=None, grasp=None,
+                         alpha=0.5, linewidth=1, pwd=None, name=None, title=""):
+    fig = plt.figure()
+    plot_image(img_rgb)
+
+    if tomato_pred:
+
+        add_circles(tomato_pred['true_pos']['centers'], radii=tomato_pred['true_pos']['radii'], fc=tomato_color,
+                    ec=(0, 0, 0), linewidth=linewidth, alpha=alpha)
+        add_circles(tomato_pred['false_pos']['centers'], radii=tomato_pred['false_pos']['radii'], fc=tomato_color,
+                    ec=(0, 0, 0), linewidth=linewidth, alpha=alpha)
+        add_circles(tomato_pred['com'], radii=10, fc=(255, 255, 255), ec=(0, 0, 0), linewidth=linewidth)
+
+    if peduncle:
+        add_circles(peduncle['false_pos']['centers'], radii=8, fc=junction_color, ec=(255, 0, 0), linewidth=linewidth, alpha=0)
+        add_circles(peduncle['true_pos']['centers'], radii=8, fc=junction_color, ec=(0, 0, 0), linewidth=linewidth)
+        # added_image = add_circles(added_image, peduncle['ends'], radii = 10, color = (0,0,0), linewidth = linewidth)
+
+    if grasp:
+        col = grasp['col']
+        row = grasp['row']
+        angle = grasp['angle']
+        plot_grasp_location([[col, row]], angle, l=20, r=15, linewidth=2)
+
+    if pwd is not None:
+        save_fig(fig, pwd, name, title=title)
+
+
+def plot_error(tomato_pred=None, tomato_act=None, error=None,
                pwd=None,
                name=None,
                use_mm=False,
                title="",
                resolution=300,
                title_size=20, ext='png'):
-    fig, ax = plt.subplots()
-    ax.imshow(img)
+
+    fig = plt.gcf()
+    ax = plt.gca()
+
     plt.rcParams["savefig.format"] = ext
     plt.rcParams["savefig.bbox"] = 'tight'
     plt.rcParams['axes.titlesize'] = title_size
 
-    plt.imshow(img)
-    plt.axis('off')
     plt.title(title)
 
     if use_mm:
@@ -414,13 +439,6 @@ def plot_error(img, tomato_pred=None, tomato_act=None, error=None,
     else:
         unit = 'px'
 
-    # https://stackoverflow.com/a/27227718
-    plt.gca().set_axis_off()
-    plt.subplots_adjust(top=1, bottom=0, right=1, left=0,
-                        hspace=0, wspace=0)
-    plt.margins(0, 0)
-    plt.gca().xaxis.set_major_locator(plt.NullLocator())
-    plt.gca().yaxis.set_major_locator(plt.NullLocator())
 
     n_true_pos = len(tomato_pred['true_pos']['centers'])
     n_false_pos = len(tomato_pred['false_pos']['centers'])
@@ -470,7 +488,12 @@ def plot_error(img, tomato_pred=None, tomato_act=None, error=None,
     kw_default = dict(arrowprops=dict(arrowstyle="-"),
                       bbox=bbox_props, va="center", size=12, color='k')
 
-    h, w = img.shape[:2]
+    y_lim = ax.get_ylim()
+    h = y_lim[0] - y_lim[1]
+    x_lim = ax.get_xlim()
+    w = x_lim[1] - x_lim[0]
+
+    # h, w = img.shape[:2]
     n = len(centers) + 1
     y_text = 0  # 1.0/n* h
     for center, error_center, error_radius, label in zip(centers, error_centers, error_radii, labels):
@@ -541,17 +564,18 @@ def plot_error(img, tomato_pred=None, tomato_act=None, error=None,
         fig.savefig(os.path.join(pwd, name), dpi=resolution, bbox_inches='tight', pad_inches=0)
 
 
-def add_contour(mask, color=(255, 255, 255), thickness=5):
+def add_contour(mask, color=(255, 255, 255), linewidth=1):
     color = np.array(color).astype(float) / 255
     contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
     for contour in contours:
-        plt.plot(contour[:, 0, 0], contour[:, 0, 1], linestyle='-', linewidth=thickness, color=color,
+        plt.plot(contour[:, 0, 0], contour[:, 0, 1], linestyle='-', linewidth=linewidth, color=color,
                  zorder=bottom_layer)
-    # # cv2.drawContours(imRGB, contours, -1, color, thickness)
 
 
 def compute_line_points(center, angle, l):
-    ' angle in rad'
+    """
+        angle in rad
+    """
     col = center[0]
     row = center[1]
 
@@ -566,7 +590,7 @@ def compute_line_points(center, angle, l):
     return start_point, end_point
 
 
-def add_lines(centers, angles, l=20, color=(255, 255, 255), thickness=1, is_rad=True):
+def add_lines(centers, angles, l=20, color=(255, 255, 255), linewidth=1, is_rad=True):
     'angle in rad'
     if isinstance(centers, (list, tuple)):
         centers = np.array(centers, ndmin=2)
@@ -579,12 +603,11 @@ def add_lines(centers, angles, l=20, color=(255, 255, 255), thickness=1, is_rad=
     for center, angle in zip(centers, angles):
         if not is_rad:
             angle = angle / 180 * np.pi
+
         start_point, end_point = compute_line_points(center, angle, l)
+        plt.plot([start_point[0], end_point[0]], [start_point[1], end_point[1]], color=color, linewidth=linewidth)
 
-        # cv2.line(img_rgb.copy(), start_point, end_point, color, thickness=thickness)
-        plt.plot([start_point[0], end_point[0]], [start_point[1], end_point[1]], color=color, linewidth=thickness)
-
-def add_arrows(centers, angles, l=20, color=(255, 255, 255), thickness=1, head_width=5, head_length=7, is_rad=True):
+def add_arrows(centers, angles, l=20, color=(255, 255, 255), linewidth=1, head_width=5, head_length=7, is_rad=True):
     """
     angle in rad
     """
@@ -601,21 +624,27 @@ def add_arrows(centers, angles, l=20, color=(255, 255, 255), thickness=1, head_w
             angle = angle / 180 * np.pi
         start_point, end_point = compute_line_points(center, angle, l)
 
-        # cv2.arrowedLine(start_point, end_point, color, thickness, tipLength=tip_length)
         plt.arrow(start_point[0], start_point[1], end_point[0] - start_point[0], end_point[1] - start_point[1],
-                  color=color, lw=thickness, head_width=head_width, head_length=head_length)
+                  color=color, lw=linewidth, head_width=head_width, head_length=head_length, zorder=top_layer)
 
 
-def plot_grasp_location(loc, angle, l=30, r=10, thickness=2, pwd=None, name=None, title=''):
+def plot_grasp_location(loc, angle, l=30, r=10, linewidth=1, pwd=None, name=None, title=''):
     """
         angle in rad
     """
+    if angle is None:
+        return
 
-    loc = loc[0]
+    if len(loc.shape) > 1:
+        loc = loc[0]
+
+    if (loc[0] is None) or (loc[1] is None):
+        return
+
     start_point, end_point = compute_line_points(loc, angle + np.pi / 2, r)
 
-    add_lines(start_point, angle, l=l, color=(255, 255, 255), thickness=thickness)
-    add_lines(end_point, angle, l=l, color=(255, 255, 255), thickness=thickness)
+    add_lines(start_point, angle, l=l, color=(255, 255, 255), linewidth=linewidth)
+    add_lines(end_point, angle, l=l, color=(255, 255, 255), linewidth=linewidth)
 
     if pwd is not None:
         save_fig(plt.gcf(), pwd, name, title=title)
@@ -687,12 +716,6 @@ def plot_timer(timer_dict, N=1, threshold=0, ignore_key=None, pwd=None, name='ti
     donut(values_keep, labels_keep, pwd=pwd, name=name, title=title)
 
 
-#    fig, ax = plt.subplots()
-#    ax.pie(values_keep, labels=labels_keep, autopct=make_autopct(values_keep), startangle=90, labeldistance=1.2)
-#    ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
-#    
-#    fig.show()
-
 def donut(data, labels, pwd=None, name=None, title=None):
     data = np.array(data)
     data_rel = data / sum(data) * 100
@@ -726,17 +749,18 @@ def donut(data, labels, pwd=None, name=None, title=None):
         save_fig(fig, pwd, name)
 
 
-def make_autopct(values):
-    def my_autopct(pct):
-        total = sum(values)
-        val = int(round(pct * total / 100.0))  # [ms]
-        return '{p:.2f}%  ({v:d} ms)'.format(p=pct, v=val)
-
-    return my_autopct
-
-
 def angular_difference(x, y):
     '''
     compute the difference between two angles x, y
     '''
     return np.abs(np.arctan2(np.sin(x - y), np.cos(x - y)))
+
+
+def figure_to_image(fig):
+    canvas = FigureCanvasAgg(fig)
+    canvas.draw()
+    s, (width, height) = canvas.print_to_buffer()
+
+    # Option 2a: Convert to a NumPy array.
+    img = np.fromstring(s, np.uint8).reshape((height, width, 4))
+    return img

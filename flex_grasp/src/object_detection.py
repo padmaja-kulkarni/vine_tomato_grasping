@@ -348,7 +348,7 @@ class ObjectDetection(object):
         self.log_image(result_img=img_tomato)
 
         # publish results tomato_img
-        imgmsg_tomato = self.bridge.cv2_to_imgmsg(img_tomato, encoding="rgb8")
+        imgmsg_tomato = self.bridge.cv2_to_imgmsg(img_tomato, encoding="rgba8")
         imgmsg_depth = self.bridge.cv2_to_imgmsg(img_depth, encoding="rgb8")
         imgmsg_hue = self.bridge.cv2_to_imgmsg(img_hue)
 

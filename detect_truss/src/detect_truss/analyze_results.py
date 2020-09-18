@@ -80,7 +80,7 @@ def index_true_positives(lbl_centers, res_centers, dist_tresh):
 
 
 i_start = 1
-i_end = 2
+i_end = 50
 save_results = True
 N = i_end - i_start
 
@@ -186,10 +186,9 @@ for count, i_truss in enumerate(range(i_start, i_end)):
     tomato_lbl['com'] = com
 
     if save_results:
-        plot_features(img_rgb.copy(), tomato=tomato_lbl, pwd=pwd_store, file_name=truss_name + '_tom_lbl')
-        plot_features(img_rgb.copy(), peduncle=peduncle_lbl, pwd=pwd_store, file_name=truss_name + '_pend_lbl')
-        plot_features(img_rgb.copy(), tomato=tomato_lbl, peduncle=peduncle_lbl, pwd=pwd_store,
-                      file_name=truss_name + '_lbl')
+        plot_features(img_rgb, tomato=tomato_lbl, pwd=pwd_store, file_name=truss_name + '_tom_lbl')
+        plot_features(img_rgb, peduncle=peduncle_lbl, pwd=pwd_store, file_name=truss_name + '_pend_lbl')
+        plot_features(img_rgb, tomato=tomato_lbl, peduncle=peduncle_lbl, pwd=pwd_store, file_name=truss_name + '_lbl')
 
     with open(file_res, "r") as read_file:
         data_results = json.load(read_file)
@@ -244,9 +243,8 @@ for count, i_truss in enumerate(range(i_start, i_end)):
 
     # plot
     if save_results:
-        img_tom_res = plot_features_result(img_res, tomato_pred=tomato_pred, name=truss_name + '_temp')
-        plot_error(img_tom_res,
-                   tomato_pred=tomato_pred,  # centers, com,
+        plot_features_result(img_res, tomato_pred=tomato_pred, name=truss_name + '_temp')
+        plot_error(tomato_pred=tomato_pred,  # centers, com,
                    tomato_act=tomato_actual,
                    error=tomato_error,  # center radii and com
                    pwd=pwd_store,
@@ -288,10 +286,8 @@ for count, i_truss in enumerate(range(i_start, i_end)):
 
     # plot
     if save_results:
-        img_penduncle_res = plot_features_result(img_res, peduncle=junction_pred)  # grasp = grasp_res
-
-        plot_error(img_penduncle_res,
-                   tomato_pred=junction_pred,  # centers, com,
+        img_penduncle_res = plot_features_result(img_res, peduncle=junction_pred)  # grasp = grasp_ress
+        plot_error(tomato_pred=junction_pred,  # centers, com,
                    tomato_act=junction_actual,
                    error=junctions_error,
                    pwd=pwd_store,

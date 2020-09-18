@@ -12,7 +12,7 @@ from matplotlib import pyplot as plt
 from sklearn import linear_model
 
 from util import add_circles, add_arrows, add_contour
-from util import save_img, save_fig
+from util import plot_image, save_fig
 from util import remove_blobs, bin2img, img2bin
 from sklearn.metrics.pairwise import euclidean_distances
 
@@ -152,11 +152,12 @@ def fit_ransac(peduncle_img, bg_img=None, save=False, name="", pwd=""):
     outlier_contours, hierarchy = cv2.findContours(img_outlier, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
 
     fig = plt.figure()
-    plt.imshow(bg_img)
+    plot_image(bg_img)
+
     for contour in inlier_contours:
-        plt.plot(contour[:, 0,0], contour[:,0, 1], linestyle='-', linewidth=1, color=pend_color.astype(float)/255)
+        plt.plot(contour[:, 0, 0], contour[:, 0, 1], linestyle='-', linewidth=1, color=pend_color.astype(float)/255)
     for contour in outlier_contours:
-        plt.plot(contour[:, 0,0], contour[:,0, 1], linestyle='-', linewidth=1, color=stem_color.astype(float)/255)
+        plt.plot(contour[:, 0, 0], contour[:, 0, 1], linestyle='-', linewidth=1, color=stem_color.astype(float)/255)
 
     line_cols = np.arange(fit_cols.min(), fit_cols.max())[:, np.newaxis]
     line_rows = ransac.predict(line_cols)
@@ -212,22 +213,27 @@ def show_path(path, pixel_coordinates, shape, subpath=None, show=False):
     return img.astype(np.uint8)
 
 
-def visualize_skeleton(img, skeleton_img, skeletonize=False, coord_junc=None, junc_nodes=None, end_nodes=None,
-                       coord_end=None, branch_data=None, name="", pwd=None):
+def visualize_skeleton(img, skeleton_img, skeletonize=False, coord_junc=None, coord_end=None, junc_nodes=None,
+                       end_nodes=None, branch_data=None, name="", pwd=None, show_nodes=True, skeleton_color=None,
+                       skeleton_width=4, show_img=True):
     junc_color = (100, 0, 200)
     end_color = (200, 0, 0)
-    pend_color = (0, 150, 30)
+
+    if skeleton_color is None:
+        skeleton_color = (0, 150, 30)
 
     if skeletonize:
         skeleton_img = skeletonize_img(skeleton_img)
 
-    fig = plt.figure()
-    plt.imshow(img)
-    add_contour(skeleton_img, pend_color, thickness=2)
-    # contours, hierarchy = cv2.findContours(skeleton_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
-    # img = cv2.drawContours(img.copy(), contours, -1, pend_color, 2)
+    if show_img:
+        fig = plt.figure()
+        plot_image(img)
+    else:
+        fig = plt.gcf()
 
-    if len(np.argwhere(skeleton_img)) > 2:
+    add_contour(skeleton_img, skeleton_color, linewidth=skeleton_width)
+
+    if (len(np.argwhere(skeleton_img)) > 2) and show_nodes:
 
         if (coord_junc is None) and (coord_end is None):
             coord_junc, coord_end = get_node_coord(skeleton_img)
@@ -238,8 +244,8 @@ def visualize_skeleton(img, skeleton_img, skeletonize=False, coord_junc=None, ju
         elif coord_end is None:
             _, coord_end = get_node_coord(skeleton_img)
 
-        add_circles(coord_junc, fc=junc_color, thickness=-1, radii=3)
-        add_circles(coord_end, fc=end_color, thickness=-1, radii=3)
+        add_circles(coord_junc, radii=4, fc=junc_color, linewidth=0)
+        add_circles(coord_end, radii=4, fc=end_color, linewidth=0)
 
     if branch_data:
         branch_center = {}
@@ -252,9 +258,9 @@ def visualize_skeleton(img, skeleton_img, skeletonize=False, coord_junc=None, ju
                 branch_angle[branch_type].append(branch['angle'])
 
         add_arrows(branch_center['junction-junction'], branch_angle['junction-junction'],
-                   l=20, color=junc_color, thickness=2, is_rad=False)
+                   l=20, color=junc_color, linewidth=2, is_rad=False)
         add_arrows(branch_center['junction-endpoint'], branch_angle['junction-endpoint'],
-                   l=20, color=end_color, thickness=2, is_rad=False)
+                   l=20, color=end_color, linewidth=2, is_rad=False)
 
     if (junc_nodes is not None) or (end_nodes is not None):
         if junc_nodes is not None:
@@ -264,11 +270,9 @@ def visualize_skeleton(img, skeleton_img, skeletonize=False, coord_junc=None, ju
         if end_nodes is not None:
             for end_node, coord in zip(end_nodes, coord_end):
                 plt.text(coord[0], coord[1], str(end_node))
-        plt.show()
 
     if pwd:
         save_fig(fig, pwd, name)
-    return img
 
 
 def node_coord_angle(src, dst):
@@ -411,7 +415,7 @@ def detect_peduncle(peduncle_img, settings=None, px_per_mm=None, bg_img=None, sa
     junc_coords, end_coords = get_node_coord(skeleton_img)
 
     if save:
-        visualize_skeleton(bg_img.copy(), skeleton_img, coord_junc=junc_coords, coord_end=end_coords,
+        visualize_skeleton(bg_img, skeleton_img, coord_junc=junc_coords, coord_end=end_coords,
                            name=name + "_01", pwd=pwd)
 
     if save:
@@ -421,7 +425,7 @@ def detect_peduncle(peduncle_img, settings=None, px_per_mm=None, bg_img=None, sa
     junc_coords, end_coords = get_node_coord(skeleton_img)
 
     if save:
-        visualize_skeleton(bg_img.copy(), skeleton_img, coord_junc=junc_coords, coord_end=end_coords,
+        visualize_skeleton(bg_img, skeleton_img, coord_junc=junc_coords, coord_end=end_coords,
                            name=name + "_02", pwd=pwd)
 
     graph, pixel_coordinates, degree_image = skan.skeleton_to_csgraph(skeleton_img, unique_junctions=True)
@@ -448,12 +452,11 @@ def detect_peduncle(peduncle_img, settings=None, px_per_mm=None, bg_img=None, sa
         junc_coords = junc_coords[mask]
 
     if save:
-        visualize_skeleton(bg_img.copy(), path_img, coord_junc=junc_coords, # junc_nodes=junc_nodes, end_nodes=end_nodes,
+        visualize_skeleton(bg_img, path_img, coord_junc=junc_coords, # junc_nodes=junc_nodes, end_nodes=end_nodes,
                            coord_end=end_coords, name=name + "_03", pwd=pwd)
 
     if save:
-        visualize_skeleton(bg_img.copy(), path_img, coord_junc=junc_coords,
-                           branch_data=branch_data,
-                           coord_end=end_coords, name=name + "_04", pwd=pwd)
+        visualize_skeleton(bg_img, path_img, coord_junc=junc_coords, branch_data=branch_data, coord_end=end_coords,
+                           name=name + "_04", pwd=pwd)
 
     return path_img, branch_data, junc_coords, end_coords

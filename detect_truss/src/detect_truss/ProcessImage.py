@@ -25,7 +25,7 @@ from util import translation_rot2or
 from util import add_circles, plot_features
 
 from util import make_dirs
-from util import save_img
+from util import save_img, figure_to_image
 from util import load_rgb
 from util import stack_segments
 from util import plot_timer, plot_grasp_location
@@ -136,12 +136,19 @@ class ProcessImage(object):
 
         # self.image_hue = imHSV[:, :, 0]
         if self.save:
-            save_img(self.image_hue, pwd, self.name + '_h')
-            save_img(self.image_a, pwd, self.name + '_a')
+            save_img(self.image_hue, pwd, self.name + '_h_raw') # color_map='hsv'
+            save_img(self.image_a, pwd, self.name + '_a_raw')
+
+            save_img(self.image_hue, pwd, self.name + '_h', color_map='HSV') # color_map='hsv'
+            save_img(self.image_a, pwd, self.name + '_a', color_map='Lab')
 
     @Timer("segmentation", name_space)
-    def segment_image(self, radius=1.5):
-        pwd = os.path.join(self.pwd, '02_segment', str(radius))
+    def segment_image(self, radius=None):
+        if radius is None:
+            pwd = os.path.join(self.pwd, '02_segment')
+            radius = 1.5
+        else:
+            pwd = os.path.join(self.pwd, '02_segment', str(radius))
 
         success = True
         background, tomato, peduncle = segment_truss(self.image_hue,
@@ -390,10 +397,10 @@ class ProcessImage(object):
             branch_image = np.zeros(img_rgb.shape[0:2], dtype=np.uint8)
             locs = np.rint(self.get_xy(coords, self._LOCAL_FRAME_ID)).astype(np.int)  # , dtype=int
             branch_image[locs[:, 1], locs[:, 0]] = 255
-            visualize_skeleton(img_rgb, branch_image)
 
-            plot_grasp_location(xy_local, grasp_angle_local,
-                                l=minimum_grasp_length_px, pwd=pwd, name=self.name)
+            visualize_skeleton(img_rgb, branch_image, show_nodes=False, skeleton_color=(0, 0, 0), skeleton_width=4)
+            plot_grasp_location(xy_local, grasp_angle_local, l=minimum_grasp_length_px, pwd=pwd, name=self.name,
+                                linewidth=2)
 
             xy_global = self.get_xy(grasp_point, self._ORIGINAL_FRAME_ID)
             img_rgb = np.array(self.image.data).astype(np.uint8)
@@ -408,10 +415,10 @@ class ProcessImage(object):
             # cv2.morphologyEx(branch_image, cv2.MORPH_CLOSE, kernel)
 
             branch_image = cv2.dilate(branch_image, kernel, iterations=1)
-            img_rgb = visualize_skeleton(img_rgb, branch_image, skeletonize=True)
 
-            plot_grasp_location(xy_global, grasp_angle_global,
-                                l=minimum_grasp_length_px, pwd=pwd, name=self.name + '_g')
+            visualize_skeleton(img_rgb, branch_image, skeletonize=True, show_nodes=False, skeleton_color=(0, 0, 0))
+            plot_grasp_location(xy_global, grasp_angle_global, l=minimum_grasp_length_px, pwd=pwd,
+                                name=self.name + '_g')
 
         return success
 
@@ -586,7 +593,9 @@ class ProcessImage(object):
         elif local == False:
             xy = self.get_xy(self.centers, self._ORIGINAL_FRAME_ID)
             img = self.image.data
-        return add_circles(img, xy, self.radii)
+        fig = plt.figure()
+        add_circles(img, xy, self.radii)
+        return figure_to_image(fig)
 
     def get_rgb(self, local=False):
         if local:
@@ -614,11 +623,11 @@ class ProcessImage(object):
         main_peduncle = self.penduncle_main
         # img_peduncle = self.get_peduncle_image(local = local)
 
-        img = plot_segments(img, background, tomato, peduncle, thickness=1)
+        plot_segments(img, background, tomato, peduncle)
         # add_circles(img, xy_center, radii=self.radii, color=(0, 0, 0), thickness=1)
         tomato = {'centers': xy_center, 'radii': self.radii, 'com': xy_com}
-        img = plot_features(img, tomato=tomato, alpha=0.6, thickness=1, radii=5)
-        visualize_skeleton(img, main_peduncle, coord_junc=xy_junc, coord_end=xy_end)
+        plot_features(tomato=tomato)
+        visualize_skeleton(img, main_peduncle, coord_junc=xy_junc, coord_end=xy_end, show_img=False)
 
         if (xy_grasp is not None) and (grasp_angle is not None):
             settings = self.settings['grasp_location']
@@ -626,9 +635,9 @@ class ProcessImage(object):
                 minimum_grasp_length_px = self.px_per_mm * settings['grasp_length_min_mm']
             else:
                 minimum_grasp_length_px = settings['grasp_length_min_px']
-            plot_grasp_location(img, xy_grasp, grasp_angle, l = minimum_grasp_length_px)
+            plot_grasp_location(xy_grasp, grasp_angle, l=minimum_grasp_length_px)
 
-        return img
+        return figure_to_image(plt.gcf())
 
     def get_segments(self, local=False):
         if local:
@@ -658,7 +667,7 @@ class ProcessImage(object):
 
         tomato, peduncle, background = self.get_segments(local=local)
         img_rgb = self.get_rgb(local=local)
-        plot_segments(img_rgb, background, tomato, peduncle, pwd=pwd, name=name)
+        plot_segments(img_rgb, background, tomato, peduncle, linewidth=1.1, pwd=pwd, name=name)
 
     @Timer("process image")
     def process_image(self):
@@ -701,7 +710,7 @@ class ProcessImage(object):
 
 if __name__ == '__main__':
     i_start = 1
-    i_end = 2
+    i_end = 50
     N = i_end - i_start
 
     save = True
