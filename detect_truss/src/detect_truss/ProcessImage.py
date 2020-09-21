@@ -391,21 +391,24 @@ class ProcessImage(object):
             return False
 
         if self.save:
+            brightness = 0.85
             xy_local = self.get_xy(grasp_point, self._LOCAL_FRAME_ID)
             img_rgb = self.crop(self.image).data.astype(np.uint8)
+            img_rgb_bright = change_brightness(img_rgb, brightness)
 
-            branch_image = np.zeros(img_rgb.shape[0:2], dtype=np.uint8)
+            branch_image = np.zeros(img_rgb_bright.shape[0:2], dtype=np.uint8)
             locs = np.rint(self.get_xy(coords, self._LOCAL_FRAME_ID)).astype(np.int)  # , dtype=int
             branch_image[locs[:, 1], locs[:, 0]] = 255
 
-            visualize_skeleton(img_rgb, branch_image, show_nodes=False, skeleton_color=(0, 0, 0), skeleton_width=4)
+            visualize_skeleton(img_rgb_bright, branch_image, show_nodes=False, skeleton_color=(0, 0, 0), skeleton_width=4)
             plot_grasp_location(xy_local, grasp_angle_local, l=minimum_grasp_length_px, pwd=pwd, name=self.name,
                                 linewidth=2)
 
             xy_global = self.get_xy(grasp_point, self._ORIGINAL_FRAME_ID)
             img_rgb = np.array(self.image.data).astype(np.uint8)
+            img_rgb_bright = change_brightness(img_rgb, brightness)
 
-            branch_image = np.zeros(img_rgb.shape[0:2], dtype=np.uint8)
+            branch_image = np.zeros(img_rgb_bright.shape[0:2], dtype=np.uint8)
             locs = np.rint(self.get_xy(coords, self._ORIGINAL_FRAME_ID)).astype(np.int)
             branch_image[locs[:, 1], locs[:, 0]] = 255
 
@@ -416,7 +419,7 @@ class ProcessImage(object):
 
             branch_image = cv2.dilate(branch_image, kernel, iterations=1)
 
-            visualize_skeleton(img_rgb, branch_image, skeletonize=True, show_nodes=False, skeleton_color=(0, 0, 0))
+            visualize_skeleton(img_rgb_bright, branch_image, skeletonize=True, show_nodes=False, skeleton_color=(0, 0, 0))
             plot_grasp_location(xy_global, grasp_angle_global, l=minimum_grasp_length_px, pwd=pwd,
                                 name=self.name + '_g')
 
@@ -635,7 +638,7 @@ class ProcessImage(object):
                 minimum_grasp_length_px = self.px_per_mm * settings['grasp_length_min_mm']
             else:
                 minimum_grasp_length_px = settings['grasp_length_min_px']
-            plot_grasp_location(xy_grasp, grasp_angle, l=minimum_grasp_length_px)
+            plot_grasp_location(xy_grasp, grasp_angle, l=minimum_grasp_length_px, linewidth=5)
 
         return figure_to_image(plt.gcf())
 
@@ -710,7 +713,7 @@ class ProcessImage(object):
 
 if __name__ == '__main__':
     i_start = 1
-    i_end = 50
+    i_end = 2
     N = i_end - i_start
 
     save = True
@@ -743,6 +746,9 @@ if __name__ == '__main__':
         process_image.add_image(rgb_data, px_per_mm=px_per_mm, name=tomato_name)
 
         success = process_image.process_image()
+        img = process_image.get_truss_visualization(local=True)
+        save_img(img, pwd=os.path.join(pwd_results, '08_result'), name=tomato_name)
+
 
         json_data = process_image.get_object_features()
 

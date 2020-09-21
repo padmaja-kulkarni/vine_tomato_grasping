@@ -20,7 +20,7 @@ def main():
     # %% init
     nDigits = 3
     i_start = 1
-    i_end = 50
+    i_end = 2
     N = i_end - i_start
 
     save = True
@@ -35,7 +35,7 @@ def main():
 
     make_dirs(pwd_results)
 
-    brightness = 0.85
+    brightness = 0.9
 
     for count, i_tomato in enumerate(range(i_start, i_end)):  # 10, 11
         print("Analyzing image %d out of %d" % (i_tomato, N))

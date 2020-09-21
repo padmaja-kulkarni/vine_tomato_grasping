@@ -605,7 +605,8 @@ def add_lines(centers, angles, l=20, color=(255, 255, 255), linewidth=1, is_rad=
             angle = angle / 180 * np.pi
 
         start_point, end_point = compute_line_points(center, angle, l)
-        plt.plot([start_point[0], end_point[0]], [start_point[1], end_point[1]], color=color, linewidth=linewidth)
+        plt.plot([start_point[0], end_point[0]], [start_point[1], end_point[1]], color=color, linewidth=linewidth,
+                 zorder=top_layer)
 
 def add_arrows(centers, angles, l=20, color=(255, 255, 255), linewidth=1, head_width=5, head_length=7, is_rad=True):
     """
