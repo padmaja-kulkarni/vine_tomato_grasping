@@ -100,7 +100,7 @@ class ProcessImage(object):
         settings = {}
         settings['detect_tomato'] = set_detect_tomato_settings()
         settings['detect_peduncle'] = set_detect_peduncle_settings()
-        settings['grasp_location'] = set_compute_grap_settings()
+        settings['compute_grap'] = set_compute_grap_settings()
         self.settings = settings
 
         # detect junctions
@@ -146,7 +146,7 @@ class ProcessImage(object):
     def segment_image(self, radius=None):
         if radius is None:
             pwd = os.path.join(self.pwd, '02_segment')
-            radius = 1.5
+            radius = 2
         else:
             pwd = os.path.join(self.pwd, '02_segment', str(radius))
 
@@ -335,7 +335,7 @@ class ProcessImage(object):
         success = True
 
         com = self.get_xy(self.com, self._LOCAL_FRAME_ID)
-        settings = self.settings['grasp_location']
+        settings = self.settings['compute_grap']
 
         # set dimensions
         if self.px_per_mm is not None:
@@ -633,7 +633,7 @@ class ProcessImage(object):
         visualize_skeleton(img, main_peduncle, coord_junc=xy_junc, coord_end=xy_end, show_img=False)
 
         if (xy_grasp is not None) and (grasp_angle is not None):
-            settings = self.settings['grasp_location']
+            settings = self.settings['compute_grap']
             if self.px_per_mm is not None:
                 minimum_grasp_length_px = self.px_per_mm * settings['grasp_length_min_mm']
             else:
@@ -704,8 +704,11 @@ class ProcessImage(object):
         return self.settings
 
     def set_settings(self, settings):
-        ''' Overwirte the settings given '''
-        #        self.settings = settings
+        '''
+            Overwirte the settings given
+            only overwites the settings which are actually present in the given dict
+        '''
+
         for key_1 in settings:
             for key_2 in settings[key_1]:
                 self.settings[key_1][key_2] = settings[key_1][key_2]
@@ -713,10 +716,10 @@ class ProcessImage(object):
 
 if __name__ == '__main__':
     i_start = 1
-    i_end = 2
+    i_end = 2 # 85
     N = i_end - i_start
 
-    save = True
+    save = False
     drive = "backup" # "UBUNTU 16_0"  #
     pwd_root = os.path.join(os.sep, "media", "taeke", drive, "thesis_data",
                             "detect_truss")
@@ -739,7 +742,10 @@ if __name__ == '__main__':
         print("Analyzing image ID %d (%d/%d)" % (i_tomato, count + 1, N))
 
         tomato_name = str(i_tomato).zfill(3)
-        file_name = tomato_name + ".png"
+        if i_tomato > 49:
+            file_name = tomato_name + "_rgb" + ".png"
+        else:
+            file_name = tomato_name + ".png"
 
         rgb_data = load_rgb(pwd_data, file_name, horizontal=True)
         px_per_mm = load_px_per_mm(pwd_data, tomato_name)
@@ -757,7 +763,7 @@ if __name__ == '__main__':
             json.dump(json_data, write_file)
 
     if save is not True:
-        plot_timer(Timer.timers['main'].copy(), threshold=0.02, pwd=pwd_results, name='main', title='Processing time')
+        plot_timer(Timer.timers['main'].copy(), threshold=0.02, pwd=pwd_results, name='main', title='Processing time', startangle=-20)
         # plot_timer(Timer.timers['peduncle'].copy(), N=N, threshold=0.02, pwd=pwd_results, name='peduncle',
         #            title='Processing time peduncle')
 

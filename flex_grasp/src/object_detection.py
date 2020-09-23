@@ -325,7 +325,7 @@ class ObjectDetection(object):
             self.visualive_tomatoes(tomato_mask)
             self.visualive_peduncle(peduncle_mask)
             
-            img_tomato = self.process_image.get_truss_visualization(local = True)
+            img_tomato = self.process_image.get_truss_visualization(local=True)
 
         elif not self.use_truss:
             self.process_image.color_space()

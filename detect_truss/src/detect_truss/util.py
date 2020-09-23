@@ -265,7 +265,8 @@ def save_fig(fig, pwd, name, resolution=300, no_ticks=True, title="", titleSize=
     plt.rc('xtick', labelsize=MEDIUM_SIZE)  # fontsize of the tick labels
 
     for ax in fig.get_axes():
-        ax.label_outer()
+        pass
+        # ax.label_outer()
 
     if no_ticks:
         for ax in fig.get_axes():
@@ -285,12 +286,35 @@ def save_fig(fig, pwd, name, resolution=300, no_ticks=True, title="", titleSize=
     fig.savefig(os.path.join(pwd, name), dpi=resolution, bbox_inches='tight', pad_inches=0)
     plt.close(fig)
 
+def add_com(center, radius=5):
+    """
+        center: circle centers expressed in [col, row]
+    """
+    ax = plt.gca()
+    height, width, _ = ax.images[0].get_array().shape
+
+    col = center[0, 0]
+    row = center[0, 1]
+    rect = [(col - radius)/float(width), (row - radius)/float(height), 2*radius/float(width), 2*radius/float(height)]
+
+    pwd = os.path.dirname(__file__)
+    pwd_img = os.path.join(pwd, 'utils')
+    # img = load_rgb(pwd_img, 'com.png')
+    img = mpl.image.imread(os.path.join(pwd_img, 'com.png'))
+
+    imagebox = mpl.offsetbox.OffsetImage(img, zoom=0.08)
+
+    props = dict(alpha=0, zorder=top_layer)
+    ab = mpl.offsetbox.AnnotationBbox(imagebox, (center[0, 0], center[0, 1]), pad=0, bboxprops=props)
+    ab.set_zorder(middle_layer)
+    ax.add_artist(ab)
+
 
 def add_circles(centers, radii=5, fc=(255, 255, 255), ec=(0, 0, 0), linewidth=1, alpha=1.0,
                 pwd=None, name=None, title=""):
-    '''
+    """
         centers: circle centers expressed in [col, row]
-    '''
+    """
     if isinstance(centers, (list, tuple, np.matrix)):
         centers = np.array(centers, ndmin=2)
 
@@ -326,7 +350,10 @@ def add_circles(centers, radii=5, fc=(255, 255, 255), ec=(0, 0, 0), linewidth=1,
 
 
 def plot_segments(img_rgb, background, tomato, peduncle, fig=None, show_background=False, pwd=None,
-                  use_image_colours=True, show_axis=False, name=None, title="", alpha=0.7, linewidth=0.5):
+                  use_image_colours=True, show_axis=False, name=None, title="", alpha=0.4, linewidth=0.5):
+    """
+        alpha: trasparancy of segments, low value is more transparant!
+    """
 
     if fig is None:
         fig = plt.figure()
@@ -374,7 +401,7 @@ def plot_features(img_rgb=None, tomato=None, peduncle=None, grasp=None,
 
     if tomato:
         add_circles(tomato['centers'], radii=tomato['radii'], fc=tomato_color, ec=(0, 0, 0), linewidth=linewidth, alpha=alpha)
-        add_circles(tomato['com'], radii=radii, fc=(255, 255, 255), ec=(0, 0, 0), linewidth=linewidth)
+        add_com(tomato['com'], radius=8)
 
     if peduncle:
         add_circles(peduncle['junctions'], radii=radii, fc=junction_color, linewidth=linewidth)
@@ -672,7 +699,7 @@ def change_brightness(img, brightness):
         return img
 
 
-def plot_timer(timer_dict, N=1, threshold=0, ignore_key=None, pwd=None, name='time', title='time'):
+def plot_timer(timer_dict, N=1, threshold=0, ignore_key=None, pwd=None, name='time', title='time', startangle=-45):
     for key in timer_dict.keys():
 
         # remove ignored keys
@@ -714,10 +741,10 @@ def plot_timer(timer_dict, N=1, threshold=0, ignore_key=None, pwd=None, name='ti
     l.sort()
     values_keep, labels_keep = zip(*l)
 
-    donut(values_keep, labels_keep, pwd=pwd, name=name, title=title)
+    donut(values_keep, labels_keep, pwd=pwd, name=name, title=title, startangle=startangle)
 
 
-def donut(data, labels, pwd=None, name=None, title=None):
+def donut(data, labels, pwd=None, name=None, title=None, startangle=-45):
     data = np.array(data)
     data_rel = data / sum(data) * 100
 
@@ -728,11 +755,14 @@ def donut(data, labels, pwd=None, name=None, title=None):
 
     fig, ax = plt.subplots(figsize=(6, 3), subplot_kw=dict(aspect="equal"))
 
-    wedges, texts = ax.pie(data, wedgeprops=dict(width=0.5), startangle=-45)
+    wedges, texts = ax.pie(data, wedgeprops=dict(width=0.5), startangle=startangle)
 
-    bbox_props = dict(boxstyle="square,pad=0.3", fc="w", ec="k", lw=0.72)
+    bbox_props = dict(boxstyle="round,pad=0.3", fc=[0.92, 0.92, 0.92], lw=0) # square, round
     kw = dict(arrowprops=dict(arrowstyle="-"),
-              bbox=bbox_props, zorder=0, va="center")
+              bbox=bbox_props, zorder=0, va="center", fontsize= 'medium')
+
+
+    y_scale = 1.8
 
     for i, p in enumerate(wedges):
         ang = (p.theta2 - p.theta1) / 2. + p.theta1
@@ -741,13 +771,14 @@ def donut(data, labels, pwd=None, name=None, title=None):
         horizontalalignment = {-1: "right", 1: "left"}[int(np.sign(x))]
         connectionstyle = "angle,angleA=0,angleB={}".format(ang)
         kw["arrowprops"].update({"connectionstyle": connectionstyle})
-        ax.annotate(text[i], xy=(x, y), xytext=(1.35 * np.sign(x), 1.4 * y),
+        ax.annotate(text[i], xy=(x, y), xytext=(1.35 * np.sign(x), y_scale * y),
                     horizontalalignment=horizontalalignment, **kw)
 
     ax.set_title(title)
+    plt.tight_layout()
 
     if pwd is not None:
-        save_fig(fig, pwd, name)
+        save_fig(fig, pwd, name, no_ticks=False)
 
 
 def angular_difference(x, y):

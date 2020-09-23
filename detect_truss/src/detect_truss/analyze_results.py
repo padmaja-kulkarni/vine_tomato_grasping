@@ -80,8 +80,8 @@ def index_true_positives(lbl_centers, res_centers, dist_tresh):
 
 
 i_start = 1
-i_end = 50
-save_results = True
+i_end = 85
+save_results = False
 N = i_end - i_start
 
 drive = "backup"  # "UBUNTU 16_0"  #
@@ -108,12 +108,17 @@ for count, i_truss in enumerate(range(i_start, i_end)):
 
     truss_name = str(i_truss).zfill(3)
 
-    file_lbl = os.path.join(pwd_lbl, truss_name + '.json')
+    if i_truss > 49:
+        extension = "_rgb"
+    else:
+        extension = ""
+
+    file_lbl = os.path.join(pwd_lbl, truss_name + extension + '.json')
     file_inf = os.path.join(pwd_lbl, truss_name + '_info.json')
     file_res = os.path.join(pwd_res, truss_name + '.json')
 
     # load data
-    img_rgb = load_rgb(pwd_lbl, truss_name + '.png', horizontal=False)
+    img_rgb = load_rgb(pwd_lbl, truss_name + extension + '.png', horizontal=False)
 
     if not os.path.exists(file_lbl):
         print('Labels do not exist for image: ' + truss_name + ' skipping this file')
@@ -306,17 +311,16 @@ n_labeled_pos = 0
 n_predict_pos = 0
 
 # not in order be default!
-all_keys = junction_error_all.keys()
-all_keys.sort()
-for key in all_keys:
-    print(truss_name)
-    tomato_error_centers.extend(tomato_error_all[key]['centers'])
-    tomato_error_radii.extend(tomato_error_all[key]['radii'])
-    tomato_error_com.append(tomato_error_all[key]['com'])
-    n_true_pos += tomato_error_all[key]['n_true_pos']
-    n_false_pos += tomato_error_all[key]['n_false_pos']
-    n_labeled_pos += tomato_error_all[key]['n_labeled_pos']
-    n_predict_pos += tomato_error_all[key]['n_predict_pos']
+all_ids = junction_error_all.keys()
+all_ids.sort()
+for id in all_ids:
+    tomato_error_centers.extend(tomato_error_all[id]['centers'])
+    tomato_error_radii.extend(tomato_error_all[id]['radii'])
+    tomato_error_com.append(tomato_error_all[id]['com'])
+    n_true_pos += tomato_error_all[id]['n_true_pos']
+    n_false_pos += tomato_error_all[id]['n_false_pos']
+    n_labeled_pos += tomato_error_all[id]['n_labeled_pos']
+    n_predict_pos += tomato_error_all[id]['n_predict_pos']
 
 error_tomato_center_mean = np.mean(tomato_error_centers)
 error_tomato_center_std = np.std(tomato_error_centers)
@@ -332,51 +336,67 @@ false_pos_perc = int(round(float(n_false_pos) / float(n_predict_pos) * 100))
 
 print 'Tomato center error: {mean:.2f} {u:s} +- {std:.2f} {u:s} (n = {n:d})'.format(mean=error_tomato_center_mean,
                                                                                     std=error_tomato_center_std,
-                                                                                    n=n_labeled_pos, u=unit)
+                                                                                    n=n_predict_pos, u=unit)
 print 'Tomato radius error: {mean:.2f} {u:s} +- {std:.2f} {u:s} (n = {n:d})'.format(mean=error_tomato_radius_mean,
                                                                                     std=error_tomato_radius_std,
-                                                                                    n=n_labeled_pos, u=unit)
+                                                                                    n=n_predict_pos, u=unit)
 print 'com error: {mean:.2f} {u:s} +- {std:.2f} {u:s} (n = {n:d})'.format(mean=error_com_center_mean,
-                                                                          std=error_com_center_std, n=n_labeled_pos,
+                                                                          std=error_com_center_std, n=n_predict_pos,
                                                                           u=unit)
 
 print 'True positive: {true_pos:d} out of {n_tomatoes:d} ({true_pos_perc:d}%)'.format(true_pos=n_true_pos,
                                                                                       n_tomatoes=n_labeled_pos,
                                                                                       true_pos_perc=true_pos_perc)
 print 'False positive: {false_pos:d} out of {n_tomatoes:d} ({false_pos_perc:d}%)'.format(false_pos=n_false_pos,
-                                                                                         n_tomatoes=n_labeled_pos,
+                                                                                         n_tomatoes=n_predict_pos,
                                                                                          false_pos_perc=false_pos_perc)
 
-# Junctions
-junction_error_centers = []
-junction_error_radii = []
-n_true_pos = 0
-n_false_pos = 0
-n_labeled_pos = 0
-n_predict_pos = 0
+cases = ['all', '1', '2']
 
-for key in all_keys:
-    junction_error_centers.extend(junction_error_all[key]['centers'])
-    n_true_pos += junction_error_all[key]['true_pos']
-    n_false_pos += junction_error_all[key]['false_pos']
-    n_labeled_pos += junction_error_all[key]['labeled_pos']
-    n_predict_pos += junction_error_all[key]['predict_pos']
+# Junctions https://stackoverflow.com/questions/22307628/python-how-to-extend-the-content-of-a-list-store-in-a-dict
+junction_error_centers = {k:[] for k in cases}
+junction_error_radii = {k:[] for k in cases}
+n_true_pos = dict.fromkeys(cases, 0)
+n_false_pos = dict.fromkeys(cases, 0)
+n_labeled_pos = dict.fromkeys(cases, 0)
+n_predict_pos = dict.fromkeys(cases, 0)
+
+for id in all_ids:
+
+    id_type = ((int(id) - 1) % 7 + 1)
+    if id_type in [1, 2, 3]:
+        case = '1'
+    elif id_type in [4, 5, 6, 7]:
+        case = '2'
+    else:
+        print '?'
+
+    for key in ['all', case]:
+        junction_error_centers[key].extend(junction_error_all[id]['centers'])
+        n_true_pos[key] += junction_error_all[id]['true_pos']
+        n_false_pos[key] += junction_error_all[id]['false_pos']
+        n_labeled_pos[key] += junction_error_all[id]['labeled_pos']
+        n_predict_pos[key] += junction_error_all[id]['predict_pos']
 
 # mean and std without None
-junction_error_centers = remove_none_from_list(junction_error_centers)
-error_juncion_center_mean = np.mean(junction_error_centers)
-error_junction_center_std = np.std(junction_error_centers)
+for key in junction_error_centers:
+    junction_error_centers_key = remove_none_from_list(junction_error_centers[key])
 
-true_pos_perc = int(round(float(n_true_pos) / float(n_labeled_pos) * 100))
-false_pos_perc = int(round(float(n_false_pos) / float(n_predict_pos) * 100))
+    print(len(junction_error_centers_key))
+    error_juncion_center_mean = np.mean(junction_error_centers_key)
+    error_junction_center_std = np.std(junction_error_centers_key)
 
-print 'Junction center error: {mean:.2f} {u:s} +- {std:.2f} {u:s} (n = {n:d})'.format(mean=error_juncion_center_mean,
-                                                                                      std=error_junction_center_std,
-                                                                                      n=n_labeled_pos, u=unit)
+    true_pos_perc = int(round(float(n_true_pos[key]) / float(n_labeled_pos[key]) * 100))
+    false_pos_perc = int(round(float(n_false_pos[key]) / float(n_predict_pos[key]) * 100))
+    print key
 
-print 'True positive: {true_pos:d} out of {n_junc_actual:d} ({true_pos_perc:d}%)'.format(true_pos=n_true_pos,
-                                                                                         n_junc_actual=n_labeled_pos,
-                                                                                         true_pos_perc=true_pos_perc)
-print 'False positive: {false_pos:d} out of {n_junct_predict:d} ({false_pos_perc:d}%)'.format(false_pos=n_false_pos,
-                                                                                              n_junct_predict=n_predict_pos,
-                                                                                              false_pos_perc=false_pos_perc)
+    print 'Junction center error: {mean:.2f} {u:s} +- {std:.2f} {u:s} (n = {n:d})'.format(mean=error_juncion_center_mean,
+                                                                                          std=error_junction_center_std,
+                                                                                          n=n_true_pos[key], u=unit)
+
+    print 'True positive: {true_pos:d} out of {n_junc_actual:d} ({true_pos_perc:d}%)'.format(true_pos=n_true_pos[key],
+                                                                                             n_junc_actual=n_labeled_pos[key],
+                                                                                             true_pos_perc=true_pos_perc)
+    print 'False positive: {false_pos:d} out of {n_junct_predict:d} ({false_pos_perc:d}%)'.format(false_pos=n_false_pos[key],
+                                                                                                  n_junct_predict=n_predict_pos[key],
+                                                                                                  false_pos_perc=false_pos_perc)
