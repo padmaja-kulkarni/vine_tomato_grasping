@@ -86,7 +86,7 @@ class Idle(smach.State):
         self.transform_commands = ['transform']
         self.calibrate_commands =  ['calibrate', 'calibrate_height']
         self.move_commands =  ['home', 'open', 'close', 'sleep', 'ready']
-        self.pick_place_commands = ['pick', 'place', 'pick_place']
+        self.pick_place_commands = ['pick', 'place', 'pick_place', 'fake_pick', 'fake_place']
         self.point_commands = ['point']
         self.experiment = False
 
@@ -116,10 +116,10 @@ class Idle(smach.State):
             elif userdata.prev_command == 'detect_truss':
                 userdata.command = 'transform'
             elif userdata.prev_command == 'transform':
-                userdata.command = 'pick'
-            elif userdata.prev_command == 'pick':
-                userdata.command = 'place'
-            elif userdata.prev_command == 'place':
+                userdata.command = 'fake_pick'
+            elif userdata.prev_command == 'fake_pick':
+                userdata.command = 'fake_place'
+            elif userdata.prev_command == 'fake_place':
                 userdata.command = 'detect_truss'
             else:
                 rospy.logwarn('[PIPELINE] do not know what to do with previous command %s', userdata.prev_command)
@@ -229,7 +229,7 @@ class MoveRobot(smach.State):
 
         topic = 'move_robot'
         timeout = 30.0
-        self.communication = Communication(topic, timeout = timeout)
+        self.communication = Communication(topic, timeout=timeout)
 
     def execute(self, userdata):
         

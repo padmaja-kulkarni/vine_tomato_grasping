@@ -77,7 +77,8 @@ class RqtFlexGrasp(Plugin):
         self._widget.PickPlaceButton.clicked[bool].connect(self.handle_pick_place)
         self._widget.PickButton.clicked[bool].connect(self.handle_pick)
         self._widget.PlaceButton.clicked[bool].connect(self.handle_place)
-        self._widget.ExperimentButton.clicked.connect(self.handle_experiment) # [bool].connect(self.handle_experiment)
+        self._widget.FakePickButton.clicked[bool].connect(self.handle_fake_pick)
+        self._widget.ExperimentButton.clicked.connect(self.handle_experiment)
 
         #
         self.truss_type_button = self._widget.TrussTypeButton
@@ -181,7 +182,10 @@ class RqtFlexGrasp(Plugin):
 
     def handle_place(self):
         self.pub_command.publish("place")
-        
+
+    def handle_fake_pick(self):
+        self.pub_command.publish("fake_pick")
+
     def handle_experiment(self):
         self.experiment = self._widget.ExperimentButton.isChecked()
         self.pub_experiment.publish(self.experiment)

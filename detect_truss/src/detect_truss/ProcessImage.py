@@ -146,7 +146,7 @@ class ProcessImage(object):
     def segment_image(self, radius=None):
         if radius is None:
             pwd = os.path.join(self.pwd, '02_segment')
-            radius = 2
+            radius = 1.5
         else:
             pwd = os.path.join(self.pwd, '02_segment', str(radius))
 

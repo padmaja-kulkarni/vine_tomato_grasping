@@ -74,7 +74,7 @@ def k_means_hue_a(img_hue, img_a, n_clusters, centers=None, hue_radius=1.0):
         attempts = 3
 
     # Define criteria = ( type, max_iter = 10 , epsilon = 1.0 )
-    criteria = (cv2.TERM_CRITERIA_EPS, 20, np.sin(np.deg2rad(1.0)))
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 20, 0.01)
     compactness, labels, centers_xy = cv2.kmeans(data=data,
                                                  K=n_clusters,
                                                  bestLabels=labels,  # None, #
