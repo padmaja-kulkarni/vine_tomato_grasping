@@ -26,7 +26,7 @@ if __name__ == '__main__':
     drive = "backup"  # "UBUNTU 16_0"  #
     pwd_root = os.path.join(os.sep, "media", "taeke", drive, "thesis_data",
                             "detect_truss")
-    dataset = "depth_blue"
+    dataset = "lidl"
 
     pwd_data = os.path.join(pwd_root, "data", dataset)
 

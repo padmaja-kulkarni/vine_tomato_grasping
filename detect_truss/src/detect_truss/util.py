@@ -310,7 +310,7 @@ def add_com(center, radius=5):
     ax.add_artist(ab)
 
 
-def add_circles(centers, radii=5, fc=(255, 255, 255), ec=(0, 0, 0), linewidth=1, alpha=1.0,
+def add_circles(centers, radii=5, fc=(255, 255, 255), ec=(0, 0, 0), linewidth=1, alpha=1.0, linestyle='-',
                 pwd=None, name=None, title=""):
     """
         centers: circle centers expressed in [col, row]
@@ -342,7 +342,7 @@ def add_circles(centers, radii=5, fc=(255, 255, 255), ec=(0, 0, 0), linewidth=1,
 
     for center, radius in zip(centers, radii):
         circle_border = mpl.patches.Circle(center, radius, ec=ec, fc=fc, fill=True, linewidth=linewidth,
-                                           zorder=middle_layer)
+                                           linestyle=linestyle, zorder=middle_layer)
         ax.add_artist(circle_border)
 
     if pwd is not None:
@@ -400,7 +400,7 @@ def plot_features(img_rgb=None, tomato=None, peduncle=None, grasp=None,
         fig = plt.gcf()
 
     if tomato:
-        add_circles(tomato['centers'], radii=tomato['radii'], fc=tomato_color, ec=(0, 0, 0), linewidth=linewidth, alpha=alpha)
+        add_circles(tomato['centers'], radii=tomato['radii'], fc=tomato_color, linewidth=2, alpha=alpha, linestyle=(0, (10, 10)))
         add_com(tomato['com'], radius=8)
 
     if peduncle:
