@@ -54,9 +54,9 @@ def k_means_hue(img_hue, n_clusters, centers=None):
 #     angle = np.deg2rad(2 * np.float32(img_hue.flatten()))
 #     data = np.stack((np.cos(angle), np.sin(angle), img_a.flatten()), axis=1)
 
-def k_means_hue_a(img_hue, img_a, n_clusters, centers=None, hue_radius=1.0):
+def k_means_hue_a(img_hue, img_a, n_clusters, centers=None, hue_radius=1.0, factor=4):
+
     # convert hue value to angles, and place on unit circle
-    factor = 10
     new_shape = (img_hue.shape[1]/factor, img_hue.shape[0]/factor)
     img_hue = cv2.resize(img_hue, new_shape,  interpolation=cv2.INTER_NEAREST)
     img_a = cv2.resize(img_a, new_shape,  interpolation=cv2.INTER_NEAREST)
@@ -295,7 +295,7 @@ def both_hist(img_hue, img_a, centers, lbl, a_bins=80, pwd="", name="", hue_min 
     else:
         plt.xticks([])
 
-    plt.ylabel("a")
+    plt.ylabel("a*")
     plt.yticks([0, a_height/2, a_height-1], map(str, (a_min, (a_min+a_max)/2, a_max)))
 
     save_fig(fig, pwd, name + "_hist", no_ticks=False)

@@ -716,14 +716,14 @@ class ProcessImage(object):
 
 if __name__ == '__main__':
     i_start = 1
-    i_end = 2 # 85
+    i_end = 85
     N = i_end - i_start
 
-    save = False
+    save = True
     drive = "backup" # "UBUNTU 16_0"  #
     pwd_root = os.path.join(os.sep, "media", "taeke", drive, "thesis_data",
                             "detect_truss")
-    dataset = "depth_blue"  # "real_blue"  # "drawing" #
+    dataset = "lidl"  # "real_blue"  # "drawing" #
 
     pwd_data = os.path.join(pwd_root, "data", dataset)
     pwd_results = os.path.join(pwd_root, "results", dataset)

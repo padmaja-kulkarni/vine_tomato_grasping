@@ -87,7 +87,7 @@ N = i_end - i_start
 drive = "backup"  # "UBUNTU 16_0"  #
 pwd_root = os.path.join(os.sep, "media", "taeke", drive, "thesis_data",
                         "detect_truss")
-dataset = 'depth_blue'  # 'real_blue' # "drawing" #  "empty" # "artificial" #
+dataset = 'lidl'  # 'real_blue' # "drawing" #  "empty" # "artificial" #
 
 pwd_lbl = os.path.join(pwd_root, "data", dataset)
 pwd_res = os.path.join(pwd_root, "results", dataset, 'json')

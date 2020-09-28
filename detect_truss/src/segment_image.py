@@ -21,11 +21,11 @@ from detect_truss.ProcessImage import ProcessImage
 if __name__ == '__main__':
 
     i_start = 1  # tomato file to load
-    i_end = 2
+    i_end = 80
     N = i_end - i_start
 
     extension = ".png"
-    dataset = "depth_blue"  # "failures" #
+    dataset = "lidl"  # "failures" #
     save = True
 
     pwd_current = os.path.dirname(__file__)
@@ -38,7 +38,7 @@ if __name__ == '__main__':
     process_image = ProcessImage(use_truss=True,
                                  pwd=pwd_results,
                                  save=save)
-    radii = [1.5]  # 0.5, 1.0, 1.5, 2.0, 3.0
+    radii = [None] #  [1.5]  # 0.5, 1.0, 1.5, 2.0, 3.0
 
     for radius in radii:
         for count, i_tomato in enumerate(range(i_start, i_end)):
