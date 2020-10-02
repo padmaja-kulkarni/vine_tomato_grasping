@@ -231,21 +231,24 @@ def visualize_skeleton(img, skeleton_img, skeletonize=False, coord_junc=None, co
     else:
         fig = plt.gcf()
 
-    add_contour(skeleton_img, skeleton_color, linewidth=skeleton_width)
+    add_contour(skeleton_img, skeleton_color, linewidth=skeleton_width, zorder=6)
 
     if (len(np.argwhere(skeleton_img)) > 2) and show_nodes:
 
         if (coord_junc is None) and (coord_end is None):
             coord_junc, coord_end = get_node_coord(skeleton_img)
 
-        elif coord_junc is None:
-            coord_junc, _ = get_node_coord(skeleton_img)
+        # elif coord_junc is None:
+        #     coord_junc, _ = get_node_coord(skeleton_img)
+        #
+        # elif coord_end is None:
+        #     _, coord_end = get_node_coord(skeleton_img)
 
-        elif coord_end is None:
-            _, coord_end = get_node_coord(skeleton_img)
+        if coord_junc is not None:
+            add_circles(coord_junc, radii=4, fc=junc_color, linewidth=0, zorder=7)
 
-        add_circles(coord_junc, radii=4, fc=junc_color, linewidth=0)
-        add_circles(coord_end, radii=4, fc=end_color, linewidth=0)
+        if coord_end is not None:
+            add_circles(coord_end, radii=4, fc=end_color, linewidth=0, zorder=7)
 
     if branch_data:
         branch_center = {}

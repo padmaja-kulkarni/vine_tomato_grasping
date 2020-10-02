@@ -24,6 +24,18 @@ from util import grey_2_rgb
 
 final_image_id = '015'
 
+
+def set_segment_image_settings(f=2,
+                               hue_radius=1.5,
+                               epsilon=0.01,
+                               i_max=20):
+    settings = {'f': f,
+                'hue_radius': hue_radius,
+                'epsilon': epsilon,
+                'i_max': i_max}
+    return settings
+
+
 def k_means_hue(img_hue, n_clusters, centers=None):
     # convert hue value to angles, and place on unit circle
     angle = np.deg2rad(2 * np.float32(img_hue.flatten()))
@@ -50,19 +62,23 @@ def k_means_hue(img_hue, n_clusters, centers=None):
     centers_out['hue'] = np.arctan2(centers_xy[:, 1], centers_xy[:, 0])
     return centers_out, labels
 
+
 # def to_dataset_3d(img_hue, img_a, a_weight=1):
 #     angle = np.deg2rad(2 * np.float32(img_hue.flatten()))
 #     data = np.stack((np.cos(angle), np.sin(angle), img_a.flatten()), axis=1)
 
-def k_means_hue_a(img_hue, img_a, n_clusters, centers=None, hue_radius=1.0, factor=4):
-
+def k_means_hue_a(img_hue, img_a, n_clusters, settings, centers=None):
     # convert hue value to angles, and place on unit circle
-    new_shape = (img_hue.shape[1]/factor, img_hue.shape[0]/factor)
-    img_hue = cv2.resize(img_hue, new_shape,  interpolation=cv2.INTER_NEAREST)
-    img_a = cv2.resize(img_a, new_shape,  interpolation=cv2.INTER_NEAREST)
+
+    h, w = img_hue.shape
+
+    new_shape = (w / settings['f'], h / settings['f'])
+    img_hue = cv2.resize(img_hue, new_shape, interpolation=cv2.INTER_NEAREST)
+    img_a = cv2.resize(img_a, new_shape, interpolation=cv2.INTER_NEAREST)
 
     angle = np.deg2rad(2 * np.float32(img_hue.flatten()))
-    data = np.stack((hue_radius*np.cos(angle), hue_radius*np.sin(angle), img_a.flatten()), axis=1)
+    hue_radius = settings['hue_radius']
+    data = np.stack((hue_radius * np.cos(angle), hue_radius * np.sin(angle), img_a.flatten()), axis=1)
 
     if centers is not None:
         labels = np.array(assign_labels(img_hue, centers, img_a=img_a), dtype=np.int32)
@@ -74,7 +90,7 @@ def k_means_hue_a(img_hue, img_a, n_clusters, centers=None, hue_radius=1.0, fact
         attempts = 3
 
     # Define criteria = ( type, max_iter = 10 , epsilon = 1.0 )
-    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 20, 0.01)
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, settings['i_max'], settings['epsilon'])
     compactness, labels, centers_xy = cv2.kmeans(data=data,
                                                  K=n_clusters,
                                                  bestLabels=labels,  # None, #
@@ -98,9 +114,9 @@ def normalize_image(img):
 
 def assign_labels(img_hue, centers_dict, hue_radius=1.0, img_a=None):
     data_angle = np.deg2rad(2 * np.float32(img_hue.flatten()))  # [rad]
-    data = np.stack((hue_radius*np.cos(data_angle), hue_radius*np.sin(data_angle)), axis=1)
+    data = np.stack((hue_radius * np.cos(data_angle), hue_radius * np.sin(data_angle)), axis=1)
     center_angle = centers_dict['hue']
-    centers = np.stack((hue_radius*np.cos(center_angle), hue_radius*np.sin(center_angle)), axis=1)
+    centers = np.stack((hue_radius * np.cos(center_angle), hue_radius * np.sin(center_angle)), axis=1)
 
     if img_a is not None:
         data_a = np.expand_dims(normalize_image(img_a).flatten(), axis=1)
@@ -113,12 +129,14 @@ def assign_labels(img_hue, centers_dict, hue_radius=1.0, img_a=None):
     return labels
 
 
-def segment_truss(img_hue, img_a=None, save="False", name="", pwd="", radius=1.0):
+def segment_truss(img_hue, img_a=None, save="False", name="", pwd="", settings=None):
+    if settings is None:
+        settings = set_segment_image_settings()
 
     n = 3
 
-    centers_prior_hue = {'tomato': np.deg2rad(0),           # [rad]
-                         'peduncle': np.deg2rad(90),     # [rad]
+    centers_prior_hue = {'tomato': np.deg2rad(0),  # [rad]
+                         'peduncle': np.deg2rad(90),  # [rad]
                          'background': np.deg2rad(240)}  # [rad]
     centers_prior_a = {'tomato': 1.0,
                        'peduncle': 0.5,
@@ -133,8 +151,8 @@ def segment_truss(img_hue, img_a=None, save="False", name="", pwd="", radius=1.0
         a_min = np.min(img_a)
         a_max = np.max(img_a)
         img_a_norm = normalize_image(img_a)
-        centers, _ = k_means_hue_a(img_hue, img_a_norm, n, centers=centers, hue_radius=radius)  # centers
-        labels = assign_labels(img_hue, centers, hue_radius=radius, img_a=img_a)
+        centers, _ = k_means_hue_a(img_hue, img_a_norm, n, settings, centers=centers)  # centers
+        labels = assign_labels(img_hue, centers, hue_radius=settings['hue_radius'], img_a=img_a)
 
     # determine which center corresponds to which segment
     lbl = {}
@@ -153,10 +171,11 @@ def segment_truss(img_hue, img_a=None, save="False", name="", pwd="", radius=1.0
         peduncle = label2img(labels, lbl["peduncle"], dim)
         background = label2img(labels, lbl["background"], dim)
     if save:
-        both_hist(img_hue, img_a_norm, centers, lbl, a_bins=a_max-a_min+1, pwd=pwd, name=name, hue_radius=radius)
+        both_hist(img_hue, img_a_norm, centers, lbl, a_bins=a_max - a_min + 1, pwd=pwd, name=name,
+                  hue_radius=settings['hue_radius'])
         hue_hist(img_hue, np.rad2deg(centers['hue']), lbl, name, pwd)
         if img_a is not None:
-            a_hist(img_a_norm, centers['a'], lbl, bins=a_max-a_min+1, name=name, pwd=pwd)
+            a_hist(img_a_norm, centers['a'], lbl, bins=a_max - a_min + 1, name=name, pwd=pwd)
 
     return background, tomato, peduncle
 
@@ -197,7 +216,7 @@ def hue_hist(img_hue, centers, lbl, name, pwd):
     save_fig(fig, pwd, name + "_hue_hist", titleSize=10)
 
 
-def a_hist(img_a, centers, lbl, bins=80,  a_min=-1.0, a_max=1.0, name="", pwd=""):
+def a_hist(img_a, centers, lbl, bins=80, a_min=-1.0, a_max=1.0, name="", pwd=""):
     # plot Hue (HSV)
     fig, ax = plt.subplots(1)
     plt.yscale("log")
@@ -220,24 +239,23 @@ def a_hist(img_a, centers, lbl, bins=80,  a_min=-1.0, a_max=1.0, name="", pwd=""
     plt.axvspan(x1, x2, color='g', alpha=alpha, lw=0)
     plt.axvspan(x2, x3, color='r', alpha=alpha, lw=0)
 
-
     angle = img_a.flatten()  # .astype('uint16')
     radii, bins, patches = ax.hist(angle, bins=bins, range=(a_min, a_max), color="black", lw=0)
     ax.set_xlabel("a")
     ax.set_ylabel("frequency")
     save_fig(fig, pwd, name + "_a_hist", titleSize=10)
 
-def both_hist(img_hue, img_a, centers, lbl, a_bins=80, pwd="", name="", hue_min = 0, hue_max = 180, hue_radius=1.0,
-              a_min=-1.0, a_max=1.0, true_scale=False):
 
+def both_hist(img_hue, img_a, centers, lbl, a_bins=80, pwd="", name="", hue_min=0, hue_max=180, hue_radius=1.0,
+              a_min=-1.0, a_max=1.0, true_scale=False):
     a_height = 500
     if true_scale:
-        hue_height = 2*np.pi*hue_radius/2*a_height  # 180*scale
+        hue_height = 2 * np.pi * hue_radius / 2 * a_height  # 180*scale
     else:
         hue_height = 2 * 500
 
-    hue_step = float(hue_max - hue_min)/float(hue_height)
-    a_step = float(a_max - a_min)/float(a_height)
+    hue_step = float(hue_max - hue_min) / float(hue_height)
+    a_step = float(a_max - a_min) / float(a_height)
 
     # label every possible location
     values_a, values_hue = np.mgrid[a_min:a_max:a_step, hue_min:hue_max:hue_step]
@@ -255,17 +273,17 @@ def both_hist(img_hue, img_a, centers, lbl, a_bins=80, pwd="", name="", hue_min 
     y = img_hue.flatten().astype('uint16') * 2
 
     scale = 4.0
-    hue_bins = 180*scale
-    a_bins = a_bins*scale
+    hue_bins = 180 * scale
+    a_bins = a_bins * scale
 
-    hist, _, _, _ = plt.hist2d(x, y, range=my_range, bins=[a_bins/scale, hue_bins/scale])
+    hist, _, _, _ = plt.hist2d(x, y, range=my_range, bins=[a_bins / scale, hue_bins / scale])
     hist[hist > 0] = np.log(hist[hist > 0])
     img_hist_gray = 255 - (hist / np.amax(hist) * 255).astype(np.uint8)
-    img_hist_rgb = grey_2_rgb(img_hist_gray) # (255*mapping.to_rgba(img_hist_gray)[:, :, 0:3]).astype(np.uint8)
+    img_hist_rgb = grey_2_rgb(img_hist_gray)  # (255*mapping.to_rgba(img_hist_gray)[:, :, 0:3]).astype(np.uint8)
 
     # rescale based on scala param
     new_shape = (shape[1], shape[0])  # [width, height]
-    img_hist_rgb = cv2.resize(img_hist_rgb, new_shape,  interpolation=cv2.INTER_NEAREST)
+    img_hist_rgb = cv2.resize(img_hist_rgb, new_shape, interpolation=cv2.INTER_NEAREST)
 
     # overlay with histogram
     fig = plot_segments(img_hist_rgb, background, tomato, peduncle, show_background=True, alpha=0.1, linewidth=1,
@@ -277,16 +295,16 @@ def both_hist(img_hue, img_a, centers, lbl, a_bins=80, pwd="", name="", hue_min 
     hue_coords = (centers_hue / 2) / hue_step  # [rad]
     a_coords = (centers['a'] - a_min) / a_step
 
-
     for label in lbl:
         i = lbl[label]
         if label == 'tomato':
             color = 'r'
         elif label == 'peduncle':
-            color='g'
+            color = 'g'
         elif label == 'background':
-            color='b'
-        plt.plot(hue_coords[i], a_coords[i], 'o', color=color, markeredgecolor='w', markersize=8, markeredgewidth=1, alpha=1.0)
+            color = 'b'
+        plt.plot(hue_coords[i], a_coords[i], 'o', color=color, markeredgecolor='w', markersize=8, markeredgewidth=1,
+                 alpha=1.0)
 
     # fix axis, only plot x axis for last image, only plot title for first
     if name == final_image_id:
@@ -296,9 +314,10 @@ def both_hist(img_hue, img_a, centers, lbl, a_bins=80, pwd="", name="", hue_min 
         plt.xticks([])
 
     plt.ylabel("a*")
-    plt.yticks([0, a_height/2, a_height-1], map(str, (a_min, (a_min+a_max)/2, a_max)))
+    plt.yticks([0, a_height / 2, a_height - 1], map(str, (a_min, (a_min + a_max) / 2, a_max)))
 
     save_fig(fig, pwd, name + "_hist", no_ticks=False)
+
 
 def label2img(labels, label, dim):
     data = labels.ravel() == label

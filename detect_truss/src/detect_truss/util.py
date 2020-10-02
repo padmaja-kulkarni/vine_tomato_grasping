@@ -19,16 +19,21 @@ import utils.color_maps as color_maps
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 
 tomato_color = (255, 82, 82)
-peduncle_color = (0, 255, 0)
+peduncle_color = (82, 255, 82) # (0, 150, 30)
 background_color = (0, 0, 255)
-junction_color = (255, 0, 255)
-end_color = (255, 255, 0)
+junction_color = (100, 0, 200)
+end_color = (200, 0, 0)
 gray_color = (150, 150, 150)
 
 background_layer = 0
 bottom_layer = 1 # contours
-middle_layer = 5
-top_layer = 10  # text
+middle_layer = 5 # tomatoes
+peduncle_layer = 6
+vertex_layer = 7
+high_layer = 8 # arrows, com
+top_layer = 10  # junctions, com, text
+
+default_ext = 'pdf'
 
 def make_dirs(pwd):
     if not os.path.isdir(pwd):
@@ -221,10 +226,13 @@ def grey_2_rgb(img_grey, vmin=0, vmax=255):
     img_rgb = (vmax*mapping.to_rgba(img_grey)[:, :, 0:3]).astype(np.uint8)
     return img_rgb
 
-def save_img(img, pwd, name, resolution=300, title="", titleSize=20, ext='png', color_map='plasma'):
+def save_img(img, pwd, name, resolution=300, title="", title_size=20, ext=None, color_map='plasma', vmin=None, vmax=None):
+    if ext is None:
+        ext = default_ext
+
     plt.rcParams["savefig.format"] = ext
     plt.rcParams["savefig.bbox"] = 'tight'
-    plt.rcParams['axes.titlesize'] = titleSize
+    plt.rcParams['axes.titlesize'] = title_size
     # plt.rcParams['image.cmap'] = color_map
 
     if color_map == 'HSV':
@@ -233,7 +241,7 @@ def save_img(img, pwd, name, resolution=300, title="", titleSize=20, ext='png', 
         color_map = color_maps.lab_color_scale()
 
     fig = plt.figure()
-    plt.imshow(img, cmap=color_map)
+    plt.imshow(img, cmap=color_map, vmin=vmin, vmax=vmax)
     plt.axis('off')
     if title is not None:
         plt.title(title)
@@ -252,7 +260,12 @@ def save_img(img, pwd, name, resolution=300, title="", titleSize=20, ext='png', 
     plt.close(fig)
 
 
-def save_fig(fig, pwd, name, resolution=300, no_ticks=True, title="", titleSize=20, ext='png'):
+def save_fig(fig, pwd, name, resolution=300, no_ticks=True, title="", titleSize=20, ext=None):
+
+    if ext is None:
+        ext = default_ext
+
+    # eps does not support transparancy
     SMALL_SIZE = 8
     MEDIUM_SIZE = 15
     BIGGER_SIZE = 20
@@ -293,28 +306,31 @@ def add_com(center, radius=5):
     ax = plt.gca()
     height, width, _ = ax.images[0].get_array().shape
 
-    col = center[0, 0]
-    row = center[0, 1]
-    rect = [(col - radius)/float(width), (row - radius)/float(height), 2*radius/float(width), 2*radius/float(height)]
+    center = np.array(center, ndmin=2)
 
     pwd = os.path.dirname(__file__)
     pwd_img = os.path.join(pwd, 'utils')
-    # img = load_rgb(pwd_img, 'com.png')
     img = mpl.image.imread(os.path.join(pwd_img, 'com.png'))
 
-    imagebox = mpl.offsetbox.OffsetImage(img, zoom=0.08)
+    com_radius, _, _ = img.shape
+    com_zoom = radius /  float(com_radius)
+    imagebox = mpl.offsetbox.OffsetImage(img, zoom=com_zoom)
 
     props = dict(alpha=0, zorder=top_layer)
     ab = mpl.offsetbox.AnnotationBbox(imagebox, (center[0, 0], center[0, 1]), pad=0, bboxprops=props)
-    ab.set_zorder(middle_layer)
+    ab.set_zorder(high_layer)
     ax.add_artist(ab)
 
 
-def add_circles(centers, radii=5, fc=(255, 255, 255), ec=(0, 0, 0), linewidth=1, alpha=1.0, linestyle='-',
+def add_circles(centers, radii=5, fc=(255, 255, 255), ec=(0, 0, 0), linewidth=1, alpha=1.0, linestyle='-', zorder=None,
                 pwd=None, name=None, title=""):
     """
         centers: circle centers expressed in [col, row]
     """
+
+    if zorder is None:
+        zorder = middle_layer
+
     if isinstance(centers, (list, tuple, np.matrix)):
         centers = np.array(centers, ndmin=2)
 
@@ -342,11 +358,11 @@ def add_circles(centers, radii=5, fc=(255, 255, 255), ec=(0, 0, 0), linewidth=1,
 
     for center, radius in zip(centers, radii):
         circle_border = mpl.patches.Circle(center, radius, ec=ec, fc=fc, fill=True, linewidth=linewidth,
-                                           linestyle=linestyle, zorder=middle_layer)
+                                           linestyle=linestyle, zorder=zorder)
         ax.add_artist(circle_border)
 
     if pwd is not None:
-        save_fig(plt.gcf(), pwd, name, title="", titleSize=20, ext='png')
+        save_fig(plt.gcf(), pwd, name, title="", titleSize=20)
 
 
 def plot_segments(img_rgb, background, tomato, peduncle, fig=None, show_background=False, pwd=None,
@@ -391,7 +407,7 @@ def plot_image(img, show_axis=False):
         plt.gca().yaxis.set_major_locator(plt.NullLocator())
 
 def plot_features(img_rgb=None, tomato=None, peduncle=None, grasp=None,
-                  alpha=0.4, linewidth=1, pwd=None, file_name=None, title="", radii=8):
+                  alpha=0.4, linewidth=1, zoom=False, pwd=None, file_name=None, title=""):
 
     if img_rgb is not None:
         fig = plt.figure()
@@ -399,12 +415,23 @@ def plot_features(img_rgb=None, tomato=None, peduncle=None, grasp=None,
     else:
         fig = plt.gcf()
 
+    if zoom:
+        tom_linestyle = (0, (10, 10))
+        tom_width = 2
+        com_radius = 16
+        junc_radius = 8
+    else:
+        tom_linestyle = (0, (5, 5))
+        tom_width = 2
+        com_radius = 10
+        junc_radius = 8
+
     if tomato:
-        add_circles(tomato['centers'], radii=tomato['radii'], fc=tomato_color, linewidth=2, alpha=alpha, linestyle=(0, (10, 10)))
-        add_com(tomato['com'], radius=8)
+        add_circles(tomato['centers'], radii=tomato['radii'], fc=tomato_color, linewidth=tom_width, alpha=alpha, linestyle=tom_linestyle)
+        add_com(tomato['com'], radius=com_radius)
 
     if peduncle:
-        add_circles(peduncle['junctions'], radii=radii, fc=junction_color, linewidth=linewidth)
+        add_circles(peduncle['junctions'], radii=junc_radius, fc=junction_color, linewidth=linewidth, zorder=top_layer)
 
     if grasp:
         col = grasp['col']
@@ -417,21 +444,30 @@ def plot_features(img_rgb=None, tomato=None, peduncle=None, grasp=None,
 
 
 def plot_features_result(img_rgb, tomato_pred=None, peduncle=None, grasp=None,
-                         alpha=0.5, linewidth=1, pwd=None, name=None, title=""):
+                         alpha=0.5, linewidth=1, zoom=False, pwd=None, name=None, title=""):
     fig = plt.figure()
     plot_image(img_rgb)
+
+    if zoom:
+        tom_linestyle = (0, (10, 10))
+        com_radius = 10
+        junc_radius = 8
+    else:
+        tom_linestyle = (0, (5, 5))
+        com_radius = 10
+        junc_radius = 8
 
     if tomato_pred:
 
         add_circles(tomato_pred['true_pos']['centers'], radii=tomato_pred['true_pos']['radii'], fc=tomato_color,
-                    ec=(0, 0, 0), linewidth=linewidth, alpha=alpha)
+                    linewidth=2, alpha=alpha, linestyle=tom_linestyle)
         add_circles(tomato_pred['false_pos']['centers'], radii=tomato_pred['false_pos']['radii'], fc=tomato_color,
-                    ec=(0, 0, 0), linewidth=linewidth, alpha=alpha)
-        add_circles(tomato_pred['com'], radii=10, fc=(255, 255, 255), ec=(0, 0, 0), linewidth=linewidth)
+                    linewidth=linewidth, alpha=alpha, linestyle=tom_linestyle)
+        add_com(tomato_pred['com'], radius=com_radius)
 
     if peduncle:
-        add_circles(peduncle['false_pos']['centers'], radii=8, fc=junction_color, ec=(255, 0, 0), linewidth=linewidth, alpha=0)
-        add_circles(peduncle['true_pos']['centers'], radii=8, fc=junction_color, ec=(0, 0, 0), linewidth=linewidth)
+        add_circles(peduncle['false_pos']['centers'], radii=junc_radius, ec=(255, 0, 0), linewidth=linewidth, alpha=0, zorder=top_layer)
+        add_circles(peduncle['true_pos']['centers'], radii=junc_radius, fc=junction_color, linewidth=linewidth, zorder=top_layer)
         # added_image = add_circles(added_image, peduncle['ends'], radii = 10, color = (0,0,0), linewidth = linewidth)
 
     if grasp:
@@ -450,7 +486,11 @@ def plot_error(tomato_pred=None, tomato_act=None, error=None,
                use_mm=False,
                title="",
                resolution=300,
-               title_size=20, ext='png'):
+               title_size=20,
+               ext=None):
+
+    if ext is None:
+        ext = default_ext
 
     fig = plt.gcf()
     ax = plt.gca()
@@ -541,22 +581,18 @@ def plot_error(tomato_pred=None, tomato_act=None, error=None,
         elif label == 'com':
             center_error = int(round(error_center))
             text = 'com: {c:d}{u:s}'.format(c=center_error, u=unit)
-
             kw['bbox']['fc'] = 'k'
             kw['bbox']['ec'] = 'k'
             kw['color'] = 'w'
             arrow_color = 'k'
 
         elif label == 'false_pos':
-
             text = 'false positive'
             kw['bbox']['fc'] = 'r'
             kw['bbox']['ec'] = 'r'
-            # kw['color']= 'r'
             arrow_color = 'r'
 
         elif label == 'false_neg':
-
             text = 'false negative'
             kw['bbox']['ec'] = 'lightgrey'
             kw['bbox']['fc'] = 'lightgrey'
@@ -585,18 +621,21 @@ def plot_error(tomato_pred=None, tomato_act=None, error=None,
 
         connectionstyle = "angle,angleA=0,angleB={}".format(ang)
         kw["arrowprops"].update({"connectionstyle": connectionstyle, 'color': arrow_color})
-        plt.annotate(text, xy=(x, y), xytext=(x_text, y_text), **kw)  #
+        plt.annotate(text, xy=(x, y), xytext=(x_text, y_text), zorder=high_layer, **kw)  #
 
     if pwd:
         fig.savefig(os.path.join(pwd, name), dpi=resolution, bbox_inches='tight', pad_inches=0)
 
 
-def add_contour(mask, color=(255, 255, 255), linewidth=1):
+def add_contour(mask, color=(255, 255, 255), linewidth=1, zorder=None):
+    if zorder is None:
+        zorder=bottom_layer
+
     color = np.array(color).astype(float) / 255
     contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
     for contour in contours:
         plt.plot(contour[:, 0, 0], contour[:, 0, 1], linestyle='-', linewidth=linewidth, color=color,
-                 zorder=bottom_layer)
+                 zorder=zorder)
 
 
 def compute_line_points(center, angle, l):
@@ -759,7 +798,7 @@ def donut(data, labels, pwd=None, name=None, title=None, startangle=-45):
 
     bbox_props = dict(boxstyle="round,pad=0.3", fc=[0.92, 0.92, 0.92], lw=0) # square, round
     kw = dict(arrowprops=dict(arrowstyle="-"),
-              bbox=bbox_props, zorder=0, va="center", fontsize= 'medium')
+              bbox=bbox_props, zorder=0, va="center", fontsize='medium')
 
 
     y_scale = 1.8

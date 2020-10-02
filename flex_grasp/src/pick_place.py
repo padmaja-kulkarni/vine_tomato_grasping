@@ -56,7 +56,7 @@ class PickPlace(object):
         self.pose = dict.fromkeys(keys)
         
         # subscibe to corresponding poses
-        values = [x + '_pose' for x in keys]
+        values = [key + '_pose' for key in keys]
         pose_topic = dict(zip(keys, values))
         
         for key in pose_topic:

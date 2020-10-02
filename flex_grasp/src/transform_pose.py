@@ -44,9 +44,9 @@ class TransformPose(object):
         self.rate = rospy.Rate(self.frequency)
 
         # params
-        self.surface_height = 0.019
+        self.surface_height = 0.019  # [m]
         self.peduncle_height = 0.080  # [m]
-        self.sag_angle = np.deg2rad(6.0)
+        self.sag_angle = np.deg2rad(6.0)  # [rad]
 
         height_finger = 0.040  # [m]
         finger_link2ee_link = 0.023  # [m]

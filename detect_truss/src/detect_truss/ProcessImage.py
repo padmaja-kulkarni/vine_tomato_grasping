@@ -25,10 +25,10 @@ from util import translation_rot2or
 from util import add_circles, plot_features
 
 from util import make_dirs
-from util import save_img, figure_to_image
+from util import save_img, save_fig, figure_to_image
 from util import load_rgb
 from util import stack_segments
-from util import plot_timer, plot_grasp_location
+from util import plot_timer, plot_grasp_location, plot_image
 from util import change_brightness, plot_segments
 
 from point_2d import make_2d_transform, make_2d_point, make_2d_points
@@ -39,7 +39,7 @@ from filter_segments import filter_segments
 from detect_peduncle_2 import detect_peduncle, visualize_skeleton, set_detect_peduncle_settings
 from detect_tomato import detect_tomato, set_detect_tomato_settings
 from compute_grasp import set_compute_grap_settings
-from segment_image import segment_truss
+from segment_image import segment_truss, set_segment_image_settings
 
 warnings.filterwarnings('error', category=FutureWarning)
 
@@ -73,7 +73,7 @@ class ProcessImage(object):
                  save=False,
                  pwd='',
                  name='tomato',
-                 ext='png'
+                 ext='pdf'
                  ):
 
         self.ext = ext
@@ -98,6 +98,7 @@ class ProcessImage(object):
 
         # image
         settings = {}
+        settings['segment_image'] = set_segment_image_settings()
         settings['detect_tomato'] = set_detect_tomato_settings()
         settings['detect_peduncle'] = set_detect_peduncle_settings()
         settings['compute_grap'] = set_compute_grap_settings()
@@ -136,8 +137,8 @@ class ProcessImage(object):
 
         # self.image_hue = imHSV[:, :, 0]
         if self.save:
-            save_img(self.image_hue, pwd, self.name + '_h_raw') # color_map='hsv'
-            save_img(self.image_a, pwd, self.name + '_a_raw')
+            save_img(self.image_hue, pwd, self.name + '_h_raw', vmin=0, vmax=180) # color_map='hsv'
+            save_img(self.image_a, pwd, self.name + '_a_raw', vmin=0, vmax=255)
 
             save_img(self.image_hue, pwd, self.name + '_h', color_map='HSV') # color_map='hsv'
             save_img(self.image_a, pwd, self.name + '_a', color_map='Lab')
@@ -146,14 +147,14 @@ class ProcessImage(object):
     def segment_image(self, radius=None):
         if radius is None:
             pwd = os.path.join(self.pwd, '02_segment')
-            radius = 1.5
         else:
             pwd = os.path.join(self.pwd, '02_segment', str(radius))
+            self.settings['segment_image']['hue_radius'] = radius
 
         success = True
         background, tomato, peduncle = segment_truss(self.image_hue,
                                                      img_a=self.image_a,
-                                                     radius=radius,
+                                                     settings=self.settings['segment_image'],
                                                      save=self.save,
                                                      pwd=pwd,
                                                      name=self.name)
@@ -385,9 +386,9 @@ class ProcessImage(object):
 
             if self.save:
                 img_rgb = self.crop(self.image).data
-                save_img(img_rgb, pwd=pwd, name=self.name, ext=self.ext)
+                save_img(img_rgb, pwd=pwd, name=self.name)
                 img_rgb = self.image.data
-                save_img(img_rgb, pwd=pwd, name=self.name + '_g', ext=self.ext)
+                save_img(img_rgb, pwd=pwd, name=self.name + '_g')
             return False
 
         if self.save:
@@ -607,30 +608,37 @@ class ProcessImage(object):
             img = self.image.data
         return img
 
-    def get_truss_visualization(self, local=False):
+    def get_truss_visualization(self, local=False, save=False):
+        pwd = os.path.join(self.pwd, '08_result')
+
         if local:
             frame_id = self._LOCAL_FRAME_ID
             grasp_angle = self.grasp_angle_local
+            zoom = True
         else:
             frame_id = self._ORIGINAL_FRAME_ID
             grasp_angle = self.grasp_angle_global
+            zoom = False
 
         xy_com = self.get_xy(self.com, frame_id)
         xy_center = self.get_xy(self.centers, frame_id)
         xy_grasp = self.get_xy(self.grasp_point, frame_id)
         xy_junc = self.get_xy(self.junction_points, frame_id).tolist()
-        xy_end = self.get_xy(self.end_points, frame_id).tolist()
+        # xy_end = self.get_xy(self.end_points, frame_id).tolist()
 
         img = self.get_rgb(local=local)
         tomato, peduncle, background = self.get_segments(local=local)
         main_peduncle = self.penduncle_main
         # img_peduncle = self.get_peduncle_image(local = local)
 
-        plot_segments(img, background, tomato, peduncle)
+        fig = plt.figure()
+        plot_image(img)  # change_brightness(img, 0.5)
+
+        # plot_segments(img, background, tomato, peduncle)
         # add_circles(img, xy_center, radii=self.radii, color=(0, 0, 0), thickness=1)
         tomato = {'centers': xy_center, 'radii': self.radii, 'com': xy_com}
-        plot_features(tomato=tomato)
-        visualize_skeleton(img, main_peduncle, coord_junc=xy_junc, coord_end=xy_end, show_img=False)
+        plot_features(tomato=tomato, zoom=zoom)
+        visualize_skeleton(img, main_peduncle, coord_junc=xy_junc, show_img=False) # coord_end=xy_end,
 
         if (xy_grasp is not None) and (grasp_angle is not None):
             settings = self.settings['compute_grap']
@@ -639,6 +647,9 @@ class ProcessImage(object):
             else:
                 minimum_grasp_length_px = settings['grasp_length_min_px']
             plot_grasp_location(xy_grasp, grasp_angle, l=minimum_grasp_length_px, linewidth=5)
+
+        if save:
+            save_fig(plt.gcf(), pwd, self.name)
 
         return figure_to_image(plt.gcf())
 
@@ -670,7 +681,7 @@ class ProcessImage(object):
 
         tomato, peduncle, background = self.get_segments(local=local)
         img_rgb = self.get_rgb(local=local)
-        plot_segments(img_rgb, background, tomato, peduncle, linewidth=1.1, pwd=pwd, name=name)
+        plot_segments(img_rgb, background, tomato, peduncle, linewidth=0.5, pwd=pwd, name=name) # 1.1
 
     @Timer("process image")
     def process_image(self):
@@ -719,7 +730,7 @@ if __name__ == '__main__':
     i_end = 85
     N = i_end - i_start
 
-    save = True
+    save = False
     drive = "backup" # "UBUNTU 16_0"  #
     pwd_root = os.path.join(os.sep, "media", "taeke", drive, "thesis_data",
                             "detect_truss")
@@ -752,8 +763,7 @@ if __name__ == '__main__':
         process_image.add_image(rgb_data, px_per_mm=px_per_mm, name=tomato_name)
 
         success = process_image.process_image()
-        img = process_image.get_truss_visualization(local=True)
-        save_img(img, pwd=os.path.join(pwd_results, '08_result'), name=tomato_name)
+        process_image.get_truss_visualization(local=True, save=True)
 
 
         json_data = process_image.get_object_features()
@@ -790,6 +800,7 @@ if __name__ == '__main__':
     plt.xlabel('image ID')
     plt.title('Processing time per image')
     # plt.rc('ytick', labelsize=16)
+    plt.rcParams["savefig.format"] = 'pdf'
 
     fig.show()
     fig.savefig(os.path.join(pwd_results, 'time_bar'), dpi = 300) #, bbox_inches='tight', pad_inches=0)

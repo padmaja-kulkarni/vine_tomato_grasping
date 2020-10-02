@@ -114,8 +114,8 @@ class Calibration(object):
             r_vec = np.linspace(r_min, r_min + 2*r_amplitude, pos_intervals)
             z_vec = np.linspace(z_min, z_min + 2*z_amplitude, pos_intervals)
 
-        ai_amplitude = np.deg2rad(40.0)
-        aj_amplitude = np.deg2rad(40.0)
+        ai_amplitude = np.deg2rad(38.0)
+        aj_amplitude = np.deg2rad(38.0)
         ak_amplitude = np.deg2rad(15.0)
 
         rot_intervals = 2

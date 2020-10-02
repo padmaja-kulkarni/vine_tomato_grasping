@@ -19,17 +19,17 @@ from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import cm
 from matplotlib import colors
-
+from detect_truss.util import save_img
 
 
 # custom functions
-from detect_crop.util import rgb2hsi
-from detect_crop.util import romove_blobs_2
-from detect_crop.util import segmentation_parametric
-from detect_crop.util import segmentation_cluster
-from detect_crop.util import save_img
-
-from detect_crop.util import stack_segments
+from detect_truss.color_space import rgb2hsi
+# from detect_truss.util import romove_blobs_2
+# from detect_truss.util import segmentation_parametric
+# from detect_truss.util import segmentation_cluster
+# from detect_truss.util import save_img
+#
+# from detect_truss.util import stack_segments
 
 def rgb_3d_scatter(RGB):
     # https://realpython.com/python-opencv-color-spaces/
@@ -116,38 +116,44 @@ def hsv_2d_scatter(HSV, RGB):
      
     
 #%% init
-pathCurrent = os.path.dirname(__file__)
-dataSet = "real_blue"
-fileName = "001.png"
+drive = "backup"  # "UBUNTU 16_0"  #
+pwd_root = os.path.join(os.sep, "media", "taeke", drive, "thesis_data",
+                        "detect_truss")
+dataset = "lidl"  # "real_blue"
 
-pwdData = os.path.join(pathCurrent, "data", dataSet)
-pwdResults = os.path.join(pathCurrent, "results", "color_space")
+pwd_data = os.path.join(pwd_root, "data", dataset)
 
-imPath = os.path.join(pwdData, fileName)
-imBGR = cv2.imread(imPath)
+file_name = "001.png"
+
+pwd_results = os.path.join(pwd_root, "results", 'color_space')
+
+pwd_img = os.path.join(pwd_data, file_name)
+imBGR = cv2.imread(pwd_img)
 [H, W] = imBGR.shape[:2]
 h = int(H/2)
-w = int(W/2)
+w = int(W/2.5)
 
 row = int(H/6)
 col = int(W/3)
 imBGR = imBGR[row:row + h, col:col + w]
 
 plt.rcParams["image.cmap"] = 'plasma' # gray, hsv
-plt.rcParams["savefig.format"] = 'png' 
-plt.rcParams["savefig.bbox"] = 'tight' 
+plt.rcParams["savefig.format"] = 'png'
+plt.rcParams["savefig.bbox"] = 'tight'
 plt.rcParams['axes.titlesize'] = 20
+title_size = 25
 
 #%% RGB
 imRGB = cv2.cvtColor(imBGR, cv2.COLOR_BGR2RGB)
+plt.figure()
+plt.axis('off')
+plt.imshow(imRGB)
+save_img(imRGB, pwd_results, 'RGB')
+
 
 colorType = ['Red' ,'Green', 'Blue']
 for i in range(0,3):
-    plt.figure()
-    plt.axis('off')
-    plt.imshow(imRGB[:,:,i], vmin=0, vmax=255) 
-    plt.title(colorType[i])
-    plt.savefig(os.path.join(pwdResults, 'RGB_' + colorType[i]))
+    save_img(imRGB[:, : , i], pwd_results, 'RGB_'+colorType[i], title=colorType[i], vmin=0, vmax=255, title_size=title_size)
 
 
 #%% HSL
@@ -155,55 +161,35 @@ imHLS = cv2.cvtColor(imRGB, cv2.COLOR_RGB2HLS)
 imHSL = np.dstack((np.dstack((imHLS[:,:,0], imHLS[:,:,2])), imHLS[:,:,1]))
 colorType = ['Hue' ,'Saturation', 'Lightness']
 for i in range(0,3):
-    plt.figure()
-    plt.axis('off')
-    plt.imshow(imHSL[:,:,i], vmin=0, vmax=255) 
-    plt.title(colorType[i])
-    plt.savefig(os.path.join(pwdResults, 'HSL_' + colorType[i]))
+    save_img(imHSL[:, :, i], pwd_results, 'HSL_' + colorType[i], title=colorType[i], vmin=0, vmax=255, title_size=title_size)
 
 #%% HSV
 imHSV = cv2.cvtColor(imRGB, cv2.COLOR_RGB2HSV)
 
 colorType = ['Hue' ,'Saturation', 'Value']
 for i in range(0,3):
-    plt.figure()
-    plt.axis('off')
-    plt.imshow(imHSV[:,:,i], vmin=0, vmax=255) 
-    plt.title(colorType[i])
-    plt.savefig(os.path.join(pwdResults, 'HSV_' + colorType[i]))
+    save_img(imHSV[:, :, i], pwd_results, 'HSV_' + colorType[i], title=colorType[i], vmin=0, vmax=255, title_size=title_size)
     
 #%% HSI
 imHSI = rgb2hsi(imRGB)
-colorType = ['Hue' ,'Saturation', 'Intensity']
+colorType = ['Hue', 'Saturation', 'Intensity']
 for i in range(0,3):
-    plt.figure()
-    plt.axis('off')
-    plt.imshow(imHSI[:,:,i], vmin=0, vmax=255) 
-    plt.title(colorType[i])
-    plt.savefig(os.path.join(pwdResults, 'HSI_' + colorType[i]))    
+    save_img(imHSI[:, :, i], pwd_results, 'HSI_' + colorType[i], title=colorType[i], vmin=0, vmax=255, title_size=title_size)
     
     
 #%% LAB
 imLAB = cv2.cvtColor(imRGB, cv2.COLOR_RGB2LAB)
 
-colorType = ['Lightness' ,'A', 'B']
-for i in range(0,3):
-    plt.figure()
-    plt.axis('off')
-    plt.imshow(imLAB[:,:,i], vmin=0, vmax=255) 
-    plt.title(colorType[i])
-    plt.savefig(os.path.join(pwdResults, 'LAB_' + colorType[i]))
+colorType = ['Lightness', 'a*', 'b*']
+for i in range(0, 3):
+    save_img(imLAB[:, :, i], pwd_results, 'LAB_' + colorType[i], title=colorType[i], vmin=0, vmax=255, title_size=title_size)
     
 #%% YCrCb
 imYCrCb = cv2.cvtColor(imRGB, cv2.COLOR_RGB2YCrCb)
 
 colorType = ['Luminance' ,'Cr', 'Cb']
 for i in range(0,3):
-    plt.figure()
-    plt.axis('off')
-    plt.imshow(imYCrCb[:,:,i], vmin=0, vmax=255) 
-    plt.title(colorType[i])
-    plt.savefig(os.path.join(pwdResults, 'YCrCb_' + colorType[i]))
+    save_img(imYCrCb[:, :, i], pwd_results, 'YCrCb_' + colorType[i], title=colorType[i], vmin=0, vmax=255, title_size=title_size)
     
 #%% Legend
 plt.figure()
@@ -212,18 +198,18 @@ plt.xticks([0, 255])
 gradient = np.linspace(0, 1, 256)
 gradient = np.vstack((gradient, gradient, gradient, gradient, gradient, gradient))
 plt.imshow(gradient)
-plt.savefig(os.path.join(pwdResults, 'legend'))
+plt.savefig(os.path.join(pwd_results, 'legend'))
 
 
 #%% VISUALIZE
-scale = 0.1
-
-height = int(h * scale)
-width = int(w * scale)
-dim = (width, height)
-
-RGB_mini = cv2.resize(imRGB, dim, interpolation = cv2.INTER_AREA)
-HSV_mini = cv2.resize(imHSV, dim, interpolation = cv2.INTER_AREA)
+# scale = 0.1
+#
+# height = int(h * scale)
+# width = int(w * scale)
+# dim = (width, height)
+#
+# RGB_mini = cv2.resize(imRGB, dim, interpolation = cv2.INTER_AREA)
+# HSV_mini = cv2.resize(imHSV, dim, interpolation = cv2.INTER_AREA)
 
 # rgb_3d_scatter(RGB_mini)
 

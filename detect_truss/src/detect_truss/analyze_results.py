@@ -81,7 +81,7 @@ def index_true_positives(lbl_centers, res_centers, dist_tresh):
 
 i_start = 1
 i_end = 85
-save_results = False
+save_results = True
 N = i_end - i_start
 
 drive = "backup"  # "UBUNTU 16_0"  #
@@ -322,6 +322,9 @@ for id in all_ids:
     n_labeled_pos += tomato_error_all[id]['n_labeled_pos']
     n_predict_pos += tomato_error_all[id]['n_predict_pos']
 
+    if tomato_error_all[id]['n_labeled_pos'] - tomato_error_all[id]['n_true_pos'] > 0:
+        print id
+
 error_tomato_center_mean = np.mean(tomato_error_centers)
 error_tomato_center_std = np.std(tomato_error_centers)
 
@@ -351,7 +354,7 @@ print 'False positive: {false_pos:d} out of {n_tomatoes:d} ({false_pos_perc:d}%)
                                                                                          n_tomatoes=n_predict_pos,
                                                                                          false_pos_perc=false_pos_perc)
 
-cases = ['all', '1', '2']
+cases = ['all', 'center', 'off-center']
 
 # Junctions https://stackoverflow.com/questions/22307628/python-how-to-extend-the-content-of-a-list-store-in-a-dict
 junction_error_centers = {k:[] for k in cases}
@@ -365,9 +368,9 @@ for id in all_ids:
 
     id_type = ((int(id) - 1) % 7 + 1)
     if id_type in [1, 2, 3]:
-        case = '1'
+        case = 'center'
     elif id_type in [4, 5, 6, 7]:
-        case = '2'
+        case = 'off-center'
     else:
         print '?'
 
@@ -382,13 +385,13 @@ for id in all_ids:
 for key in junction_error_centers:
     junction_error_centers_key = remove_none_from_list(junction_error_centers[key])
 
-    print(len(junction_error_centers_key))
+
     error_juncion_center_mean = np.mean(junction_error_centers_key)
     error_junction_center_std = np.std(junction_error_centers_key)
 
     true_pos_perc = int(round(float(n_true_pos[key]) / float(n_labeled_pos[key]) * 100))
     false_pos_perc = int(round(float(n_false_pos[key]) / float(n_predict_pos[key]) * 100))
-    print key
+    print '===', key, '==='
 
     print 'Junction center error: {mean:.2f} {u:s} +- {std:.2f} {u:s} (n = {n:d})'.format(mean=error_juncion_center_mean,
                                                                                           std=error_junction_center_std,

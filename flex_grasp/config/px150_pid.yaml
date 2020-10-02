@@ -25,6 +25,6 @@
 # well when controlling the WidowX 200 Robot Arm. Some tuning may be required for the other robot arms.
 
 # [waist, shoulder, elbow, wrist_angle, wrist_rotate, gripper]
-Kp_vec: [640, 1200, 1200, 640, 640]           # Proportional gain vector
+Kp_vec: [640, 1000, 1000, 640, 640]           # Proportional gain vector
 Ki_vec: [0, 0, 0, 0, 0]                       # Integral gain vector
 Kd_vec: [3600, 3600, 3600, 3600, 3600]        # Derivative gain vector

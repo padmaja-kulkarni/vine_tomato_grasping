@@ -153,9 +153,10 @@ class MoveRobot(object):
         # Allow 5 seconds per planning attempt
         man_group.set_planning_time(5)
 
-        man_group.set_max_velocity_scaling_factor(1)
-        man_group.set_max_acceleration_scaling_factor(0.8)
-        # Allow some leeway in position (meters) and orientation (radians) PLANNING!
+        man_group.set_max_velocity_scaling_factor(0.8)
+        man_group.set_max_acceleration_scaling_factor(0.7)
+
+        # Allow some leeway in position (meters) and orientation (radians) affects PLANNING!
         man_group.set_goal_position_tolerance(0.005)
         man_group.set_goal_orientation_tolerance(np.deg2rad(0.5))
         man_group.set_goal_joint_tolerance(np.deg2rad(0.5))
