@@ -9,8 +9,12 @@ import numpy as np
 
 
 def set_compute_grap_settings(grasp_length_min_px=30.0,
-                              grasp_length_min_mm=15.0):
+                              grasp_length_min_mm=15.0,
+                              finger_thinkness_mm=10.0,
+                              approach_dist_mm=2*(0.037 - 0.0195)*1000):
     settings = {'grasp_length_min_px': grasp_length_min_px,
-                'grasp_length_min_mm': grasp_length_min_mm}
+                'grasp_length_min_mm': grasp_length_min_mm,
+                'finger_thinkness_mm': finger_thinkness_mm,
+                'approach_dist_mm': approach_dist_mm}
 
     return settings

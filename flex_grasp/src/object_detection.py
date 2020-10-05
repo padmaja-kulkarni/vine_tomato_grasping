@@ -350,7 +350,7 @@ class ObjectDetection(object):
         self.pub_tomato_image.publish(imgmsg_tomato)
         self.pub_depth_image.publish(imgmsg_depth)
         self.pub_color_hue.publish(imgmsg_hue)
-        if cage_pose == False:
+        if cage_pose is False:
             return FlexGraspErrorCodes.FAILURE
         self.pub_object_features.publish(truss)
         return FlexGraspErrorCodes.SUCCESS

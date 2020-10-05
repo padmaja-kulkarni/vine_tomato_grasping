@@ -18,22 +18,24 @@ import utils.color_maps as color_maps
 
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 
+grasp_color = (255, 136, 0)
 tomato_color = (255, 82, 82)
-peduncle_color = (82, 255, 82) # (0, 150, 30)
+peduncle_color = (82, 255, 82)  # (0, 150, 30)
 background_color = (0, 0, 255)
 junction_color = (100, 0, 200)
 end_color = (200, 0, 0)
 gray_color = (150, 150, 150)
 
 background_layer = 0
-bottom_layer = 1 # contours
-middle_layer = 5 # tomatoes
+bottom_layer = 1  # contours
+middle_layer = 5  # tomatoes
 peduncle_layer = 6
 vertex_layer = 7
-high_layer = 8 # arrows, com
+high_layer = 8  # arrows, com
 top_layer = 10  # junctions, com, text
 
-default_ext = 'pdf'
+default_ext = 'png'
+
 
 def make_dirs(pwd):
     if not os.path.isdir(pwd):
@@ -219,14 +221,17 @@ def stack_segments(imRGB, background, tomato, peduncle, use_image_colours=True):
 
     return res2
 
+
 def grey_2_rgb(img_grey, vmin=0, vmax=255):
     norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
     cmap = mpl.cm.hot
     mapping = mpl.cm.ScalarMappable(norm=norm, cmap=cmap)
-    img_rgb = (vmax*mapping.to_rgba(img_grey)[:, :, 0:3]).astype(np.uint8)
+    img_rgb = (vmax * mapping.to_rgba(img_grey)[:, :, 0:3]).astype(np.uint8)
     return img_rgb
 
-def save_img(img, pwd, name, resolution=300, title="", title_size=20, ext=None, color_map='plasma', vmin=None, vmax=None):
+
+def save_img(img, pwd, name, resolution=300, title="", title_size=20, ext=None, color_map='plasma', vmin=None,
+             vmax=None):
     if ext is None:
         ext = default_ext
 
@@ -261,7 +266,6 @@ def save_img(img, pwd, name, resolution=300, title="", title_size=20, ext=None, 
 
 
 def save_fig(fig, pwd, name, resolution=300, no_ticks=True, title="", titleSize=20, ext=None):
-
     if ext is None:
         ext = default_ext
 
@@ -291,13 +295,13 @@ def save_fig(fig, pwd, name, resolution=300, no_ticks=True, title="", titleSize=
         ax.tick_params(axis='both', which='major', labelsize=10)
         ax.tick_params(axis='both', which='minor', labelsize=8)
 
-
     plt.margins(0, 0)
 
     # make dir if it does not yet exist
     make_dirs(pwd)
     fig.savefig(os.path.join(pwd, name), dpi=resolution, bbox_inches='tight', pad_inches=0)
     plt.close(fig)
+
 
 def add_com(center, radius=5):
     """
@@ -313,7 +317,7 @@ def add_com(center, radius=5):
     img = mpl.image.imread(os.path.join(pwd_img, 'com.png'))
 
     com_radius, _, _ = img.shape
-    com_zoom = radius /  float(com_radius)
+    com_zoom = radius / float(com_radius)
     imagebox = mpl.offsetbox.OffsetImage(img, zoom=com_zoom)
 
     props = dict(alpha=0, zorder=top_layer)
@@ -345,7 +349,7 @@ def add_circles(centers, radii=5, fc=(255, 255, 255), ec=(0, 0, 0), linewidth=1,
     if centers.shape[1] == 0:
         return
 
-    fc = np.array(fc).astype(float)/255
+    fc = np.array(fc).astype(float) / 255
     ec = np.array(ec).astype(float) / 255
 
     fc = np.append(fc, alpha)
@@ -357,9 +361,9 @@ def add_circles(centers, radii=5, fc=(255, 255, 255), ec=(0, 0, 0), linewidth=1,
     ax = plt.gca()
 
     for center, radius in zip(centers, radii):
-        circle_border = mpl.patches.Circle(center, radius, ec=ec, fc=fc, fill=True, linewidth=linewidth,
+        circle = mpl.patches.Circle(center, radius, ec=ec, fc=fc, fill=True, linewidth=linewidth,
                                            linestyle=linestyle, zorder=zorder)
-        ax.add_artist(circle_border)
+        ax.add_artist(circle)
 
     if pwd is not None:
         save_fig(plt.gcf(), pwd, name, title="", titleSize=20)
@@ -406,9 +410,9 @@ def plot_image(img, show_axis=False):
         plt.gca().xaxis.set_major_locator(plt.NullLocator())
         plt.gca().yaxis.set_major_locator(plt.NullLocator())
 
+
 def plot_features(img_rgb=None, tomato=None, peduncle=None, grasp=None,
                   alpha=0.4, linewidth=1, zoom=False, pwd=None, file_name=None, title=""):
-
     if img_rgb is not None:
         fig = plt.figure()
         plot_image(img_rgb)
@@ -427,7 +431,8 @@ def plot_features(img_rgb=None, tomato=None, peduncle=None, grasp=None,
         junc_radius = 8
 
     if tomato:
-        add_circles(tomato['centers'], radii=tomato['radii'], fc=tomato_color, linewidth=tom_width, alpha=alpha, linestyle=tom_linestyle)
+        add_circles(tomato['centers'], radii=tomato['radii'], fc=tomato_color, linewidth=tom_width, alpha=alpha,
+                    linestyle=tom_linestyle)
         add_com(tomato['com'], radius=com_radius)
 
     if peduncle:
@@ -458,7 +463,6 @@ def plot_features_result(img_rgb, tomato_pred=None, peduncle=None, grasp=None,
         junc_radius = 8
 
     if tomato_pred:
-
         add_circles(tomato_pred['true_pos']['centers'], radii=tomato_pred['true_pos']['radii'], fc=tomato_color,
                     linewidth=2, alpha=alpha, linestyle=tom_linestyle)
         add_circles(tomato_pred['false_pos']['centers'], radii=tomato_pred['false_pos']['radii'], fc=tomato_color,
@@ -466,8 +470,10 @@ def plot_features_result(img_rgb, tomato_pred=None, peduncle=None, grasp=None,
         add_com(tomato_pred['com'], radius=com_radius)
 
     if peduncle:
-        add_circles(peduncle['false_pos']['centers'], radii=junc_radius, ec=(255, 0, 0), linewidth=linewidth, alpha=0, zorder=top_layer)
-        add_circles(peduncle['true_pos']['centers'], radii=junc_radius, fc=junction_color, linewidth=linewidth, zorder=top_layer)
+        add_circles(peduncle['false_pos']['centers'], radii=junc_radius, ec=(255, 0, 0), linewidth=linewidth, alpha=0,
+                    zorder=top_layer)
+        add_circles(peduncle['true_pos']['centers'], radii=junc_radius, fc=junction_color, linewidth=linewidth,
+                    zorder=top_layer)
         # added_image = add_circles(added_image, peduncle['ends'], radii = 10, color = (0,0,0), linewidth = linewidth)
 
     if grasp:
@@ -488,7 +494,6 @@ def plot_error(tomato_pred=None, tomato_act=None, error=None,
                resolution=300,
                title_size=20,
                ext=None):
-
     if ext is None:
         ext = default_ext
 
@@ -505,7 +510,6 @@ def plot_error(tomato_pred=None, tomato_act=None, error=None,
         unit = 'mm'
     else:
         unit = 'px'
-
 
     n_true_pos = len(tomato_pred['true_pos']['centers'])
     n_false_pos = len(tomato_pred['false_pos']['centers'])
@@ -629,7 +633,7 @@ def plot_error(tomato_pred=None, tomato_act=None, error=None,
 
 def add_contour(mask, color=(255, 255, 255), linewidth=1, zorder=None):
     if zorder is None:
-        zorder=bottom_layer
+        zorder = bottom_layer
 
     color = np.array(color).astype(float) / 255
     contours, hierarchy = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)[-2:]
@@ -651,8 +655,8 @@ def compute_line_points(center, angle, l):
     col_end = col - 0.5 * l * np.cos(angle)
     row_end = row - 0.5 * l * np.sin(angle)
 
-    start_point = (int(round(col_start)), int(round(row_start)))
-    end_point = (int(round(col_end)), int(round(row_end)))
+    start_point = np.array([int(round(col_start)), int(round(row_start))])
+    end_point = np.array([int(round(col_end)), int(round(row_end))])
     return start_point, end_point
 
 
@@ -661,10 +665,14 @@ def add_lines(centers, angles, l=20, color=(255, 255, 255), linewidth=1, is_rad=
     if isinstance(centers, (list, tuple)):
         centers = np.array(centers, ndmin=2)
 
+    if len(centers.shape) == 1:
+        centers = np.array(centers, ndmin=2)
+
     if not isinstance(angles, (list, tuple)):
         angles = [angles]
 
-    color = np.array(color).astype(float)/255
+    if not isinstance(color, (str)):
+        color = np.array(color).astype(float) / 255
 
     for center, angle in zip(centers, angles):
         if not is_rad:
@@ -673,6 +681,15 @@ def add_lines(centers, angles, l=20, color=(255, 255, 255), linewidth=1, is_rad=
         start_point, end_point = compute_line_points(center, angle, l)
         plt.plot([start_point[0], end_point[0]], [start_point[1], end_point[1]], color=color, linewidth=linewidth,
                  zorder=top_layer)
+
+
+def add_lines_from_points(start_point, end_point, color=(255, 255, 255), linewidth=1, linestyle='-'):
+    if not isinstance(color, (str)):
+        color = np.array(color).astype(float) / 255
+
+    plt.plot([start_point[0], end_point[0]], [start_point[1], end_point[1]], color=color, linewidth=linewidth,
+             linestyle=linestyle, zorder=top_layer)
+
 
 def add_arrows(centers, angles, l=20, color=(255, 255, 255), linewidth=1, head_width=5, head_length=7, is_rad=True):
     """
@@ -684,7 +701,7 @@ def add_arrows(centers, angles, l=20, color=(255, 255, 255), linewidth=1, head_w
     if not isinstance(angles, (list, tuple)):
         angles = [angles]
 
-    color = np.array(color).astype(float)/255
+    color = np.array(color).astype(float) / 255
 
     for center, angle in zip(centers, angles):
         if not is_rad:
@@ -695,7 +712,24 @@ def add_arrows(centers, angles, l=20, color=(255, 255, 255), linewidth=1, head_w
                   color=color, lw=linewidth, head_width=head_width, head_length=head_length, zorder=top_layer)
 
 
-def plot_grasp_location(loc, angle, l=30, r=10, linewidth=1, pwd=None, name=None, title=''):
+def add_rectangle(xy, width, height, angle=0, fc=(255, 255, 255), ec=(0, 0, 0), linewidth=1, alpha=1.0, linestyle='-', zorder=None,
+                pwd=None, name=None, title=""):
+
+    if zorder is None:
+        zorder = middle_layer
+
+    fc = np.array(fc).astype(float) / 255
+    ec = np.array(ec).astype(float) / 255
+
+    fc = np.append(fc, alpha)
+    ec = np.append(ec, 1)
+
+    rectangle = mpl.patches.Rectangle(xy, width, height, angle=angle, ec=ec, fc=fc, fill=True, linewidth=linewidth,
+                                      linestyle=linestyle, zorder=zorder)
+    ax = plt.gca()
+    ax.add_artist(rectangle)
+
+def plot_grasp_location(loc, angle, finger_width=20, finger_thickness=10, finger_dist=None, linewidth=1, pwd=None, name=None, title=''):
     """
         angle in rad
     """
@@ -708,10 +742,32 @@ def plot_grasp_location(loc, angle, l=30, r=10, linewidth=1, pwd=None, name=None
     if (loc[0] is None) or (loc[1] is None):
         return
 
-    start_point, end_point = compute_line_points(loc, angle + np.pi / 2, r)
+    rot_angle = angle + np.pi / 2
+    if finger_dist is not None:
+        right_origin, left_origin = compute_line_points(loc, rot_angle, finger_dist)
+        left_origins = np.stack([left_origin, loc])
+        right_origins = np.stack([right_origin, loc])
+        linestyles = ['-', ':']
 
-    add_lines(start_point, angle, l=l, color=(255, 255, 255), linewidth=linewidth)
-    add_lines(end_point, angle, l=l, color=(255, 255, 255), linewidth=linewidth)
+    else:
+        left_origins = [loc]
+        right_origins = [loc]
+        linestyles = ['-', ':']
+
+    for (left_origin, right_origin, linestyle) in zip(left_origins, right_origins, linestyles):
+        R = np.array([[np.cos(rot_angle), -np.sin(rot_angle)], [np.sin(rot_angle), np.cos(rot_angle)]])
+
+        xy = np.array([[-finger_thickness], [-finger_width/2]])
+        xy_rot = np.matmul(R, xy) + np.expand_dims(left_origin, axis = 1)
+
+        add_rectangle(xy_rot, finger_thickness, finger_width, angle=np.rad2deg(rot_angle), ec=grasp_color,
+                      fc=grasp_color, alpha=0.4, linewidth=linewidth, linestyle=linestyle, zorder=middle_layer)
+
+        xy = np.array([[0], [-finger_width/2]])
+        xy_rot = np.matmul(R, xy) + np.expand_dims(right_origin, axis=1)
+
+        add_rectangle(xy_rot, finger_thickness, finger_width, angle=np.rad2deg(rot_angle), ec=grasp_color,
+                      fc=grasp_color, alpha=0.4, linewidth=linewidth, linestyle=linestyle, zorder=middle_layer)
 
     if pwd is not None:
         save_fig(plt.gcf(), pwd, name, title=title)
@@ -796,10 +852,9 @@ def donut(data, labels, pwd=None, name=None, title=None, startangle=-45):
 
     wedges, texts = ax.pie(data, wedgeprops=dict(width=0.5), startangle=startangle)
 
-    bbox_props = dict(boxstyle="round,pad=0.3", fc=[0.92, 0.92, 0.92], lw=0) # square, round
+    bbox_props = dict(boxstyle="round,pad=0.3", fc=[0.92, 0.92, 0.92], lw=0)  # square, round
     kw = dict(arrowprops=dict(arrowstyle="-"),
               bbox=bbox_props, zorder=0, va="center", fontsize='medium')
-
 
     y_scale = 1.8
 

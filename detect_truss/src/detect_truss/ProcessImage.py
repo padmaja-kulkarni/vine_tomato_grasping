@@ -391,7 +391,10 @@ class ProcessImage(object):
                 save_img(img_rgb, pwd=pwd, name=self.name + '_g')
             return False
 
-        if self.save:
+        if True:  # self.save:
+            approach_dist_px = settings['approach_dist_mm']*self.px_per_mm
+            finger_thickenss_px = settings['finger_thinkness_mm']*self.px_per_mm
+
             brightness = 0.85
             xy_local = self.get_xy(grasp_point, self._LOCAL_FRAME_ID)
             img_rgb = self.crop(self.image).data.astype(np.uint8)
@@ -402,8 +405,9 @@ class ProcessImage(object):
             branch_image[locs[:, 1], locs[:, 0]] = 255
 
             visualize_skeleton(img_rgb_bright, branch_image, show_nodes=False, skeleton_color=(0, 0, 0), skeleton_width=4)
-            plot_grasp_location(xy_local, grasp_angle_local, l=minimum_grasp_length_px, pwd=pwd, name=self.name,
-                                linewidth=2)
+            plot_grasp_location(xy_local, grasp_angle_local, finger_width=minimum_grasp_length_px,
+                                finger_thickness=finger_thickenss_px, finger_dist=approach_dist_px, pwd=pwd,
+                                name=self.name, linewidth=1.5)
 
             xy_global = self.get_xy(grasp_point, self._ORIGINAL_FRAME_ID)
             img_rgb = np.array(self.image.data).astype(np.uint8)
@@ -421,7 +425,8 @@ class ProcessImage(object):
             branch_image = cv2.dilate(branch_image, kernel, iterations=1)
 
             visualize_skeleton(img_rgb_bright, branch_image, skeletonize=True, show_nodes=False, skeleton_color=(0, 0, 0))
-            plot_grasp_location(xy_global, grasp_angle_global, l=minimum_grasp_length_px, pwd=pwd,
+            plot_grasp_location(xy_global, grasp_angle_global, finger_width=minimum_grasp_length_px,
+                                finger_thickness=finger_thickenss_px, finger_dist=approach_dist_px, pwd=pwd,
                                 name=self.name + '_g')
 
         return success
@@ -644,9 +649,12 @@ class ProcessImage(object):
             settings = self.settings['compute_grap']
             if self.px_per_mm is not None:
                 minimum_grasp_length_px = self.px_per_mm * settings['grasp_length_min_mm']
+                approach_dist_px = settings['approach_dist_mm'] * self.px_per_mm
+                finger_thickenss_px = settings['finger_thinkness_mm'] * self.px_per_mm
             else:
                 minimum_grasp_length_px = settings['grasp_length_min_px']
-            plot_grasp_location(xy_grasp, grasp_angle, l=minimum_grasp_length_px, linewidth=5)
+            plot_grasp_location(xy_grasp, grasp_angle, finger_width=minimum_grasp_length_px, 
+                                finger_thickness=finger_thickenss_px, finger_dist=approach_dist_px, linewidth=2)
 
         if save:
             save_fig(plt.gcf(), pwd, self.name)
@@ -727,14 +735,14 @@ class ProcessImage(object):
 
 if __name__ == '__main__':
     i_start = 1
-    i_end = 85
+    i_end = 20
     N = i_end - i_start
 
     save = False
     drive = "backup" # "UBUNTU 16_0"  #
     pwd_root = os.path.join(os.sep, "media", "taeke", drive, "thesis_data",
                             "detect_truss")
-    dataset = "lidl"  # "real_blue"  # "drawing" #
+    dataset = "lidl"  # "real_blue"  # "drawing" # "failures"  #
 
     pwd_data = os.path.join(pwd_root, "data", dataset)
     pwd_results = os.path.join(pwd_root, "results", dataset)
