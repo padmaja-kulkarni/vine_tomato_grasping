@@ -116,10 +116,10 @@ class Idle(smach.State):
             elif userdata.prev_command == 'detect_truss':
                 userdata.command = 'transform'
             elif userdata.prev_command == 'transform':
-                userdata.command = 'fake_pick'
-            elif userdata.prev_command == 'fake_pick':
-                userdata.command = 'fake_place'
-            elif userdata.prev_command == 'fake_place':
+                userdata.command = 'pick'
+            elif userdata.prev_command == 'pick':
+                userdata.command = 'place'
+            elif userdata.prev_command == 'place':
                 userdata.command = 'detect_truss'
             else:
                 rospy.logwarn('[PIPELINE] do not know what to do with previous command %s', userdata.prev_command)

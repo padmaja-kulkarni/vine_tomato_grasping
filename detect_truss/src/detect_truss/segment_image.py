@@ -26,7 +26,7 @@ final_image_id = '015'
 
 
 def set_segment_image_settings(f=2,
-                               hue_radius=1.5,
+                               hue_radius=1.5,  # 1.5
                                epsilon=0.01,
                                i_max=20):
     settings = {'f': f,

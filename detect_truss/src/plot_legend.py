@@ -6,27 +6,47 @@ Created on Fri Aug  7 12:16:30 2020
 """
 
 from matplotlib import pyplot as plt
+from detect_truss.util import save_fig
+import matplotlib as mpl
 import cv2
 import numpy as np
 import os
 
-plt.rcParams["image.cmap"] = 'jet' # gray, hsv
-plt.rcParams["savefig.format"] = 'png' 
 plt.rcParams["savefig.bbox"] = 'tight' 
 plt.rcParams['axes.titlesize'] = 20
 
-pwd_current = os.path.dirname(__file__)
-pwd_data = os.path.join(pwd_current, 'data', 'artificial')
+drive = "backup"
+pwd_root = os.path.join(os.sep, "media", "taeke", drive, "thesis_data",
+                        "detect_truss", "results")
 
-#%% Legend
-width = 1000
-height = 20
+fig = plt.figure(figsize=(0.1, 2.5))
+dist_min = 0.5
+dist_max = 0.7
+n = 3
+ticks = np.linspace(dist_min,dist_max,n)
+cmap = mpl.cm.jet_r
+norm = mpl.colors.Normalize(vmin=dist_min, vmax=dist_max)
+sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+sm.set_array([])
 
-plt.figure()
-plt.yticks([])
-plt.xticks([0, width], [0.5, 0.7])
-gradient = np.linspace(0, 255, num = width + 1, dtype = np.uint8)
-gradient = np.vstack(height * (gradient,))
-gradient_color = cv2.applyColorMap(gradient, cv2.COLORMAP_JET)
-plt.imshow(gradient_color)
-plt.savefig(os.path.join(pwd_data, 'legend'))    
+cb1 = mpl.colorbar.ColorbarBase(plt.gca(), cmap=cmap, norm=norm, orientation='vertical')
+cb1.set_label('depth [m]')
+# plt.yticks([])
+cb1.set_ticks(ticks, True)
+# plt.yticks([0, 100], ['low', 'high'])
+save_fig(plt.gcf(), pwd_root, 'color_bar_depth', no_ticks=False)
+
+
+fig = plt.figure(figsize=(0.1, 3.5))
+
+cmap = mpl.cm.hot_r
+norm = mpl.colors.Normalize(vmin=0, vmax=100)
+sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+sm.set_array([])
+
+cb1 = mpl.colorbar.ColorbarBase(plt.gca(), cmap=cmap, norm=norm, orientation='vertical')
+cb1.set_label('frequency', labelpad=-20)
+# plt.yticks([])
+cb1.set_ticks([0, 100], True)
+plt.yticks([0, 100], ['low', 'high'])
+save_fig(plt.gcf(), pwd_root, 'color_bar_hist', no_ticks=False)

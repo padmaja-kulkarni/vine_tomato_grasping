@@ -135,12 +135,11 @@ class ProcessImage(object):
         else:
             self.image_a = None
 
-        # self.image_hue = imHSV[:, :, 0]
         if self.save:
             save_img(self.image_hue, pwd, self.name + '_h_raw', vmin=0, vmax=180) # color_map='hsv'
             save_img(self.image_a, pwd, self.name + '_a_raw', vmin=0, vmax=255)
 
-            save_img(self.image_hue, pwd, self.name + '_h', color_map='HSV') # color_map='hsv'
+            save_img(self.image_hue, pwd, self.name + '_h', color_map='HSV', vmin=0, vmax=180)
             save_img(self.image_a, pwd, self.name + '_a', color_map='Lab')
 
     @Timer("segmentation", name_space)
@@ -391,8 +390,8 @@ class ProcessImage(object):
                 save_img(img_rgb, pwd=pwd, name=self.name + '_g')
             return False
 
-        if True:  # self.save:
-            approach_dist_px = settings['approach_dist_mm']*self.px_per_mm
+        if self.save:
+            open_dist_px = settings['open_dist_mm']*self.px_per_mm
             finger_thickenss_px = settings['finger_thinkness_mm']*self.px_per_mm
 
             brightness = 0.85
@@ -406,8 +405,8 @@ class ProcessImage(object):
 
             visualize_skeleton(img_rgb_bright, branch_image, show_nodes=False, skeleton_color=(0, 0, 0), skeleton_width=4)
             plot_grasp_location(xy_local, grasp_angle_local, finger_width=minimum_grasp_length_px,
-                                finger_thickness=finger_thickenss_px, finger_dist=approach_dist_px, pwd=pwd,
-                                name=self.name, linewidth=1.5)
+                                finger_thickness=finger_thickenss_px, finger_dist=open_dist_px, pwd=pwd,
+                                name=self.name, linewidth=3)
 
             xy_global = self.get_xy(grasp_point, self._ORIGINAL_FRAME_ID)
             img_rgb = np.array(self.image.data).astype(np.uint8)
@@ -426,7 +425,7 @@ class ProcessImage(object):
 
             visualize_skeleton(img_rgb_bright, branch_image, skeletonize=True, show_nodes=False, skeleton_color=(0, 0, 0))
             plot_grasp_location(xy_global, grasp_angle_global, finger_width=minimum_grasp_length_px,
-                                finger_thickness=finger_thickenss_px, finger_dist=approach_dist_px, pwd=pwd,
+                                finger_thickness=finger_thickenss_px, finger_dist=open_dist_px, pwd=pwd,
                                 name=self.name + '_g')
 
         return success
@@ -649,12 +648,12 @@ class ProcessImage(object):
             settings = self.settings['compute_grap']
             if self.px_per_mm is not None:
                 minimum_grasp_length_px = self.px_per_mm * settings['grasp_length_min_mm']
-                approach_dist_px = settings['approach_dist_mm'] * self.px_per_mm
+                open_dist_px = settings['open_dist_mm'] * self.px_per_mm
                 finger_thickenss_px = settings['finger_thinkness_mm'] * self.px_per_mm
             else:
                 minimum_grasp_length_px = settings['grasp_length_min_px']
             plot_grasp_location(xy_grasp, grasp_angle, finger_width=minimum_grasp_length_px, 
-                                finger_thickness=finger_thickenss_px, finger_dist=approach_dist_px, linewidth=2)
+                                finger_thickness=finger_thickenss_px, finger_dist=open_dist_px, linewidth=3)
 
         if save:
             save_fig(plt.gcf(), pwd, self.name)
@@ -734,15 +733,15 @@ class ProcessImage(object):
 
 
 if __name__ == '__main__':
-    i_start = 1
-    i_end = 20
+    i_start = 64
+    i_end = 65
     N = i_end - i_start
 
-    save = False
-    drive = "backup" # "UBUNTU 16_0"  #
+    save = True
+    drive = "backup1" # "UBUNTU 16_0"  #
     pwd_root = os.path.join(os.sep, "media", "taeke", drive, "thesis_data",
                             "detect_truss")
-    dataset = "lidl"  # "real_blue"  # "drawing" # "failures"  #
+    dataset = "lidl"  # "real_blue"  # "drawing" # "failures"  # 'test' # 'simpel_001'  # 'realistic_002'  #
 
     pwd_data = os.path.join(pwd_root, "data", dataset)
     pwd_results = os.path.join(pwd_root, "results", dataset)
@@ -761,7 +760,7 @@ if __name__ == '__main__':
         print("Analyzing image ID %d (%d/%d)" % (i_tomato, count + 1, N))
 
         tomato_name = str(i_tomato).zfill(3)
-        if i_tomato > 49:
+        if i_tomato > 49: # 0: #
             file_name = tomato_name + "_rgb" + ".png"
         else:
             file_name = tomato_name + ".png"
@@ -780,7 +779,7 @@ if __name__ == '__main__':
         with open(pwd_json_file, "w") as write_file:
             json.dump(json_data, write_file)
 
-    if save is not True:
+    if True: #  save is not True:
         plot_timer(Timer.timers['main'].copy(), threshold=0.02, pwd=pwd_results, name='main', title='Processing time', startangle=-20)
         # plot_timer(Timer.timers['peduncle'].copy(), N=N, threshold=0.02, pwd=pwd_results, name='peduncle',
         #            title='Processing time peduncle')

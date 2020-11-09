@@ -277,7 +277,6 @@ def visualize_skeleton(img, skeleton_img, skeletonize=False, coord_junc=None, co
     if pwd:
         save_fig(fig, pwd, name)
 
-
 def node_coord_angle(src, dst):
     return np.rad2deg(np.arctan2((dst[0] - src[0]), (dst[1] - src[1])))
 
@@ -405,6 +404,12 @@ def detect_peduncle(peduncle_img, settings=None, px_per_mm=None, bg_img=None, sa
 
     if settings is None:
         settings = set_detect_peduncle_settings()
+
+    if (bg_img is not None) and save:
+        fig = plt.figure()
+        plot_image(bg_img)
+        save_fig(fig, pwd, name + "_00")
+
 
     if bg_img is None:
         bg_img = peduncle_img

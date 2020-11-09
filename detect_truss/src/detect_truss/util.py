@@ -18,7 +18,8 @@ import utils.color_maps as color_maps
 
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 
-grasp_color = (255, 136, 0)
+ee_color = (255, 150, 0)
+grasp_color = (200, 0, 150)
 tomato_color = (255, 82, 82)
 peduncle_color = (82, 255, 82)  # (0, 150, 30)
 background_color = (0, 0, 255)
@@ -34,7 +35,7 @@ vertex_layer = 7
 high_layer = 8  # arrows, com
 top_layer = 10  # junctions, com, text
 
-default_ext = 'png'
+default_ext = 'pdf'
 
 
 def make_dirs(pwd):
@@ -278,8 +279,8 @@ def save_fig(fig, pwd, name, resolution=300, no_ticks=True, title="", titleSize=
     plt.rcParams["savefig.bbox"] = 'tight'
     # plt.rcParams['axes.titlesize'] = titleSize
 
-    plt.rc('axes', labelsize=MEDIUM_SIZE)  # fontsize of the x and y labels
-    plt.rc('xtick', labelsize=MEDIUM_SIZE)  # fontsize of the tick labels
+    # plt.rc('axes', labelsize=MEDIUM_SIZE)  # fontsize of the x and y labels
+    # plt.rc('xtick', labelsize=MEDIUM_SIZE)  # fontsize of the tick labels
 
     for ax in fig.get_axes():
         pass
@@ -442,7 +443,7 @@ def plot_features(img_rgb=None, tomato=None, peduncle=None, grasp=None,
         col = grasp['col']
         row = grasp['row']
         angle = grasp['angle']
-        plot_grasp_location([[col, row]], angle, l=20, r=15, linewidth=2)
+        plot_grasp_location([[col, row]], angle, finger_width=20, finger_thickness=15, linewidth=2)
 
     if pwd is not None:
         save_fig(fig, pwd, file_name, title=title)
@@ -480,7 +481,7 @@ def plot_features_result(img_rgb, tomato_pred=None, peduncle=None, grasp=None,
         col = grasp['col']
         row = grasp['row']
         angle = grasp['angle']
-        plot_grasp_location([[col, row]], angle, l=20, r=15, linewidth=2)
+        plot_grasp_location([[col, row]], angle, finger_width=20, finger_thickness=15, linewidth=2)
 
     if pwd is not None:
         save_fig(fig, pwd, name, title=title)
@@ -655,8 +656,8 @@ def compute_line_points(center, angle, l):
     col_end = col - 0.5 * l * np.cos(angle)
     row_end = row - 0.5 * l * np.sin(angle)
 
-    start_point = np.array([int(round(col_start)), int(round(row_start))])
-    end_point = np.array([int(round(col_end)), int(round(row_end))])
+    start_point = np.array([col_start, row_start])
+    end_point = np.array([col_end, row_end])
     return start_point, end_point
 
 
@@ -745,29 +746,32 @@ def plot_grasp_location(loc, angle, finger_width=20, finger_thickness=10, finger
     rot_angle = angle + np.pi / 2
     if finger_dist is not None:
         right_origin, left_origin = compute_line_points(loc, rot_angle, finger_dist)
-        left_origins = np.stack([left_origin, loc])
-        right_origins = np.stack([right_origin, loc])
-        linestyles = ['-', ':']
 
     else:
-        left_origins = [loc]
-        right_origins = [loc]
-        linestyles = ['-', ':']
+        left_origin = loc
+        right_origin = loc
 
-    for (left_origin, right_origin, linestyle) in zip(left_origins, right_origins, linestyles):
-        R = np.array([[np.cos(rot_angle), -np.sin(rot_angle)], [np.sin(rot_angle), np.cos(rot_angle)]])
 
-        xy = np.array([[-finger_thickness], [-finger_width/2]])
-        xy_rot = np.matmul(R, xy) + np.expand_dims(left_origin, axis = 1)
+    R = np.array([[np.cos(rot_angle), -np.sin(rot_angle)], [np.sin(rot_angle), np.cos(rot_angle)]])
 
-        add_rectangle(xy_rot, finger_thickness, finger_width, angle=np.rad2deg(rot_angle), ec=grasp_color,
-                      fc=grasp_color, alpha=0.4, linewidth=linewidth, linestyle=linestyle, zorder=middle_layer)
+    xy = np.array([[-finger_thickness], [-finger_width/2]])
+    xy_rot = np.matmul(R, xy) + np.expand_dims(left_origin, axis = 1)
 
-        xy = np.array([[0], [-finger_width/2]])
-        xy_rot = np.matmul(R, xy) + np.expand_dims(right_origin, axis=1)
+    add_rectangle(xy_rot, finger_thickness, finger_width, angle=np.rad2deg(rot_angle), ec=ee_color,
+                  fc=ee_color, alpha=0.4, linewidth=linewidth, zorder=middle_layer)
 
-        add_rectangle(xy_rot, finger_thickness, finger_width, angle=np.rad2deg(rot_angle), ec=grasp_color,
-                      fc=grasp_color, alpha=0.4, linewidth=linewidth, linestyle=linestyle, zorder=middle_layer)
+    if finger_dist is not None:
+        add_rectangle(xy_rot, 2*finger_thickness + finger_dist, finger_width, angle=np.rad2deg(rot_angle), ec=grasp_color,
+                  fc=grasp_color, alpha=0.4, linewidth=linewidth, linestyle='-', zorder=bottom_layer)
+
+    xy = np.array([[0], [-finger_width/2]])
+    xy_rot = np.matmul(R, xy) + np.expand_dims(right_origin, axis=1)
+
+    add_rectangle(xy_rot, finger_thickness, finger_width, angle=np.rad2deg(rot_angle), ec=ee_color,
+                  fc=ee_color, alpha=0.4, linewidth=linewidth, zorder=middle_layer)
+
+
+
 
     if pwd is not None:
         save_fig(plt.gcf(), pwd, name, title=title)
@@ -854,7 +858,7 @@ def donut(data, labels, pwd=None, name=None, title=None, startangle=-45):
 
     bbox_props = dict(boxstyle="round,pad=0.3", fc=[0.92, 0.92, 0.92], lw=0)  # square, round
     kw = dict(arrowprops=dict(arrowstyle="-"),
-              bbox=bbox_props, zorder=0, va="center", fontsize='medium')
+              bbox=bbox_props, zorder=0, va="center", fontsize=15)
 
     y_scale = 1.8
 
@@ -868,7 +872,7 @@ def donut(data, labels, pwd=None, name=None, title=None, startangle=-45):
         ax.annotate(text[i], xy=(x, y), xytext=(1.35 * np.sign(x), y_scale * y),
                     horizontalalignment=horizontalalignment, **kw)
 
-    ax.set_title(title)
+    ax.set_title(title, fontsize=20)
     plt.tight_layout()
 
     if pwd is not None:
