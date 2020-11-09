@@ -1,5 +1,8 @@
 # iiwa_grasp
 
+Ubuntu: 16.04 LTS
+ROS: kinetic
+
 ## Contents
 
 ### ROS package
