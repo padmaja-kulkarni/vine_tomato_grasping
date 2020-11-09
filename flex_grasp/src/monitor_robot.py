@@ -48,10 +48,12 @@ class MonitorRobot(object):
         self.command = None
         self.rate = rospy.Rate(self.fequency)        
 
-        self.simulation  = rospy.get_param("robot_sim")
-        self.control_mode =  rospy.get_param("arm_node/arm_operating_mode").capitalize()
+        self.simulation = rospy.get_param("robot_sim")
+
         
         if not self.simulation:
+            self.control_mode = rospy.get_param("arm_node/arm_operating_mode").capitalize()
+
             rospy.wait_for_service("get_robot_info")
             self.get_robot_info = rospy.ServiceProxy('get_robot_info', RobotInfo)        
             self.get_motor_register_values = rospy.ServiceProxy('get_motor_register_values', RegisterValues)

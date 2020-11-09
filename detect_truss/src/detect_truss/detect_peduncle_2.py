@@ -448,16 +448,14 @@ def detect_peduncle(peduncle_img, settings=None, px_per_mm=None, bg_img=None, sa
     path_img = show_path(path, pixel_coordinates, skeleton_img.shape)
     junc_coords = get_locations_on_mask(path_img, junc_coords)
     end_coords = get_locations_on_mask(path_img, end_coords)
-
-
-    # end_coords = np.array([branch_data['junction-endpoint'][0]['src_node_coord'],
-    #                        branch_data['junction-endpoint'][-1]['dst_node_coord']])
+    
     end_coords = np.array([pixel_coordinates[path[0]][[1, 0]], pixel_coordinates[path[-1]][[1, 0]]])
 
-    for end_coord in end_coords:
-        dst = distance(junc_coords, end_coord)
-        mask = dst > 0.1
-        junc_coords = junc_coords[mask]
+    if junc_coords.shape[0] != 0:
+        for end_coord in end_coords:
+            dst = distance(junc_coords, end_coord)
+            mask = dst > 0.1
+            junc_coords = junc_coords[mask]
 
     if save:
         visualize_skeleton(bg_img, path_img, coord_junc=junc_coords, # junc_nodes=junc_nodes, end_nodes=end_nodes,
