@@ -44,7 +44,7 @@
 
 2. Gazebo should start, by default it is paused (this behaviour can be chnaged in the launch files). Unpause the simulation by hitting play on the bar shown at the bottom
 
-    ![Gazebo](doc/gazebo.png)
+    ![Gazebo](images/gazebo.png)
 
 
 3. Now run the controls
