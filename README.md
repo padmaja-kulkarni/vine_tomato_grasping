@@ -2,17 +2,28 @@
 
 ## Contents
 
-- **grasp_crop** :  Ros package for controlling a manipulator to grasp food objects. Contains all the ROS nodes.
+### ROS package
 
-- **detect_crop** :  Ros package for controlling the Kuka iiwa arm to grasp food objects.
+- **flex_gazebo**: Gazebo simulation contains camera and marker
+
+- **flex_gazebo_iiwa**: Gazebo simulation for the iiwa
+
+- **flex_gazebo_interbotix**: Gazebo simulation for the interbotix manipulator
+
+- **flex_grasp** :  Manipulator control to grasp food objects. Contains all the ROS nodes.
+
+- **flex_sdh_moveit**: SDH files required for control via MoveIt!
+
+- **rqt_user_interface**: graphical user interface
+
+### Others
+
+- **detect_truss**: Computer vision pipeline for Python (ROS independent)
+
 
 ## Install
 
-### Prerequisit
 
-- [iiwa_stack](https://github.com/IFL-CAMP/iiwa_stack): for controlling the manipulator.
-- [realsense-ros](https://github.com/IntelRealSense/realsense-ros): for using Intel RealSense cameras.
-- [realsense_gazebo_plugin](https://github.com/SyrianSpock/realsense_gazebo_plugin): for simulating the realse camera in Gazebo.
 
 ### Setup
 1.  Clone the master branch:
@@ -66,10 +77,12 @@ where COMMAND can be either `"DETECT"` or `"HOME"`.
 Manipulator:
 
 - **KUKA LBR IIWA 7**
+- **Interbotix PincherX 150** (possibly all others from the interbotix series, but this has not been tested)
+
 
 End-effector:
 
-- **-**
+- **SDH**
 
 Carmera:
 
