@@ -3,5 +3,6 @@
 /script/
 *.pyc
 /taeke/
-/.idea
+*/.idea
 /flexcraft_jelle
+/env

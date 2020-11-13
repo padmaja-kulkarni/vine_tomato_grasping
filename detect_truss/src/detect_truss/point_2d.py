@@ -4,37 +4,22 @@ Created on Wed Jun 17 10:43:57 2020
 
 @author: taeke
 """
-import rospy
+# import rospy
 import numpy as np
-from geometry_msgs.msg import TransformStamped, PoseStamped, Quaternion
-import tf2_ros
+# from geometry_msgs.msg import TransformStamped, PoseStamped, Quaternion
+# import tf2_ros
 from image import Image, image_rotate
-from moveit_commander import MoveItCommanderException
-import tf2_geometry_msgs
+# from moveit_commander import MoveItCommanderException
+# import tf2_geometry_msgs
 
 
-from tf.transformations import quaternion_from_euler
+# from tf.transformations import quaternion_from_euler
 
 
 from util import add_circles
-from util import translation_rot2or
+# from util import translation_rot2or
 
-def list_to_orientation(orientation_list):
-          
-    if len(orientation_list) == 3:
-        quat_list = quaternion_from_euler(orientation_list[0], orientation_list[1], orientation_list[2])
-    elif len(orientation_list) == 4:
-        quat_list = orientation_list
-    else: 
-        raise MoveItCommanderException("Expected orinetation list containing 3 (x, y, z) or 4 (x, y, z, w) elements")
-    
-    orientation_msg = Quaternion()
-    orientation_msg.x = quat_list[0]
-    orientation_msg.y = quat_list[1]
-    orientation_msg.z = quat_list[2]
-    orientation_msg.w = quat_list[3]
-    
-    return orientation_msg
+
 
 def make_2d_transform(from_frame_id, to_frame_id, xy = (0,0), angle = 0):
     
@@ -66,6 +51,7 @@ def make_2d_points(frame_id, XY):
         pose_stamped_list.append(make_2d_point(frame_id, xy))
 
     return pose_stamped_list
+
 
 class Point2D(object):
     
@@ -104,8 +90,7 @@ class Transform2D(object):
     
 if __name__ == '__main__':
     
-    
-    
+
     # params
     angle = np.deg2rad(10) 
     frame_id = 'original'    
@@ -134,14 +119,14 @@ if __name__ == '__main__':
     
     
     # visualization
-    centers = np.array(xy, ndmin = 2)    
-    image = Image(add_circles(data, centers, radii = 20, color = (100, 0, 0)))   
+    centers = np.array(xy, ndmin=2)
+    image = Image(add_circles(data, centers, radii=20, color=(100, 0, 0)))
     image.show()    
     
     image2 = image_rotate(image, -angle)  
     xy_new = (point_new.pose.position.x, point_new.pose.position.y)
-    centers_new = np.array(xy_new, ndmin = 2)
-    image = Image(add_circles(image2.get_data(), centers_new, radii = 40, color = (0, 100, 0)))   
+    centers_new = np.array(xy_new, ndmin=2)
+    image = Image(add_circles(image2.get_data(), centers_new, radii=40, color=(0, 100, 0)))
     image.show()
     
     

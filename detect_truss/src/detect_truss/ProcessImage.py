@@ -6,13 +6,11 @@ import os  # os.sep
 import warnings
 
 import numpy as np
-import tf2_ros
 import cv2
-import tf2_geometry_msgs
 import json
 
 from skimage.transform import rotate
-import rospy
+from utils.transform import translation_rot2or
 
 from image import Image, compute_angle, add, compute_bbox, image_rotate, image_crop, image_cut
 
@@ -21,7 +19,7 @@ from timer import Timer
 # custom functions
 from util import add_border
 
-from util import translation_rot2or
+from transform import Transform, Point2D
 from util import add_circles, plot_features
 
 from util import make_dirs
@@ -30,8 +28,6 @@ from util import load_rgb
 from util import stack_segments
 from util import plot_timer, plot_grasp_location, plot_image
 from util import change_brightness, plot_segments
-
-from point_2d import make_2d_transform, make_2d_point, make_2d_points
 
 from matplotlib import pyplot as plt
 
@@ -108,7 +104,7 @@ class ProcessImage(object):
         self.distance_threshold = 10
 
         # init buffer
-        self.buffer_core = tf2_ros.BufferCore(rospy.Time(10))
+        # self.buffer_core = tf2_ros.BufferCore(rospy.Time(10))
 
     def add_image(self, data, px_per_mm=None, name=None):
         image = Image(data)
@@ -136,7 +132,7 @@ class ProcessImage(object):
             self.image_a = None
 
         if self.save:
-            save_img(self.image_hue, pwd, self.name + '_h_raw', vmin=0, vmax=180) # color_map='hsv'
+            save_img(self.image_hue, pwd, self.name + '_h_raw', vmin=0, vmax=180)  # color_map='hsv'
             save_img(self.image_a, pwd, self.name + '_a_raw', vmin=0, vmax=255)
 
             save_img(self.image_hue, pwd, self.name + '_h', color_map='HSV', vmin=0, vmax=180)
@@ -181,7 +177,6 @@ class ProcessImage(object):
         if folder_name is not None:
             pwd = os.path.join(pwd, folder_name)
 
-
         tomato_f, peduncle_f, background_f = filter_segments(self.tomato.data,
                                                              self.peduncle.data,
                                                              self.background.data)
@@ -207,10 +202,10 @@ class ProcessImage(object):
             warnings.warn("Cannot rotate based on peduncle, since it does not exist!")
             angle = 0
         else:
-            angle = compute_angle(self.peduncle.data)  # [rad]
+            angle = -compute_angle(self.peduncle.data)  # [rad]
 
-        tomato_rotate = image_rotate(self.tomato, -angle)
-        peduncle_rotate = image_rotate(self.peduncle, -angle)
+        tomato_rotate = image_rotate(self.tomato, angle)
+        peduncle_rotate = image_rotate(self.peduncle, angle)
         truss_rotate = add(tomato_rotate, peduncle_rotate)
 
         if truss_rotate.is_empty():
@@ -218,25 +213,16 @@ class ProcessImage(object):
             return False
 
         bbox = compute_bbox(truss_rotate.data)
-        x = bbox[0]
-        y = bbox[1]
+        cols = bbox[0]  # col
+        rows = bbox[1]  # row
 
-        # get origin
-        translation = translation_rot2or(self.shape, -angle)
-        dist = np.sqrt(translation[0] ** 2 + translation[1] ** 2)
+        translation = np.array([[rows, cols]]).T
+        self.transform = Transform(self._ORIGINAL_FRAME_ID,
+                                   self._LOCAL_FRAME_ID,
+                                   self.shape,
+                                   angle=angle,
+                                   translation=translation)
 
-        if angle >= 0:
-            xy = (-x + dist, -y)
-        if angle < 0:
-            xy = (-x, -y + dist)
-
-        # make and add transform to the buffer
-        transform = make_2d_transform(self._ORIGINAL_FRAME_ID,
-                                      self._LOCAL_FRAME_ID,
-                                      xy=xy,
-                                      angle=angle)
-
-        self.buffer_core.set_transform(transform, "default_authority")
         self.bbox = bbox
         self.angle = angle
 
@@ -256,7 +242,7 @@ class ProcessImage(object):
             return False
 
         if self.save:
-            img_bg = self.image_crop.data  # self.get_segmented_image(local = True)
+            img_bg = self.image_crop.data
         else:
             img_bg = self.image_crop.data
 
@@ -272,11 +258,11 @@ class ProcessImage(object):
         center_points = []
         if centers is not None:
             for center in centers:
-                center_points.append(make_2d_point(self._LOCAL_FRAME_ID, (center[0, 0], center[0, 1])))
+                center_points.append(Point2D([center[0, 0], center[0, 1]], self._LOCAL_FRAME_ID))
 
         if com is not None:
             success = True
-            com_point = make_2d_point(self._LOCAL_FRAME_ID, (com[0, 0], com[0, 1]))
+            com_point = Point2D([com[0, 0], com[0, 1]], self._LOCAL_FRAME_ID)
         else:
             com_point = None
             success = False
@@ -298,30 +284,36 @@ class ProcessImage(object):
         # bg_img = self.image_crop.data, 0.85)
 
         mask, branch_data, junc_coords, end_coords = detect_peduncle(self.peduncle_crop.data,
-                                            self.settings['detect_peduncle'],
-                                            px_per_mm=self.px_per_mm,
-                                            save=self.save,
-                                            bg_img=img_bg,
-                                            name=self.name,
-                                            pwd=pwd)
+                                                                     self.settings['detect_peduncle'],
+                                                                     px_per_mm=self.px_per_mm,
+                                                                     save=self.save,
+                                                                     bg_img=img_bg,
+                                                                     name=self.name,
+                                                                     pwd=pwd)
 
         # convert to 2D points
         junction_points = []
         for junction in junc_coords:
-            junction_points.append(make_2d_point(self._LOCAL_FRAME_ID, junction))
+            junction_points.append(Point2D(junction, self._LOCAL_FRAME_ID))
 
         end_points = []
         for end in end_coords:
-            end_points.append(make_2d_point(self._LOCAL_FRAME_ID, end))
+            end_points.append(Point2D(end, self._LOCAL_FRAME_ID))
 
         for branch_type in branch_data:
             for i, branch in enumerate(branch_data[branch_type]):
                 for lbl in ['coords', 'src_node_coord', 'dst_node_coord', 'center_node_coord']:
-                    coord = branch[lbl]
+
                     if lbl == 'coords':
-                        branch_data[branch_type][i][lbl] = make_2d_points(self._LOCAL_FRAME_ID, coord)
+                        coords = branch[lbl]
+                        point_list = []
+                        for coord in coords:
+                            point = Point2D(coord, self._LOCAL_FRAME_ID)
+                            point_list.append(point)
+                        branch_data[branch_type][i][lbl] = point_list
                     else:
-                        branch_data[branch_type][i][lbl] = make_2d_point(self._LOCAL_FRAME_ID, coord)
+                        coord = branch[lbl]
+                        branch_data[branch_type][i][lbl] = Point2D(coord, self._LOCAL_FRAME_ID)
 
         self.junction_points = junction_points
         self.end_points = end_points
@@ -334,7 +326,7 @@ class ProcessImage(object):
         pwd = os.path.join(self.pwd, '07_grasp')
         success = True
 
-        com = self.get_xy(self.com, self._LOCAL_FRAME_ID)
+        com = self.com.get_coord(self.transform, self._LOCAL_FRAME_ID)
         settings = self.settings['compute_grap']
 
         # set dimensions
@@ -350,14 +342,17 @@ class ProcessImage(object):
                 branch_coords = branch['coords']
 
                 # filter coords near end and start node
-                branch_locs = self.get_xy(branch_coords, self._LOCAL_FRAME_ID)
-                branch_src_node_loc = self.get_xy(branch['src_node_coord'], self._LOCAL_FRAME_ID)
-                branch_dst_node_loc = self.get_xy(branch['dst_node_coord'], self._LOCAL_FRAME_ID)
+                branch_locs = []
+                for branch_coord in branch_coords:
+                    branch_loc = branch_coord.get_coord(self.transform, self._LOCAL_FRAME_ID)
+                    branch_locs.append(branch_loc)
+                branch_src_node_loc = branch['src_node_coord'].get_coord(self.transform, self._LOCAL_FRAME_ID)
+                branch_dst_node_loc = branch['dst_node_coord'].get_coord(self.transform, self._LOCAL_FRAME_ID)
 
                 i_keep = []
                 for ii, branch_loc in enumerate(branch_locs):
-                    src_node_dist = np.sqrt(np.sum(np.power(branch_loc - branch_src_node_loc, 2), 1))
-                    dst_node_dist = np.sqrt(np.sum(np.power(branch_loc - branch_dst_node_loc, 2), 1))
+                    src_node_dist = np.sqrt(np.sum(np.power(branch_loc - branch_src_node_loc, 2)))
+                    dst_node_dist = np.sqrt(np.sum(np.power(branch_loc - branch_dst_node_loc, 2)))
                     if (dst_node_dist > 0.5 * minimum_grasp_length_px) and (
                             src_node_dist > 0.5 * minimum_grasp_length_px):
                         i_keep.append(ii)
@@ -374,7 +369,7 @@ class ProcessImage(object):
             grasp_angle_local = self.branch_data['junction-junction'][branch_i]['angle'] / 180.0 * np.pi
 
             grasp_angle_global = -self.angle + grasp_angle_local
-            grasp_point = make_2d_point(self._LOCAL_FRAME_ID, xy=loc[i, :])  # , loc[i, 1])
+            grasp_point = Point2D(loc[i, :], self._LOCAL_FRAME_ID)  # , loc[i, 1])
 
             self.grasp_point = grasp_point
             self.grasp_angle_local = grasp_angle_local
@@ -391,8 +386,8 @@ class ProcessImage(object):
             return False
 
         if self.save:
-            open_dist_px = settings['open_dist_mm']*self.px_per_mm
-            finger_thickenss_px = settings['finger_thinkness_mm']*self.px_per_mm
+            open_dist_px = settings['open_dist_mm'] * self.px_per_mm
+            finger_thickenss_px = settings['finger_thinkness_mm'] * self.px_per_mm
 
             brightness = 0.85
             xy_local = self.get_xy(grasp_point, self._LOCAL_FRAME_ID)
@@ -403,7 +398,8 @@ class ProcessImage(object):
             locs = np.rint(self.get_xy(coords, self._LOCAL_FRAME_ID)).astype(np.int)  # , dtype=int
             branch_image[locs[:, 1], locs[:, 0]] = 255
 
-            visualize_skeleton(img_rgb_bright, branch_image, show_nodes=False, skeleton_color=(0, 0, 0), skeleton_width=4)
+            visualize_skeleton(img_rgb_bright, branch_image, show_nodes=False, skeleton_color=(0, 0, 0),
+                               skeleton_width=4)
             plot_grasp_location(xy_local, grasp_angle_local, finger_width=minimum_grasp_length_px,
                                 finger_thickness=finger_thickenss_px, finger_dist=open_dist_px, pwd=pwd,
                                 name=self.name, linewidth=3)
@@ -423,49 +419,33 @@ class ProcessImage(object):
 
             branch_image = cv2.dilate(branch_image, kernel, iterations=1)
 
-            visualize_skeleton(img_rgb_bright, branch_image, skeletonize=True, show_nodes=False, skeleton_color=(0, 0, 0))
+            visualize_skeleton(img_rgb_bright, branch_image, skeletonize=True, show_nodes=False,
+                               skeleton_color=(0, 0, 0))
             plot_grasp_location(xy_global, grasp_angle_global, finger_width=minimum_grasp_length_px,
                                 finger_thickness=finger_thickenss_px, finger_dist=open_dist_px, pwd=pwd,
                                 name=self.name + '_g')
 
         return success
 
-    def transform_points(self, points, targer_frame_id):
+    def get_xy(self, points, to_frame_id):
+        if points is None:
+            return None
 
+        transform = self.transform
         if isinstance(points, list):
-            points_new = []
+            coords = []
             for point in points:
-                point_transform = self.buffer_core.lookup_transform_core(point.header.frame_id, targer_frame_id,
-                                                                         rospy.Time(0))
-                points_new.append(tf2_geometry_msgs.do_transform_pose(point, point_transform))
+                coord = point.get_coord(transform, to_frame_id)
+                coords.append(coord)
 
         else:
             point = points
-            point_transform = self.buffer_core.lookup_transform_core(point.header.frame_id, targer_frame_id,
-                                                                     rospy.Time(0))
-            points_new = tf2_geometry_msgs.do_transform_pose(point, point_transform)
+            coords = point.get_coord(transform, to_frame_id)
 
-        return points_new
-
-    def get_xy(self, points, target_frame_id):
-        if points is None:
-            return None
-        points_new = self.transform_points(points, target_frame_id)
-
-        if isinstance(points, list):
-            xy = []
-            for point in points_new:
-                xy.append((point.pose.position.x, point.pose.position.y))
-        else:
-            xy = (points_new.pose.position.x, points_new.pose.position.y)
-
-        return np.array(xy, ndmin=2)
+        return np.array(coords, ndmin=2)
 
     def crop(self, image):
         return image_crop(image, angle=-self.angle, bbox=self.bbox)
-
-    def rotate(self, image):
-        return image_rotate(image, angle=-self.angle)
 
     def cut(self, image):
         return image_cut(image, bbox=self.bbox)
@@ -538,7 +518,6 @@ class ProcessImage(object):
             return self.penduncle_main
         else:
             return self.rescale(self.penduncle_main)
-
 
     def get_peduncle(self, local=False):
         #        peduncle_mask = self.get_peduncle_image(local = local)
@@ -628,7 +607,6 @@ class ProcessImage(object):
         xy_center = self.get_xy(self.centers, frame_id)
         xy_grasp = self.get_xy(self.grasp_point, frame_id)
         xy_junc = self.get_xy(self.junction_points, frame_id).tolist()
-        # xy_end = self.get_xy(self.end_points, frame_id).tolist()
 
         img = self.get_rgb(local=local)
         tomato, peduncle, background = self.get_segments(local=local)
@@ -639,7 +617,6 @@ class ProcessImage(object):
         plot_image(img)  # change_brightness(img, 0.5)
 
         # plot_segments(img, background, tomato, peduncle)
-        # add_circles(img, xy_center, radii=self.radii, color=(0, 0, 0), thickness=1)
         tomato = {'centers': xy_center, 'radii': self.radii, 'com': xy_com}
         plot_features(tomato=tomato, zoom=zoom)
         visualize_skeleton(img, main_peduncle, coord_junc=xy_junc, show_img=False) # coord_end=xy_end,
@@ -652,7 +629,7 @@ class ProcessImage(object):
                 finger_thickenss_px = settings['finger_thinkness_mm'] * self.px_per_mm
             else:
                 minimum_grasp_length_px = settings['grasp_length_min_px']
-            plot_grasp_location(xy_grasp, grasp_angle, finger_width=minimum_grasp_length_px, 
+            plot_grasp_location(xy_grasp, grasp_angle, finger_width=minimum_grasp_length_px,
                                 finger_thickness=finger_thickenss_px, finger_dist=open_dist_px, linewidth=3)
 
         if save:
@@ -688,7 +665,7 @@ class ProcessImage(object):
 
         tomato, peduncle, background = self.get_segments(local=local)
         img_rgb = self.get_rgb(local=local)
-        plot_segments(img_rgb, background, tomato, peduncle, linewidth=0.5, pwd=pwd, name=name) # 1.1
+        plot_segments(img_rgb, background, tomato, peduncle, linewidth=0.5, pwd=pwd, name=name)  # 1.1
 
     @Timer("process image")
     def process_image(self):
@@ -733,12 +710,12 @@ class ProcessImage(object):
 
 
 if __name__ == '__main__':
-    i_start = 64
-    i_end = 65
+    i_start = 1
+    i_end = 5
     N = i_end - i_start
 
-    save = True
-    drive = "backup1" # "UBUNTU 16_0"  #
+    save = False
+    drive = "backup"  # "UBUNTU 16_0"  #
     pwd_root = os.path.join(os.sep, "media", "taeke", drive, "thesis_data",
                             "detect_truss")
     dataset = "lidl"  # "real_blue"  # "drawing" # "failures"  # 'test' # 'simpel_001'  # 'realistic_002'  #
@@ -760,7 +737,7 @@ if __name__ == '__main__':
         print("Analyzing image ID %d (%d/%d)" % (i_tomato, count + 1, N))
 
         tomato_name = str(i_tomato).zfill(3)
-        if i_tomato > 49: # 0: #
+        if i_tomato > 49:  # 0: #
             file_name = tomato_name + "_rgb" + ".png"
         else:
             file_name = tomato_name + ".png"
@@ -770,8 +747,7 @@ if __name__ == '__main__':
         process_image.add_image(rgb_data, px_per_mm=px_per_mm, name=tomato_name)
 
         success = process_image.process_image()
-        process_image.get_truss_visualization(local=True, save=True)
-
+        process_image.get_truss_visualization(local=False, save=True)
 
         json_data = process_image.get_object_features()
 
@@ -779,8 +755,9 @@ if __name__ == '__main__':
         with open(pwd_json_file, "w") as write_file:
             json.dump(json_data, write_file)
 
-    if True: #  save is not True:
-        plot_timer(Timer.timers['main'].copy(), threshold=0.02, pwd=pwd_results, name='main', title='Processing time', startangle=-20)
+    if True:  # save is not True:
+        plot_timer(Timer.timers['main'].copy(), threshold=0.02, pwd=pwd_results, name='main', title='Processing time',
+                   startangle=-20)
         # plot_timer(Timer.timers['peduncle'].copy(), N=N, threshold=0.02, pwd=pwd_results, name='peduncle',
         #            title='Processing time peduncle')
 
@@ -806,8 +783,7 @@ if __name__ == '__main__':
     plt.ylabel('time [s]')
     plt.xlabel('image ID')
     plt.title('Processing time per image')
-    # plt.rc('ytick', labelsize=16)
     plt.rcParams["savefig.format"] = 'pdf'
 
     fig.show()
-    fig.savefig(os.path.join(pwd_results, 'time_bar'), dpi = 300) #, bbox_inches='tight', pad_inches=0)
+    fig.savefig(os.path.join(pwd_results, 'time_bar'), dpi=300)  # , bbox_inches='tight', pad_inches=0)
