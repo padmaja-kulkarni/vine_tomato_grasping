@@ -42,16 +42,16 @@ class Transform(object):
         to_frame_id: string, name of frame id
         """
         if point.frame_id == to_frame_id:
-            return point.coord
+            return point._coord
         if point.frame_id == self.from_frame_id and to_frame_id == self.to_frame_id:
-            return self.forwards(point.coord)
+            return self._forwards(point._coord)
         elif point.frame_id == self.to_frame_id and to_frame_id == self.from_frame_id:
-            return self.backwards(point.coord)
+            return self._backwards(point._coord)
         else:
             print('Unknown frame id')
             return None
 
-    def forwards(self, coord):
+    def _forwards(self, coord):
         """
         translates 2d coordinate with and angle and than translation
         coord: 2D coords [x, y]
@@ -60,7 +60,7 @@ class Transform(object):
         coord = np.matmul(self.Rinv, coord) - self.T - self.translation
         return np.array([[coord[1, 0], coord[0, 0]]]).T  # [r, c] --> [x, y]
 
-    def backwards(self, coord):
+    def _backwards(self, coord):
         """
         translates 2d coordiante with -translation and than -angle
         coord: 2D coords [x, y]

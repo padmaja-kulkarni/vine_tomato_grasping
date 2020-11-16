@@ -8,7 +8,6 @@ Created on Tue Jun 16 16:05:23 2020
 
 import cv2
 import numpy as np
-from util import remove_blobs
 from matplotlib import pyplot as plt
 
 from skimage.measure import label, regionprops
@@ -92,6 +91,7 @@ class Image(object):
         # rotate returns a float in range [0, 1], this needs to be converted
         image_rotate = rotate(self.data, np.rad2deg(angle), resize=True) 
         self.data = (self.value_max*image_rotate).astype(self.dtype, copy=False)
+        return self
 
     def cut(self, bbox):
         x = bbox[0]
@@ -99,7 +99,8 @@ class Image(object):
         w = bbox[2]
         h = bbox[3]        
         self.data = self.data[y:y+h, x:x+w]
-        
+        return self
+
     def crop(self, angle, bbox):
         
         self.rotate(angle)

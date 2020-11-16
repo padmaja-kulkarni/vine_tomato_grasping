@@ -671,6 +671,10 @@ def plot_grasp_location(loc, angle, finger_width=20, finger_thickness=10, finger
     """
         angle in rad
     """
+
+    if isinstance(loc, (list, tuple, np.matrix)):
+        loc = np.array(loc, ndmin=2)
+
     if angle is None:
         return
 
@@ -764,14 +768,14 @@ def plot_timer(timer_dict, N=1, threshold=0, ignore_key=None, pwd=None, name='ti
     i_remove = np.bitwise_not(i_keep)
 
     # if everything is put under others
-    if np.all(i_remove == True):
+    if np.all(i_remove is True):
         print("No time to plot!")
         return
 
     labels_keep = labels[i_keep].tolist()
     values_keep = values[i_keep].tolist()
 
-    if np.any(i_remove == True):
+    if np.any(i_remove is True):
         remains = np.mean(values[i_remove])
         values_keep.append(remains)
         labels_keep.append('others')
