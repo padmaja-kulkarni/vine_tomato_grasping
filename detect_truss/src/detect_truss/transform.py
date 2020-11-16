@@ -3,7 +3,8 @@ import numpy as np
 
 class Transform(object):
     """
-    class used for storing two-dimensional transforms, and applying these to two-dimensional points
+    Very simple class used for storing a two-dimensional transformation, and applying it to two-dimensional points
+    Note that it does not support multiple transformations or and successive transformations.
     """
 
     def __init__(self, from_frame_id, to_frame_id, dim=None, angle=None, translation=None):

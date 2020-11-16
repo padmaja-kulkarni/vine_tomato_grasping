@@ -30,7 +30,7 @@ class Point2D(object):
     reference frame
     """
 
-    # TODO: currently only a single transofrm is supported, this is sufficient for my application.
+    # TODO: currently only a single transform is supported.
 
     def __init__(self, coord, frame_id, transform=None):
         """
@@ -78,16 +78,14 @@ class Point2D(object):
 
         elif (self.frame_id != point.frame_id) and (transform is not None):
             coord = point.get_coord(self.frame_id)
-            diff = [x1 - x2 for x1, x2, in zip(self.coord, coord)]
-            return np.sqrt(np.sum(np.power(diff, 2)))
+            return np.sqrt(np.sum(np.power(np.subtract(self.coord, coord), 2)))
 
         else:
-            diff = [x1 - x2 for x1, x2, in zip(self.coord, point.coord)]
-            return np.sqrt(np.sum(np.power(diff, 2)))
+            return np.sqrt(np.sum(np.power(np.subtract(self.coord, point.coord), 2)))
 
     @property
     def coord(self):
-        return self._coord.tolist()
+        return self._coord[:, 0].tolist()
 
     @coord.setter
     def coord(self, coord):
