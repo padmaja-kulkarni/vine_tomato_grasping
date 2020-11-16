@@ -316,7 +316,6 @@ class ProcessImage(object):
         pwd = os.path.join(self.pwd, '07_grasp')
         success = True
 
-        com = self.com.get_coord(self.transform, self._LOCAL_FRAME_ID)
         settings = self.settings['compute_grap']
 
         # set dimensions
@@ -347,13 +346,15 @@ class ProcessImage(object):
 
         if len(branches_i) > 0:
             loc = point2d.get_coord_list(points_keep, self.transform, self._LOCAL_FRAME_ID)
+            com = self.com.get_coord(self.transform, self._LOCAL_FRAME_ID)
+
             dist = np.sqrt(np.sum(np.power(loc - com, 2), 1))
             i = np.argmin(dist)
             branch_i = branches_i[i]
             grasp_angle_local = np.deg2rad(self.branch_data['junction-junction'][branch_i]['angle'])
 
             grasp_angle_global = -self.angle + grasp_angle_local
-            grasp_point = Point2D(loc[i, :], self._LOCAL_FRAME_ID)
+            grasp_point = Point2D(loc[i], self._LOCAL_FRAME_ID)
 
             self.grasp_point = grasp_point
             self.grasp_angle_local = grasp_angle_local
@@ -430,11 +431,9 @@ class ProcessImage(object):
         if local:
             # shape = self.bbox[:2]
             target_frame_id = self._LOCAL_FRAME_ID
-            scale = 1.0
         else:
             # shape = self.shape
             target_frame_id = self._ORIGINAL_FRAME_ID
-            scale = self.scale
 
         if self.centers is None:
             radii = []
@@ -442,16 +441,16 @@ class ProcessImage(object):
             com = []
 
         else:
-            centers_xy = point2d.get_coord_list(self.centers, self.transform, target_frame_id)
-            com_xy = self.com.get_coord(self.transform, target_frame_id)
-            radii = (self.radii / scale).astype(int).tolist()
+            center_coords = point2d.get_coord_list(self.centers, self.transform, target_frame_id)
+            com_coord = self.com.get_coord(self.transform, target_frame_id)
+            radii = self.radii.tolist()
 
-            centers = np.around(centers_xy / scale).astype(int)
-            com = np.around(com_xy / scale).astype(int)
-            row = centers[:, 1].tolist()
-            col = centers[:, 0].tolist()
-            centers = centers.tolist()
-            com = com.tolist()
+            # centers = np.around(centers_xy / scale).astype(int)
+            # com = np.around(com_xy / scale).astype(int)
+            row = [center[1] for center in center_coords] #centers[:, 1].tolist()
+            col = [center[0] for center in center_coords] # centers[:, 0].tolist()
+            centers = center_coords
+            com = com_coord.tolist()
 
         tomato = {'centers': centers, 'radii': radii, 'com': com, "row": row, "col": col}
         return tomato
@@ -475,8 +474,8 @@ class ProcessImage(object):
         else:
             frame_id = self._ORIGINAL_FRAME_ID
 
-        junc_xy = point2d.get_coord_list(self.junction_points, self.transform, frame_id).tolist()
-        end_xy = point2d.get_coord_list(self.end_points, self.transform, frame_id).tolist()
+        junc_xy = point2d.get_coord_list(self.junction_points, self.transform, frame_id)
+        end_xy = point2d.get_coord_list(self.end_points, self.transform, frame_id)
         peduncle = {'junctions': junc_xy, 'ends': end_xy}
 
         return peduncle
@@ -486,15 +485,12 @@ class ProcessImage(object):
         if local:
             frame_id = self._LOCAL_FRAME_ID
             angle = self.grasp_angle_local
-            scale = 1
         else:
             frame_id = self._ORIGINAL_FRAME_ID
             angle = self.grasp_angle_global
-            scale = self.scale
-
         if self.grasp_point is not None:
             xy = self.grasp_point.get_coord(self.transform, frame_id)
-            grasp_pixel = np.around(xy / scale).astype(int)
+            grasp_pixel = np.around(xy).astype(int)
             row = grasp_pixel[1]
             col = grasp_pixel[0]
         else:
@@ -550,9 +546,9 @@ class ProcessImage(object):
             zoom = False
 
         xy_com = self.com.get_coord(self.transform, frame_id)
-        xy_center = point2d.get_coord_list(self.centers, self.transform, frame_id).tolist()
+        xy_center = point2d.get_coord_list(self.centers, self.transform, frame_id)
         xy_grasp = self.grasp_point.get_coord(self.transform, frame_id)
-        xy_junc = point2d.get_coord_list(self.junction_points, self.transform, frame_id).tolist()
+        xy_junc = point2d.get_coord_list(self.junction_points, self.transform, frame_id)
 
         img = self.get_rgb(local=local)
         main_peduncle = self.penduncle_main
@@ -623,7 +619,7 @@ class ProcessImage(object):
 
         tomato, peduncle, background = self.get_segments(local=local)
         img_rgb = self.get_rgb(local=local)
-        plot_segments(img_rgb, background, tomato, peduncle, linewidth=0.5, pwd=pwd, name=name)  # 1.1
+        plot_segments(img_rgb, background, tomato, peduncle, linewidth=0.5, pwd=pwd, name=name)
 
     @Timer("process image")
     def process_image(self):

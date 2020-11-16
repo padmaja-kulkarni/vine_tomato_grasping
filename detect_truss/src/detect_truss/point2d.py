@@ -22,7 +22,7 @@ def get_coord_list(point_list, transform, frame):
     for point in point_list:
         coords.append(point.get_coord(transform, frame))
 
-    return np.array(coords, ndmin=2)
+    return coords
 
 class Point2D(object):
     """
@@ -46,7 +46,7 @@ class Point2D(object):
             coord = transform.apply(self, frame_id)
         else:
             coord = self.coord
-        return np.array([coord[0, 0], coord[1, 0]])
+        return [coord[0, 0], coord[1, 0]] # np.array(
 
     def dist(self, point, transform=None):
         if (self.frame_id != point.frame_id) and (transform is None):
