@@ -1,3 +1,4 @@
+#!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 """
 Created on Tue Jun 16 16:05:23 2020
@@ -33,31 +34,24 @@ def add(image1, image2):
         return image_new
     else:
         return None
-
-def compute_angle(image):
-    
-    regions = regionprops(label(image), coordinates='xy')
-        
-    if len(regions) > 1: 
-        warnings.warn("Multiple regions found!")
-        
-    angle = regions[0].orientation # np.rad2deg()
-    return angle
     
     
-def image_crop(image, angle = None, bbox = None):
+def image_crop(image, angle=None, bbox=None):
+    """returns a new image, rotated by angle in radians and cropped by the boundingbox"""
     image_new = image.copy()
-    image_new.crop(angle = angle, bbox = bbox)
+    image_new.crop(angle=angle, bbox=bbox)
     return image_new
-    
+
+
 def image_rotate(image, angle):
-    
+    """returns a new image, rotated by angle in radians"""
     image_new = image.copy()
     image_new.rotate(angle)
     return image_new
-    
+
+
 def image_cut(image, bbox):
-    
+    """returns a new image, cut at the boundingbox"""
     image_new = image.copy()
     image_new.cut(bbox)
     return image_new
@@ -85,8 +79,7 @@ class Image(object):
     def open_close(self, kernel):
         image_open = cv2.morphologyEx(self.data, cv2.MORPH_OPEN, kernel)
         self.data = cv2.morphologyEx(image_open, cv2.MORPH_CLOSE, kernel)        
-        
-        
+
     def close_open(self, kernel):
         image_close = cv2.morphologyEx(self.data, cv2.MORPH_CLOSE, kernel)
         self.data = cv2.morphologyEx(image_close, cv2.MORPH_OPEN, kernel)       
@@ -98,10 +91,9 @@ class Image(object):
 
         # rotate returns a float in range [0, 1], this needs to be converted
         image_rotate = rotate(self.data, np.rad2deg(angle), resize=True) 
-        self.data= (self.value_max*image_rotate).astype(self.dtype, copy=False) 
+        self.data = (self.value_max*image_rotate).astype(self.dtype, copy=False)
 
     def cut(self, bbox):
-
         x = bbox[0]
         y = bbox[1]
         w = bbox[2]
@@ -116,9 +108,20 @@ class Image(object):
 
     def copy(self):
         image_new = Image(self.data.copy())
-        return image_new  
-        
+        return image_new
         
     def show(self):
         plt.imshow(self.data)
         plt.axis('off')
+
+    def compute_angle(self):
+        """returns the angle in radians based on the Image data
+        """
+
+        regions = regionprops(label(self.data), coordinates='xy')
+
+        if len(regions) > 1:
+            warnings.warn("Multiple regions found!")
+
+        return regions[0].orientation
+

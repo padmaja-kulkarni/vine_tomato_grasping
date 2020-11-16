@@ -1,8 +1,9 @@
+#!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 
 
 ## imports ##
-import os  # os.sep
+import os
 import warnings
 
 import numpy as np
@@ -12,14 +13,16 @@ import json
 from skimage.transform import rotate
 from utils.transform import translation_rot2or
 
-from image import Image, compute_angle, add, compute_bbox, image_rotate, image_crop, image_cut
+from image import Image, add, compute_bbox, image_rotate, image_crop, image_cut
 
 from utils.timer import Timer
 
 # custom functions
 from util import add_border
 
-from transform import Transform, Point2D
+import point2d
+from point2d import Point2D
+from transform import Transform
 from util import add_circles, plot_features
 
 from util import make_dirs
@@ -60,9 +63,7 @@ class ProcessImage(object):
     _ORIGINAL_FRAME_ID = 'original'
     _LOCAL_FRAME_ID = 'local'
 
-    name_space = 'main'
-
-    dtype = np.uint8
+    name_space = 'main'  # used for timer
 
     def __init__(self,
                  use_truss=True,
@@ -77,7 +78,6 @@ class ProcessImage(object):
         self.use_truss = use_truss
         self.pwd = pwd
         self.name = name
-        # self.use_ransac = False
 
         self.scale = None
         self.image = None
@@ -92,7 +92,7 @@ class ProcessImage(object):
         self.grasp_angle_local = None
         self.grasp_angle_global = None
 
-        # image
+        # load settings
         settings = {}
         settings['segment_image'] = set_segment_image_settings()
         settings['detect_tomato'] = set_detect_tomato_settings()
@@ -100,14 +100,10 @@ class ProcessImage(object):
         settings['compute_grap'] = set_compute_grap_settings()
         self.settings = settings
 
-        # detect junctions
-        self.distance_threshold = 10
-
-        # init buffer
-        # self.buffer_core = tf2_ros.BufferCore(rospy.Time(10))
-
     def add_image(self, data, px_per_mm=None, name=None):
         image = Image(data)
+
+        # TODO: rescaling is currentle not supported, would be interesting to reduce computing power
         # scale = image.rescale(self.width_desired)
 
         self.scale = 1.0
@@ -132,7 +128,7 @@ class ProcessImage(object):
             self.image_a = None
 
         if self.save:
-            save_img(self.image_hue, pwd, self.name + '_h_raw', vmin=0, vmax=180)  # color_map='hsv'
+            save_img(self.image_hue, pwd, self.name + '_h_raw', vmin=0, vmax=180)
             save_img(self.image_a, pwd, self.name + '_a_raw', vmin=0, vmax=255)
 
             save_img(self.image_hue, pwd, self.name + '_h', color_map='HSV', vmin=0, vmax=180)
@@ -140,6 +136,12 @@ class ProcessImage(object):
 
     @Timer("segmentation", name_space)
     def segment_image(self, radius=None):
+        """segment image based on hue and a color components.
+
+        Keyword arguments:
+        radius -- hue circle radius (see https://surfdrive.surf.nl/files/index.php/s/StoH7xA87zUxl79 page 16)
+        """
+
         if radius is None:
             pwd = os.path.join(self.pwd, '02_segment')
         else:
@@ -173,17 +175,22 @@ class ProcessImage(object):
 
     @Timer("filtering", name_space)
     def filter_image(self, folder_name=None):
+        """ remove small pixel blobs from the determined segments
+
+        Keyword arguments:
+        folder_name -- name of folder where results are stored
+        """
         pwd = os.path.join(self.pwd, '03_filter')
         if folder_name is not None:
             pwd = os.path.join(pwd, folder_name)
 
-        tomato_f, peduncle_f, background_f = filter_segments(self.tomato.data,
-                                                             self.peduncle.data,
-                                                             self.background.data)
+        tomato, peduncle, background = filter_segments(self.tomato.data,
+                                                       self.peduncle.data,
+                                                       self.background.data)
 
-        self.tomato.data = tomato_f
-        self.peduncle.data = peduncle_f
-        self.background.data = background_f
+        self.tomato.data = tomato
+        self.peduncle.data = peduncle
+        self.background.data = background
 
         if self.save:
             self.save_results(self.name, pwd=pwd)
@@ -196,27 +203,28 @@ class ProcessImage(object):
 
     @Timer("cropping", name_space)
     def rotate_cut_img(self):
+        """crop the image"""
         pwd = os.path.join(self.pwd, '04_crop')
 
         if self.peduncle.is_empty():
             warnings.warn("Cannot rotate based on peduncle, since it does not exist!")
             angle = 0
         else:
-            angle = compute_angle(self.peduncle.data)  # [rad]
+            angle = self.peduncle.compute_angle()  # [rad]
 
         tomato_rotate = image_rotate(self.tomato, -angle)
         peduncle_rotate = image_rotate(self.peduncle, -angle)
         truss_rotate = add(tomato_rotate, peduncle_rotate)
 
         if truss_rotate.is_empty():
-            warnings.warn("Cannot crop based on tomato, since it does not exist!")
+            warnings.warn("Cannot crop based on truss segment, since it does not exist!")
             return False
 
         bbox = compute_bbox(truss_rotate.data)
-        cols = bbox[0]  # col
-        rows = bbox[1]  # row
+        x = bbox[0]  # col
+        y = bbox[1]  # row
 
-        translation = np.array([[rows, cols]]).T
+        translation = np.array([[y, x]]).T
         self.transform = Transform(self._ORIGINAL_FRAME_ID,
                                    self._LOCAL_FRAME_ID,
                                    self.shape,
@@ -236,6 +244,7 @@ class ProcessImage(object):
 
     @Timer("tomato detection", name_space)
     def detect_tomatoes(self):
+        """detect tomatoes based on the truss segment"""
         pwd = os.path.join(self.pwd, '05_tomatoes')
 
         if self.peduncle.is_empty():
@@ -254,26 +263,19 @@ class ProcessImage(object):
                                             pwd=pwd,
                                             name=self.name)
 
-        # convert to 2D points        
-        center_points = []
-        if centers is not None:
-            for center in centers:
-                center_points.append(Point2D([center[0, 0], center[0, 1]], self._LOCAL_FRAME_ID))
-
-        if com is not None:
-            success = True
-            com_point = Point2D([com[0, 0], com[0, 1]], self._LOCAL_FRAME_ID)
-        else:
-            com_point = None
-            success = False
-
-        self.com = com_point
-        self.centers = center_points
+        # convert obtained coordinated to two-dimensional points linked to a coordinate frame
         self.radii = radii
-        return success
+        self.centers = point2d.from_coord_list(centers, self._LOCAL_FRAME_ID)
+        self.com = Point2D(com, self._LOCAL_FRAME_ID)
+
+        if self.com is None:
+            return False
+        else:
+            return True
 
     @Timer("peduncle detection", name_space)
     def detect_peduncle(self):
+        """Detect the peduncle and junctions"""
         pwd = os.path.join(self.pwd, '06_peduncle')
         success = True
 
@@ -281,7 +283,6 @@ class ProcessImage(object):
             img_bg = change_brightness(self.get_segmented_image(local=True), 0.85)  # self.image_crop.data #
         else:
             img_bg = self.image_crop.data
-        # bg_img = self.image_crop.data, 0.85)
 
         mask, branch_data, junc_coords, end_coords = detect_peduncle(self.peduncle_crop.data,
                                                                      self.settings['detect_peduncle'],
@@ -290,30 +291,18 @@ class ProcessImage(object):
                                                                      bg_img=img_bg,
                                                                      name=self.name,
                                                                      pwd=pwd)
-
         # convert to 2D points
-        junction_points = []
-        for junction in junc_coords:
-            junction_points.append(Point2D(junction, self._LOCAL_FRAME_ID))
-
-        end_points = []
-        for end in end_coords:
-            end_points.append(Point2D(end, self._LOCAL_FRAME_ID))
+        junction_points = point2d.from_coord_list(junc_coords, self._LOCAL_FRAME_ID)
+        end_points = point2d.from_coord_list(end_coords, self._LOCAL_FRAME_ID)
 
         for branch_type in branch_data:
             for i, branch in enumerate(branch_data[branch_type]):
                 for lbl in ['coords', 'src_node_coord', 'dst_node_coord', 'center_node_coord']:
 
                     if lbl == 'coords':
-                        coords = branch[lbl]
-                        point_list = []
-                        for coord in coords:
-                            point = Point2D(coord, self._LOCAL_FRAME_ID)
-                            point_list.append(point)
-                        branch_data[branch_type][i][lbl] = point_list
+                        branch_data[branch_type][i][lbl] = point2d.from_coord_list(branch[lbl], self._LOCAL_FRAME_ID)
                     else:
-                        coord = branch[lbl]
-                        branch_data[branch_type][i][lbl] = Point2D(coord, self._LOCAL_FRAME_ID)
+                        branch_data[branch_type][i][lbl] = Point2D(branch[lbl], self._LOCAL_FRAME_ID)
 
         self.junction_points = junction_points
         self.end_points = end_points
@@ -323,6 +312,7 @@ class ProcessImage(object):
 
     @Timer("detect grasp location", name_space)
     def detect_grasp_location(self):
+        """Determine grasplocation based on peduncle, junction and com information"""
         pwd = os.path.join(self.pwd, '07_grasp')
         success = True
 
@@ -335,41 +325,35 @@ class ProcessImage(object):
         else:
             minimum_grasp_length_px = settings['grasp_length_min_px']
 
-        coords = []
+        points_keep = []
         branches_i = []
         for branch_i, branch in enumerate(self.branch_data['junction-junction']):
             if branch['length'] > minimum_grasp_length_px:
-                branch_coords = branch['coords']
-
-                # filter coords near end and start node
-                branch_locs = []
-                for branch_coord in branch_coords:
-                    branch_loc = branch_coord.get_coord(self.transform, self._LOCAL_FRAME_ID)
-                    branch_locs.append(branch_loc)
-                branch_src_node_loc = branch['src_node_coord'].get_coord(self.transform, self._LOCAL_FRAME_ID)
-                branch_dst_node_loc = branch['dst_node_coord'].get_coord(self.transform, self._LOCAL_FRAME_ID)
+                branch_points = branch['coords'] # branch_coords
+                branch_src_point = branch['src_node_coord']
+                branch_dst_point = branch['dst_node_coord']
 
                 i_keep = []
-                for ii, branch_loc in enumerate(branch_locs):
-                    src_node_dist = np.sqrt(np.sum(np.power(branch_loc - branch_src_node_loc, 2)))
-                    dst_node_dist = np.sqrt(np.sum(np.power(branch_loc - branch_dst_node_loc, 2)))
+                for ii, branch_point in enumerate(branch_points):
+                    src_node_dist = branch_point.dist(branch_src_point)
+                    dst_node_dist = branch_point.dist(branch_dst_point)
                     if (dst_node_dist > 0.5 * minimum_grasp_length_px) and (
                             src_node_dist > 0.5 * minimum_grasp_length_px):
                         i_keep.append(ii)
 
-                branch_coords_keep = [branch_coords[i] for i in i_keep]
-                coords.extend(branch_coords_keep)
-                branches_i.extend([branch_i] * len(branch_coords_keep))
+                branch_points_keep = [branch_points[i] for i in i_keep]
+                points_keep.extend(branch_points_keep)
+                branches_i.extend([branch_i] * len(branch_points_keep))
 
         if len(branches_i) > 0:
-            loc = self.get_xy(coords, self._LOCAL_FRAME_ID)
+            loc = point2d.get_coord_list(points_keep, self.transform, self._LOCAL_FRAME_ID)
             dist = np.sqrt(np.sum(np.power(loc - com, 2), 1))
             i = np.argmin(dist)
             branch_i = branches_i[i]
-            grasp_angle_local = self.branch_data['junction-junction'][branch_i]['angle'] / 180.0 * np.pi
+            grasp_angle_local = np.deg2rad(self.branch_data['junction-junction'][branch_i]['angle'])
 
             grasp_angle_global = -self.angle + grasp_angle_local
-            grasp_point = Point2D(loc[i, :], self._LOCAL_FRAME_ID)  # , loc[i, 1])
+            grasp_point = Point2D(loc[i, :], self._LOCAL_FRAME_ID)
 
             self.grasp_point = grasp_point
             self.grasp_angle_local = grasp_angle_local
@@ -385,64 +369,40 @@ class ProcessImage(object):
                 save_img(img_rgb, pwd=pwd, name=self.name + '_g')
             return False
 
-        if self.save:
+        if True:  # self.save:
             open_dist_px = settings['open_dist_mm'] * self.px_per_mm
             finger_thickenss_px = settings['finger_thinkness_mm'] * self.px_per_mm
 
             brightness = 0.85
-            xy_local = self.get_xy(grasp_point, self._LOCAL_FRAME_ID)
-            img_rgb = self.crop(self.image).data.astype(np.uint8)
-            img_rgb_bright = change_brightness(img_rgb, brightness)
 
-            branch_image = np.zeros(img_rgb_bright.shape[0:2], dtype=np.uint8)
-            locs = np.rint(self.get_xy(coords, self._LOCAL_FRAME_ID)).astype(np.int)  # , dtype=int
-            branch_image[locs[:, 1], locs[:, 0]] = 255
 
-            visualize_skeleton(img_rgb_bright, branch_image, show_nodes=False, skeleton_color=(0, 0, 0),
-                               skeleton_width=4)
-            plot_grasp_location(xy_local, grasp_angle_local, finger_width=minimum_grasp_length_px,
-                                finger_thickness=finger_thickenss_px, finger_dist=open_dist_px, pwd=pwd,
-                                name=self.name, linewidth=3)
+            for frame_id in [self._LOCAL_FRAME_ID, self._ORIGINAL_FRAME_ID]:
+                grasp_coord = self.grasp_point.get_coord(self.transform, frame_id)
 
-            xy_global = self.get_xy(grasp_point, self._ORIGINAL_FRAME_ID)
-            img_rgb = np.array(self.image.data).astype(np.uint8)
-            img_rgb_bright = change_brightness(img_rgb, brightness)
+                if frame_id == self._LOCAL_FRAME_ID:
+                    grasp_angle = self.grasp_angle_local
+                    img_rgb = self.crop(self.image).data.astype(np.uint8)
 
-            branch_image = np.zeros(img_rgb_bright.shape[0:2], dtype=np.uint8)
-            locs = np.rint(self.get_xy(coords, self._ORIGINAL_FRAME_ID)).astype(np.int)
-            branch_image[locs[:, 1], locs[:, 0]] = 255
+                elif frame_id == self._ORIGINAL_FRAME_ID:
+                    grasp_angle = self.grasp_angle_global
+                    img_rgb = np.array(self.image.data).astype(np.uint8)
 
-            # branch_image = Image(branch_image)
-            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-            # branch_image.open_close(kernel)
-            # cv2.morphologyEx(branch_image, cv2.MORPH_CLOSE, kernel)
+                img_rgb_bright = change_brightness(img_rgb, brightness)
+                branch_image = np.zeros(img_rgb_bright.shape[0:2], dtype=np.uint8)
+                coords = np.rint(point2d.get_coord_list(points_keep, self.transform, frame_id)).astype(np.int)
+                branch_image[coords[:, 1], coords[:, 0]] = 255
 
-            branch_image = cv2.dilate(branch_image, kernel, iterations=1)
+                if frame_id == self._ORIGINAL_FRAME_ID:
+                    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+                    branch_image = cv2.dilate(branch_image, kernel, iterations=1)
 
-            visualize_skeleton(img_rgb_bright, branch_image, skeletonize=True, show_nodes=False,
-                               skeleton_color=(0, 0, 0))
-            plot_grasp_location(xy_global, grasp_angle_global, finger_width=minimum_grasp_length_px,
-                                finger_thickness=finger_thickenss_px, finger_dist=open_dist_px, pwd=pwd,
-                                name=self.name + '_g')
+                visualize_skeleton(img_rgb_bright, branch_image, show_nodes=False, skeleton_color=(0, 0, 0),
+                                   skeleton_width=4)
+                plot_grasp_location(grasp_coord, grasp_angle, finger_width=minimum_grasp_length_px,
+                                    finger_thickness=finger_thickenss_px, finger_dist=open_dist_px, pwd=pwd,
+                                    name=self.name + frame_id, linewidth=3)
 
         return success
-
-    def get_xy(self, points, to_frame_id):
-        if points is None:
-            return None
-
-        transform = self.transform
-        if isinstance(points, list):
-            coords = []
-            for point in points:
-                coord = point.get_coord(transform, to_frame_id)
-                coords.append(coord)
-
-        else:
-            point = points
-            coords = point.get_coord(transform, to_frame_id)
-
-        return np.array(coords, ndmin=2)
 
     def crop(self, image):
         return image_crop(image, angle=-self.angle, bbox=self.bbox)
@@ -452,7 +412,7 @@ class ProcessImage(object):
 
     def rescale(self, img):
 
-        # TODO: fix
+        # TODO: this method is currently broken
         translation = translation_rot2or(self.shape, -self.angle)
         dist = np.sqrt(translation[0] ** 2 + translation[1] ** 2)
         x = self.bbox[0]
@@ -482,8 +442,8 @@ class ProcessImage(object):
             com = []
 
         else:
-            centers_xy = self.get_xy(self.centers, target_frame_id)
-            com_xy = self.get_xy(self.com, target_frame_id)
+            centers_xy = point2d.get_coord_list(self.centers, self.transform, target_frame_id)
+            com_xy = self.com.get_coord(self.transform, target_frame_id)
             radii = (self.radii / scale).astype(int).tolist()
 
             centers = np.around(centers_xy / scale).astype(int)
@@ -515,8 +475,8 @@ class ProcessImage(object):
         else:
             frame_id = self._ORIGINAL_FRAME_ID
 
-        junc_xy = self.get_xy(self.junction_points, frame_id).tolist()
-        end_xy = self.get_xy(self.end_points, frame_id).tolist()
+        junc_xy = point2d.get_coord_list(self.junction_points, self.transform, frame_id).tolist()
+        end_xy = point2d.get_coord_list(self.end_points, self.transform, frame_id).tolist()
         peduncle = {'junctions': junc_xy, 'ends': end_xy}
 
         return peduncle
@@ -533,10 +493,10 @@ class ProcessImage(object):
             scale = self.scale
 
         if self.grasp_point is not None:
-            xy = self.get_xy(self.grasp_point, frame_id)
-            graspPixel = np.around(xy / scale).astype(int)
-            row = graspPixel[0, 1]
-            col = graspPixel[0, 0]
+            xy = self.grasp_point.get_coord(self.transform, frame_id)
+            grasp_pixel = np.around(xy / scale).astype(int)
+            row = grasp_pixel[1]
+            col = grasp_pixel[0]
         else:
             row = None
             col = None
@@ -558,11 +518,11 @@ class ProcessImage(object):
         return object_feature
 
     def get_tomato_visualization(self, local=False):
-        if local == True:
-            xy = self.get_xy(self.centers, self._LOCAL_FRAME_ID)
+        if local is True:
+            xy = point2d.get_coord_list(self.centers, self.transform, self._LOCAL_FRAME_ID)
             img = self.crop(self.image).data
-        elif local == False:
-            xy = self.get_xy(self.centers, self._ORIGINAL_FRAME_ID)
+        else:
+            xy = point2d.get_coord_list(self.centers, self.transform, self._ORIGINAL_FRAME_ID)
             img = self.image.data
         fig = plt.figure()
         add_circles(img, xy, self.radii)
@@ -581,7 +541,7 @@ class ProcessImage(object):
         if local:
             frame_id = self._LOCAL_FRAME_ID
             grasp_angle = self.grasp_angle_local
-            shape = self.shape # self.bbox[2:4]
+            shape = self.shape  # self.bbox[2:4]
             zoom = True
         else:
             frame_id = self._ORIGINAL_FRAME_ID
@@ -589,14 +549,13 @@ class ProcessImage(object):
             shape = self.shape
             zoom = False
 
-        xy_com = self.get_xy(self.com, frame_id)
-        xy_center = self.get_xy(self.centers, frame_id)
-        xy_grasp = self.get_xy(self.grasp_point, frame_id)
-        xy_junc = self.get_xy(self.junction_points, frame_id).tolist()
+        xy_com = self.com.get_coord(self.transform, frame_id)
+        xy_center = point2d.get_coord_list(self.centers, self.transform, frame_id).tolist()
+        xy_grasp = self.grasp_point.get_coord(self.transform, frame_id)
+        xy_junc = point2d.get_coord_list(self.junction_points, self.transform, frame_id).tolist()
 
         img = self.get_rgb(local=local)
         main_peduncle = self.penduncle_main
-        # img_peduncle = self.get_peduncle_image(local = local)
 
         fig = plt.figure()
         plot_image(img)
@@ -668,6 +627,10 @@ class ProcessImage(object):
 
     @Timer("process image")
     def process_image(self):
+        """
+        Apply entire image processing pipeline
+        returns: true if success, False if failed
+        """
 
         self.color_space()
 
@@ -708,8 +671,8 @@ class ProcessImage(object):
 
 
 def main():
-    i_start = 6
-    i_end = 7
+    i_start = 1
+    i_end = 10
     N = i_end - i_start
 
     save = False

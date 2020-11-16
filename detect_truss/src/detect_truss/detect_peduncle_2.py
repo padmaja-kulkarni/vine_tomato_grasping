@@ -1,3 +1,6 @@
+#!/usr/bin/env python2
+# -*- coding: utf-8 -*-
+
 from util import remove_blobs, bin2img, img2bin
 from skimage.morphology import skeletonize
 
@@ -32,7 +35,7 @@ def get_locations_on_mask(mask, coords, allowable_distance=1):
         if np.amin(dist) < allowable_distance:
             coord_keep.append(coord)
 
-    return np.array(coord_keep) # [:, [0, 1]]
+    return np.array(coord_keep)
 
 def update_skeleton(skeleton_img, skeleton, i_remove):
     dtype = skeleton_img.dtype
@@ -451,6 +454,7 @@ def detect_peduncle(peduncle_img, settings=None, px_per_mm=None, bg_img=None, sa
     
     end_coords = np.array([pixel_coordinates[path[0]][[1, 0]], pixel_coordinates[path[-1]][[1, 0]]])
 
+    # make sure that end nodes are not labeled as junctions
     if junc_coords.shape[0] != 0:
         for end_coord in end_coords:
             dst = distance(junc_coords, end_coord)
