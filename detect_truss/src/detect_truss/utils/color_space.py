@@ -14,22 +14,12 @@ import cv2
 import numpy as np
 
 from matplotlib import pyplot as plt
-
-
-from mpl_toolkits.mplot3d import Axes3D
-from matplotlib import cm
 from matplotlib import colors
-from detect_truss.util import save_img
+from src.detect_truss.util import save_img
 
 
 # custom functions
-from detect_truss.color_space import rgb2hsi
-# from detect_truss.util import romove_blobs_2
-# from detect_truss.util import segmentation_parametric
-# from detect_truss.util import segmentation_cluster
-# from detect_truss.util import save_img
-#
-# from detect_truss.util import stack_segments
+from src.detect_truss.color_space import rgb2hsi
 
 def rgb_3d_scatter(RGB):
     # https://realpython.com/python-opencv-color-spaces/
@@ -199,6 +189,7 @@ gradient = np.linspace(0, 1, 256)
 gradient = np.vstack((gradient, gradient, gradient, gradient, gradient, gradient))
 plt.imshow(gradient)
 plt.savefig(os.path.join(pwd_results, 'legend'))
+
 
 
 #%% VISUALIZE

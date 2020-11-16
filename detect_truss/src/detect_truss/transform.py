@@ -2,12 +2,17 @@ import numpy as np
 
 
 class Transform(object):
+    """
+    class used for storing two-dimensional transforms, and applying these to two-dimensional points
+    """
 
     def __init__(self, from_frame_id, to_frame_id, dim, angle, translation=None):
         """
-        angle: in radians
-        translation:
+        from_frame_id: transform from frame name
+        to_frame_id: transform to frame name
         dim: image dimensions [height, width]
+        angle: angle of rotation in radians
+        translation: translation
         """
 
         height = dim[0]
@@ -51,33 +56,43 @@ class Transform(object):
         translates 2d coordinate with and angle and than translation
         coord: 2D coords [x, y]
         """
-        coord = np.array([[coord[1, 0], coord[0, 0]]]).T
+        coord = np.array([[coord[1, 0], coord[0, 0]]]).T  # [x, y] --> [r, c]
         coord = np.matmul(self.Rinv, coord) - self.T - self.translation
-        return np.array([[coord[1, 0], coord[0, 0]]]).T
+        return np.array([[coord[1, 0], coord[0, 0]]]).T  # [r, c] --> [x, y]
 
     def backwards(self, coord):
         """
         translates 2d coordiante with -translation and than -angle
         coord: 2D coords [x, y]
         """
-        coord = np.array([[coord[1, 0], coord[0, 0]]]).T
+        coord = np.array([[coord[1, 0], coord[0, 0]]]).T  # [x, y] --> [r, c]
         coord = np.matmul(self.R, (coord + self.T + self.translation))
-        return np.array([[coord[1, 0], coord[0, 0]]]).T
+        return np.array([[coord[1, 0], coord[0, 0]]]).T  # [r, c] --> [x, y]
 
 class Point2D(object):
+    """
+    class used for storing two-dimensional points, and getting the coordiante of a point with respect to a certain
+    reference frame
+    """
 
     def __init__(self, coord, frame_id):
-
+        """
+        coord: two-dimensional coordinates as [x, y]
+        frame_id: the name of the frame
+        """
         self.coord = coord
         self.frame_id = frame_id
 
     def get_coord(self, transform, to_frame_id):
+        """
+        Get the coordinate of a two-dimensional point, with respect to a certain frame
+        """
         coord = transform.apply(self, to_frame_id)
         return np.array([coord[0, 0], coord[1, 0]])
 
     @property
     def coord(self):
-        return self.__coord  #  np.array([self.__coord[0, 0], self.__coord[1, 0]])
+        return self.__coord
 
     @coord.setter
     def coord(self, coord):

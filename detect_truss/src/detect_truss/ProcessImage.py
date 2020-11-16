@@ -14,7 +14,7 @@ from utils.transform import translation_rot2or
 
 from image import Image, compute_angle, add, compute_bbox, image_rotate, image_crop, image_cut
 
-from timer import Timer
+from utils.timer import Timer
 
 # custom functions
 from util import add_border
@@ -202,10 +202,10 @@ class ProcessImage(object):
             warnings.warn("Cannot rotate based on peduncle, since it does not exist!")
             angle = 0
         else:
-            angle = -compute_angle(self.peduncle.data)  # [rad]
+            angle = compute_angle(self.peduncle.data)  # [rad]
 
-        tomato_rotate = image_rotate(self.tomato, angle)
-        peduncle_rotate = image_rotate(self.peduncle, angle)
+        tomato_rotate = image_rotate(self.tomato, -angle)
+        peduncle_rotate = image_rotate(self.peduncle, -angle)
         truss_rotate = add(tomato_rotate, peduncle_rotate)
 
         if truss_rotate.is_empty():
@@ -220,7 +220,7 @@ class ProcessImage(object):
         self.transform = Transform(self._ORIGINAL_FRAME_ID,
                                    self._LOCAL_FRAME_ID,
                                    self.shape,
-                                   angle=angle,
+                                   angle=-angle,
                                    translation=translation)
 
         self.bbox = bbox
@@ -476,13 +476,8 @@ class ProcessImage(object):
             target_frame_id = self._ORIGINAL_FRAME_ID
             scale = self.scale
 
-        # mask_empty = np.zeros(shape, self.dtype)
-
         if self.centers is None:
-            #            row = []
-            #            col = []
             radii = []
-            # mask = mask_empty
             centers = [[]]
             com = []
 
@@ -497,14 +492,8 @@ class ProcessImage(object):
             col = centers[:, 0].tolist()
             centers = centers.tolist()
             com = com.tolist()
-        #            centers = []
-        #            for row, col in zin(tomatoRow, tomatoCol):
-        #                center = [row, col]
-        #                centers.append(center)
 
-        #             mask = add_circles(mask_empty, centers, radii, color = (255), thickness = -1).tolist()
-
-        tomato = {'centers': centers, 'radii': radii, 'com': com, "row": row, "col": col}  # ,  "mask": mask,
+        tomato = {'centers': centers, 'radii': radii, 'com': com, "row": row, "col": col}
         return tomato
 
     def get_peduncle_image(self, local=False):
@@ -520,10 +509,6 @@ class ProcessImage(object):
             return self.rescale(self.penduncle_main)
 
     def get_peduncle(self, local=False):
-        #        peduncle_mask = self.get_peduncle_image(local = local)
-        #        penduncle_main = self.get_main_peduncle_image(local = local)
-        #        peduncle = {"mask": peduncle_mask,
-        #                    "mask_main": penduncle_main}
 
         if local:
             frame_id = self._LOCAL_FRAME_ID
@@ -532,7 +517,6 @@ class ProcessImage(object):
 
         junc_xy = self.get_xy(self.junction_points, frame_id).tolist()
         end_xy = self.get_xy(self.end_points, frame_id).tolist()
-        # junc_xy, end_xy = self.get_node_xy(local=local)
         peduncle = {'junctions': junc_xy, 'ends': end_xy}
 
         return peduncle
@@ -597,10 +581,12 @@ class ProcessImage(object):
         if local:
             frame_id = self._LOCAL_FRAME_ID
             grasp_angle = self.grasp_angle_local
+            shape = self.shape # self.bbox[2:4]
             zoom = True
         else:
             frame_id = self._ORIGINAL_FRAME_ID
             grasp_angle = self.grasp_angle_global
+            shape = self.shape
             zoom = False
 
         xy_com = self.get_xy(self.com, frame_id)
@@ -609,17 +595,30 @@ class ProcessImage(object):
         xy_junc = self.get_xy(self.junction_points, frame_id).tolist()
 
         img = self.get_rgb(local=local)
-        tomato, peduncle, background = self.get_segments(local=local)
         main_peduncle = self.penduncle_main
         # img_peduncle = self.get_peduncle_image(local = local)
 
         fig = plt.figure()
-        plot_image(img)  # change_brightness(img, 0.5)
+        plot_image(img)
 
-        # plot_segments(img, background, tomato, peduncle)
+        branch_locs = []
+        for branch_i, branch in enumerate(self.branch_data['junction-junction']):
+            branch_coords = branch['coords']
+
+            # filter coords near end and start node
+            for branch_coord in branch_coords:
+                branch_loc = branch_coord.get_coord(self.transform, frame_id)
+                branch_locs.append(branch_loc)
+
+        arr = np.zeros(shape, dtype=np.uint8)
+        branch_locs = np.array(branch_locs)
+        row_indices = np.around(branch_locs[:, 1]).astype(np.int)
+        col_indices = np.around(branch_locs[:, 0]).astype(np.int)
+        arr[row_indices, col_indices] = 1
+
         tomato = {'centers': xy_center, 'radii': self.radii, 'com': xy_com}
         plot_features(tomato=tomato, zoom=zoom)
-        visualize_skeleton(img, main_peduncle, coord_junc=xy_junc, show_img=False) # coord_end=xy_end,
+        visualize_skeleton(img, arr, coord_junc=xy_junc, show_img=False)
 
         if (xy_grasp is not None) and (grasp_angle is not None):
             settings = self.settings['compute_grap']
@@ -699,19 +698,18 @@ class ProcessImage(object):
         return self.settings
 
     def set_settings(self, settings):
-        '''
-            Overwirte the settings given
-            only overwites the settings which are actually present in the given dict
-        '''
+        """
+        Overwirte the settings given only overwites the settings which are actually present in the given dict
+        """
 
         for key_1 in settings:
             for key_2 in settings[key_1]:
                 self.settings[key_1][key_2] = settings[key_1][key_2]
 
 
-if __name__ == '__main__':
-    i_start = 1
-    i_end = 5
+def main():
+    i_start = 6
+    i_end = 7
     N = i_end - i_start
 
     save = False
@@ -731,13 +729,11 @@ if __name__ == '__main__':
                                  pwd=pwd_results,
                                  save=save)
 
-    # process_image.use_ransac = False
-
     for count, i_tomato in enumerate(range(i_start, i_end)):
         print("Analyzing image ID %d (%d/%d)" % (i_tomato, count + 1, N))
 
         tomato_name = str(i_tomato).zfill(3)
-        if i_tomato > 49:  # 0: #
+        if i_tomato > 49:
             file_name = tomato_name + "_rgb" + ".png"
         else:
             file_name = tomato_name + ".png"
@@ -747,7 +743,7 @@ if __name__ == '__main__':
         process_image.add_image(rgb_data, px_per_mm=px_per_mm, name=tomato_name)
 
         success = process_image.process_image()
-        process_image.get_truss_visualization(local=False, save=True)
+        process_image.get_truss_visualization(local=True, save=True)
 
         json_data = process_image.get_object_features()
 
@@ -758,8 +754,6 @@ if __name__ == '__main__':
     if True:  # save is not True:
         plot_timer(Timer.timers['main'].copy(), threshold=0.02, pwd=pwd_results, name='main', title='Processing time',
                    startangle=-20)
-        # plot_timer(Timer.timers['peduncle'].copy(), N=N, threshold=0.02, pwd=pwd_results, name='peduncle',
-        #            title='Processing time peduncle')
 
     total_key = "process image"
     time_tot_mean = np.mean(Timer.timers[total_key]) / 1000
@@ -787,3 +781,7 @@ if __name__ == '__main__':
 
     fig.show()
     fig.savefig(os.path.join(pwd_results, 'time_bar'), dpi=300)  # , bbox_inches='tight', pad_inches=0)
+
+
+if __name__ == '__main__':
+    main()

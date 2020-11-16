@@ -11,10 +11,10 @@ from util import save_img, save_fig
 from util import remove_blobs, bin2img, img2bin
 
 from skimage.morphology import skeletonize
-from sklearn import linear_model, datasets
+from sklearn import linear_model
 
-from timer import Timer
-from counter import Counter
+from src.detect_truss.utils.timer import Timer
+from src.detect_truss.utils.counter import Counter
 from matplotlib import pyplot as plt
 
 

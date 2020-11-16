@@ -6,14 +6,12 @@ Created on Thu Jul 16 18:16:42 2020
 """
 
 import os
-from detect_truss.util import make_dirs, load_rgb
-from detect_truss.util import change_brightness, plot_timer
+from src.detect_truss.util import make_dirs, load_rgb
+from src.detect_truss.util import change_brightness
 
-from detect_truss.ProcessImage import ProcessImage
-from detect_truss.detect_peduncle_2 import detect_peduncle # visualize_skeleton, get_node_coord, threshold_branch_length, skeletonize_img
+from src.detect_truss.ProcessImage import ProcessImage
+from src.detect_truss.detect_peduncle_2 import detect_peduncle # visualize_skeleton, get_node_coord, threshold_branch_length, skeletonize_img
 
-from detect_truss.timer import Timer
-from detect_truss.counter import Counter
 
 def main():
 

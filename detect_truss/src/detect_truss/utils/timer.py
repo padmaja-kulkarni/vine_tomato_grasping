@@ -1,16 +1,14 @@
 # -*- coding: utf-8 -*-
 """
 Created on Sat Jul 18 21:24:47 2020
-
+taken from https://realpython.com/python-timer/
+modified such that it works with python 2!
 @author: taeke
 """
 
-
-# taken from https://realpython.com/python-timer/
-# modifief such that it works with python 2!
-
 import time
 import functools
+
 
 class TimerError(Exception):
     """A custom exception used to report errors in use of Timer class"""
@@ -25,7 +23,7 @@ class Timer:
         name_space = None,
         text="Elapsed time: {:0.4f} seconds",
         logger=False,
-        append = True
+        append=True
     ):
         self._start_time = None
         self.name = name
@@ -95,18 +93,3 @@ class Timer:
                 return func(*args, **kwargs)
     
         return wrapper_timer
-        
-#@Timer("sleep", text="Downloaded the tutorial in {:.2f} seconds")
-#def cust_sleep(sleep_time):
-#    time.sleep(sleep_time)
-#        
-#if __name__ == '__main__':
-#    t = Timer("sleep", logger=True)
-#    
-#    with t:
-#        time.sleep(0.2)
-#    
-#    cust_sleep(0.5)
-#    
-#    
-#    print(Timer.timers)

@@ -6,7 +6,7 @@ Created on Mon Jul 27 13:49:44 2020
 """
 
 import os
-from detect_truss.util import load_rgb
+from src.detect_truss.util import load_rgb
 import cv2
 
 

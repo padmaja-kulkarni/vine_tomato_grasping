@@ -10,12 +10,12 @@ import os  # os.sep
 import cv2
 
 # custom functions
-from detect_truss.util import plot_segments
-from detect_truss.util import load_rgb
-from detect_truss.util import make_dirs
+from src.detect_truss.util import plot_segments
+from src.detect_truss.util import load_rgb
+from src.detect_truss.util import make_dirs
 
-from detect_truss.segment_image import segment_truss
-from detect_truss.ProcessImage import ProcessImage
+from src.detect_truss.segment_image import segment_truss
+from src.detect_truss.ProcessImage import ProcessImage
 
 # ls | cat -n | while read n f; do mv "$f" `printf "%03d.png" $n`; done
 if __name__ == '__main__':

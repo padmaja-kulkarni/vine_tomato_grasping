@@ -84,18 +84,3 @@ class Counter:
                 return func(*args, **kwargs)
     
         return wrapper_counter
-        
-#@Timer("sleep", text="Downloaded the tutorial in {:.2f} seconds")
-#def cust_sleep(sleep_time):
-#    time.sleep(sleep_time)
-#        
-#if __name__ == '__main__':
-#    t = Timer("sleep", logger=True)
-#    
-#    with t:
-#        time.sleep(0.2)
-#    
-#    cust_sleep(0.5)
-#    
-#    
-#    print(Timer.timers)

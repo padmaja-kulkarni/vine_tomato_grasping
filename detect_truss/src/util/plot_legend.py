@@ -6,7 +6,7 @@ Created on Fri Aug  7 12:16:30 2020
 """
 
 from matplotlib import pyplot as plt
-from detect_truss.util import save_fig
+from src.detect_truss.util import save_fig
 import matplotlib as mpl
 import cv2
 import numpy as np

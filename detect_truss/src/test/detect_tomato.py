@@ -9,11 +9,11 @@ import os
 import cv2
 import time
 
-from detect_truss.util import change_brightness
-from detect_truss.util import make_dirs, load_rgb
-from detect_truss.ProcessImage import ProcessImage
+from src.detect_truss.util import change_brightness
+from src.detect_truss.util import make_dirs, load_rgb
+from src.detect_truss.ProcessImage import ProcessImage
 
-from detect_truss.detect_tomato import detect_tomato, set_detect_tomato_settings
+from src.detect_truss.detect_tomato import detect_tomato, set_detect_tomato_settings
 
 if __name__ == '__main__':
 

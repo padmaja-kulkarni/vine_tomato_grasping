@@ -6,32 +6,22 @@ Created on Fri May  8 14:08:03 2020
 @author: taeke
 """
 
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Feb 18 08:52:33 2020
 
-@author: taeke
-"""
-
-
-## imports ##
-import os # os.sep
+import os
 import cv2
 import numpy as np
 
 from matplotlib import pyplot as plt
 
 # custom functions
-from detect_truss.util import save_img
-from detect_truss.util import stack_segments
-from detect_truss.util import make_dirs
+from src.detect_truss.util import save_img
+from src.detect_truss.util import make_dirs
 
 
 
 
 #%% init
-N = 11 #  48 #        # tomato file to load
+N = 11  # tomato file to load
 nDigits = 3
 
 plt.rcParams["image.cmap"] = 'plasma'
@@ -40,7 +30,7 @@ plt.rcParams["savefig.bbox"] = 'tight'
 plt.rcParams['axes.titlesize'] = 20
 
 pathCurrent = os.path.dirname(__file__)
-dataSet = 'failures' # "real_blue" # "tomato_cases" # 
+dataSet = 'failures'  # "real_blue" # "tomato_cases" #
 
 pwdData = os.path.join(pathCurrent, "data", dataSet)
 pwdResults = os.path.join(pathCurrent, "results", dataSet, "color_space")
