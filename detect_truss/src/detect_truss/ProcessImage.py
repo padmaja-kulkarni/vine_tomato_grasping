@@ -1,8 +1,6 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 
-
-## imports ##
 import os
 import warnings
 
@@ -13,17 +11,13 @@ import json
 from skimage.transform import rotate
 from utils.transform import translation_rot2or
 
-from image import Image, add, compute_bbox, image_rotate, image_crop
-
+import imgpy
+from geometry import Point2D, Transform, points_from_coords, coords_from_points
 from utils.timer import Timer
 
-# custom functions
+
 from util import add_border
-
-from point2d import Point2D, points_from_coords, coords_from_points
-from transform import Transform
 from util import add_circles, plot_features
-
 from util import make_dirs
 from util import save_img, save_fig, figure_to_image
 from util import load_rgb
@@ -40,19 +34,6 @@ from compute_grasp import set_compute_grasp_settings
 from segment_image import segment_truss, set_segment_image_settings
 
 warnings.filterwarnings('error', category=FutureWarning)
-
-
-def load_px_per_mm(pwd, img_id):
-    pwd_info = os.path.join(pwd, img_id + '_info.json')
-
-    if not os.path.exists(pwd_info):
-        print('Info does not exist for image: ' + img_id + ' continueing without info')
-        return None
-
-    with open(pwd_info, "r") as read_file:
-        data_inf = json.load(read_file)
-
-    return data_inf['px_per_mm']
 
 
 class ProcessImage(object):
@@ -79,7 +60,7 @@ class ProcessImage(object):
         self.name = name
 
         self.scale = None
-        self.image = None
+        self.img_rgb = None
         self.shape = None
         self.px_per_mm = None
 
@@ -99,15 +80,14 @@ class ProcessImage(object):
         settings['compute_grasp'] = set_compute_grasp_settings()
         self.settings = settings
 
-    def add_image(self, data, px_per_mm=None, name=None):
-        image = Image(data)
+    def add_image(self, data_rgb, px_per_mm=None, name=None):
+        img_rgb = imgpy.Image(data_rgb)
 
-        # TODO: rescaling is currentle not supported, would be interesting to reduce computing power
-        # scale = image.rescale(self.width_desired)
+        # TODO: scaling is currently not supported, would be interesting to reduce computing power
 
         self.scale = 1.0
-        self.image = image
-        self.shape = data.shape[:2]
+        self.img_rgb = img_rgb
+        self.shape = img_rgb.data.shape[:2]
         self.px_per_mm = px_per_mm
 
         self.grasp_point = None
@@ -120,18 +100,18 @@ class ProcessImage(object):
     @Timer("color space", name_space)
     def color_space(self, compute_a=True):
         pwd = os.path.join(self.pwd, '01_color_space')
-        self.image_hue = cv2.cvtColor(self.image.data, cv2.COLOR_RGB2HSV)[:, :, 0]
+        self.img_hue = cv2.cvtColor(self.img_rgb.data, cv2.COLOR_RGB2HSV)[:, :, 0]
         if compute_a:
-            self.image_a = cv2.cvtColor(self.image.data, cv2.COLOR_RGB2LAB)[:, :, 1]
+            self.img_a = cv2.cvtColor(self.img_rgb.data, cv2.COLOR_RGB2LAB)[:, :, 1]
         else:
-            self.image_a = None
+            self.img_a = None
 
         if self.save:
-            save_img(self.image_hue, pwd, self.name + '_h_raw', vmin=0, vmax=180)
-            save_img(self.image_a, pwd, self.name + '_a_raw', vmin=0, vmax=255)
+            save_img(self.img_hue, pwd, self.name + '_h_raw', vmin=0, vmax=180)
+            save_img(self.img_a, pwd, self.name + '_a_raw', vmin=0, vmax=255)
 
-            save_img(self.image_hue, pwd, self.name + '_h', color_map='HSV', vmin=0, vmax=180)
-            save_img(self.image_a, pwd, self.name + '_a', color_map='Lab')
+            save_img(self.img_hue, pwd, self.name + '_h', color_map='HSV', vmin=0, vmax=180)
+            save_img(self.img_a, pwd, self.name + '_a', color_map='Lab')
 
     @Timer("segmentation", name_space)
     def segment_image(self, radius=None):
@@ -148,16 +128,16 @@ class ProcessImage(object):
             self.settings['segment_image']['hue_radius'] = radius
 
         success = True
-        background, tomato, peduncle = segment_truss(self.image_hue,
-                                                     img_a=self.image_a,
+        background, tomato, peduncle = segment_truss(self.img_hue,
+                                                     img_a=self.img_a,
                                                      settings=self.settings['segment_image'],
                                                      save=self.save,
                                                      pwd=pwd,
                                                      name=self.name)
 
-        self.background = Image(background)
-        self.tomato = Image(tomato)
-        self.peduncle = Image(peduncle)
+        self.background = imgpy.Image(background)
+        self.tomato = imgpy.Image(tomato)
+        self.peduncle = imgpy.Image(peduncle)
 
         if self.tomato.is_empty():
             warnings.warn("Segment truss: no pixel has been classified as tomato!")
@@ -211,15 +191,15 @@ class ProcessImage(object):
         else:
             angle = self.peduncle.compute_angle()  # [rad]
 
-        tomato_rotate = image_rotate(self.tomato, -angle)
-        peduncle_rotate = image_rotate(self.peduncle, -angle)
-        truss_rotate = add(tomato_rotate, peduncle_rotate)
+        tomato_rotate = imgpy.rotate(self.tomato, -angle)
+        peduncle_rotate = imgpy.rotate(self.peduncle, -angle)
+        truss_rotate = imgpy.add(tomato_rotate, peduncle_rotate)
 
         if truss_rotate.is_empty():
             warnings.warn("Cannot crop based on truss segment, since it does not exist!")
             return False
 
-        bbox = compute_bbox(truss_rotate.data)
+        bbox = truss_rotate.bbox()
         x = bbox[0]  # col
         y = bbox[1]  # row
 
@@ -235,7 +215,7 @@ class ProcessImage(object):
 
         self.tomato_crop = tomato_rotate.copy().cut(self.bbox)
         self.peduncle_crop = peduncle_rotate.copy().cut(self.bbox)
-        self.image_crop = self.image.copy().crop(-angle, bbox)
+        self.img_rgb_crop = self.img_rgb.copy().crop(-angle, bbox)
         self.truss_crop = truss_rotate.copy().cut(self.bbox)
 
         if self.save:
@@ -250,9 +230,9 @@ class ProcessImage(object):
             return False
 
         if self.save:
-            img_bg = self.image_crop.data
+            img_bg = self.img_rgb_crop.data
         else:
-            img_bg = self.image_crop.data
+            img_bg = self.img_rgb_crop.data
 
         centers, radii, com = detect_tomato(self.truss_crop.data,
                                             self.settings['detect_tomato'],
@@ -279,9 +259,9 @@ class ProcessImage(object):
         success = True
 
         if self.save:
-            img_bg = change_brightness(self.get_segmented_image(local=True), 0.85)  # self.image_crop.data #
+            img_bg = change_brightness(self.get_segmented_image(local=True), 0.85)
         else:
-            img_bg = self.image_crop.data
+            img_bg = self.img_rgb_crop.data
 
         mask, branch_data, junc_coords, end_coords = detect_peduncle(self.peduncle_crop.data,
                                                                      self.settings['detect_peduncle'],
@@ -291,6 +271,7 @@ class ProcessImage(object):
                                                                      name=self.name,
                                                                      pwd=pwd)
         # convert to 2D points
+        peduncle_points = points_from_coords(np.argwhere(mask)[:, (1, 0)], self.LOCAL_FRAME_ID, self.transform)
         junction_points = points_from_coords(junc_coords, self.LOCAL_FRAME_ID, self.transform)
         end_points = points_from_coords(end_coords, self.LOCAL_FRAME_ID, self.transform)
 
@@ -306,13 +287,13 @@ class ProcessImage(object):
 
         self.junction_points = junction_points
         self.end_points = end_points
-        self.penduncle_main = mask
+        self.peduncle_points = peduncle_points
         self.branch_data = branch_data
         return success
 
     @Timer("detect grasp location", name_space)
     def detect_grasp_location(self):
-        """Determine grasplocation based on peduncle, junction and com information"""
+        """Determine grasp location based on peduncle, junction and com information"""
         pwd = os.path.join(self.pwd, '07_grasp')
         success = True
 
@@ -328,7 +309,6 @@ class ProcessImage(object):
         branches_i = []
         for branch_i, branch in enumerate(self.branch_data['junction-junction']):
             if branch['length'] > minimum_grasp_length_px:
-
                 src_node_dist = branch['src_node_coord'].dist(branch['coords'])
                 dst_node_dist = branch['dst_node_coord'].dist(branch['coords'])
                 is_true = np.logical_and((np.array(dst_node_dist) > 0.5 * minimum_grasp_length_px), (
@@ -354,13 +334,13 @@ class ProcessImage(object):
             print('Did not detect a valid grasping branch')
 
             if self.save:
-                img_rgb = self.crop(self.image).data
+                img_rgb = self.img_rgb_crop.data
                 save_img(img_rgb, pwd=pwd, name=self.name)
-                img_rgb = self.image.data
+                img_rgb = self.img_rgb.data
                 save_img(img_rgb, pwd=pwd, name=self.name + '_g')
             return False
 
-        if True:
+        if self.save:
             open_dist_px = settings['open_dist_mm'] * self.px_per_mm
             finger_thickness_px = settings['finger_thinkness_mm'] * self.px_per_mm
             brightness = 0.85
@@ -370,11 +350,11 @@ class ProcessImage(object):
 
                 if frame_id == self.LOCAL_FRAME_ID:
                     grasp_angle = self.grasp_angle_local
-                    img_rgb = self.crop(self.image).data
+                    img_rgb = self.img_rgb_crop.data
 
                 elif frame_id == self.ORIGINAL_FRAME_ID:
                     grasp_angle = self.grasp_angle_global
-                    img_rgb = self.image.data
+                    img_rgb = self.img_rgb.data
 
                 img_rgb_bright = change_brightness(img_rgb, brightness)
                 branch_image = np.zeros(img_rgb_bright.shape[0:2], dtype=np.uint8)
@@ -394,23 +374,7 @@ class ProcessImage(object):
         return success
 
     def crop(self, image):
-        return image_crop(image, angle=-self.angle, bbox=self.bbox)
-
-    def rescale(self, img):
-
-        # TODO: this method is currently broken
-        translation = translation_rot2or(self.shape, -self.angle)
-        dist = np.sqrt(translation[0] ** 2 + translation[1] ** 2)
-        x = self.bbox[0]
-        y = self.bbox[0]
-
-        if self.angle >= 0:
-            transform = np.array(((-x + dist, -y),))
-        if self.angle < 0:
-            transform = np.array(((-x, -y + dist),))
-
-        imgR = rotate(img, self.angle, resize=True)
-        return add_border(imgR, transform, self.shape)
+        return imgpy.crop(image, angle=-self.angle, bbox=self.bbox)
 
     def get_tomatoes(self, local=False):
         if local:
@@ -439,18 +403,6 @@ class ProcessImage(object):
 
         tomato = {'centers': centers, 'radii': radii, 'com': com, "row": row, "col": col}
         return tomato
-
-    def get_peduncle_image(self, local=False):
-        if local:
-            return self.crop(self.peduncle).data
-        else:
-            return self.peduncle.data
-
-    def get_main_peduncle_image(self, local=False):
-        if local:
-            return self.penduncle_main
-        else:
-            return self.rescale(self.penduncle_main)
 
     def get_peduncle(self, local=False):
 
@@ -511,9 +463,9 @@ class ProcessImage(object):
 
     def get_rgb(self, local=False):
         if local:
-            img = self.crop(self.image).data
+            img = self.img_rgb_crop.data
         else:
-            img = self.image.data
+            img = self.img_rgb.data
         return img
 
     def get_truss_visualization(self, local=False, save=False):
@@ -536,25 +488,14 @@ class ProcessImage(object):
         xy_junc = coords_from_points(self.junction_points, frame_id)
 
         img = self.get_rgb(local=local)
-        main_peduncle = self.penduncle_main
+        xy_peduncle = coords_from_points(self.peduncle_points, frame_id)
+        rc_peduncle = np.around(np.array(xy_peduncle)).astype(np.int)[:,(1,0)]
 
         fig = plt.figure()
         plot_image(img)
 
-        branch_locs = []
-        for branch_i, branch in enumerate(self.branch_data['junction-junction']):
-            branch_coords = branch['coords']
-
-            # filter coords near end and start node
-            for branch_coord in branch_coords:
-                branch_loc = branch_coord.get_coord(frame_id)
-                branch_locs.append(branch_loc)
-
         arr = np.zeros(shape, dtype=np.uint8)
-        branch_locs = np.array(branch_locs)
-        row_indices = np.around(branch_locs[:, 1]).astype(np.int)
-        col_indices = np.around(branch_locs[:, 0]).astype(np.int)
-        arr[row_indices, col_indices] = 1
+        arr[rc_peduncle[:, 0], rc_peduncle[:, 1]] = 1
 
         tomato = {'centers': xy_center, 'radii': self.radii, 'com': xy_com}
         plot_features(tomato=tomato, zoom=zoom)
@@ -591,12 +532,12 @@ class ProcessImage(object):
 
     def get_segmented_image(self, local=False):
         tomato, peduncle, background = self.get_segments(local=local)
-        image_RGB = self.get_rgb(local=local)
-        data = stack_segments(image_RGB, background, tomato, peduncle)
+        image_rgb = self.get_rgb(local=local)
+        data = stack_segments(image_rgb, background, tomato, peduncle)
         return data
 
     def get_color_components(self):
-        return self.image_hue
+        return self.img_hue
 
     def save_results(self, name, local=False, pwd=None):
         if pwd is None:
@@ -651,9 +592,22 @@ class ProcessImage(object):
                 self.settings[key_1][key_2] = settings[key_1][key_2]
 
 
+def load_px_per_mm(pwd, img_id):
+    pwd_info = os.path.join(pwd, img_id + '_info.json')
+
+    if not os.path.exists(pwd_info):
+        print('Info does not exist for image: ' + img_id + ' continuing without info')
+        return None
+
+    with open(pwd_info, "r") as read_file:
+        data_inf = json.load(read_file)
+
+    return data_inf['px_per_mm']
+
+
 def main():
     i_start = 1
-    i_end = 10
+    i_end = 5
     N = i_end - i_start
 
     save = False
@@ -687,7 +641,7 @@ def main():
         process_image.add_image(rgb_data, px_per_mm=px_per_mm, name=tomato_name)
 
         success = process_image.process_image()
-        process_image.get_truss_visualization(local=True, save=True)
+        process_image.get_truss_visualization(local=False, save=True)
 
         json_data = process_image.get_object_features()
 

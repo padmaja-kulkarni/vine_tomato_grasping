@@ -11,22 +11,17 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 from skimage.measure import label, regionprops
-from skimage.transform import rotate
+from skimage.transform import rotate as ski_rotate
 
 import warnings
 
 
 def check_dimensions(image1, image2):
-    b_height = image1._height == image2._height
-    b_width = image1._width == image2._width
-    b_angle = image1._angle == image2._angle
-    b_scale = image1._scale == image2._scale
-
-    return b_height and b_width and b_angle and b_scale
+    return image1.data.shape == image2.data.shape
 
 def add(image1, image2):
     
-    if check_dimensions:
+    if check_dimensions(image1, image2):
         
         image_new = image1.copy()        
         image_new.data = cv2.bitwise_or(image1.data, image2.data) 
@@ -35,28 +30,25 @@ def add(image1, image2):
         return None
     
     
-def image_crop(image, angle=None, bbox=None):
+def crop(image, angle=None, bbox=None):
     """returns a new image, rotated by angle in radians and cropped by the boundingbox"""
     image_new = image.copy()
     image_new.crop(angle=angle, bbox=bbox)
     return image_new
 
 
-def image_rotate(image, angle):
+def rotate(image, angle):
     """returns a new image, rotated by angle in radians"""
     image_new = image.copy()
     image_new.rotate(angle)
     return image_new
 
 
-def image_cut(image, bbox):
+def cut(image, bbox):
     """returns a new image, cut at the boundingbox"""
     image_new = image.copy()
     image_new.cut(bbox)
     return image_new
-
-def compute_bbox(image):
-    return cv2.boundingRect(image)
 
 class Image(object):
     
@@ -71,7 +63,7 @@ class Image(object):
         new_shape = (int(scale * shape[1]), int(scale * shape[0])) # [width, height]
         
         self.data = cv2.resize(self.data, new_shape, 
-                               interpolation = cv2.INTER_AREA)
+                               interpolation=cv2.INTER_AREA)
                                
         return scale
         
@@ -89,7 +81,7 @@ class Image(object):
     def rotate(self, angle):
 
         # rotate returns a float in range [0, 1], this needs to be converted
-        image_rotate = rotate(self.data, np.rad2deg(angle), resize=True) 
+        image_rotate = ski_rotate(self.data, np.rad2deg(angle), resize=True)
         self.data = (self.value_max*image_rotate).astype(self.dtype, copy=False)
         return self
 
@@ -125,4 +117,7 @@ class Image(object):
             warnings.warn("Multiple regions found!")
 
         return regions[0].orientation
+
+    def bbox(self):
+        return cv2.boundingRect(self.data)
 
