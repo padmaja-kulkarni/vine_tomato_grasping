@@ -1,5 +1,5 @@
 import numpy as np
-
+import warnings
 
 class Point2D(object):
     """
@@ -24,6 +24,8 @@ class Point2D(object):
         """
         if self.frame_id == frame_id:
             return self.coord
+        elif self.transform is None:
+            raise MissingTransformError(self.transform, from_frame=self.frame_id, to_frame=frame_id)
         else:
             coord = self.transform.apply(self, frame_id)
             return [coord[0, 0], coord[1, 0]]
@@ -50,8 +52,7 @@ class Point2D(object):
         transform = self.transform
 
         if (self.frame_id != point.frame_id) and (transform is None):
-            print "points are defined with respect to different frames, please provide a transform"
-            return None
+            raise MissingTransformError(transform, from_frame=self.frame_id, to_frame=point.frame_id)
 
         else: # (self.frame_id == point.frame_id) or (transform is not None):
             coord = point.get_coord(self.frame_id)
@@ -117,7 +118,7 @@ class Transform(object):
         self.Rinv = np.linalg.inv(self.R)
         self.T = T
         if translation is not None:
-            self.translation = ensure_vector(translation)
+            self.translation = ensure_vector([translation[1], translation[0]])
         else:
             self.translation = np.zeros((2, 1))
 
@@ -134,8 +135,7 @@ class Transform(object):
         elif point.frame_id == self.to_frame_id and to_frame_id == self.from_frame_id:
             return self._backwards(point._coord)
         else:
-            print('Unknown frame id')
-            return None
+            raise MissingTransformError(self, from_frame=point.frame_id, to_frame=to_frame_id)
 
     def _forwards(self, coord):
         """
@@ -154,6 +154,22 @@ class Transform(object):
         coord = np.array([[coord[1, 0], coord[0, 0]]]).T  # [x, y] --> [r, c]
         coord = np.matmul(self.R, coord + self.T + self.translation)
         return np.array([[coord[1, 0], coord[0, 0]]]).T  # [r, c] --> [x, y]
+
+
+class MissingTransformError(Exception):
+    """Exception raised for errors in the input."""
+    def __init__(self, transform=None, from_frame=None, to_frame=None):
+        self.transform = transform
+        self.from_frame = from_frame
+        self.to_frame = to_frame
+
+    def __str__(self):
+        if (self.transform is None) and (self.from_frame is not None) and (self.to_frame is not None) :
+            return "Cannot transform from " + self.from_frame + " frame to " + self.to_frame + " frame, transform is empty!"
+        elif self.transform is None:
+            return "Cannot transform, transform is empty!"
+        else:
+            return "Cannot transform from " + self.from_frame + " frame to " + self.to_frame + " frame, transform unknown!"
 
 
 def points_from_coords(coords, frame, transform=None):

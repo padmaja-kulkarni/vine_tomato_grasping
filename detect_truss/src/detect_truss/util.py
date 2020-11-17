@@ -715,8 +715,6 @@ def plot_grasp_location(loc, angle, finger_width=20, finger_thickness=10, finger
                   fc=ee_color, alpha=0.4, linewidth=linewidth, zorder=middle_layer)
 
 
-
-
     if pwd is not None:
         save_fig(plt.gcf(), pwd, name, title=title)
 

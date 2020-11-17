@@ -8,9 +8,6 @@ import numpy as np
 import cv2
 import json
 
-from skimage.transform import rotate
-from utils.transform import translation_rot2or
-
 import imgpy
 from geometry import Point2D, Transform, points_from_coords, coords_from_points
 from utils.timer import Timer
@@ -203,7 +200,7 @@ class ProcessImage(object):
         x = bbox[0]  # col
         y = bbox[1]  # row
 
-        translation = np.array([[y, x]]).T
+        translation = np.array([[x, y]]).T
         self.transform = Transform(self.ORIGINAL_FRAME_ID,
                                    self.LOCAL_FRAME_ID,
                                    self.shape,
@@ -378,10 +375,8 @@ class ProcessImage(object):
 
     def get_tomatoes(self, local=False):
         if local:
-            # shape = self.bbox[:2]
             target_frame_id = self.LOCAL_FRAME_ID
         else:
-            # shape = self.shape
             target_frame_id = self.ORIGINAL_FRAME_ID
 
         if self.centers is None:
@@ -551,7 +546,7 @@ class ProcessImage(object):
     def process_image(self):
         """
         Apply entire image processing pipeline
-        returns: true if success, False if failed
+        returns: True if success, False if failed
         """
 
         self.color_space()
@@ -584,7 +579,7 @@ class ProcessImage(object):
 
     def set_settings(self, settings):
         """
-        Overwirte the settings given only overwites the settings which are actually present in the given dict
+        Overwrites the settings which are present in the given dict
         """
 
         for key_1 in settings:
