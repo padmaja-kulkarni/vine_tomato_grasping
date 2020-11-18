@@ -27,7 +27,7 @@ class Point2D(object):
             raise MissingTransformError(self.transform, from_frame=self.frame_id, to_frame=frame_id)
         else:
             coord = self.transform.apply(self, frame_id)
-            return [coord[0, 0], coord[1, 0]]
+            return coord[:, 0].tolist()
 
     def dist(self, points):
         """
@@ -53,7 +53,7 @@ class Point2D(object):
         if (self.frame_id != point.frame_id) and (transform is None):
             raise MissingTransformError(transform, from_frame=self.frame_id, to_frame=point.frame_id)
 
-        else: # (self.frame_id == point.frame_id) or (transform is not None):
+        else:  # (self.frame_id == point.frame_id) or (transform is not None):
             coord = point.get_coord(self.frame_id)
             return np.sqrt(np.sum(np.power(np.subtract(self.coord, coord), 2)))
 
@@ -95,6 +95,7 @@ class Transform(object):
             else:
                 T1 = [np.sin(angle) * height, 0]
 
+            # Translation vector due to >90deg rotations
             if (angle < -np.pi/2) or (angle > np.pi/2):
                 T2 = [np.cos(angle) * width, np.cos(angle) * height]
             else:
@@ -121,7 +122,7 @@ class Transform(object):
 
     def apply(self, point, to_frame_id):
         """
-        Applies transfor to a given point to a given frame
+        Applies transform to a given point to a given frame
         point: Point object
         to_frame_id: string, name of frame id
         """
@@ -174,11 +175,10 @@ class LengthMismatchError(Exception):
     def __str__(self):
         if (self.given_length is not None) and (self.desired_length is not None):
             return "Provided wrong length: you gave " + str(self.given_length) + ", but should be " + str(self.desired_length) + "!"
-        elif (self.desired_length is not None):
+        elif self.desired_length is not None:
             return "Provided wrong length: please provide an input of length" + str(self.desired_length) + "!"
         else:
             return "Provided wrong length!"
-
 
 
 def points_from_coords(coords, frame, transform=None):

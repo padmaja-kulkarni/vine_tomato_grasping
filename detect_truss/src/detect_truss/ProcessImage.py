@@ -611,8 +611,8 @@ def load_px_per_mm(pwd, img_id):
 
 
 def main():
-    i_start = 10
-    i_end = 11
+    i_start = 1
+    i_end = 5
     N = i_end - i_start
 
     save = False
