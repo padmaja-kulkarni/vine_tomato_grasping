@@ -1,11 +1,15 @@
-# iiwa_grasp
+# Taeke MSc
+This repository contains all code used for my MSc thesis: "A geometry-based grasping method for vine tomato". Fot the thesis itself visit [this](https://surfdrive.surf.nl/files/index.php/s/StoH7xA87zUxl79) link. This repository can be used in two manners:
 
-Ubuntu: 16.04 LTS
-ROS: kinetic
+1. Use the ROS packages to grasp vine tomato
+2. Use the computer vision pipeline to identify various features in a given image
+
+If you are interested in the first application, please continue reading. If you are interested in the second applcation go to the [detect_truss folder](https://gitlab.tudelft.nl/pvkulkarni/taeke_msc/-/tree/master/detect_truss), this will be the only folder you need.
+
 
 ## Contents
 
-### ROS package
+### ROS packages
 
 - **flex_gazebo**: Gazebo simulation contains camera and marker
 
@@ -28,6 +32,7 @@ ROS: kinetic
 
 ### Dependencies
 
+ROS: kinetic
 
 #### detect_truss
 
