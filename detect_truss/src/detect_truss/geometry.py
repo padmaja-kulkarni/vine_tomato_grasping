@@ -63,20 +63,7 @@ class Point2D(object):
 
     @coord.setter
     def coord(self, coord):
-        if isinstance(coord, (list, tuple)):
-            if len(coord) == 2:
-                self._coord = np.array(coord, ndmin=2).transpose()
-            else:
-                print "please use 2d coordinates"
-
-        elif isinstance(coord, np.ndarray):
-            coord = np.array(coord, ndmin=2)
-            if coord.shape == (1, 2):
-                self._coord = coord.transpose()
-            elif coord.shape == (2, 1):
-                self._coord = coord
-            else:
-                print "please use 2d coordinates"
+        self._coord = vectorize(coord)
 
 
 class Transform(object):
@@ -119,7 +106,7 @@ class Transform(object):
             R = np.identity(2)
             T = np.zeros((2, 1))
 
-            if dim is None:
+            if angle is not None:
                 print "Did not specify image dimensions, ignoring rotation!"
 
         self.from_frame_id = from_frame_id
@@ -178,6 +165,22 @@ class MissingTransformError(Exception):
             return "Cannot transform from " + self.from_frame + " frame to " + self.to_frame + " frame, transform unknown!"
 
 
+class LengthMismatchError(Exception):
+    """Exception raised for errors in the input."""
+    def __init__(self, given_length=None, desired_length=None):
+        self.given_length = given_length
+        self.desired_length = desired_length
+
+    def __str__(self):
+        if (self.given_length is not None) and (self.desired_length is not None):
+            return "Provided wrong length: you gave " + str(self.given_length) + ", but should be " + str(self.desired_length) + "!"
+        elif (self.desired_length is not None):
+            return "Provided wrong length: please provide an input of length" + str(self.desired_length) + "!"
+        else:
+            return "Provided wrong length!"
+
+
+
 def points_from_coords(coords, frame, transform=None):
     "Takes a list of coordinates, and outputs a list of Point2D"
     if coords is None:
@@ -206,8 +209,7 @@ def vectorize(data):
         if len(data) == 2:
             return np.array(data, ndmin=2).transpose()
         else:
-            print "please use 2d coordinates"
-            return None
+            raise LengthMismatchError(given_length=len(data), desired_length=2)
 
     elif isinstance(data, np.ndarray):
         coord = np.array(data, ndmin=2)
@@ -216,8 +218,7 @@ def vectorize(data):
         elif coord.shape == (2, 1):
             return coord
         else:
-            print "please use 2d coordinates"
-            return None
+            raise LengthMismatchError(desired_length=2)
 
 
 def main():

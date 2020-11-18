@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from geometry import Point2D, Transform, MissingTransformError
+from geometry import Point2D, Transform, MissingTransformError, LengthMismatchError
 
 
 class TransformTests(unittest.TestCase):
@@ -101,6 +101,18 @@ class TransformTests(unittest.TestCase):
         transform = Transform('origin', 'local', translation=[0, 0])
         point1 = Point2D([400, 100], 'origin', transform)
         self.assertRaises(MissingTransformError, point1.get_coord, 'space')
+
+    def test_point_length_mismatch(self):
+        """
+        Point2D returns a LengthMismatchError when a wrong coordinate length is provided
+        """
+        self.assertRaises(LengthMismatchError, Point2D, [400, 100, 100], 'origin')
+
+    def test_transform_length_mismatch(self):
+        """
+        Transform returns a LengthMismatchError when a wrong translation length is provided
+        """
+        self.assertRaises(LengthMismatchError, Transform, 'origin', 'local', translation=[0, 0, 0])
 
 
 if __name__ == '__main__':
