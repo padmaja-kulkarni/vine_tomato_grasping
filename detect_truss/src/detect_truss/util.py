@@ -365,7 +365,7 @@ def plot_features(img_rgb=None, tomato=None, peduncle=None, grasp=None,
     else:
         tom_linestyle = (0, (5, 5))
         tom_width = 2
-        com_radius = 10
+        com_radius = 8
         junc_radius = 8
 
     if tomato:

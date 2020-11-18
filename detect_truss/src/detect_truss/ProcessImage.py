@@ -200,10 +200,10 @@ class ProcessImage(object):
         x = bbox[0]  # col
         y = bbox[1]  # row
 
-        translation = np.array([[x, y]]).T
+        translation = [x, y]
         self.transform = Transform(self.ORIGINAL_FRAME_ID,
                                    self.LOCAL_FRAME_ID,
-                                   self.shape,
+                                   [self.shape[1], self.shape[0]], # [width, height]
                                    angle=-angle,
                                    translation=translation)
 
@@ -463,7 +463,7 @@ class ProcessImage(object):
             img = self.img_rgb.data
         return img
 
-    def get_truss_visualization(self, local=False, save=False):
+    def get_truss_visualization(self, local=False, save=False, name=None):
         pwd = os.path.join(self.pwd, '08_result')
 
         if local:
@@ -471,11 +471,17 @@ class ProcessImage(object):
             grasp_angle = self.grasp_angle_local
             shape = self.shape  # self.bbox[2:4]
             zoom = True
+            name = 'local'
+            skeleton_width = 4
+            grasp_linewidth = 3
         else:
             frame_id = self.ORIGINAL_FRAME_ID
             grasp_angle = self.grasp_angle_global
             shape = self.shape
             zoom = False
+            name = 'original'
+            skeleton_width = 2
+            grasp_linewidth = 1
 
         xy_com = self.com.get_coord(frame_id)
         xy_center = coords_from_points(self.centers, frame_id)
@@ -484,7 +490,7 @@ class ProcessImage(object):
 
         img = self.get_rgb(local=local)
         xy_peduncle = coords_from_points(self.peduncle_points, frame_id)
-        rc_peduncle = np.around(np.array(xy_peduncle)).astype(np.int)[:,(1,0)]
+        rc_peduncle = np.around(np.array(xy_peduncle)).astype(np.int)[:,(1, 0)]
 
         fig = plt.figure()
         plot_image(img)
@@ -494,7 +500,7 @@ class ProcessImage(object):
 
         tomato = {'centers': xy_center, 'radii': self.radii, 'com': xy_com}
         plot_features(tomato=tomato, zoom=zoom)
-        visualize_skeleton(img, arr, coord_junc=xy_junc, show_img=False)
+        visualize_skeleton(img, arr, coord_junc=xy_junc, show_img=False, skeleton_width=skeleton_width)
 
         if (xy_grasp is not None) and (grasp_angle is not None):
             settings = self.settings['compute_grasp']
@@ -505,10 +511,14 @@ class ProcessImage(object):
             else:
                 minimum_grasp_length_px = settings['grasp_length_min_px']
             plot_grasp_location(xy_grasp, grasp_angle, finger_width=minimum_grasp_length_px,
-                                finger_thickness=finger_thickenss_px, finger_dist=open_dist_px, linewidth=3)
+                                finger_thickness=finger_thickenss_px, finger_dist=open_dist_px, linewidth=grasp_linewidth)
 
         if save:
-            save_fig(plt.gcf(), pwd, self.name)
+            if name is None:
+                name = self.name
+            else:
+                name = self.name + '_' + name
+            save_fig(plt.gcf(), pwd, name)
 
         return figure_to_image(plt.gcf())
 
@@ -601,8 +611,8 @@ def load_px_per_mm(pwd, img_id):
 
 
 def main():
-    i_start = 1
-    i_end = 5
+    i_start = 10
+    i_end = 11
     N = i_end - i_start
 
     save = False
@@ -636,6 +646,7 @@ def main():
         process_image.add_image(rgb_data, px_per_mm=px_per_mm, name=tomato_name)
 
         success = process_image.process_image()
+        process_image.get_truss_visualization(local=True, save=True)
         process_image.get_truss_visualization(local=False, save=True)
 
         json_data = process_image.get_object_features()

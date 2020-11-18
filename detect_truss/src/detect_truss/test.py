@@ -21,7 +21,7 @@ class TransformTests(unittest.TestCase):
 
     def test_90deg_rotation(self):
 
-        shape = [10, 20]  # [row, col]
+        shape = [20, 10]  # [width, height]
         angle = np.pi/2
         transform = Transform('origin', 'local', dim=shape, angle=angle)
 
@@ -38,7 +38,7 @@ class TransformTests(unittest.TestCase):
 
     def test_45deg_rotation(self):
 
-        shape = [20, 20]
+        shape = [20, 20]  # [width, height]
         angle = np.pi/4
         transform = Transform('origin', 'local', dim=shape, angle=angle)
 
@@ -55,7 +55,7 @@ class TransformTests(unittest.TestCase):
 
     def test_345_rotation(self):
 
-        shape = [6, 8]  # [height, width]
+        shape = [8, 6]  # [width, height]
         angle = -np.arctan2(3, 4)
         transform = Transform('origin', 'local', dim=shape, angle=angle)
 
@@ -74,7 +74,7 @@ class TransformTests(unittest.TestCase):
         """
         get coordinate return the original coordinate after translating forwards and backwards
         """
-        shape = [400, 1000]  # [height, width]
+        shape = [1000, 400]  # [width, height]
         translation = [50, -10]
         for angle_rad in np.arange(-np.pi, np.pi, 10):
 

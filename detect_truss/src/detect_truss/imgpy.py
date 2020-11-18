@@ -79,7 +79,11 @@ class Image(object):
         return np.all((self.data == 0))        
         
     def rotate(self, angle):
+        """
+        Rot the image by a given angle counter clockwise
 
+        angle: counter clockwise rotation in radians
+        """
         # rotate returns a float in range [0, 1], this needs to be converted
         image_rotate = ski_rotate(self.data, np.rad2deg(angle), resize=True)
         self.data = (self.value_max*image_rotate).astype(self.dtype, copy=False)
