@@ -1,19 +1,22 @@
 # Detect truss 
 
-python 2.7
+## Dependeincies
+python 2.7: nN ROS distribution officially supports Python 3, thus python 2 is used such that the code works in combination with ROS.
+
+skan: Used for skeleton anlysis. Skan is only available for python 3, Therefore I decided to make some modifications to skan such that it works with python 2, these can be found on [this](https://github.com/TaekedeHaan/skan/tree/python-2.7) branch.
 
 ## Genral introduction
 This python package extracts truss features from a given image and determined an optimal grasping pose:
 
 
-<img src="images/data/003.png" alt="input image" width="500"/>
-<img src="images/results/003_original.png" alt="input image" width="500"/>
+<img src="images/data/003.png" alt="input image" width="350"/>
+<img src="images/results/003_original.png" alt="input image" width="350"/>
 
 
 Moreover, if you provide a ground truth, an error may be determined:
 
-<img src="images/results/003_pend_error.png" alt="input image" width="500"/>
-<img src="images/results/003_tom_error.png" alt="input image" width="500"/>
+<img src="images/results/003_pend_error.png" alt="input image" width="350"/>
+<img src="images/results/003_tom_error.png" alt="input image" width="350"/>
 
 ## Code structure
 Currently, this repository is fairly unstructured, I will improve this. For now:
@@ -47,11 +50,24 @@ Finally there are several utilities for opening files, plotting, etc.:
 All image coordinates are stated as (x,y) as this is also the default for open cn and matplot lib. This means that for numpy these coordinates need to be swapped to get (row, column). 
 
 
-## Adding images
-for each image with name [id] there should be
+## Data
+
+### Process image
+ProcessImage requires the following data per image:
+
 1. An rgb image called [id].png
-2. A [id].json file containing the feature labels
-3. A [id]_info.json file containing the field px_per_mm which describes the number of pixels per millimeter present at the truss level
+2. A [id]_info.json file containing the field px_per_mm which describes the number of pixels per millimeter present at the truss level
+
+The files used for the theis can be found here (add link).
+
+ProcessImage will generate a prediction file .json file called [id].json, in the results/dataset/json folder. This file contains information about the predicted tomatoes, peduncle and grasp locations.
+
+### analyze_results
+Analyze results requires the folowing data:
+
+1. A ground truth [id].json file containing the actual features
+2. A prediction [id].json gile containing the predicted predicted features
+
 
 
 ## Issues
