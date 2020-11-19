@@ -1,7 +1,7 @@
 # Detect truss 
 
 ## Dependeincies
-python 2.7: nN ROS distribution officially supports Python 3, thus python 2 is used such that the code works in combination with ROS.
+python 2.7: No ROS distribution officially supports Python 3, thus python 2 is used such that the code works in combination with ROS.
 
 skan: Used for skeleton anlysis. Skan is only available for python 3, Therefore I decided to make some modifications to skan such that it works with python 2, these can be found on [this](https://github.com/TaekedeHaan/skan/tree/python-2.7) branch.
 
