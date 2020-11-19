@@ -79,8 +79,8 @@ def detect_tomato(img_segment, settings, px_per_mm=None, img_rgb=None,
         com = None
 
     else:
-        # swap columns [r, c] -> [x,y]
-        centers_overlap = np.matrix(circles[0][:, 0:2])
+
+        centers_overlap = np.matrix(circles[0][:, 0:2]) # [x, y]
         radii_overlap = circles[0][:, 2]
         com_overlap = (radii_overlap ** 3) * centers_overlap / (np.sum(radii_overlap ** 3))
         n_overlap = len(radii_overlap)
