@@ -1,11 +1,11 @@
 # Flex Grasp
 A ROS packages for manipulating vine tomato.
 
-## Install
+## 1. Install
 > :warning: This has only been tested on: Ubuntu 16.04 (ros kinetic) and Ubuntu 18.04 (ros melodic)!
 
 
-### Install ROS
+### 1.1 Install ROS
 Install ROS [Melodic](http://wiki.ros.org/melodic/Installation) (Ubuntu 18.04) or [Kinetic](http://wiki.ros.org/kinetic/Installation) (Ubuntu 16.04). Make sure sure that you have your environment properly setup, and that you have the most up to date packages:
 ```
 rosdep update  # No sudo
@@ -13,7 +13,7 @@ sudo apt-get update
 sudo apt-get dist-upgrade
 ```
 
-### Create A Workspace
+### 1.2 Create A Workspace
 You will need to have a ROS workspace setup:
 ```
 mkdir -p ~/flexcraft_ws/src
@@ -21,7 +21,7 @@ cd ~/flexcraft_ws/
 catkin_make
 ```
 
-### Download the source code
+### 1.3 Download the source code
 > :warning: Only use the master branch!
 
 clone this repository
@@ -30,7 +30,7 @@ cd ~/flexcraft_ws/src
 git clone https://github.com/padmaja-kulkarni/taeke_msc.git
 ```
 
-### Basic Dependencies
+### 1.4 Basic Dependencies
 Some more packages need to be installed manually. 
 
 #### Interbotix Support
@@ -81,17 +81,18 @@ git clone --single-branch --branch initialize-subscribe https://github.com/Taeke
 This forks contains some modifications to initialize the parameters in the GUI to the values last published. Note that you can also use the default library. However, this initialization makes life a bit easier.
 
 #### Python packages
+Not all packages could be specified in the package.xml, and need to be installled manually:
 ```
 pip install colormath
 ```
 
-### Remaining Dependencies
-Install remaining dependencies
+### 1.5 Remaining Dependencies
+Install remaining dependencies:
 ```
 rosdep install --from-paths src --ignore-src -r -y
 ```
 
-## Run (Simulation)
+## 2 Run (Simulation)
 1. To run in simulation we first launch the enviroment. To launch the interbotix enviroment run in your terminal:
     ```
     roslaunch flex_grasp interbotix_enviroment.launch use_calibration:=false
@@ -178,7 +179,7 @@ To activate an action, a command needs to be published on the `ROBOT_NAME/pipeli
 With the drop down menu you can select where to store the results.
 
 
-## Supported hardware
+## 3 Supported hardware
 
 Manipulator:
 
@@ -194,9 +195,9 @@ Carmera:
 - **Intel RealSense D435**
 
 
-### Contents
+## 4 Contents
 
-#### Nodes
+### Nodes
 
 - `analyze_point_cloud`: not used
 - `calibrate`: generates the calibration poses, sends them to the move robot node and computing calibration
@@ -209,17 +210,17 @@ Carmera:
 - `transform_pose`: transforms a grasping pose as calculated by object_detection to a target pose for the manipulator
 - `visualize_object`: not used
 
-#### Classes
+### Classes
 - `communication`: this class is used by many nodes to send commands to other nodes and wait for the result
 
-#### Messages
+### Messages
 - `ImageProcessingSettings`
 - `Peduncle`
 - `Tomato`
 - `Truss`
 
 
-#### Enums
+### Enums
 To store the state of different parts of the system, enums are used. These are defined in the messa files.
 - `DynamixelErrorCodes`
 - `FlexGraspCommandCodes`
@@ -229,7 +230,7 @@ To store the state of different parts of the system, enums are used. These are d
 
 All nodes run in the `robot_name` namespace to allow for multiple robots present
 
-## Trouble shooting
+## 5 Trouble shooting
 
 ### libcurl: (51) SSL: no alternative certificate subject name matches target host name ‘api.ignitionfuel.org’
 https://varhowto.com/how-to-fix-libcurl-51-ssl-no-alternative-certificate-subject-name-matches-target-host-name-api-ignitionfuel-org-gazebo-ubuntu-ros-melodic/
