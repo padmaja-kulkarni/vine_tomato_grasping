@@ -1,3 +1,4 @@
+<?xml version="1.0"?>
 <launch>
     <!-- you can write your own calibrate.launch, by including the ROS drivers for robot and tracking and choosing
     your own namespace if you have multiple tracking devices or robots -->
@@ -72,7 +73,7 @@
       <!-- start easy_handeye calibration procedure -->
       <include file="$(find easy_handeye)/launch/calibrate.launch" >
           <arg name="start_rviz" value="false" />
-          <arg name="start_rqt" value="false" />
+          <arg name="start_sampling_gui" value="false" />
 
           <arg name="namespace_prefix" value="$(arg namespace_prefix)" />
           <arg name="eye_on_hand" value="$(arg eye_on_hand)" />
