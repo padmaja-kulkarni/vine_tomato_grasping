@@ -1,10 +1,12 @@
 # Flex Grasp
-A ROS packages for munipulating vine tomato
+A ROS packages for manipulating vine tomato.
 
 ## Install
+> :warning: **I only tested this code on:** Ubuntu 16.04 (ros kinetic) and Ubuntu 18.04 (ros melodic)!
+
 
 ### Install ROS
-Install ROS Melodic. Make sure sure that you have your environment properly setup, and that you have the most up to date packages:
+Install ROS [Melodic](http://wiki.ros.org/melodic/Installation) (Ubuntu 18.04) or [Kinetic](http://wiki.ros.org/kinetic/Installation) (Ubuntu 16.04). Make sure sure that you have your environment properly setup, and that you have the most up to date packages:
 ```
 rosdep update  # No sudo
 sudo apt-get update
@@ -20,8 +22,11 @@ catkin_make
 ```
 
 ### Download the source code
+> :warning: Only use the master branch!
+
 clone this repository
 ```
+cd ~/flexcraft_ws/src
 git clone https://github.com/padmaja-kulkarni/taeke_msc.git
 ```
 
@@ -34,28 +39,38 @@ For Interbotix support we require interbotix_ros_arms:
 cd ~/flexcraft_ws/src
 git clone --single-branch --branch reboot_service https://github.com/TaekedeHaan/interbotix_ros_arms.git
 ```
-This forked repository has an additional rebood service which is automatically called when a motor reports an Harware Error. Note that the used repository is now in legacy mode, the [updated sdk](https://github.com/Interbotix/interbotix_ros_core) contains this reboot serive by default.
+This forked repository has an additional reboot service which is automatically called when a motor reports an Harware Error. Note that the used repository is now in legacy mode, the [updated SDK](https://github.com/Interbotix/interbotix_ros_core) contains this reboot serive by default. However, I never tested the rest of the code with the update SDK.
 
 #### iiwa Support
-For iiwa support we require iiwa_stack:
+For iiwa support we require the iiwa_stack:
 ```
 cd ~/flexcraft_ws/src
 git clone https://github.com/IFL-CAMP/iiwa_stack
 ```
 
 #### Calibration
-For calibration easy_handeeye is used:
+For calibration easy_handeye is used:
 ```
 cd ~/flexcraft_ws/src
 git clone https://github.com/IFL-CAMP/easy_handeye.git
 ```
 
 #### Intel Realsense
-For intel realsense camera support realsense-ros is used
+For Intel Realsense support realsense-ros and realsense2_description are used. Install these packages and dependencies as explained [here](https://github.com/IntelRealSense/realsense-ros). First define your ROS version, for example:
 ```
-cd ~/flexcraft_ws/src
-git clone https://github.com/IntelRealSense/realsense-ros.git
+export ROS_VER=melodic 
 ```
+Than install both realsense2_camera and its dependents, including librealsense2 library:
+
+```
+sudo apt-get install ros-$ROS_VER-realsense2-camera
+```
+Finally install the realsense2_description:
+
+```
+sudo apt-get install ros-$ROS_VER-realsense2-description
+```
+It includes the 3D-models of the devices and is necessary for running launch files that include these models (i.e. rs_d435_camera_with_model.launch).
 
 #### Graphical User Interface
 For fine-tuning parameters of the computer vision pipeline rqt_ez_publisher is used:
@@ -63,7 +78,12 @@ For fine-tuning parameters of the computer vision pipeline rqt_ez_publisher is u
 cd ~/flexcraft_ws/src
 git clone --single-branch --branch initialize-subscribe https://github.com/TaekedeHaan/rqt_ez_publisher.git
 ```
-This forks contains some modifications to initialize the parameters in the GUI to the values last published. Note that you can also use the default library, however this initialization makes life a bit easier.
+This forks contains some modifications to initialize the parameters in the GUI to the values last published. Note that you can also use the default library. However, this initialization makes life a bit easier.
+
+#### Python packages
+```
+pip install colormath
+```
 
 ### Remaining Dependencies
 Install remaining dependencies
@@ -74,16 +94,17 @@ rosdep install --from-paths src --ignore-src -r -y
 ## Run (Simulation)
 1. To run in simulation we first launch the enviroment. To launch the interbotix enviroment run in your terminal:
     ```
-    roslaunch flex_grasp interbotix_enviroment.launch
+    roslaunch flex_grasp interbotix_enviroment.launch use_calibration:=false
     ```
+    There is no calibration file available yet, therefore we put `use_calibration` to `false`. 
 
 2. Gazebo should start by default it is paused (this behaviour can be chnaged in the launch files).
 
-    ![Gazebo](images/gazebo.png)
+    <img src="../images/gazebo.png" alt="Gazebo" width="800"/>
 
 3. Unpause the simulation by hitting play on the bar shown at the bottom, RViz should start
     
-    ![Gazebo](images/rviz.png)
+    <img src="../images/rviz.png" alt="RViz" width="800"/>
     
 4. You have succesfully started the enviroment. To stat the controls run in your terminal:
     ```
@@ -91,10 +112,38 @@ rosdep install --from-paths src --ignore-src -r -y
     ``` 
 5. An rqt graphical user interface should pop up, sometimes in initializes incorrect, if this happens hit Ctrl + C, and retry
 
-    ![Gazebo](images/rqt.png)
+    <img src="../images/rqt.png" alt="rqt" width="800"/>
 
 6. You have succesfully initialized the controls, and the virtual robot is ready to go.
 
+### Calibrate
+First we need to calibrate the robot, this will generate a yaml file, which is stored and can be reused. Simpy press `calibrate` in the GUI. The manipulator should move to several poses successivly. It should print someting as followes in the terminal:
+
+```
+[INFO] [1606135222.288133, 1573.747000]: State machine transitioning 'Idle':'calibrate'-->'CalibrateRobot'
+[INFO] [1606135228.279287, 1579.025000]: Taking a sample...
+[INFO] [1606135228.405969, 1579.128000]: Got a sample
+[INFO] [1606135233.904765, 1583.933000]: Taking a sample...
+[INFO] [1606135234.128548, 1584.135000]: Got a sample
+...
+[INFO] [1606135269.247164, 1615.083000]: Computing from 8 poses...
+[INFO] [1606135269.295404, 1615.128000]: Computed calibration: effector_camera: 
+  translation: 
+    x: -0.028680958287
+    y: 0.0123665209654
+    z: 0.572588152978
+  rotation: 
+    x: 0.174461585153
+    y: 0.615597501442
+    z: 0.158824096836
+    w: 0.751916070974
+
+```
+The calibration results can be found in ~/.ros/easy_handeye/calibration_eye_on_base.yaml. Now you can stop the current porces by pressing `Ctrl + C`. Now run
+```
+roslaunch flex_grasp interbotix_enviroment.launch
+```
+And the previously generated calibration file will be loaded automatically.
 
 ### Run (Real Hardware)
 1. Again, first launch the enviroment. To launch the interbotix enviroment for real hardware run in your terminal:
@@ -122,11 +171,11 @@ To activate an action, a command needs to be published on the `ROBOT_NAME/pipeli
 - Close: command the end effector to close
 - Calibrate: determine the pose between the robot base and camera
 - Detect Truss: command to computer vision pipeline to detect the truss
-- Save Image: sace the current image
-- Pick and Plance: execute a pick and place routing
+- Save Image: save the current image
+- Pick and Place: execute a pick and place routing
 - Experiment: Repeatedly execute Detect Truss, Save Image and Pick and Place (easy for conducitng experiments)
 
-With the drup down menu you can select where to store the results.
+With the drop down menu you can select where to store the results.
 
 
 ## Supported hardware
@@ -179,3 +228,11 @@ To store the state of different parts of the system, enums are used. These are d
 ### Info
 
 All nodes run in the `robot_name` namespace to allow for multiple robots present
+
+## Trouble shooting
+
+### libcurl: (51) SSL: no alternative certificate subject name matches target host name ‘api.ignitionfuel.org’
+https://varhowto.com/how-to-fix-libcurl-51-ssl-no-alternative-certificate-subject-name-matches-target-host-name-api-ignitionfuel-org-gazebo-ubuntu-ros-melodic/
+
+### RLException: unused args [start_sampling_gui] for include of [/home/taeke/flexcraft_ws/src/easy_handeye/easy_handeye/launch/calibrate.launch]
+In older version of `calibrate.launch` the variable `start_sampling_gui` was called `start_rqt`. Thus to fix this command either update easy_handeye, of if this is not desired change `start_sampling_gui` in taeke_msc/flex_grasp/launch to `start_rqt`.
