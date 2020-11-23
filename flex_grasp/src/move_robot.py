@@ -260,14 +260,16 @@ class MoveRobot(object):
             return True
 
     def check_frames(self, goal_frame):
-        # remove initial "/"
-        planning_frame = self.man_planning_frame[1:]
+        # remove pre appended is present "/"
+        if self.man_planning_frame[1:] == '/':
+            planning_frame = self.man_planning_frame[1:]
+        else:
+            planning_frame = self.man_planning_frame
 
         if goal_frame == planning_frame:
             return True
         else:
-            rospy.logwarn(
-                "[MOVE ROBOT] Goal pose specified with respect to wrong frame: sould be specified with respect to %s, but is be specified with respect to %s",
+            rospy.logwarn("[MOVE ROBOT] Goal pose specified with respect to wrong frame: should be specified with respect to %s, but is specified with respect to %s",
                 planning_frame, goal_frame)
             return False
 
@@ -276,7 +278,7 @@ class MoveRobot(object):
 
         if self.target_object_name in attached_objects.keys():
             if attached_objects[self.target_object_name].link_name == self.ee_link:
-                rospy.logdebug("[MOVE ROBOT] Removing atached objects from ee_link")
+                rospy.logdebug("[MOVE ROBOT] Removing attached objects from ee_link")
                 self.scene.remove_attached_object(self.ee_link, self.target_object_name)
                 self.rate.sleep()
                 self.scene.remove_world_object(self.target_object_name)
