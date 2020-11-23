@@ -23,6 +23,8 @@
   <arg name="object_name"                   default="truss"/>
   <arg name="object_dimension"              default="3d"/>
 
+  <arg name="use_calibration"		    default="true"/>
+
   <include file="$(find flex_grasp)/launch/enviroment.launch">
     <arg name="robot_sim"               value="$(arg robot_sim)"/>
     <arg name="camera_sim"              value="$(arg camera_sim)"/>
@@ -42,6 +44,7 @@
     <arg name="object_dimension"        value="$(arg object_dimension)"/>
 
     <arg name="rviz"                    value="$(arg rviz)"/>
+    <arg name="use_calibration"		value="$(arg use_calibration)"/>
   </include>
 
 </launch>
