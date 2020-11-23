@@ -7,19 +7,23 @@
 
   <license>BSD</license>
 
-  <run_depend>iiwa_description</run_depend>
-  <run_depend>iiwa_moveit</run_depend>
+	
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>message_generation</build_depend>
+  <build_depend>rospy</build_depend>
+  <build_depend>std_msgs</build_depend>
+
+  <run_depend>rospy</run_depend>
+  <run_depend>std_msgs</run_depend>
   <run_depend>moveit_core</run_depend>
   <run_depend>moveit_ros_planning_interface</run_depend>
   <run_depend>moveit_ros_planning</run_depend>
-  <run_depend>rospy</run_depend>
-
+  
   <run_depend>gazebo_ros</run_depend>
-  <run_depend>detect_crop</run_depend>
-  <run_depend>flex_gazebo</run_depend>
 
   <!-- For custom messages -->
-  <build_depend>message_generation</build_depend>
+
   <run_depend>message_runtime</run_depend>
 
   <buildtool_depend>catkin</buildtool_depend>
