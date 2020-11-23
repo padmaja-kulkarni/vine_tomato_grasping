@@ -2,7 +2,7 @@
 A ROS packages for manipulating vine tomato.
 
 ## Install
-> :warning: **I only tested this code on:** Ubuntu 16.04 (ros kinetic) and Ubuntu 18.04 (ros melodic)!
+> :warning: This has only been tested on: Ubuntu 16.04 (ros kinetic) and Ubuntu 18.04 (ros melodic)!
 
 
 ### Install ROS
