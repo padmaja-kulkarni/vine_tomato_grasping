@@ -26,45 +26,50 @@ git clone https://github.com/padmaja-kulkarni/taeke_msc.git
 ```
 
 ### Basic Dependencies
-Install dependencies
-```
-rosdep install --from-paths src --ignore-src -r -y
-```
+Some more packages need to be installed manually. 
 
-
-### Other Dependencies
-Some more packages need to be installed. For Interbotix support we require interbotix_ros_arms:
+#### Interbotix Support
+For Interbotix support we require interbotix_ros_arms:
 ```
 cd ~/flexcraft_ws/src
 git clone --single-branch --branch reboot_service https://github.com/TaekedeHaan/interbotix_ros_arms.git
 ```
 This forked repository has an additional rebood service which is automatically called when a motor reports an Harware Error. Note that the used repository is now in legacy mode, the [updated sdk](https://github.com/Interbotix/interbotix_ros_core) contains this reboot serive by default.
 
+#### iiwa Support
 For iiwa support we require iiwa_stack:
 ```
 cd ~/flexcraft_ws/src
 git clone https://github.com/IFL-CAMP/iiwa_stack
 ```
 
+#### Calibration
 For calibration easy_handeeye is used:
 ```
 cd ~/flexcraft_ws/src
 git clone https://github.com/IFL-CAMP/easy_handeye.git
 ```
 
-For realsense camera support realsense-ros is used
+#### Intel Realsense
+For intel realsense camera support realsense-ros is used
 ```
 cd ~/flexcraft_ws/src
 git clone https://github.com/IntelRealSense/realsense-ros.git
 ```
 
+#### Graphical User Interface
 For fine-tuning parameters of the computer vision pipeline rqt_ez_publisher is used:
 ```
 cd ~/flexcraft_ws/src
 git clone --single-branch --branch initialize-subscribe https://github.com/TaekedeHaan/rqt_ez_publisher.git
 ```
-This forks contains some modifications to initialize the parameters in the GUI to the values last published. Note that you can also use the default library, howver this initialization makes life a bit easier.
+This forks contains some modifications to initialize the parameters in the GUI to the values last published. Note that you can also use the default library, however this initialization makes life a bit easier.
 
+### Remaining Dependencies
+Install remaining dependencies
+```
+rosdep install --from-paths src --ignore-src -r -y
+```
 
 ## Run (Simulation)
 1. To run in simulation we first launch the enviroment. To launch the interbotix enviroment run in your terminal:
