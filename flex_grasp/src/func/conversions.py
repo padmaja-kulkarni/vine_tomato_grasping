@@ -155,5 +155,5 @@ def settings_msg_to_lib(msg):
     grasp_lib = {}
     grasp_lib['grasp_length_min_mm'] = msg.grasp_length_min_mm
     
-    lib = {'detect_tomato': tom_lib, 'detect_peduncle': pend_lib, 'compute_grap': grasp_lib}
+    lib = {'detect_tomato': tom_lib, 'detect_peduncle': pend_lib, 'compute_grasp': grasp_lib}
     return lib
