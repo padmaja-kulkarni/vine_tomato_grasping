@@ -102,7 +102,7 @@ def settings_lib_to_msg(lib):
 
     tom_lib = lib['detect_tomato']
     pend_lib = lib['detect_peduncle']
-    grasp_lib = lib['compute_grap']
+    grasp_lib = lib['compute_grasp']
 
     # distances in px
 #    msg.tomato_radius_min_frac = tom_lib['radius_min_frac']
