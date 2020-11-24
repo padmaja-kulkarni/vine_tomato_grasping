@@ -9,14 +9,14 @@ skan: Used for skeleton anlysis. Skan is only available for python 3, Therefore 
 ## Genral introduction
 Feautre extraction:
 
-<img src="images/data/003.png" alt="input image" width="350"/>
-<img src="images/results/003_original.png" alt="input image" width="350"/>
+<img src="doc/data/003.png" alt="input image" width="350"/>
+<img src="doc/results/003_original.png" alt="input image" width="350"/>
 
 
 Moreover, if you provide a ground truth, an error may be determined:
 
-<img src="images/results/003_pend_error.png" alt="input image" width="350"/>
-<img src="images/results/003_tom_error.png" alt="input image" width="350"/>
+<img src="doc/results/003_pend_error.png" alt="input image" width="350"/>
+<img src="doc/results/003_tom_error.png" alt="input image" width="350"/>
 
 ## Code structure
 Currently, this repository is fairly unstructured, I will improve this. For now:

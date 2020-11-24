@@ -101,11 +101,11 @@ rosdep install --from-paths src --ignore-src -r -y
 
 2. Gazebo should start by default it is paused (this behaviour can be chnaged in the launch files).
 
-    <img src="../images/gazebo.png" alt="Gazebo" width="800"/>
+    <img src="doc/gazebo.png" alt="Gazebo" width="800"/>
 
 3. Unpause the simulation by hitting play on the bar shown at the bottom, RViz should start
     
-    <img src="../images/rviz.png" alt="RViz" width="800"/>
+    <img src="doc/rviz.png" alt="RViz" width="800"/>
     
 4. You have succesfully started the enviroment. To stat the controls run in your terminal:
     ```
@@ -113,7 +113,7 @@ rosdep install --from-paths src --ignore-src -r -y
     ``` 
 5. An rqt graphical user interface should pop up, sometimes in initializes incorrect, if this happens hit Ctrl + C, and retry
 
-    <img src="../images/rqt.png" alt="rqt" width="800"/>
+    <img src="doc/rqt.png" alt="rqt" width="800"/>
 
 6. You have succesfully initialized the controls, and the virtual robot is ready to go.
 
