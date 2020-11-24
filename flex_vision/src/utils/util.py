@@ -312,10 +312,12 @@ def clear_axis():
     plt.gca().yaxis.set_major_locator(plt.NullLocator())
 
 
-def plot_truss(tomato=None):
+def plot_truss(tomato=None, peduncle=None):
     if tomato:
         add_circles(tomato['centers'], radii=tomato['radii'], fc=tomato_color, ec=tomato_color)
 
+    if peduncle:
+        add_lines(peduncle['centers'], peduncle['angles'], lengths=peduncle['length'], color=peduncle_color, linewidth=20)
 
 
 def plot_features(img_rgb=None, tomato=None, peduncle=None, grasp=None,
@@ -768,8 +770,10 @@ def add_contour(mask, color=(255, 255, 255), linewidth=1, zorder=None):
                  zorder=zorder)
 
 
-def add_lines(centers, angles, l=20, color=(255, 255, 255), linewidth=1, is_rad=True):
-    'angle in rad'
+def add_lines(centers, angles, lengths=20, color=(255, 255, 255), linewidth=1, is_rad=True):
+    """
+    angle in rad
+    """
     if isinstance(centers, (list, tuple)):
         centers = np.array(centers, ndmin=2)
 
@@ -782,11 +786,14 @@ def add_lines(centers, angles, l=20, color=(255, 255, 255), linewidth=1, is_rad=
     if not isinstance(color, (str)):
         color = np.array(color).astype(float) / 255
 
-    for center, angle in zip(centers, angles):
+    if not isinstance(lengths, (list, tuple)):
+        lengths = [lengths] * len(angles)
+
+    for center, angle, length in zip(centers, angles, lengths):
         if not is_rad:
             angle = angle / 180 * np.pi
 
-        start_point, end_point = compute_line_points(center, angle, l)
+        start_point, end_point = compute_line_points(center, angle, length)
         plt.plot([start_point[0], end_point[0]], [start_point[1], end_point[1]], color=color, linewidth=linewidth,
                  zorder=top_layer)
 
@@ -799,7 +806,7 @@ def add_lines_from_points(start_point, end_point, color=(255, 255, 255), linewid
              linestyle=linestyle, zorder=top_layer)
 
 
-def add_arrows(centers, angles, l=20, color=(255, 255, 255), linewidth=1, head_width=5, head_length=7, is_rad=True):
+def add_arrows(centers, angles, lengths=20, color=(255, 255, 255), linewidth=1, head_width=5, head_length=7, is_rad=True):
     """
     angle in rad
     """

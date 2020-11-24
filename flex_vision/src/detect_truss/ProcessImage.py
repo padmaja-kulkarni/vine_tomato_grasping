@@ -373,6 +373,8 @@ class ProcessImage(object):
             radii = []
             centers = [[]]
             com = []
+            row = []
+            col = []
 
         else:
             center_coords = coords_from_points(self.centers, target_frame_id)
