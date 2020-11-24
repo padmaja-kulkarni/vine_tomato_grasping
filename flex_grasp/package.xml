@@ -1,9 +1,9 @@
 <package>
   <name>flex_grasp</name>
   <version>0.0.0</version>
-  <description>The flex_grasp package</description>
-  <author email="jdluijkx@gmail.com">Jelle Luijkx</author>
-  <maintainer email="jdluijkx@gmail.com">Jelle Luijkx</maintainer>
+  <description>A ROS packages for manipulating vine tomato.</description>
+  <author email="taeke.dehaan@live.nl">Taeke de Haan</author>
+  <maintainer email="taeke.dehaan@live.nl">Taeke de Haan</maintainer>
 
   <license>BSD</license>
 
@@ -19,9 +19,16 @@
   <run_depend>moveit_core</run_depend>
   <run_depend>moveit_ros_planning_interface</run_depend>
   <run_depend>moveit_ros_planning</run_depend>
-  
-  <run_depend>gazebo_ros</run_depend>
+  <run_depend>aruco_ros</run_depend>
 
+  <!-- python dependencies-->
+  <run_depend>python-numpy</run_depend>
+  <run_depend>python-pyrealsense2-pip</run_depend>
+  <run_depend>python-sklearn</run_depend>
+  <run_depend>python-skimage</run_depend>
+
+
+  <run_depend>gazebo_ros</run_depend>
   <!-- For custom messages -->
 
   <run_depend>message_runtime</run_depend>
