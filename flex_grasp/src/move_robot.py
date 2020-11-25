@@ -11,7 +11,7 @@ import numpy as np
 import sys
 import rospy
 import moveit_commander
-from utils.communication import Communication
+from flex_shared_resources.utils.communication import Communication
 
 # functions
 from moveit_commander.conversions import pose_to_list

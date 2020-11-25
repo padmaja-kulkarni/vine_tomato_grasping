@@ -14,7 +14,7 @@ from geometry_msgs.msg import PoseStamped
 from flex_grasp.msg import FlexGraspErrorCodes
 
 from flex_shared_resources.errors.flex_grasp_error import flex_grasp_error_log
-from utils.communication import Communication
+from flex_shared_resources.utils.communication import Communication
 
 
 

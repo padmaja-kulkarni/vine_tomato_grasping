@@ -18,7 +18,7 @@ from geometry_msgs.msg import PoseStamped
 
 from func.ros_utils import wait_for_variable, get_transform
 from func.utils import add_pose_stamped
-from func.conversions import pose_to_lists, point_to_pose_stamped, list_to_orientation, list_to_position
+from flex_shared_resources.utils.conversions import pose_to_lists, point_to_pose_stamped, list_to_orientation, list_to_position
 from flex_shared_resources.errors.flex_grasp_error import flex_grasp_error_log
 
 import tf2_ros

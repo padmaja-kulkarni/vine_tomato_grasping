@@ -8,7 +8,6 @@ Created on Mon Mar  9 15:30:31 2020
 
 import numpy as np
 import rospy
-import math
 import cv2
 import json
 import pyrealsense2 as rs
@@ -29,15 +28,14 @@ from flex_grasp.msg import Tomato, Truss, Peduncle, ImageProcessingSettings
 
 from detect_truss.ProcessImage import ProcessImage
 
-from func.conversions import point_to_pose_stamped, settings_lib_to_msg, settings_msg_to_lib
+from flex_shared_resources.utils.conversions import point_to_pose_stamped, settings_lib_to_msg, settings_msg_to_lib
 from func.utils import camera_info2intrinsics
 from func.utils import colored_depth_image
 
 
-
 from flex_grasp.msg import FlexGraspErrorCodes
 from flex_shared_resources.errors.flex_grasp_error import flex_grasp_error_log
-# import pathlib
+
 import os  # os.sep
 
 
@@ -481,10 +479,10 @@ class ObjectDetection(object):
         ### tomatoes ###
         ################
         radii = [0.05, 0.05]
-        t1x = xyz[0] + (L / 2 + radii[0]) * math.cos(angle)
-        t1y = xyz[1] - (L / 2 + radii[0]) * math.sin(angle)
-        t2x = xyz[0] - (L / 2 + radii[1]) * math.cos(angle)
-        t2y = xyz[1] + (L / 2 + radii[1]) * math.sin(angle)
+        t1x = xyz[0] + (L / 2 + radii[0]) * np.cos(angle)
+        t1y = xyz[1] - (L / 2 + radii[0]) * np.sin(angle)
+        t2x = xyz[0] - (L / 2 + radii[1]) * np.cos(angle)
+        t2y = xyz[1] + (L / 2 + radii[1]) * np.sin(angle)
         point1 = [t1x, t1y, table_height]
         point2 = [t2x, t2y, table_height]
         points = [point1, point2]

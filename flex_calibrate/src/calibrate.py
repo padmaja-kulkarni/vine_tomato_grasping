@@ -8,31 +8,28 @@ Created on Thu May 14 14:28:49 2020
 
 import rospy
 import numpy as np
+import tf2_ros # for error messages
+import tf2_geometry_msgs
 
 # messages
 from std_msgs.msg import String
 from geometry_msgs.msg import PoseStamped, PoseArray, Pose
+from flex_grasp.msg import FlexGraspErrorCodes
 
-import tf2_ros # for error messages
-import tf2_geometry_msgs
+
 
 from easy_handeye.handeye_client import HandeyeClient
 from flex_shared_resources.errors.flex_grasp_error import flex_grasp_error_log
-
-# custom functions
-from func.conversions import list_to_position, list_to_orientation
-
-from flex_grasp.msg import FlexGraspErrorCodes
-from utils.communication import Communication
-
+from flex_shared_resources.utils.conversions import list_to_position, list_to_orientation
+from flex_shared_resources.utils.communication import Communication
 
 class Calibration(object):
     """Calibration"""
-    node_name = "CALIBRATION"    
-    
+    node_name = "CALIBRATION"
+
     def __init__(self):
 
-#        robot_name = rospy.get_param("robot_name") 
+#        robot_name = rospy.get_param("robot_name")
 #        print(robot_name)
         self.debug_mode = rospy.get_param("calibrate/debug")
 
@@ -80,7 +77,7 @@ class Calibration(object):
                                 PoseArray, queue_size=5, latch=True)
 
         move_robot_topic = "/px150/move_robot"
-        self.move_robot_communication = Communication(move_robot_topic, timeout = 15)   
+        self.move_robot_communication = Communication(move_robot_topic, timeout = 15)
 
         # Subscribe
         rospy.Subscriber("~e_in", String, self.e_in_cb)
@@ -93,7 +90,7 @@ class Calibration(object):
             # reset outputting message
             msg = FlexGraspErrorCodes()
             msg.val = FlexGraspErrorCodes.NONE
-            self.pub_e_out.publish(msg) 
+            self.pub_e_out.publish(msg)
 
 
     def aruco_tracker_cb(self, msg):
@@ -108,7 +105,7 @@ class Calibration(object):
 
         pos_intervals = 1
         if pos_intervals == 1:
-            r_vec = [r_min + r_amplitude] # np.linspace(x_min, x_min + 2*x_amplitude, 2) # 
+            r_vec = [r_min + r_amplitude] # np.linspace(x_min, x_min + 2*x_amplitude, 2) #
             z_vec = [z_min + z_amplitude]
         else:
             r_vec = np.linspace(r_min, r_min + 2*r_amplitude, pos_intervals)
@@ -237,7 +234,7 @@ class Calibration(object):
 
             # transform to planning frame
             pose_trans = tf2_geometry_msgs.do_transform_pose(pose_stamped, trans)
-        
+
             self.pub_move_robot_pose.publish(pose_trans)
             result = self.move_robot_communication.wait_for_result("move_manipulator") # timout = 5?
 
@@ -249,7 +246,7 @@ class Calibration(object):
                         self.client.take_sample()
                     except:
                         rospy.logwarn("[CALIBRATE] Failed to take sample, marker might not be visible.")
-                    
+
             elif result == FlexGraspErrorCodes.DYNAMIXEL_ERROR:
                 print('dynamixel error triggered, returning error')
                 return result
@@ -258,8 +255,8 @@ class Calibration(object):
                 return result
 
         # reset
-        result = self.move_robot_communication.wait_for_result("home") 
-        
+        result = self.move_robot_communication.wait_for_result("home")
+
         # compute calibration transform
         if not track_marker:
             return FlexGraspErrorCodes.SUCCESS
@@ -309,8 +306,8 @@ class Calibration(object):
         if result is not None:
             msg.val = result
             flex_grasp_error_log(result, self.node_name)
-            self.pub_e_out.publish(msg)      
-            self.command = None            
+            self.pub_e_out.publish(msg)
+            self.command = None
 
 
 def main():

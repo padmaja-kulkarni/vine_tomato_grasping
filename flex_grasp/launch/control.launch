@@ -26,7 +26,7 @@
 	<arg name="point_debug" 						default="false"/>
 	<arg name="transform_pose_debug"		default="false"/>
 
-	<include file="$(find flex_grasp)/launch/calibrate.launch">
+	<include file="$(find flex_calibrate)/launch/calibrate.launch">
 		<arg name="calibrate_debug" value="$(arg calibrate_debug)"/>
 		<arg name="start_rviz" value="false"/>
 		<arg name="start_independent" value="false"/>
@@ -42,7 +42,6 @@
 		<param name="planning_frame" value="$(arg planning_frame)"/>
 		<param name="manipulator_group_name" value="$(arg manipulator_group_name)"/>
 		<param name="ee_group_name" value="$(arg ee_group_name)"/>
-		<param name="robot_base_frame" value="$(arg robot_base_frame)"/>
 		<param name="robot_base_frame" value="$(arg robot_base_frame)"/>
 
 		<node name = "my_rqt_dashboard"

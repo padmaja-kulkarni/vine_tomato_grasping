@@ -13,7 +13,7 @@ from geometry_msgs.msg import PoseStamped
 from moveit_commander.conversions import pose_to_list
 from geometry_msgs.msg import Pose
 
-from func.conversions import pose_to_lists
+from flex_shared_resources.utils.conversions import pose_to_lists
 from moveit_commander.conversions import list_to_pose
 import pyrealsense2 as rs
 from math import pi
@@ -93,13 +93,14 @@ def add_pose_stamped(pose_stamp_a, pose_stamp_b):
     if pose_stamp_a.header.frame_id == pose_stamp_b.header.frame_id:
         pose_stamp_c.header = pose_stamp_a.header
     else:
+        # TODO: add raise exception
         return None
-    
+
     position_a, orientation_a = pose_to_lists(pose_stamp_a.pose, 'euler')
     position_b, orientation_b = pose_to_lists(pose_stamp_b.pose, 'euler')
-    
-    position_c = add_lists(position_a, position_b)
-    orientation_c = add_lists(orientation_a, orientation_b)
+
+    position_c = [a + b for a, b in zip(position_a, position_b)]
+    orientation_c = [a + b for a, b in zip(orientation_a, orientation_b)]
     
     pose_c = list_to_pose(position_c + orientation_c)
     pose_stamp_c.pose = pose_c

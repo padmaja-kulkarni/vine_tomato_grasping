@@ -17,11 +17,10 @@ from std_msgs.msg import String
 from geometry_msgs.msg import PoseStamped, PointStamped, Pose
 from flex_grasp.msg import Truss
 
-from func.conversions import pose_to_lists
 from func.utils import add_lists
 from moveit_commander.conversions import list_to_pose
 from math import pi
-from func.conversions import list_to_orientation
+from flex_shared_resources.utils.conversions import list_to_orientation, pose_to_lists
 
 # TODO: use communication instead of wait_for_success
 from func.ros_utils import wait_for_success
