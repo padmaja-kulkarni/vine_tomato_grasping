@@ -17,13 +17,13 @@ import tf2_ros # for error messages
 import tf2_geometry_msgs
 
 from easy_handeye.handeye_client import HandeyeClient
-from func.flex_grasp_error import flex_grasp_error_log
+from flex_shared_resources.errors.flex_grasp_error import flex_grasp_error_log
 
 # custom functions
 from func.conversions import list_to_position, list_to_orientation
 
 from flex_grasp.msg import FlexGraspErrorCodes
-from communication import Communication
+from utils.communication import Communication
 
 
 class Calibration(object):

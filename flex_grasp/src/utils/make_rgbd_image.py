@@ -32,7 +32,7 @@ pipeline.start(config)
 
 done = None
 
-print "============ Press `y` to take a picture and `q` to quit"
+print("============ Press `y` to take a picture and `q` to quit")
 
 
 
@@ -64,10 +64,10 @@ try:
         
         if k & 0xFF == ord('y'): #save on pressing 'y' 
             filename = str(time.ctime())
-            np.save(path+'/Images/'+filename, images)
-            cv2.imwrite(path+'/images/Color '+filename+'.png', color_image)
-            cv2.imwrite(path+'/images/Depth '+filename+'.png', depth_colormap)
-            print('============ Image saved as: '+filename)
+            np.save(path+'/Images/' + filename, images)
+            cv2.imwrite(path+'/images/Color ' + filename + '.png', color_image)
+            cv2.imwrite(path+'/images/Depth ' + filename + '.png', depth_colormap)
+            print('============ Image saved as: ' + filename)
             
         elif k & 0xFF == ord('q'): #quit on pressing 'q' 
             done = True
@@ -81,4 +81,3 @@ finally:
     # Stop streaming
     pipeline.stop()
     cv2.destroyAllWindows()
-    

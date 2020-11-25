@@ -115,9 +115,6 @@ def multiply_lists(list1, list2):
 
 def neg_list(list1):
     return [ -x for x in list1]
-
-def deg2rad(deg):
-    return float(deg)/180.0*pi
     
 
 def colored_depth_image(depth_image, min_dist = 0.4, max_dist = 0.6):

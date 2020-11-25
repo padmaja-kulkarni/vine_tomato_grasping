@@ -1,4 +1,5 @@
 #!/usr/bin/env python2
+# TODO: Taken from ??
 
 # this script emulates the tf output of a tracking system in a hand-eye calibration setup, given the ground-truth
 # calibration and arbitrary transforms. the output is consists of the transform between the camera and the marker,

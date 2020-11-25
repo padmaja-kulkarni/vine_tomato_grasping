@@ -11,12 +11,12 @@ import rospy
 # messages
 from std_msgs.msg import String
 from geometry_msgs.msg import PoseStamped
-
-
-from func.flex_grasp_error import flex_grasp_error_log
-
 from flex_grasp.msg import FlexGraspErrorCodes
-from communication import Communication
+
+from flex_shared_resources.errors.flex_grasp_error import flex_grasp_error_log
+from utils.communication import Communication
+
+
 
 class PickPlace(object):
     

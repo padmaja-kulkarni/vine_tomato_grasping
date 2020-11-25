@@ -11,6 +11,7 @@ import rospy
 import math
 import cv2
 import json
+import pyrealsense2 as rs
 from cv_bridge import CvBridge, CvBridgeError
 
 # msg
@@ -24,22 +25,18 @@ from sensor_msgs.msg import PointField
 import sensor_msgs.point_cloud2 as pc2
 import struct
 
-from flex_grasp.msg import Tomato
-from flex_grasp.msg import Truss
-from flex_grasp.msg import Peduncle
-from flex_grasp.msg import ImageProcessingSettings
+from flex_grasp.msg import Tomato, Truss, Peduncle, ImageProcessingSettings
 
-# custom func
 from detect_truss.ProcessImage import ProcessImage
-from func.conversions import point_to_pose_stamped, settings_lib_to_msg, settings_msg_to_lib
 
+from func.conversions import point_to_pose_stamped, settings_lib_to_msg, settings_msg_to_lib
 from func.utils import camera_info2intrinsics
 from func.utils import colored_depth_image
 
-import pyrealsense2 as rs
+
 
 from flex_grasp.msg import FlexGraspErrorCodes
-from func.flex_grasp_error import flex_grasp_error_log
+from flex_shared_resources.errors.flex_grasp_error import flex_grasp_error_log
 # import pathlib
 import os  # os.sep
 

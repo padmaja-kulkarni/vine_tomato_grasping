@@ -23,6 +23,7 @@ from moveit_commander.conversions import list_to_pose
 from math import pi
 from func.conversions import list_to_orientation
 
+# TODO: use communication instead of wait_for_success
 from func.ros_utils import wait_for_success
 
 import tf2_ros

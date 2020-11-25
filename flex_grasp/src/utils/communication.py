@@ -8,8 +8,8 @@ Created on Wed Aug 12 08:20:26 2020
 
 import rospy
 from flex_grasp.msg import FlexGraspErrorCodes
-from func.flex_grasp_error import flex_grasp_error_log
 from std_msgs.msg import String
+from flex_shared_resources.errors.flex_grasp_error import flex_grasp_error_log
 
 class Communication(object):
     """ObjectDetection"""

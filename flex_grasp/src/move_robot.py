@@ -11,7 +11,7 @@ import numpy as np
 import sys
 import rospy
 import moveit_commander
-from communication import Communication
+from utils.communication import Communication
 
 # functions
 from moveit_commander.conversions import pose_to_list
@@ -30,10 +30,10 @@ from interbotix_sdk.srv import OperatingModes, OperatingModesRequest
 from interbotix_sdk.srv import RobotInfo
 from sensor_msgs.msg import JointState
 
-from func.flex_grasp_error import flex_grasp_error_log
+from flex_shared_resources.errors.flex_grasp_error import flex_grasp_error_log
 
 # custom functions
-from func.utils import pose_close, joint_close, deg2rad
+from func.utils import pose_close, joint_close
 
 
 class MoveRobot(object):
@@ -70,8 +70,8 @@ class MoveRobot(object):
 
         # tolerance
         self.position_tol = 0.03  # [m]
-        self.orientation_tol = deg2rad(10.0)  # [rad]
-        self.man_joint_tolerance = deg2rad(5.0)  # [rad]
+        self.orientation_tol = np.deg2rad(10.0)  # [rad]
+        self.man_joint_tolerance = np.deg2rad(5.0)  # [rad]
         self.ee_joint_tolerance = 0.002  # [m]
 
         self.initialise_robot()

@@ -8,8 +8,8 @@ Created on Mon Aug 17 16:03:22 2020
 
 import rospy
 import numpy as np
-from func.dynamixel_error import dynamixel_error_log
-from func.flex_grasp_error import flex_grasp_error_log
+from flex_shared_resources.errors.dynamixel_error import dynamixel_error_log
+from flex_shared_resources.errors.flex_grasp_error import flex_grasp_error_log
 
 # services
 from interbotix_sdk.srv import RegisterValues, RegisterValuesRequest
