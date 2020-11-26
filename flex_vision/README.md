@@ -1,12 +1,44 @@
 # Detect truss 
-A python package to extract truss features from a given image and determined an optimal grasping pose
 
-## Dependeincies
-python 2.7: No ROS distribution officially supports Python 3, thus python 2 is used such that the code works in combination with ROS.
+A python package to extract truss features from a given image and determined an optimal grasping pose.
 
-skan: Used for skeleton anlysis. Skan is only available for python 3, Therefore I decided to make some modifications to skan such that it works with python 2, these can be found on [this](https://github.com/TaekedeHaan/skan/tree/python-2.7) branch.
+## 1 Installation
+> :warning: This package uses python 2!
 
-## Genral introduction
+This package can be used in two ways:
+1. This package can be used with ROS, in combination with the other packages.
+2. You can use this package independently of ROS.
+
+### 1.1 With ROS
+If you have ROS installed you can install most dependencies with rosdep:
+
+```
+rosdep install --from-paths src --ignore-src -r -y
+```
+Not all dependencies can be installed this way, first of all you need to manyally install colormath:
+```
+python2 -m pip install colormath
+```
+
+Finally you need to install a fork of the skan library wich offers python 2 support: 
+```
+python2 -m pip install git+https://github.com/TaekedeHaan/skan.git@python-2.7
+```
+
+
+### 1.2 Without ROS
+If you do not have ROS on your machine, you can also install the dependencies with the requirements.txt file:
+```
+python2 -m pip install -r requirements.txt
+```
+
+### 1.3 Verify Instalation
+make sure you are in the `flex_vision/src` direcotry, and run:
+```
+python -m unittest discover test
+```
+
+## 2 Genral introduction
 Feautre extraction:
 
 <p float="center">
@@ -21,7 +53,7 @@ Moreover, if you provide a ground truth, an error may be determined:
   <img src="doc/results/003_tom_error.png" alt="input image" width="400"/>
 </p>
 
-## Code structure
+## 3 Code structure
 Currently, this repository is fairly unstructured, I will improve this. For now:
 
 1. The main file for feature extraction and grasp pose determination is [detect_truss/ProcessImage.py](src/detect_truss/ProcessImage.py)
