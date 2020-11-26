@@ -3,30 +3,29 @@
     <!-- you can write your own calibrate.launch, by including the ROS drivers for robot and tracking and choosing
     your own namespace if you have multiple tracking devices or robots -->
 
-    <arg name="start_rviz" default="false"/>
-    <arg name="start_independent" default="false"/>
+    <arg name="start_rviz"              default="false"/>
+    <arg name="start_independent"       default="false"/>
 
-    <arg name="namespace_prefix" default="calibration"/>
-    <arg name="eye_on_hand" default="false"/>
+    <arg name="namespace_prefix"        default="calibration"/>
+    <arg name="eye_on_hand"             default="false"/>
 
     <!-- Aruco settings -->
-    <arg name="use_aruco" default="true" doc="When set to false a tracking simulator will be used"/>
-    <arg name="marker_size" default="0.039" doc="Size of the ArUco marker used, in meters"/>
-    <arg name="marker_id" default="26" doc="The ID of the ArUco marker used"/>
+    <arg name="use_aruco"               default="true" doc="When set to false a tracking simulator will be used"/>
+    <arg name="marker_size"             default="0.039" doc="Size of the ArUco marker used, in meters"/>
+    <arg name="marker_id"               default="26" doc="The ID of the ArUco marker used"/>
 
     <!-- Robot setting -->
-    <arg name="robot_name" default="px150"/>
-    <arg name="manipulator_group_name" default="interbotix_arm"/>
-    <arg name="ee_group_name" default="interbotix_gripper"/>
+    <arg name="robot_name"              default="px150"/>
+    <arg name="manipulator_group_name"  default="interbotix_arm"/>
+    <arg name="ee_group_name"           default="interbotix_gripper"/>
 
     <!-- Frame settings -->
-    <arg name="robot_base_frame" default="$(arg robot_name)/base_link"/> <!-- $(arg robot_name)/base_link -->
-    <arg name="robot_effector_frame" default="$(arg robot_name)/ee_arm_link"/>
-    <arg name="tracking_base_frame" default="camera_link" /> <!-- amera_bottom_screw_frame -->
-    <arg name="marker_frame" default="tracking_marker" />
+    <arg name="robot_base_frame"        default="$(arg robot_name)/base_link"/> <!-- $(arg robot_name)/base_link -->
+    <arg name="robot_effector_frame"    default="$(arg robot_name)/ee_arm_link"/>
+    <arg name="tracking_base_frame"     default="camera_link" /> <!--  camera_bottom_screw_frame -->
+    <arg name="marker_frame"            default="tracking_marker" />
 
-
-    <arg name="calibrate_debug" default="false"/>
+    <arg name="calibrate_debug"         default="false"/>
 
     <!-- start the simulated tracking -->
     <node unless="$(arg use_aruco)"  name="tracking_simulator" pkg="flex_calibrate" type="tracking_simulator.py" output="screen">
@@ -39,8 +38,10 @@
         <param name="rotation_noise_stdev" value="0.0001" />
 
         <param name="eye_on_hand" value="$(arg eye_on_hand)" />
+
         <!-- transformations for the eye-on-base case -->
-        <param unless="$(arg eye_on_hand)" name="ground_truth_calibration_transformation" value="0 0.5 1.2 3.1415 1.57 -1.57"/>
+        <!-- robot_base_frame to tracking_base_frame-->
+        <param unless="$(arg eye_on_hand)" name="ground_truth_calibration_transformation" value="0.26 -0.02 0.57 3.1415 1.57 -1.57"/>
         <param unless="$(arg eye_on_hand)" name="arbitrary_marker_placement_transformation" value="0.0 0.0 0.0 0 0 0 1" />
         <!-- transformations for the eye-on-hand case -->
         <param if="$(arg eye_on_hand)" name="ground_truth_calibration_transformation" value="0.12 0.21 0.137 0 0 0 1" />
@@ -118,6 +119,14 @@
           <remap from="/collision_object" to="/$(arg robot_name)/collision_object"/>
           <param name ="debug" value="$(arg calibrate_debug)"/>
         </node>
+
+        <node name="monitor_robot"
+    			pkg="flex_grasp"
+    			type="monitor_robot.py"
+    			output="screen">
+    			<param name ="debug" value="$(arg calibrate_debug)"/>
+        </node>
+
 
         <param name="planning_frame" value="world"/>
         <param name="robot_base_frame" value="$(arg robot_base_frame)"/>

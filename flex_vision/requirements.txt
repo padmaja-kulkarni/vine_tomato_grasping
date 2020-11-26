@@ -1,0 +1,9 @@
+# -*- coding: utf-8 -*-
+scikit-image
+sklearn
+numpy
+matplotlib
+opencv-python==4.2.0.32
+scipy
+colormath
+git+https://github.com/TaekedeHaan/skan.git@python-2.7
