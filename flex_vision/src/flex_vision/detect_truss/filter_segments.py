@@ -8,7 +8,7 @@ Created on Wed Feb 26 17:05:38 2020
 
 ## imports ##
 import cv2
-from flex_vision.utils import remove_blobs
+from flex_vision.utils.util import remove_blobs
 
 def filter_segments(tomato, peduncle, background, settings=None):
     # tomato

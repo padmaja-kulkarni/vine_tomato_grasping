@@ -7,17 +7,16 @@ import warnings
 import numpy as np
 import cv2
 import json
-
+from matplotlib import pyplot as plt
 
 from flex_vision.utils import imgpy
 from flex_vision.utils.geometry import Point2D, Transform, points_from_coords, coords_from_points
-from flex_vision.utils import Timer
+from flex_vision.utils.timer import Timer
 
-from flex_vision.utils import make_dirs, load_rgb, save_img, save_fig, figure_to_image
-from flex_vision.utils import stack_segments, change_brightness
-from flex_vision.utils import plot_timer, plot_grasp_location, plot_image, plot_features, plot_segments
+from flex_vision.utils.util import make_dirs, load_rgb, save_img, save_fig, figure_to_image
+from flex_vision.utils.util import stack_segments, change_brightness
+from flex_vision.utils.util import plot_timer, plot_grasp_location, plot_image, plot_features, plot_segments
 
-from matplotlib import pyplot as plt
 
 from filter_segments import filter_segments
 from detect_peduncle_2 import detect_peduncle, visualize_skeleton
@@ -188,12 +187,15 @@ class ProcessImage(object):
 
         bbox = truss_rotate.bbox()
         x = bbox[0]  # col
-        y = bbox[1]  # row
+        y = bbox[1]  # rows to upper left corner
+
 
         translation = [x, y]
+        # print translation
+        # print [self.shape[1], self.shape[0]]
         self.transform = Transform(self.ORIGINAL_FRAME_ID,
                                    self.LOCAL_FRAME_ID,
-                                   [self.shape[1], self.shape[0]], # [width, height]
+                                   [self.shape[1], self.shape[0]],  # [width, height]
                                    angle=-angle,
                                    translation=translation)
 
@@ -213,7 +215,8 @@ class ProcessImage(object):
         """detect tomatoes based on the truss segment"""
         pwd = os.path.join(self.pwd, '05_tomatoes')
 
-        if self.peduncle.is_empty():
+        if self.truss_crop.is_empty():
+            warnings.warn("Detect tomato: no pixel has been classified as truss!")
             return False
 
         if self.save:
@@ -371,24 +374,20 @@ class ProcessImage(object):
 
         if self.centers is None:
             radii = []
-            centers = [[]]
-            com = []
+            xy_centers = [[]]
+            xy_com = []
             row = []
             col = []
 
         else:
-            center_coords = coords_from_points(self.centers, target_frame_id)
-            com_coord = self.com.get_coord(target_frame_id)
+            xy_centers = coords_from_points(self.centers, target_frame_id)
+            xy_com = self.com.get_coord(target_frame_id)
             radii = self.radii.tolist()
 
-            # centers = np.around(centers_xy / scale).astype(int)
-            # com = np.around(com_xy / scale).astype(int)
-            row = [center[1] for center in center_coords]
-            col = [center[0] for center in center_coords]
-            centers = center_coords
-            com = com_coord
+            row = [xy_center[1] for xy_center in xy_centers]
+            col = [xy_center[0] for xy_center in xy_centers]
 
-        tomato = {'centers': centers, 'radii': radii, 'com': com, "row": row, "col": col}
+        tomato = {'centers': xy_centers, 'radii': radii, 'com': xy_com, "row": row, "col": col}
         return tomato
 
     def get_peduncle(self, local=False):
@@ -420,8 +419,9 @@ class ProcessImage(object):
         else:
             row = None
             col = None
+            xy = []
 
-        grasp_location = {"row": row, "col": col, "angle": angle}
+        grasp_location = {"xy": xy, "row": row, "col": col, "angle": angle}
         return grasp_location
 
     def get_object_features(self):
@@ -465,7 +465,6 @@ class ProcessImage(object):
 
         if local:
             frame_id = self.LOCAL_FRAME_ID
-            grasp_angle = self.grasp_angle_local
             shape = self.shape  # self.bbox[2:4]
             zoom = True
             name = 'local'
@@ -473,33 +472,30 @@ class ProcessImage(object):
             grasp_linewidth = 3
         else:
             frame_id = self.ORIGINAL_FRAME_ID
-            grasp_angle = self.grasp_angle_global
             shape = self.shape
             zoom = False
             name = 'original'
             skeleton_width = 2
             grasp_linewidth = 1
 
-        xy_com = self.com.get_coord(frame_id)
-        xy_center = coords_from_points(self.centers, frame_id)
-        xy_grasp = self.grasp_point.get_coord(frame_id)
+        grasp = self.get_grasp_location(local=local)
+        tomato = self.get_tomatoes(local=local)
         xy_junc = coords_from_points(self.junction_points, frame_id)
-
         img = self.get_rgb(local=local)
+
+        # generate peduncle image
         xy_peduncle = coords_from_points(self.peduncle_points, frame_id)
         rc_peduncle = np.around(np.array(xy_peduncle)).astype(np.int)[:,(1, 0)]
-
-        fig = plt.figure()
-        plot_image(img)
-
         arr = np.zeros(shape, dtype=np.uint8)
         arr[rc_peduncle[:, 0], rc_peduncle[:, 1]] = 1
 
-        tomato = {'centers': xy_center, 'radii': self.radii, 'com': xy_com}
+        # plot
+        plt.figure()
+        plot_image(img)
         plot_features(tomato=tomato, zoom=zoom)
         visualize_skeleton(img, arr, coord_junc=xy_junc, show_img=False, skeleton_width=skeleton_width)
 
-        if (xy_grasp is not None) and (grasp_angle is not None):
+        if (grasp["xy"] is not None) and (grasp["angle"] is not None):
             settings = self.settings['compute_grasp']
             if self.px_per_mm is not None:
                 minimum_grasp_length_px = self.px_per_mm * settings['grasp_length_min_mm']
@@ -507,7 +503,7 @@ class ProcessImage(object):
                 finger_thickenss_px = settings['finger_thinkness_mm'] * self.px_per_mm
             else:
                 minimum_grasp_length_px = settings['grasp_length_min_px']
-            plot_grasp_location(xy_grasp, grasp_angle, finger_width=minimum_grasp_length_px,
+            plot_grasp_location(grasp["xy"], grasp["angle"], finger_width=minimum_grasp_length_px,
                                 finger_thickness=finger_thickenss_px, finger_dist=open_dist_px, linewidth=grasp_linewidth)
 
         if save:
