@@ -1,8 +1,7 @@
-from detect_truss import detect_tomato
 from matplotlib import pyplot as plt
-from utils import util
+from flex_vision.utils import util
 import numpy as np
-from detect_truss.ProcessImage import ProcessImage
+from flex_vision.detect_truss.ProcessImage import ProcessImage
 
 shape = [16, 9]
 dpi = 100

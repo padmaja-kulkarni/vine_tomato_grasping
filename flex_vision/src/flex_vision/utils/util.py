@@ -13,7 +13,7 @@ import copy
 from matplotlib import pyplot as plt
 import matplotlib as mpl
 
-import utils.color_maps as color_maps
+from flex_vision import utils as color_maps
 
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 

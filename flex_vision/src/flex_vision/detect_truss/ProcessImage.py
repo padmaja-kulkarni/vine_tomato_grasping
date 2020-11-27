@@ -9,13 +9,13 @@ import cv2
 import json
 
 
-from utils import imgpy
-from utils.geometry import Point2D, Transform, points_from_coords, coords_from_points
-from utils.timer import Timer
+from flex_vision.utils import imgpy
+from flex_vision.utils.geometry import Point2D, Transform, points_from_coords, coords_from_points
+from flex_vision.utils import Timer
 
-from utils.util import make_dirs, load_rgb, save_img, save_fig, figure_to_image
-from utils.util import stack_segments, change_brightness
-from utils.util import plot_timer, plot_grasp_location, plot_image, plot_features, plot_segments
+from flex_vision.utils import make_dirs, load_rgb, save_img, save_fig, figure_to_image
+from flex_vision.utils import stack_segments, change_brightness
+from flex_vision.utils import plot_timer, plot_grasp_location, plot_image, plot_features, plot_segments
 
 from matplotlib import pyplot as plt
 

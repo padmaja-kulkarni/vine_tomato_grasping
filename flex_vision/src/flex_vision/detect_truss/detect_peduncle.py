@@ -6,15 +6,15 @@ import numpy as np
 import skan
 
 # custom functions
-from utils.util import add_circles, add_arrows
-from utils.util import save_img, save_fig
-from utils.util import remove_blobs, bin2img, img2bin
+from flex_vision.utils import add_circles, add_arrows
+from flex_vision.utils import save_img, save_fig
+from flex_vision.utils import remove_blobs, bin2img, img2bin
 
 from skimage.morphology import skeletonize
 from sklearn import linear_model
 
-from utils.timer import Timer
-from utils.counter import Counter
+from flex_vision.utils import Timer
+from flex_vision.utils import Counter
 from matplotlib import pyplot as plt
 
 

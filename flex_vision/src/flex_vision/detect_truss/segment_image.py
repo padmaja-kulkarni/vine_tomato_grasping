@@ -15,11 +15,11 @@ import matplotlib as mpl
 from sklearn.metrics.pairwise import euclidean_distances
 
 # custom functions
-from utils.util import bin2img
-from utils.util import save_fig
-from utils.util import angular_difference
-from utils.util import plot_segments
-from utils.util import grey_2_rgb
+from flex_vision.utils import bin2img
+from flex_vision.utils import save_fig
+from flex_vision.utils import angular_difference
+from flex_vision.utils import plot_segments
+from flex_vision.utils import grey_2_rgb
 
 final_image_id = '015' # used for plotting
 
