@@ -2,7 +2,7 @@
 A ROS packages for manipulating vine tomato.
 
 ## 1. Install
-> :warning: This has only been tested on: Ubuntu 16.04 (ros kinetic) and Ubuntu 18.04 (ros melodic)!
+> :warning: This has only been tested on Ubuntu 16.04 (ros kinetic) and Ubuntu 18.04 (ros melodic)!
 
 
 ### 1.1 Install ROS
@@ -39,7 +39,16 @@ For Interbotix support we require interbotix_ros_arms:
 cd ~/flexcraft_ws/src
 git clone --single-branch --branch reboot_service https://github.com/TaekedeHaan/interbotix_ros_arms.git
 ```
-This forked repository has an additional reboot service which is automatically called when a motor reports an Harware Error. Note that the used repository is now in legacy mode, the [updated SDK](https://github.com/Interbotix/interbotix_ros_core) contains this reboot serive by default. However, I never tested the rest of the code with the update SDK.
+This forked repository has an additional reboot service which is automatically called when a motor reports an Harware Error. Note that the used repository is now in legacy mode, the [updated SDK](https://github.com/Interbotix/interbotix_ros_core) contains this reboot serive by default. However, I never tested the rest of the code with the update SDK. We need to install one dependency manually:
+```
+python -m pip install modern_robotics
+```
+Finally set up the udev rules for communication:
+```
+$ sudo cp ~/interbotix_ws/src/interbotix_ros_arms/interbotix_sdk/10-interbotix-udev.rules /etc/udev/rules.d
+$ sudo udevadm control --reload-rules && udevadm trigger
+```
+When running into any problems please refere to the [interbotix_ros_arms repo](https://github.com/Interbotix/interbotix_ros_arms)
 
 #### iiwa Support
 For iiwa support we require the iiwa_stack:
@@ -83,8 +92,13 @@ This forks contains some modifications to initialize the parameters in the GUI t
 #### Python packages
 Not all packages could be specified in the package.xml, and need to be installled manually:
 ```
-pip install colormath
+python2 -m pip install colormath
 ```
+The flex_vision package relies on a fork of the skan library wich offers python 2 support: 
+```
+python2 -m pip install git+https://github.com/TaekedeHaan/skan.git@python-2.7
+```
+
 
 ### 1.5 Remaining Dependencies
 Install remaining dependencies:
