@@ -74,7 +74,7 @@ class ObjectDetection(object):
 
         self.pwd_current = os.path.dirname(__file__)  # path to THIS file
         self.data_set = 'default'
-        self.pwd_data = os.path.join(os.sep, 'home', 'taeke', 'Documents', 'thesis_data', self.data_set)
+        self.pwd_data = os.path.join(os.getcwd(), 'thesis_data', self.data_set)
 
         rospy.loginfo("Storing visual results in: ", self.pwd_data)
 
@@ -530,7 +530,10 @@ class ObjectDetection(object):
         return points
 
     def deproject(self, row, col, depth=None, segment=None):
-
+        # TODO: these should never be floats!
+        row = int(row)
+        col = int(col)
+        
         if depth is None:
             depth = self.get_depth(row, col, segment=segment)
 
@@ -578,12 +581,17 @@ class ObjectDetection(object):
 
     def get_depth(self, row, col, segment=None):
 
+        # TODO: these should never be floats!
+        row = int(row)
+        col = int(col)
+
         if segment is None:
-            patch_width = (self.patch_size - 1) / 2
+            patch_width = int((self.patch_size - 1) / 2)
 
             dim = self.depth_image.shape
             H = dim[0]
             W = dim[1]
+           
 
             row_start = max([row - patch_width, 0])
             row_end = min([row + patch_width, H - 1])
@@ -593,6 +601,9 @@ class ObjectDetection(object):
 
             rows = np.arange(row_start, row_end + 1)
             cols = np.arange(col_start, col_end + 1)
+            print "\n\n\n\n\n", self.depth_image.shape
+            print "rows: ", rows
+            print "cols: ", cols
 
             depth_patch = self.depth_image[rows[:, np.newaxis], cols]
         else:
