@@ -207,8 +207,10 @@ class ProcessImage(object):
         self.img_rgb_crop = self.img_rgb.copy().crop(-angle, bbox)
         self.truss_crop = truss_rotate.copy().cut(self.bbox)
 
-        if self.save:
-            self.save_results(self.name, pwd=pwd, local=True)
+        if True: # self.save:
+            img_rgb = self.get_rgb(local=True)
+            save_img(img_rgb, pwd=pwd, name=self.name)
+            # self.save_results(self.name, pwd=pwd, local=True)
 
     @Timer("tomato detection", name_space)
     def detect_tomatoes(self):
@@ -605,16 +607,18 @@ def load_px_per_mm(pwd, img_id):
 
 def main():
     i_start = 1
-    i_end = 4
+    i_end = 2
     N = i_end - i_start
 
     save = False
     drive = "backup"  # "UBUNTU 16_0"  #
 
     pwd_root = os.path.join(os.sep, 'home', 'taeke', 'Documents', "images")
+    pwd_root = os.path.join(os.sep, "media" ,"taeke", "backup", "thesis_data", "detect_truss")
 
-    pwd_data = os.path.join(pwd_root, "data")
-    pwd_results = os.path.join(pwd_root, "results")
+    dataset = "lidl"
+    pwd_data = os.path.join(pwd_root, "data", dataset)
+    pwd_results = os.path.join(pwd_root, "results", dataset)
     pwd_json = os.path.join(pwd_results, 'json')
 
     make_dirs(pwd_results)

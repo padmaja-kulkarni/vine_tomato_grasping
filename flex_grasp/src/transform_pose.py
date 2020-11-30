@@ -54,7 +54,7 @@ class TransformPose(object):
         diameter_pedunlce = 0.004
 
         pre_grasp_distance = 0.04  # [m]
-        self.grasp_height = height_finger + finger_link2ee_link   - height_finger_tip  - diameter_pedunlce
+        self.grasp_height = height_finger + finger_link2ee_link - height_finger_tip - diameter_pedunlce
         self.pre_grasp_height = self.grasp_height + pre_grasp_distance
 
         grasp_xyz = [0, 0, self.grasp_height]  # [m]
@@ -146,6 +146,7 @@ class TransformPose(object):
             x = r * np.cos(theta)
             y = r * np.sin(theta)
 
+        # TODO: combinening two uniform distributions, does not give a uniform distribution!
         orientation = np.deg2rad(random.randrange(90, 270, 1)) + theta  # [rad]
 
         pre_place_height = self.peduncle_height - self.surface_height + self.pre_grasp_height

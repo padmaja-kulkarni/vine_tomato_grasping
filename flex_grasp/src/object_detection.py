@@ -372,9 +372,6 @@ class ObjectDetection(object):
         rospy.loginfo("Depth measured: %s", self.get_depth(row, col))
         xyz = self.deproject(row, col, depth=depth)
 
-        # print 'row:', row
-        # print 'col:', col
-        # print 'xyz:', xyz
         if np.isnan(xyz).any():
             rospy.logwarn("Failed to compute caging pose, will try based on segment!")
             xyz = self.deproject(row, col, segment=peduncle_mask)
@@ -601,9 +598,6 @@ class ObjectDetection(object):
 
             rows = np.arange(row_start, row_end + 1)
             cols = np.arange(col_start, col_end + 1)
-            print "\n\n\n\n\n", self.depth_image.shape
-            print "rows: ", rows
-            print "cols: ", cols
 
             depth_patch = self.depth_image[rows[:, np.newaxis], cols]
         else:

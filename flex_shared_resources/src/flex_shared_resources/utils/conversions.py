@@ -11,7 +11,7 @@ from moveit_commander.conversions import pose_to_list
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
 # messages
-from geometry_msgs.msg import PoseStamped, Point, Quaternion
+from geometry_msgs.msg import PoseStamped, Point, Quaternion, Pose
 from flex_grasp.msg import ImageProcessingSettings
 
 def pose_to_lists(pose_msg, orientation_type):
@@ -96,7 +96,23 @@ def point_to_pose_stamped(xyz, rpy, frame, time):
     pose_stamped.pose.position.z = xyz[2]
 
     return pose_stamped
-    
+
+
+def point_to_pose(xyz, rpy):
+    pose = Pose()
+
+    quat = quaternion_from_euler(rpy[0], rpy[1], rpy[2])
+    pose.orientation.x = quat[0]
+    pose.orientation.y = quat[1]
+    pose.orientation.z = quat[2]
+    pose.orientation.w = quat[3]
+    pose.position.x = xyz[0]
+    pose.position.y = xyz[1]
+    pose.position.z = xyz[2]
+
+    return pose
+
+
 def settings_lib_to_msg(lib):
     msg = ImageProcessingSettings()
 
