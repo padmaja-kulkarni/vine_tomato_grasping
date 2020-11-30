@@ -6,6 +6,7 @@ from qt_gui.plugin import Plugin
 from python_qt_binding import loadUi
 from python_qt_binding.QtWidgets import QWidget, QMenu
 from std_msgs.msg import String, Bool
+from spawn_truss.spawn_truss import ModelSpawner
 
 class RqtFlexGrasp(Plugin):
 
@@ -57,6 +58,7 @@ class RqtFlexGrasp(Plugin):
 
         self.go = False
         self._widget.ExperimentButton.setCheckable(True)
+        self.model_spawner = ModelSpawner()
         # self._widget.ExperimentButton.toggle()
         
         # basic commands
@@ -68,10 +70,11 @@ class RqtFlexGrasp(Plugin):
         self._widget.CalibrateButton.clicked[bool].connect(self.handle_calibrate)
         self._widget.CalibrateHeightButton.clicked[bool].connect(self.handle_calibrate_height)
 
-        # tasks
+
         # self._widget.DetectTomatoButton.clicked[bool].connect(self.handle_detect_tomato)
         self._widget.DetectTrussButton.clicked[bool].connect(self.handle_detect_truss)
         self._widget.SaveImageButton.clicked[bool].connect(self.handle_save_image)
+        self._widget.SpawnTrussButton.clicked[bool].connect(self.handle_spawn_truss)
 
         self._widget.PointButton.clicked[bool].connect(self.handle_point)
         self._widget.PickPlaceButton.clicked[bool].connect(self.handle_pick_place)
@@ -189,7 +192,12 @@ class RqtFlexGrasp(Plugin):
     def handle_experiment(self):
         self.experiment = self._widget.ExperimentButton.isChecked()
         self.pub_experiment.publish(self.experiment)
-        
+
+    def handle_spawn_truss(self):
+        self.model_spawner.delete_all_models()
+        self.model_spawner.add_model()
+
+
     def handle_truss_type(self):
         value =  str(self.truss_type_button.currentText())
         if self.truss_type != value:

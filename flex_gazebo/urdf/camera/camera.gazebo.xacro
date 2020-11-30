@@ -88,7 +88,7 @@
           <depthImageInfoTopicName>??</depthImageInfoTopicName>
           <pointCloudTopicName>depth_registered/points</pointCloudTopicName>
           <frameName>/camera_color_optical_frame</frameName>
-          <pointCloudCutoff>0.5</pointCloudCutoff>
+          <pointCloudCutoff>0.3</pointCloudCutoff>
           <pointCloudCutoffMax>3.0</pointCloudCutoffMax>
           <distortionK1>0.0</distortionK1>
           <distortionK2>0.0</distortionK2>
