@@ -12,6 +12,18 @@
     <arg name="robot_name" default="px150"/>
     <arg name="use_interbotix" default="true"/>
 
+    <arg name="camera_name" default="camera"/>
+    <arg name="use_nominal_extrinsics" default="true"/>
+    <arg name="camera_origin_xyz" default="'0 0.6 1.2'"/>
+    <arg name="camera_origin_rpy" default="'3.1415 1.57 -1.57'"/>
+
+
+    <!-- Camera params -->
+    <arg name="depth_width"         default="1280"/>
+    <arg name="depth_height"        default="720"/>
+    <arg name="color_width"         default="1280"/>
+    <arg name="color_height"        default="720"/>
+
     <!-- We resume the logic in empty_world.launch, changing only the name of the world to be launched -->
     <include file="$(find gazebo_ros)/launch/empty_world.launch">
         <arg name="world_name" value="$(find flex_gazebo)/worlds/empty.world"/>
@@ -23,7 +35,17 @@
     </include>
 
     <!-- Load the URDF with the given hardware interface into the ROS Parameter Server -->
-    <include file="$(find flex_gazebo)/launch/camera_upload.launch"/>
+    <!-- robot -->
+    <param name="robot_description"
+      command="$(find xacro)/xacro --inorder '$(find flex_gazebo)/urdf/camera.urdf.xacro'
+      use_nominal_extrinsics:=$(arg use_nominal_extrinsics)
+      camera_name:=$(arg camera_name)
+
+      depth_width:=$(arg depth_width)
+      depth_height:=$(arg depth_height)
+      color_width:=$(arg color_width)
+      color_height:=$(arg color_height)
+      "/>
 
     <!-- Run a python script to send a service call to gazebo_ros to spawn a URDF robot -->
     <node name="robot_urdf_spawner"
@@ -31,15 +53,13 @@
       type="spawn_model"
       respawn="false"
       output="screen"
-      ns="$(arg robot_name)"
       args="-urdf -model rs -param robot_description"/>
 
     <group if="$(arg use_interbotix)">
       <node
         name="robot_state_publisher"
         pkg="robot_state_publisher"
-        type="robot_state_publisher"
-        ns="$(arg robot_name)">
+        type="robot_state_publisher">
       </node>
     </group>
 </launch>

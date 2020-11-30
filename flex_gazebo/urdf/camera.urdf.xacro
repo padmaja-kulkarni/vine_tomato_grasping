@@ -9,10 +9,15 @@
   <xacro:include filename="$(find flex_gazebo)/urdf/marker/marker.xacro"/>
 
   <!-- camera params-->
-  <xacro:arg name="camera_name" default="camera"/>
-  <xacro:arg name="camera_origin_xyz" default="0 0 0.5"/>
-  <xacro:arg name="camera_origin_rpy" default="3.1415 1.57 -1.57"/>
-  <xacro:arg name="use_nominal_extrinsics" default="true"/>
+  <xacro:arg name="camera_name"             default="camera"/>
+  <xacro:arg name="camera_origin_xyz"       default="0 0 0.3"/>
+  <xacro:arg name="camera_origin_rpy"       default="3.1415 1.57 -1.57"/>
+  <xacro:arg name="use_nominal_extrinsics"  default="true"/>
+
+  <xacro:arg name="depth_width"             default="1280"/>
+  <xacro:arg name="depth_height"            default="720"/>
+  <xacro:arg name="color_width"             default="1280"/>
+  <xacro:arg name="color_height"            default="720"/>
 
 
   <!-- marker params -->
@@ -23,11 +28,20 @@
   <link name="world"/>
 
   <!-- camera -->
-  <xacro:sensor_d435 parent="world" name="$(arg camera_name)" use_nominal_extrinsics="$(arg use_nominal_extrinsics)">
+  <xacro:sensor_d435
+    parent="world"
+    name="$(arg camera_name)"
+    use_nominal_extrinsics="$(arg use_nominal_extrinsics)"
+    >
     <origin xyz="$(arg camera_origin_xyz)" rpy="$(arg camera_origin_rpy)" />
   </xacro:sensor_d435>
 
-  <xacro:my_camera name="$(arg camera_name)"/>
+  <xacro:my_camera name="$(arg camera_name)"
+    depth_width="$(arg depth_width)"
+    depth_height="$(arg depth_height)"
+    color_width="$(arg color_width)"
+    color_height="$(arg color_height)"
+    />
 
   <xacro:marker parent_link="world" size="0.04" ID ="26" >
     <origin xyz="$(arg marker_origin_xyz)" rpy="$(arg marker_origin_rpy)" />
@@ -36,10 +50,3 @@
 
 
 </robot>
-
-<!-- This does not belong here! -->
-<!--
-<robot name="realsense2_camera" xmlns:xacro="http://ros.org/wiki/xacro">
-
-</robot>
- -->

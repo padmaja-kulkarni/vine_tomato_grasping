@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- you can write your own calibrate.launch, by including the ROS drivers for robot and tracking and choosing
+    your own namespace if you have multiple tracking devices or robots -->
+
+    <arg name="namespace_prefix"        default="calibration"/>
+    <arg name="eye_on_hand"             default="false"/>
+
+    <!-- Aruco settings -->
+    <arg name="marker_size"             default="0.039" doc="Size of the ArUco marker used, in meters"/>
+    <arg name="marker_id"               default="26" doc="The ID of the ArUco marker used"/>
+
+    <arg name="tracking_base_frame"     default="camera_link" />
+    <arg name="camera_frame"            default="camera_color_optical_frame"/>
+    <arg name="marker_frame"            default="tracking_marker" />
+
+    <!-- Loads the Gazebo world. -->
+    <include file="$(find flex_gazebo)/launch/camera_world.launch">
+      <param name="paused"        value="false"/>
+    </include>
+
+
+     <!-- start ArUco -->
+    <node name="aruco_tracker" pkg="aruco_ros" type="single">
+        <remap from="/camera_info"        to="camera/color/camera_info" />
+        <remap from="/image"              to="camera/color/image_raw" />
+        <param name="image_is_rectified"  value="true"/>
+        <param name="marker_size"         value="$(arg marker_size)"/>
+        <param name="marker_id"           value="$(arg marker_id)"/>
+        <param name="reference_frame"     value="$(arg tracking_base_frame)"/>
+        <param name="camera_frame"        value="$(arg camera_frame)"/>
+        <param name="marker_frame"        value="$(arg marker_frame)" />
+    </node>
+
+    <!-- start rviz with custom configuration -->
+    <node name="$(anon rviz)"
+      pkg="rviz"
+      type="rviz"
+      respawn="true"
+      args="-d $(find flex_calibrate)/rviz/config_file.rviz"
+      output="screen"/>
+
+</launch>

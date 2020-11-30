@@ -34,7 +34,6 @@ class DetectTrussTests(unittest.TestCase):
         process_image.process_image()
         features_prediction = process_image.get_object_features()
 
-        i_prediction, i_label, false_pos, false_neg = index_true_positives(tomatoes['centers'], features_prediction['tomato']['centers'], 10)
         if self.visualize:
             plt.imshow(img)
             plt.show()
@@ -42,6 +41,10 @@ class DetectTrussTests(unittest.TestCase):
             process_image.get_truss_visualization(local=False, save=False)
             util.clear_axis()
             plt.show()
+
+        # analyze results
+        i_prediction, i_label, false_pos, false_neg = index_true_positives(tomatoes['centers'],
+                                                                           features_prediction['tomato']['centers'], 10)
 
         centers_prediction = np.array(features_prediction['tomato']['centers'])[i_prediction]
         radii_prediction = np.array(features_prediction['tomato']['radii'])[i_prediction]
