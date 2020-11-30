@@ -13,7 +13,7 @@ import copy
 from matplotlib import pyplot as plt
 import matplotlib as mpl
 
-import utils.color_maps as color_maps
+from flex_vision import utils as color_maps
 
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 
@@ -302,6 +302,7 @@ def plot_image(img, show_axis=False):
         clear_axis()
 
 def clear_axis():
+    plt.tight_layout()
     plt.axis('off')
 
     # https://stackoverflow.com/a/27227718
@@ -312,7 +313,11 @@ def clear_axis():
     plt.gca().yaxis.set_major_locator(plt.NullLocator())
 
 
-def plot_truss(tomato=None, peduncle=None):
+def plot_truss(img_rgb=None, tomato=None, peduncle=None):
+    if img_rgb is not None:
+        plt.figure()
+        plot_image(img_rgb)
+
     if tomato:
         add_circles(tomato['centers'], radii=tomato['radii'], fc=tomato_color, ec=tomato_color)
 
@@ -698,8 +703,6 @@ def add_com(center, radius=5):
         center: circle centers expressed in [col, row]
     """
     ax = plt.gca()
-    height, width, _ = ax.images[0].get_array().shape
-
     center = np.array(center, ndmin=2)
 
     pwd = os.path.dirname(__file__)

@@ -9,7 +9,7 @@ import cv2
 import numpy as np
 
 # custom functions
-from utils.util import plot_features
+from flex_vision.utils.util import plot_features
 
 def compute_com(centers, radii):
     """

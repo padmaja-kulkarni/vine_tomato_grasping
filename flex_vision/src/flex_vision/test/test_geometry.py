@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from utils.geometry import Point2D, Transform, MissingTransformError, LengthMismatchError
+from flex_vision.utils.geometry import Point2D, Transform, MissingTransformError, LengthMismatchError
 
 
 class TransformTests(unittest.TestCase):

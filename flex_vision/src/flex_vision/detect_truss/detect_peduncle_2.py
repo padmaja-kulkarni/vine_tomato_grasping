@@ -10,9 +10,9 @@ import scipy.sparse.csgraph as csgraph
 from matplotlib import pyplot as plt
 from sklearn import linear_model
 
-from utils.util import add_circles, add_arrows, add_contour
-from utils.util import plot_image, save_fig
-from utils.util import remove_blobs, bin2img, img2bin
+from flex_vision.utils.util import add_circles, add_arrows, add_contour
+from flex_vision.utils.util import plot_image, save_fig
+from flex_vision.utils.util import remove_blobs, bin2img, img2bin
 from sklearn.metrics.pairwise import euclidean_distances
 
 

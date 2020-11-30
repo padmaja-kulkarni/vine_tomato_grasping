@@ -26,7 +26,7 @@ import struct
 
 from flex_grasp.msg import Tomato, Truss, Peduncle, ImageProcessingSettings
 
-from detect_truss.ProcessImage import ProcessImage
+from flex_vision.detect_truss.ProcessImage import ProcessImage
 
 from flex_shared_resources.utils.conversions import point_to_pose_stamped, settings_lib_to_msg, settings_msg_to_lib
 from func.utils import camera_info2intrinsics
