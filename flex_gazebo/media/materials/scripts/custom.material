@@ -1,4 +1,4 @@
-material Custom/Tomato
+material Custom/Truss
 {
 	receive_shadows on
 
@@ -11,10 +11,58 @@ material Custom/Tomato
 			{
 
 				// Relative to the location of the material script
-				texture ../textures/tomato.png
+				texture ../textures/truss.png
 				rotate 0
 				scale 1 1
       }
+    }
+  }
+}
+
+
+material Custom/Tomato
+{
+	receive_shadows on
+
+	technique
+	{
+		pass
+		{
+			ambient 0.710 0.118 0.000 1
+			diffuse 0.810 0.218 0.000 1
+			specular 1.0 1.0 1.0 32
+    }
+  }
+}
+
+material Custom/Surface
+{
+	receive_shadows on
+
+	technique
+	{
+		pass
+		{
+			ambient 0.12 0.57 0.66
+			diffuse 0.12 0.57 0.66
+
+
+
+    }
+  }
+}
+
+material Custom/Peduncle
+{
+	receive_shadows on
+
+	technique
+	{
+		pass
+		{
+			ambient 0.329 0.349 0.121 1
+			diffuse 0.420 0.431 0.067 1
+			
     }
   }
 }

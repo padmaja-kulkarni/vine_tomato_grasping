@@ -72,9 +72,10 @@ class RqtFlexGrasp(Plugin):
 
 
         # self._widget.DetectTomatoButton.clicked[bool].connect(self.handle_detect_tomato)
+        self._widget.Spawn2DTrussButton.clicked[bool].connect(self.handle_spawn_2d_truss)
+        self._widget.Spawn3DTrussButton.clicked[bool].connect(self.handle_spawn_3d_truss)
         self._widget.DetectTrussButton.clicked[bool].connect(self.handle_detect_truss)
         self._widget.SaveImageButton.clicked[bool].connect(self.handle_save_image)
-        self._widget.SpawnTrussButton.clicked[bool].connect(self.handle_spawn_truss)
 
         self._widget.PointButton.clicked[bool].connect(self.handle_point)
         self._widget.PickPlaceButton.clicked[bool].connect(self.handle_pick_place)
@@ -193,9 +194,13 @@ class RqtFlexGrasp(Plugin):
         self.experiment = self._widget.ExperimentButton.isChecked()
         self.pub_experiment.publish(self.experiment)
 
-    def handle_spawn_truss(self):
+    def handle_spawn_3d_truss(self):
         self.model_spawner.delete_all_models()
-        self.model_spawner.add_model()
+        self.model_spawner.spawn_3d_model()
+
+    def handle_spawn_2d_truss(self):
+        self.model_spawner.delete_all_models()
+        self.model_spawner.spawn_2d_model()
 
 
     def handle_truss_type(self):

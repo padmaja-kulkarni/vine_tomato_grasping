@@ -66,15 +66,6 @@
       color_height:=$(arg color_height)
       "/>
 
-    <!-- world -->
-    <!--
-    <param name="$(arg robot_name)/world_description" command="$(find xacro)/xacro '$(find flex_gazebo_interbotix)/urdf/world.urdf.xacro'
-      object_name:=$(arg object_name)
-      object_dimension:=$(arg object_dimension)
-      object_origin_xyz:=$(arg object_origin_xyz)
-      object_origin_rpy:=$(arg object_origin_rpy)
-      "/>
-    -->
 
     <!-- Run a python script to send a service call to gazebo_ros to spawn a URDF robot -->
     <node
@@ -85,17 +76,6 @@
       output="screen"
       ns="$(arg robot_name)"
       args="-urdf -model $(arg robot_model) -param robot_description"/>
-
-    <!--
-    <node
-      name="world_urdf_spawner"
-      pkg="gazebo_ros"
-      type="spawn_model"
-      respawn="false"
-      output="screen"
-      ns="$(arg robot_name)"
-      args="-urdf -model tomato -param world_description"/>
-    -->
 
   <!-- Load the controller and state publisher -->
   <group if="$(arg robot_sim)">

@@ -13,7 +13,7 @@ material Custom/Marker
 			{
 
 				// Relative to the location of the material script
-				texture ../textures/aruco-26_8cm.png
+				texture ../textures/aruco-26.png
 				rotate 0
 				scale 1 1
       }

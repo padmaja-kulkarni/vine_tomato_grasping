@@ -14,20 +14,6 @@
       <uri>model://sun</uri>
     </include>
 
-    <!-- Desk light, high specular is causing white reflections from tomatoes-->
-    <light type="directional" name="some_light">
-      <diffuse>0.3 0.3 0.3 0</diffuse>
-      <specular>1 1 1 0</specular>
-      <direction>-1 -1 -1</direction>
-    </light>
-
-    <include>
-      <uri>model://table_short</uri>
-      <name>table</name>
-      <pose>0 0 0 0 0 0</pose>
-      <static>1</static>
-    </include>
-
     <physics name="default_physics" default="0" type="ode">
       <max_step_size>0.001</max_step_size>
       <real_time_factor>1</real_time_factor>
@@ -35,7 +21,7 @@
       <ode>
         <solver>
           <type>quick</type>
-          <iters>100</iters> <!-- 150 -->
+          <iters>150</iters>
           <sor>1.0</sor> <!-- Important, see issue #2209 -->
           <use_dynamic_moi_rescaling>false</use_dynamic_moi_rescaling>
         </solver>

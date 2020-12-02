@@ -1,0 +1,77 @@
+<?xml version='1.0'?>
+<sdf version="1.4">
+  <model name="truss">
+    <static>false</static>
+    <link name="peduncle">
+      <pose>0 0 0 0 1.5708 0</pose>
+      <collision name="collision">
+        <geometry>
+          <cylinder>
+            <length>0.15</length>
+            <radius>0.005</radius>
+          </cylinder>
+        </geometry>
+      </collision>
+      <visual name="visual">
+        <geometry>
+          <cylinder>
+            <length>0.15</length>
+            <radius>0.005</radius>
+          </cylinder>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/custom.material</uri>
+            <name>Custom/Peduncle</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+
+
+    <include>
+      <name>pedicel1</name>
+      <uri>file://models/pedicel</uri>
+      <pose>0.02 0.025 0 0 0 1.5708</pose>
+    </include>
+
+    <joint name="pedicel1_joint" type="fixed">
+      <child>pedicel1::link</child>
+      <parent>peduncle</parent>
+    </joint>
+
+    <include>
+      <name>tomato1</name>
+      <uri>file://models/tomato</uri>
+      <pose>0.02 0.05 0 0 0 0</pose>
+    </include>
+
+    <joint name="tomato1_joint" type="fixed">
+      <child>tomato1::link</child>
+      <parent>pedicel1::link</parent>
+    </joint>
+
+    <include>
+      <name>pedicel2</name>
+      <uri>file://models/pedicel</uri>
+      <pose>-0.02 -0.025 0 0 0 1.5708</pose>
+    </include>
+
+    <!-- second tomato-->
+    <joint name="pedicel2_joint" type="fixed">
+      <child>pedicel2::link</child>
+      <parent>peduncle</parent>
+    </joint>
+
+    <include>
+      <name>tomato2</name>
+      <uri>file://models/tomato</uri>
+      <pose>-0.02 -0.05 0 0 0 0</pose>
+    </include>
+
+    <joint name="tomato2_joint" type="fixed">
+      <child>tomato2::link</child>
+      <parent>pedicel2::link</parent>
+    </joint>
+  </model>
+</sdf>

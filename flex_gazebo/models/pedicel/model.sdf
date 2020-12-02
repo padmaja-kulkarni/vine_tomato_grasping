@@ -3,31 +3,26 @@
   <model name="tomato">
     <static>false</static>
     <link name="link">
-      <pose>0 0 -0.038 0 0 0</pose>
+      <pose>0 0 0 0 1.5708 0</pose>
       <collision name="collision">
         <geometry>
-          <!-- We use a cylinder to stop it from rolling -->
           <cylinder>
-            <length>0.076</length>
-            <radius>0.01</radius>
+            <length>0.05</length>
+            <radius>0.003</radius>
           </cylinder>
-          <!--
-          <sphere>
-            <radius>0.038</radius>
-          </sphere>
-          -->
         </geometry>
       </collision>
       <visual name="visual">
         <geometry>
-          <sphere>
-            <radius>0.038</radius>
-          </sphere>
+          <cylinder>
+            <length>0.05</length>
+            <radius>0.003</radius>
+          </cylinder>
         </geometry>
         <material>
           <script>
             <uri>file://media/materials/scripts/custom.material</uri>
-            <name>Custom/Tomato</name>
+            <name>Custom/Peduncle</name>
           </script>
         </material>
       </visual>
