@@ -12,7 +12,7 @@ from flex_grasp.msg import FlexGraspErrorCodes
 # messages
 from std_msgs.msg import String
 
-def wait_for_variable(timeout, variable):
+def wait_for_variable(variable, timeout):
     start_time = rospy.get_time()
 
     while (rospy.get_time() - start_time < timeout):   
@@ -108,6 +108,9 @@ def wait_for_param(param, timeout):
 
 
 def get_transform(to_frame, from_frame, tfBuffer):
+    """
+
+    """
     try:
         
         if (from_frame is None) and (to_frame is None):      
@@ -121,8 +124,7 @@ def get_transform(to_frame, from_frame, tfBuffer):
         if to_frame is None:
             rospy.logwarn("Cannot find transform from %s, no frame is defined!", from_frame)
             return None
-            
-            
+             
         trans = tfBuffer.lookup_transform(to_frame, from_frame, time = rospy.Time.now())
         return trans
         

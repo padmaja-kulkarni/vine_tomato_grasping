@@ -24,7 +24,7 @@
 	<arg name="pick_place_debug" 				default="false"/>
 	<arg name="calibrate_debug" 				default="false"/>
 	<arg name="point_debug" 						default="false"/>
-	<arg name="transform_pose_debug"		default="false"/>
+	<arg name="transform_pose_debug"		default="true"/>
 
 	<include file="$(find flex_calibrate)/launch/calibrate.launch">
 		<arg name="calibrate_debug" value="$(arg calibrate_debug)"/>

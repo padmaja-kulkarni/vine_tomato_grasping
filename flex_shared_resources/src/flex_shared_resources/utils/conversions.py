@@ -15,6 +15,9 @@ from geometry_msgs.msg import PoseStamped, Point, Quaternion, Pose
 from flex_grasp.msg import ImageProcessingSettings
 
 def pose_to_lists(pose_msg, orientation_type):
+    """
+        if orientation_type == euler, retrun euler angles in radians
+    """
     # print(orientation_type)
     pose = pose_to_list(pose_msg)
     position = pose[0:3]
@@ -64,22 +67,22 @@ def orientation_to_list(orientation_msg):
     return orientation
 
 def list_to_orientation(orientation_list):
-          
+
     if len(orientation_list) == 3:
         quat_list = quaternion_from_euler(orientation_list[0], orientation_list[1], orientation_list[2])
     elif len(orientation_list) == 4:
         quat_list = orientation_list
-    else: 
+    else:
         raise MoveItCommanderException("Expected orinetation list containing 3 (x, y, z) or 4 (x, y, z, w) elements")
-    
+
     orientation_msg = Quaternion()
     orientation_msg.x = quat_list[0]
     orientation_msg.y = quat_list[1]
     orientation_msg.z = quat_list[2]
     orientation_msg.w = quat_list[3]
-    
+
     return orientation_msg
-    
+
 def point_to_pose_stamped(xyz, rpy, frame, time):
 
     pose_stamped = PoseStamped()
@@ -124,18 +127,18 @@ def settings_lib_to_msg(lib):
 #    msg.tomato_radius_min_frac = tom_lib['radius_min_frac']
 #    msg.tomato_radius_max_frac = tom_lib['radius_max_frac']
 #    msg.tomato_distance_min_frac = tom_lib['distance_min_frac']
-    
+
     # distances in px
     msg.tomato_radius_min_mm = tom_lib['radius_min_mm']
     msg.tomato_radius_max_mm = tom_lib['radius_max_mm']
     # msg.tomato_distance_min_mm = tom_lib['distance_min_mm']
-    
+
 #    msg.dp = tom_lib['dp']
     msg.param1 = tom_lib['param1']
     msg.param2 = tom_lib['param2']
 #    msg.blur_size = tom_lib['blur_size']
 #    msg.ratio_threshold = tom_lib['ratio_threshold']
-    
+
 #    msg.branch_length_min_px = pend_lib['branch_length_min_px']
     msg.branch_length_min_mm = pend_lib['branch_length_min_mm']
 
@@ -144,32 +147,32 @@ def settings_lib_to_msg(lib):
     return msg
 
 def settings_msg_to_lib(msg):
-    
-    tom_lib = {} 
-    
+
+    tom_lib = {}
+
     # distances in px
-#    tom_lib['radius_min_frac'] = msg.tomato_radius_min_frac  
+#    tom_lib['radius_min_frac'] = msg.tomato_radius_min_frac
 #    tom_lib['radius_max_frac'] = msg.tomato_radius_max_frac
 #    tom_lib['distance_min_frac'] = msg.tomato_distance_min_frac
-    
+
     # distances in mm
-    tom_lib['radius_min_mm'] = msg.tomato_radius_min_mm  
+    tom_lib['radius_min_mm'] = msg.tomato_radius_min_mm
     tom_lib['radius_max_mm'] = msg.tomato_radius_max_mm
-    # tom_lib['distance_min_mm'] = msg.tomato_distance_min_mm    
-    
+    # tom_lib['distance_min_mm'] = msg.tomato_distance_min_mm
+
 #    tom_lib['dp'] = msg.dp
     tom_lib['param1'] = msg.param1
     tom_lib['param2'] = msg.param2
-#    tom_lib['blur_size'] = msg.blur_size 
+#    tom_lib['blur_size'] = msg.blur_size
 #    tom_lib['ratio_threshold'] = msg.ratio_threshold
-   
-    
+
+
     pend_lib = {}
-#    pend_lib['branch_length_min_px'] = msg.branch_length_min_px    
+#    pend_lib['branch_length_min_px'] = msg.branch_length_min_px
     pend_lib['branch_length_min_mm'] = msg.branch_length_min_mm
 
     grasp_lib = {}
     grasp_lib['grasp_length_min_mm'] = msg.grasp_length_min_mm
-    
+
     lib = {'detect_tomato': tom_lib, 'detect_peduncle': pend_lib, 'compute_grasp': grasp_lib}
     return lib

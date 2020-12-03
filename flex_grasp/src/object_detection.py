@@ -91,6 +91,8 @@ class ObjectDetection(object):
         rospy.init_node("object_detection", anonymous=True, log_level=log_level)
 
         # Publish
+        self.pub_truss_pose = rospy.Publisher("truss_pose", PoseStamped, queue_size=5, latch=True)
+
         self.pub_e_out = rospy.Publisher("~e_out",
                                          FlexGraspErrorCodes, queue_size=10, latch=True)
 
@@ -342,12 +344,14 @@ class ObjectDetection(object):
         imgmsg_hue = self.bridge.cv2_to_imgmsg(img_hue)
 
         rospy.logdebug("Publishing results")
+
         self.pub_tomato_image.publish(imgmsg_tomato)
         self.pub_depth_image.publish(imgmsg_depth)
         self.pub_color_hue.publish(imgmsg_hue)
         if cage_pose is False:
             return FlexGraspErrorCodes.FAILURE
         self.pub_object_features.publish(truss)
+        self.pub_truss_pose.publish(cage_pose)
         return FlexGraspErrorCodes.SUCCESS
 
     def generate_cage_pose(self, grasp_features, peduncle_mask):
