@@ -3,6 +3,17 @@
   <model name="truss">
     <static>false</static>
     <link name="peduncle">
+      <inertial>
+        <mass>0.01</mass>
+        <inertia>
+          <ixx>0.0001</ixx> <!-- 1/12 * m*L^2 -->
+          <ixy>0.0</ixy>
+          <ixz>0.0</ixz>
+          <iyy>0.0001</iyy> <!-- 1/12 * m*L^2 -->
+          <iyz>0.0</iyz>
+          <izz>0.0001</izz> <!-- 1/2 * m*r^2 -->
+        </inertia>
+      </inertial>
       <pose>0 0 0 0 1.5708 0</pose>
       <collision name="collision">
         <geometry>

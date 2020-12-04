@@ -1,16 +1,6 @@
 <?xml version="1.0"?>
 <launch>
 
-    <!-- ===================================================================================== -->
-    <!-- |    Lauch file to start Gazebo with an IIWA using various controllers.	         | -->
-
-    <!-- |    It allows to customize the name of the robot, for each robot                   | -->
-    <!-- |	  its topics will be under a nameespace with the same name as the robot's.       | -->
-
-    <!-- |	  One can choose to have a joint trajectory controller or                        | -->
-    <!-- |    controllers for the single joints, using the "trajectory" argument.            | -->
-    <!-- ===================================================================================== -->
-
     <arg name="hardware_interface" default="PositionJointInterface" />
 
     <arg name="robot_model" default="px150"/>
@@ -20,16 +10,6 @@
     <arg name="camera_sim" default="true"/>
     <arg name="robot_sim" default="true"/>
     <arg name="camera_name" default="rs_d435"/>
-
-    <!-- Object params -->
-    <arg name="object_x" default="-0.2"/>
-    <arg name="object_y" default="0.4"/>
-    <arg name="object_angle" default="1"/>
-    <arg name="object_name" default="truss"/>
-    <arg name="object_dimension" default="3d"/>
-
-    <arg name="object_origin_xyz" default="'$(arg object_x) $(arg object_y) 0.26'"/>
-    <arg name="object_origin_rpy" default="'0 0 $(arg object_angle)'"/>
 
     <!-- Camera params -->
     <arg name="depth_width"         default="1280"/>

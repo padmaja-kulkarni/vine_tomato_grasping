@@ -16,20 +16,14 @@
     <arg name="hardware_interface"  default="PositionJointInterface"/>
 
     <!-- Model of the iiwa to use : iiwa7, iiwa14 -->
-    <arg name="ee" default="sdh" />
-    <arg name="robot_model"         default="iiwa7"/>
+    <arg name="ee"                  default="sdh" />
+    <arg name="robot_model"         default="px150"/>
     <arg name="rviz"                default="true" />
 
     <!-- The is gonna have its nodes/topics under a namespace with the same name. -->
     <arg name="robot_name"          default="$(arg robot_model)"/> <!-- $(arg robot_model) -->
     <arg name="camera_name"         default="camera"/>
 
-    <!-- Object params -->
-    <arg name="object_x"            default="0.0"/>
-    <arg name="object_y"            default="0.0"/>
-    <arg name="object_angle"        default="0.5"/>
-    <arg name="object_name"         default="truss"/>
-    <arg name="object_dimension"    default="3d"/>
 
     <!-- camera -->
     <arg name="color_width"         default="1280"/> <!-- 1920 -->
@@ -96,12 +90,6 @@
             <arg name="depth_height"        value="$(arg depth_height)"/>
             <arg name="color_width"         value="$(arg color_width)"/>
             <arg name="color_height"        value="$(arg color_height)"/>
-
-            <arg name="object_x"            value="$(arg object_x)"/>
-            <arg name="object_y"            value="$(arg object_y)"/>
-            <arg name="object_angle"        value="$(arg object_angle)"/>
-            <arg name="object_name"         value="$(arg object_name)"/>
-            <arg name="object_dimension"    value="$(arg object_dimension)"/>
         </include>
 
 
@@ -120,12 +108,6 @@
             <arg name="depth_height"        value="$(arg depth_height)"/>
             <arg name="color_width"         value="$(arg color_width)"/>
             <arg name="color_height"        value="$(arg color_height)"/>
-
-            <arg name="object_x"            value="$(arg object_x)"/>
-            <arg name="object_y"            value="$(arg object_y)"/>
-            <arg name="object_angle"        value="$(arg object_angle)"/>
-            <arg name="object_name"         value="$(arg object_name)"/>
-            <arg name="object_dimension"    value="$(arg object_dimension)"/>
         </include>
     </group>
 

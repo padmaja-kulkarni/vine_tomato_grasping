@@ -54,12 +54,12 @@ class TransformPose(object):
         else:
             self.sag_angle = np.deg2rad(6.0)
 
-        # To determine the grasping height we need several dimensions of the menipulator
+        # To determine the grasping height we need several dimensions of the manipulator
         height_finger = 0.040  # [m]
         finger_link2ee_link = 0.023  # [m]
         height_finger_tip = 0.007
         diameter_pedunlce = 0.004
-        delta = 0.08  # [m] I had to add this additional height for simulation
+        delta = 0.07  # [m] I had to add this additional height for simulation
 
         pre_grasp_distance = 0.04  # [m]
         self.grasp_height = height_finger + finger_link2ee_link - height_finger_tip - diameter_pedunlce + delta

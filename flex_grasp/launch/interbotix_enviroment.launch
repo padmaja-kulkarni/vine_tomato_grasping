@@ -16,13 +16,6 @@
   <arg name="robot_name"                    default="px150"/> <!-- $(arg robot_model) -->
   <arg name="camera_name"                   default="camera"/>
 
-  <!-- Object params -->
-  <arg name="object_x"                      default="0.0"/>
-  <arg name="object_y"                      default="0.0"/>
-  <arg name="object_angle"                  default="1.0"/>
-  <arg name="object_name"                   default="truss"/>
-  <arg name="object_dimension"              default="3d"/>
-
   <arg name="use_calibration"		    default="true"/>
 
   <include file="$(find flex_grasp)/launch/enviroment.launch">
@@ -36,12 +29,6 @@
     <arg name="robot_model"             value="$(arg robot_model)"/>
     <arg name="robot_name"              value="$(arg robot_name)"/>
     <arg name="camera_name"             value="$(arg camera_name)"/>
-
-    <arg name="object_x"                value="$(arg object_x)"/>
-    <arg name="object_y"                value="$(arg object_y)"/>
-    <arg name="object_angle"            value="$(arg object_angle)"/>
-    <arg name="object_name"             value="$(arg object_name)"/>
-    <arg name="object_dimension"        value="$(arg object_dimension)"/>
 
     <arg name="rviz"                    value="$(arg rviz)"/>
     <arg name="use_calibration"		value="$(arg use_calibration)"/>
