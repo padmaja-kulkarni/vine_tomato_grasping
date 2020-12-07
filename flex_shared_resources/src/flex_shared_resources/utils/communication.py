@@ -18,7 +18,7 @@ class Communication(object):
     e_out = "e_out"
     node_name = "COMMUNICATION"
     
-    def __init__(self, topic, timeout = 30, frequency = 10):
+    def __init__(self, topic, timeout=30, frequency=10, msg_type=String):
         self.topic = topic
         self.timeout = timeout
         self.frequency = frequency
@@ -26,7 +26,7 @@ class Communication(object):
         self.rate = rospy.Rate(self.frequency)
         self.result = FlexGraspErrorCodes.NONE
         self.pub_e_in = rospy.Publisher(topic + "/" + self.e_in,
-                                     String, queue_size=10, latch=True)
+                                     msg_type, queue_size=10, latch=True)
                                      
         rospy.Subscriber(topic + "/" + self.e_out, FlexGraspErrorCodes, 
                          self.e_out_cb)
@@ -34,7 +34,7 @@ class Communication(object):
     def e_out_cb(self, msg):
         if self.result is None:
             if msg.val != FlexGraspErrorCodes.NONE:
-                flex_grasp_error_log(msg.val, self.node_name, mode = 'debug')
+                flex_grasp_error_log(msg.val, self.node_name, mode='debug')
                 self.result = msg.val
                 
                 

@@ -16,7 +16,7 @@
 		ns="$(arg robot_name)"/>
 
 	<!-- debug settings -->
-	<arg name="pipeline_debug"					default="false"/>
+	<arg name="pipeline_debug"					default="true"/>
 	<arg name="object_detection_debug"	default="false"/>
 	<arg name="move_robot_debug"				default="false"/>
 	<arg name="monitor_robot_debug"			default="false"/>

@@ -20,6 +20,8 @@
   <exec_depend>moveit_ros_planning_interface</exec_depend>
   <exec_depend>moveit_ros_planning</exec_depend>
   <exec_depend>aruco_ros</exec_depend>
+  <exec_depend>rgbd_launch</exec_depend>
+
 
   <!-- python dependencies-->
   <exec_depend>python-numpy</exec_depend>

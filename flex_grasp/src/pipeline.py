@@ -6,6 +6,8 @@ import smach_ros
 
 from std_msgs.msg import String, Bool
 from flex_grasp.msg import FlexGraspErrorCodes
+from flex_shared_resources.msg import SpawnInstruction
+
 from flex_shared_resources.errors.flex_grasp_error import flex_grasp_error_log
 from flex_shared_resources.utils.communication import Communication
 
@@ -75,24 +77,25 @@ class Initializing(smach.State):
 
 class Idle(smach.State):
     def __init__(self):
-        smach.State.__init__(self, outcomes=['calibrate', 'detect', 'transform_pose', 'pick_place', 'move', 'failure'], 
+        smach.State.__init__(self, outcomes=['calibrate', 'detect', 'transform_pose', 'pick_place', 'move', 'spawn', 'failure'],
                              input_keys=['mode', 'command', 'prev_command'],
                              output_keys=['mode', 'command', 'prev_command'])
                              
         self.command_op_topic = 'pipeline_command'
         rospy.Subscriber("experiment", Bool, self.go_cb)
 
+        self.simulation = rospy.get_param("robot_sim")
         self.detect_commands = ['detect_tomato', 'detect_truss', 'save_image']
         self.transform_commands = ['transform']
         self.calibrate_commands = ['calibrate', 'calibrate_height']
         self.move_commands = ['home', 'open', 'close', 'sleep', 'ready']
         self.pick_place_commands = ['pick', 'place', 'pick_place']
+        self.spawn_commands = ['spawn_truss']
         self.experiment = False
 
     def go_cb(self, msg):
         self.experiment = msg.data
         rospy.logdebug("[PIPELINE] experiment: %s", self.experiment)
-        
 
     def execute(self, userdata):
         rospy.logdebug('Executing state Idle')
@@ -107,7 +110,9 @@ class Idle(smach.State):
             userdata.mode = 'free'
 
         if userdata.mode == 'experiment':
-            if userdata.prev_command == None or userdata.prev_command == 'reset':
+            if (userdata.prev_command is None or userdata.prev_command == 'reset') and self.simulation:
+                userdata.command = 'spawn_truss'
+            elif userdata.prev_command is None or userdata.prev_command == 'reset' or userdata.prev_command == 'spawn_truss':
                 userdata.command = 'detect_truss'
             elif userdata.prev_command == 'detect_truss':
                 userdata.command = 'transform'
@@ -115,7 +120,9 @@ class Idle(smach.State):
                 userdata.command = 'pick'
             elif userdata.prev_command == 'pick':
                 userdata.command = 'place'
-            elif userdata.prev_command == 'place':
+            elif userdata.prev_command == 'place' and self.simulation:
+                userdata.command = 'spawn_truss'
+            elif userdata.prev_command == 'place' and not self.simulation:
                 userdata.command = 'detect_truss'
             else:
                 rospy.logwarn('[PIPELINE] do not know what to do with previous command %s', userdata.prev_command)
@@ -123,7 +130,6 @@ class Idle(smach.State):
             userdata.command = 'transform'
         else:
             userdata.command = rospy.wait_for_message(self.command_op_topic, String).data    
-            
 
         if userdata.command in self.transform_commands:
             return 'transform_pose'
@@ -135,6 +141,8 @@ class Idle(smach.State):
             return 'calibrate'
         elif userdata.command in self.pick_place_commands:
             return 'pick_place'
+        elif userdata.command in self.spawn_commands:
+            return 'spawn'
         else:
             rospy.logwarn('Unknown command: %s', userdata.command)
             userdata.command = None
@@ -188,6 +196,35 @@ class DetectObject(smach.State):
             if self.counter <=0:
                 return 'complete_failure'
             return 'failure'
+
+
+class SpawnObject(smach.State):
+    def __init__(self):
+        smach.State.__init__(self, outcomes=['success', 'failure', 'complete_failure'],
+                             input_keys=['mode', 'command', 'prev_command'],
+                             output_keys=['mode', 'command', 'prev_command'])
+        topic = 'model_spawner'
+        timeout = 2.0
+        self.communication = Communication(topic, timeout=timeout, msg_type=SpawnInstruction)
+        self.counter = 3
+
+    def execute(self, userdata):
+        rospy.logdebug('Executing state SpawnObject')
+
+        # command node
+        msg = SpawnInstruction(type=SpawnInstruction.SPAWN, model_type='3d')
+        result = self.communication.wait_for_result(msg)
+
+        if result == FlexGraspErrorCodes.SUCCESS:
+            userdata.prev_command = userdata.command
+            userdata.command = None
+            return 'success'
+        else:
+            self.counter = self.counter - 1
+            if self.counter <= 0:
+                return 'complete_failure'
+            return 'failure'
+
 
 class PoseTransform(smach.State):
     def __init__(self):
@@ -390,6 +427,7 @@ def main():
                                             'transform_pose':'PoseTransform',
                                             'pick_place': 'PickPlace',
                                             'move': 'MoveRobot',
+                                            'spawn': 'SpawnObject',
                                             'failure': 'Idle'})
 
         smach.StateMachine.add('CalibrateRobot', CalibrateRobot(),
@@ -406,10 +444,14 @@ def main():
                                             'control_failure': 'ResetArm',
                                             'planning_failure': 'StopMode',
                                             'state_failure': 'RestartMode',
-                                            'dynamixel_failure' : 'ResetDynamixel',
-                                            'severe_failure' : 'total_failure',
-                                            'failure':'StopMode'})
-                                        
+                                            'dynamixel_failure': 'ResetDynamixel',
+                                            'severe_failure': 'total_failure',
+                                            'failure': 'StopMode'})
+
+        smach.StateMachine.add('SpawnObject', SpawnObject(),
+                               transitions={'success': 'Idle',
+                                            'failure':'DetectObject',
+                                            'complete_failure':'StopMode'})
 
         smach.StateMachine.add('DetectObject', DetectObject(),
                                transitions={'success': 'Idle',

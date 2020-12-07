@@ -156,9 +156,7 @@ class RqtFlexGrasp(Plugin):
         self.spawn_type = str(self._widget.SelectSpawnTypeButton.currentText())
 
     def handle_spawn_truss(self):
-        spawn_instruction = SpawnInstruction()
-        spawn_instruction.type = SpawnInstruction.SPAWN
-        spawn_instruction.model_type = self.spawn_type
+        spawn_instruction = SpawnInstruction(type=SpawnInstruction.SPAWN, model_type=self.spawn_type)
         self.pub_spawn_command.publish(spawn_instruction)
 
 
