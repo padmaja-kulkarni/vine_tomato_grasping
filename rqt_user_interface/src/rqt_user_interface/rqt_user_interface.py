@@ -6,7 +6,7 @@ from qt_gui.plugin import Plugin
 from python_qt_binding import loadUi
 from python_qt_binding.QtWidgets import QWidget, QMenu
 from std_msgs.msg import String, Bool
-from spawn_truss.spawn_truss import ModelSpawner
+from flex_shared_resources.msg import SpawnInstruction
 
 class RqtFlexGrasp(Plugin):
 
@@ -54,11 +54,12 @@ class RqtFlexGrasp(Plugin):
 
         self.pub_experiment_pwd = rospy.Publisher("experiment_pwd",
                                       String, queue_size=1, latch=True)
-                                      
+
+        self.pub_spawn_command = rospy.Publisher("model_spawner/e_in",
+                                      SpawnInstruction, queue_size=1, latch=True)
 
         self.go = False
         self._widget.ExperimentButton.setCheckable(True)
-        self.model_spawner = ModelSpawner()
         # self._widget.ExperimentButton.toggle()
         
         # basic commands
@@ -72,8 +73,7 @@ class RqtFlexGrasp(Plugin):
 
 
         # self._widget.DetectTomatoButton.clicked[bool].connect(self.handle_detect_tomato)
-        self._widget.Spawn2DTrussButton.clicked[bool].connect(self.handle_spawn_2d_truss)
-        self._widget.Spawn3DTrussButton.clicked[bool].connect(self.handle_spawn_3d_truss)
+        self._widget.SpawnTrussButton.clicked[bool].connect(self.handle_spawn_truss)
         self._widget.DetectTrussButton.clicked[bool].connect(self.handle_detect_truss)
         self._widget.SaveImageButton.clicked[bool].connect(self.handle_save_image)
 
@@ -85,6 +85,17 @@ class RqtFlexGrasp(Plugin):
         self._widget.ExperimentButton.clicked.connect(self.handle_experiment)
 
         #
+        self.spawn_type_button = self._widget.SelectSpawnTypeButton
+        self.spawn_type_button.clear()
+        self.spawn_type_button.setEditable(True)
+        options = ['3d', '2d']
+        for option in options:
+            self.spawn_type_button.addItem(option)
+
+        self.spawn_type_button.activated.connect(self.handle_spawn_type)
+        self.spawn_type = options[0]
+
+        #
         self.truss_type_button = self._widget.TrussTypeButton
         self.truss_type_button.clear()
         self.truss_type_button.setEditable(True)
@@ -93,10 +104,10 @@ class RqtFlexGrasp(Plugin):
             self.truss_type_button.addItem(option)
         self.truss_type_button.activated.connect(self.handle_truss_type)
         self.truss_type = options[0]
-        self.experiment_id = '001'
-        self.update_pwd()
         
         #
+        self.experiment_id = '001'
+        self.update_pwd()
         self.experiment_id_button = self._widget.ExperimentIDButton
         self.experiment_id_button.setEditable(True)
         self.update_id()
@@ -194,13 +205,14 @@ class RqtFlexGrasp(Plugin):
         self.experiment = self._widget.ExperimentButton.isChecked()
         self.pub_experiment.publish(self.experiment)
 
-    def handle_spawn_3d_truss(self):
-        self.model_spawner.delete_all_models()
-        self.model_spawner.spawn_3d_model()
+    def handle_spawn_type(self):
+        self.spawn_type = str(self.spawn_type_button.currentText())
 
-    def handle_spawn_2d_truss(self):
-        self.model_spawner.delete_all_models()
-        self.model_spawner.spawn_2d_model()
+    def handle_spawn_truss(self):
+        spawn_instruction = SpawnInstruction()
+        spawn_instruction.type = SpawnInstruction.SPAWN
+        spawn_instruction.model_type = self.spawn_type
+        self.pub_spawn_command.publish(spawn_instruction)
 
 
     def handle_truss_type(self):

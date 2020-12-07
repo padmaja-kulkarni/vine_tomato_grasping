@@ -1,10 +1,9 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 import rospy
 import os
 from gazebo_msgs.srv import DeleteModel, SpawnModel, GetWorldProperties
 from flex_shared_resources.utils.misc import generate_pose
-
 
 
 class ModelSpawner(object):
@@ -60,38 +59,55 @@ class ModelSpawner(object):
             deletes all models in Gazebo which start with the model name space followed by an integer
         """
 
+        success = True
         world_properties = self.get_world_properties()
+        model_names = []
         for model_name in world_properties.model_names:
             split_model_name = model_name.split(self.model_ns)
             if len(split_model_name) == 2:
                 if (split_model_name[0] == '') and split_model_name[1].isdigit():
-                    rospy.loginfo("Deleting model: %s", model_name)
-                    self.delete_model(model_name)
+                    model_names.append(model_name)
+
+        for model_name in model_names:
+            rospy.loginfo("Deleting model: %s", model_name)
+            result = self.delete_model(model_name)
+            if result.success:
+                rospy.loginfo("Successfully deleted model: %s", model_name)
+            else:
+                success = False
+                rospy.logwarn(result.status_message)
+
+        return success
 
     def spawn_3d_model(self):
-        self.add_sdf_model('3d')
+        return self.spawn_model('3d')
 
     def spawn_2d_model(self):
-        self.add_sdf_model('2d')
+        return self.spawn_model('2d')
 
-    def add_sdf_model(self, truss_type=None):
+    def spawn_model(self, truss_type):
         """
             adds a model to Gazebo, with a unique name
         """
+
+        if truss_type not in self.truss_types:
+            rospy.logwarn("Cannot spawn model of type {0}, unknown type! Available types are {1}".format(truss_type, self.truss_types))
+            return False
 
         new_id = self.get_unique_id()
         item_name = self.model_name.format(new_id)
         xml_model = self.xml_models[truss_type]
 
-        rospy.loginfo("Spawning sdf model: %s with respect to frame %s", item_name, self.reference_frame)
+        rospy.loginfo("Spawning sdf model: {0} with respect to {1} frame".format(item_name, self.reference_frame))
         pose = generate_pose(self.spawn_x_min, self.spawn_r_range, height=self.spawn_height)
         self.spawn_sdf_model(item_name, xml_model, "", pose, self.reference_frame)
+        return True
 
     def add_urdf_model(self):
         new_id = self.get_unique_id()
         item_name = self.model_name.format(new_id)
 
-        rospy.loginfo("Spawning urdf model: %s with respect to frame %s", item_name, self.reference_frame)
+        rospy.loginfo("Spawning urdf model: {0} with respect to frame {1}".format(item_name, self.reference_frame))
         pose = generate_pose(self.spawn_x_min, self.spawn_r_range, height=self.spawn_height)
         self.spawn_urdf_model(item_name, self.model_xml_urdf, "", pose, self.reference_frame)
 
@@ -111,16 +127,3 @@ class ModelSpawner(object):
         else:
             # https://stackoverflow.com/a/28178803
             return next(i for i, e in enumerate(sorted(used_id) + [None], 1) if i != e)
-
-def main():
-    rospy.init_node("move_robot",
-                    anonymous=True,
-                    log_level=rospy.DEBUG)
-
-    model_spawner = ModelSpawner()
-    model_spawner.delete_all_models()
-    model_spawner.spawn_3d_model()
-
-
-if __name__ == '__main__':
-    main()

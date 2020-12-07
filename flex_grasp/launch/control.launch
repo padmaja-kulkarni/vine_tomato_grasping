@@ -24,7 +24,8 @@
 	<arg name="pick_place_debug" 				default="false"/>
 	<arg name="calibrate_debug" 				default="false"/>
 	<arg name="point_debug" 						default="false"/>
-	<arg name="transform_pose_debug"		default="true"/>
+	<arg name="transform_pose_debug"		default="false"/>
+	<arg name="model_spawner_debug"			default="true"/>
 
 	<include file="$(find flex_calibrate)/launch/calibrate.launch">
 		<arg name="calibrate_debug" value="$(arg calibrate_debug)"/>
@@ -100,6 +101,13 @@
 			type="transform_pose.py"
 			output="screen">
 			<param name ="debug" value="$(arg transform_pose_debug)"/>
+		</node>
+
+		<node name="model_spawner"
+			pkg="flex_gazebo"
+			type="spawn_truss_node.py"
+			output="screen">
+			<param name ="debug" value="$(arg model_spawner_debug)"/>
 		</node>
 
 		<!--

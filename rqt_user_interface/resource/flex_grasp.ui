@@ -72,17 +72,14 @@
    </item>
 
    <item row="0" column="1">
-    <widget class="QPushButton" name="Spawn2DTrussButton">
-     <property name="text">
-      <string>Spawn 2D Truss</string>
-     </property>
+    <widget class="QComboBox" name="SelectSpawnTypeButton">
     </widget>
    </item>
 
    <item row="1" column="1">
-    <widget class="QPushButton" name="Spawn3DTrussButton">
+    <widget class="QPushButton" name="SpawnTrussButton">
      <property name="text">
-      <string>Spawn 3D Truss</string>
+      <string>Spawn Truss</string>
      </property>
     </widget>
    </item>

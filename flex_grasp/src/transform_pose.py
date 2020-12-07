@@ -46,7 +46,7 @@ class TransformPose(object):
 
         # params
         self.surface_height = 0.019  # [m]
-        self.peduncle_height = 0.080  # [m]
+        self.peduncle_height = 0.070  # [m]
 
         # the sag_angle is used to take into account the sagging of the robot during operation
         if self.simulation:
@@ -59,10 +59,9 @@ class TransformPose(object):
         finger_link2ee_link = 0.023  # [m]
         height_finger_tip = 0.007
         diameter_pedunlce = 0.004
-        delta = 0.07  # [m] I had to add this additional height for simulation
 
         pre_grasp_distance = 0.04  # [m]
-        self.grasp_height = height_finger + finger_link2ee_link - height_finger_tip - diameter_pedunlce + delta
+        self.grasp_height = height_finger + finger_link2ee_link - height_finger_tip - diameter_pedunlce
         self.pre_grasp_height = self.grasp_height + pre_grasp_distance
 
         grasp_xyz = [0, 0, self.grasp_height]  # [m]
