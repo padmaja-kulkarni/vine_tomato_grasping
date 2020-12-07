@@ -127,37 +127,6 @@ class PickPlace(object):
         result = self.move_robot_communication.wait_for_result("release")
         return result
 
-    def fake_pick(self):
-        rospy.logdebug("[PICK PLACE] Picking object")
-
-        result = self.man_pre_grasp()
-
-        if result == FlexGraspErrorCodes.SUCCESS:
-            result = self.apply_pre_grasp_ee()
-
-        if result == FlexGraspErrorCodes.SUCCESS:
-            result = self.man_grasp()
-
-        if result == FlexGraspErrorCodes.SUCCESS:
-            result = self.apply_grasp_ee()
-
-        return result
-
-    def fake_place(self):
-
-        result = self.apply_release_ee()
-
-        if result == FlexGraspErrorCodes.SUCCESS:
-            result = self.man_pre_grasp()
-
-        if result == FlexGraspErrorCodes.SUCCESS:
-            result = self.command_to_home()
-
-        if result == FlexGraspErrorCodes.SUCCESS:
-            result = self.reset_msg()
-
-        return result
-
     def pick(self):
         rospy.logdebug("[PICK PLACE] Picking object")
             

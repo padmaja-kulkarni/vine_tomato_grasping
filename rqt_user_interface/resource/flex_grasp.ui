@@ -55,22 +55,6 @@
     </widget>
    </item>
 
-   <item row="5" column="0">
-    <widget class="QPushButton" name="CalibrateButton">
-     <property name="text">
-      <string>Calibrate</string>
-     </property>
-    </widget>
-   </item>
-
-   <item row="6" column="0">
-    <widget class="QPushButton" name="CalibrateHeightButton">
-     <property name="text">
-      <string>Calibrate Height</string>
-     </property>
-    </widget>
-   </item>
-
    <item row="0" column="1">
     <widget class="QComboBox" name="SelectSpawnTypeButton">
     </widget>
@@ -102,7 +86,7 @@
 
 
    <item row="4" column="1">
-    <widget class="QComboBox" name="TrussTypeButton">
+    <widget class="QComboBox" name="ExperimentNameButton">
     </widget>
    </item>
 
@@ -113,15 +97,6 @@
 
 
    <item row="0" column="2">
-    <widget class="QPushButton" name="PointButton">
-     <property name="text">
-      <string>Point</string>
-     </property>
-    </widget>
-   </item>
-
-
-   <item row="1" column="2">
     <widget class="QPushButton" name="PickPlaceButton">
      <property name="text">
       <string>Pick and Place</string>
@@ -129,7 +104,7 @@
     </widget>
    </item>
 
-   <item row="2" column="2">
+   <item row="1" column="2">
     <widget class="QPushButton" name="PickButton">
      <property name="text">
       <string>Pick</string>
@@ -137,7 +112,7 @@
     </widget>
    </item>
 
-   <item row="3" column="2">
+   <item row="2" column="2">
     <widget class="QPushButton" name="PlaceButton">
      <property name="text">
       <string>Place</string>
@@ -145,18 +120,26 @@
     </widget>
    </item>
 
-   <item row="4" column="2">
-    <widget class="QPushButton" name="FakePickButton">
+   <item row="3" column="2">
+    <widget class="QPushButton" name="ExperimentButton">
      <property name="text">
-      <string>Fake Pick</string>
+      <string>Experiment</string>
+     </property>
+    </widget>
+   </item>
+
+   <item row="4" column="2">
+    <widget class="QPushButton" name="CalibrateButton">
+     <property name="text">
+      <string>Calibrate</string>
      </property>
     </widget>
    </item>
 
    <item row="5" column="2">
-    <widget class="QPushButton" name="ExperimentButton">
+    <widget class="QPushButton" name="CalibrateHeightButton">
      <property name="text">
-      <string>Experiment</string>
+      <string>Calibrate Height</string>
      </property>
     </widget>
    </item>

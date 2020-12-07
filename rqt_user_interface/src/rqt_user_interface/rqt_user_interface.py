@@ -58,64 +58,49 @@ class RqtFlexGrasp(Plugin):
         self.pub_spawn_command = rospy.Publisher("model_spawner/e_in",
                                       SpawnInstruction, queue_size=1, latch=True)
 
-        self.go = False
+        self.experiment = False
         self._widget.ExperimentButton.setCheckable(True)
-        # self._widget.ExperimentButton.toggle()
         
         # basic commands
-        self._widget.SleepButton.clicked[bool].connect(self.handle_sleep)
-        self._widget.HomeButton.clicked[bool].connect(self.handle_home)
-        self._widget.ReadyButton.clicked[bool].connect(self.handle_ready)
-        self._widget.OpenButton.clicked[bool].connect(self.handle_open)
-        self._widget.CloseButton.clicked[bool].connect(self.handle_close)
-        self._widget.CalibrateButton.clicked[bool].connect(self.handle_calibrate)
-        self._widget.CalibrateHeightButton.clicked[bool].connect(self.handle_calibrate_height)
+        self._widget.SleepButton.clicked[bool].connect(lambda: self.pub_command.publish("sleep"))
+        self._widget.HomeButton.clicked[bool].connect(lambda: self.pub_command.publish("home"))
+        self._widget.ReadyButton.clicked[bool].connect(lambda: self.pub_command.publish("ready"))
+        self._widget.OpenButton.clicked[bool].connect(lambda: self.pub_command.publish("open"))
+        self._widget.CloseButton.clicked[bool].connect(lambda: self.pub_command.publish("close"))
+        self._widget.CalibrateButton.clicked[bool].connect(lambda: self.pub_command.publish("calibrate"))
+        self._widget.CalibrateHeightButton.clicked[bool].connect(lambda: self.pub_command.publish("calibrate_height"))
 
-
-        # self._widget.DetectTomatoButton.clicked[bool].connect(self.handle_detect_tomato)
         self._widget.SpawnTrussButton.clicked[bool].connect(self.handle_spawn_truss)
-        self._widget.DetectTrussButton.clicked[bool].connect(self.handle_detect_truss)
-        self._widget.SaveImageButton.clicked[bool].connect(self.handle_save_image)
+        self._widget.DetectTrussButton.clicked[bool].connect(lambda: self.pub_command.publish("detect_truss"))
+        self._widget.SaveImageButton.clicked[bool].connect(lambda: self.pub_command.publish("save_image"))
 
-        self._widget.PointButton.clicked[bool].connect(self.handle_point)
-        self._widget.PickPlaceButton.clicked[bool].connect(self.handle_pick_place)
-        self._widget.PickButton.clicked[bool].connect(self.handle_pick)
-        self._widget.PlaceButton.clicked[bool].connect(self.handle_place)
-        self._widget.FakePickButton.clicked[bool].connect(self.handle_fake_pick)
+        self._widget.PickPlaceButton.clicked[bool].connect(lambda: self.pub_command.publish("pick_place"))
+        self._widget.PickButton.clicked[bool].connect(lambda: self.pub_command.publish("pick"))
+        self._widget.PlaceButton.clicked[bool].connect(lambda: self.pub_command.publish("place"))
         self._widget.ExperimentButton.clicked.connect(self.handle_experiment)
 
-        #
-        self.spawn_type_button = self._widget.SelectSpawnTypeButton
-        self.spawn_type_button.clear()
-        self.spawn_type_button.setEditable(True)
-        options = ['3d', '2d']
-        for option in options:
-            self.spawn_type_button.addItem(option)
+        def handle_detect_tomato(self):
+            self.pub_command.publish("detect_tomato")
 
-        self.spawn_type_button.activated.connect(self.handle_spawn_type)
+
+        # spawn types dropdown
+        options = ['3d', '2d']
+        initialize_drop_down_button(self._widget.SelectSpawnTypeButton, options, self.handle_spawn_type)
         self.spawn_type = options[0]
 
-        #
-        self.truss_type_button = self._widget.TrussTypeButton
-        self.truss_type_button.clear()
-        self.truss_type_button.setEditable(True)
+        # experiment name dropdown
         options = ['default', 'simple', 'moderate', 'advanced']
-        for option in options:
-            self.truss_type_button.addItem(option)
-        self.truss_type_button.activated.connect(self.handle_truss_type)
-        self.truss_type = options[0]
+        initialize_drop_down_button(self._widget.ExperimentNameButton, options, self.handle_experiment_name)
+        self.experiment_name = options[0]
         
-        #
-        self.experiment_id = '001'
+        # experiment id dropdown
         self.update_pwd()
-        self.experiment_id_button = self._widget.ExperimentIDButton
-        self.experiment_id_button.setEditable(True)
-        self.update_id()
-        self.experiment_id_button.activated.connect(self.handle_experiment_id)        
+        options = self.get_experiment_ids()
+        initialize_drop_down_button(self._widget.ExperimentIDButton, options, self.handle_experiment_id)
+        self.experiment_id = options[0]
 
-    def update_id(self):
-        # get ids
-        options= []
+    def get_experiment_ids(self):
+        options = []
         if not os.path.isdir(self.pwd_truss_type):
             options.append(str(1).zfill(3) + "  (new)")
         else:
@@ -129,14 +114,21 @@ class RqtFlexGrasp(Plugin):
                     options.append(str(file_id).zfill(3))
                 options.append(str(file_id + 1).zfill(3) + " (new)")
 
+        return options
+
+    def update_button_options(self):
+        button = self._widget.ExperimentIDButton
+
+        # get ids
+        options = self.get_experiment_ids()
+
         # add to menu  
-        self.experiment_id_button.clear()
+        button.clear()
         for option in options:
-            self.experiment_id_button.addItem(option)
+            button.addItem(option)
                     
     def update_pwd(self):
-        truss_type = self.truss_type
-        self.pwd_truss_type = os.path.join(os.sep, 'home', 'taeke', 'Documents', 'thesis_data', truss_type)
+        self.pwd_truss_type = os.path.join(os.getcwd(), 'thesis_data', self.experiment_name)
 
     def shutdown_plugin(self):
         self.pub_command.unregister()
@@ -156,57 +148,12 @@ class RqtFlexGrasp(Plugin):
         # This will enable a setting button (gear icon) in each dock widget title bar
         # Usually used to open a modal configuration dialog
 
-    def handle_sleep(self):
-        self.pub_command.publish("sleep")
-
-    def handle_home(self):
-        self.pub_command.publish("home")
-        
-    def handle_ready(self):
-        self.pub_command.publish("ready")
-
-    def handle_open(self):
-        self.pub_command.publish("open")
-
-    def handle_close(self):
-        self.pub_command.publish("close")
-        
-    def handle_calibrate(self):
-        self.pub_command.publish("calibrate")
-
-    def handle_calibrate_height(self):
-        self.pub_command.publish("calibrate_height")
-
-    def handle_detect_tomato(self):
-        self.pub_command.publish("detect_tomato")
-
-    def handle_detect_truss(self):
-        self.pub_command.publish("detect_truss")
-        
-    def handle_save_image(self):
-        self.pub_command.publish("save_image")
-
-    def handle_point(self):
-        self.pub_command.publish("point")
-
-    def handle_pick_place(self):
-        self.pub_command.publish("pick_place")
-
-    def handle_pick(self):
-        self.pub_command.publish("pick")
-
-    def handle_place(self):
-        self.pub_command.publish("place")
-
-    def handle_fake_pick(self):
-        self.pub_command.publish("fake_pick")
-
     def handle_experiment(self):
         self.experiment = self._widget.ExperimentButton.isChecked()
         self.pub_experiment.publish(self.experiment)
 
     def handle_spawn_type(self):
-        self.spawn_type = str(self.spawn_type_button.currentText())
+        self.spawn_type = str(self._widget.SelectSpawnTypeButton.currentText())
 
     def handle_spawn_truss(self):
         spawn_instruction = SpawnInstruction()
@@ -215,25 +162,36 @@ class RqtFlexGrasp(Plugin):
         self.pub_spawn_command.publish(spawn_instruction)
 
 
-    def handle_truss_type(self):
-        value =  str(self.truss_type_button.currentText())
-        if self.truss_type != value:
-            self.truss_type = value
-            rospy.loginfo("Updated truss type to %s", self.truss_type)
+    def handle_experiment_name(self):
+        button = self._widget.ExperimentNameButton
+        value = str(button.currentText())
+        if self.experiment_name != value:
+            self.experiment_name = value
+            rospy.logdebug("Updated experiment name to %s", self.experiment_name)
             self.update_pwd()
-            self.update_id()
+            self.update_button_options()
             self.handle_experiment_id()
             
             self.pwd_experiment = os.path.join(self.pwd_truss_type, self.experiment_id)
             self.pub_experiment_pwd.publish(self.pwd_experiment)
         
     def handle_experiment_id(self):
-        value =  str(self.experiment_id_button.currentText())[0:3]
+        button = self._widget.ExperimentIDButton
+        value = str(button.currentText())[0:3]
         
         if self.experiment_id != value:
             self.experiment_id = value
-            rospy.loginfo("Updated experiment id to %s", self.experiment_id)
+            rospy.logdebug("Updated experiment id to %s", self.experiment_id)
             
             self.update_pwd()
             self.pwd_experiment = os.path.join(self.pwd_truss_type, self.experiment_id)
             self.pub_experiment_pwd.publish(self.pwd_experiment)
+
+def initialize_drop_down_button(button, options, cb):
+    button.clear()
+    button.setEditable(True)
+    for option in options:
+        button.addItem(option)
+
+    button.activated.connect(cb)
+    return button

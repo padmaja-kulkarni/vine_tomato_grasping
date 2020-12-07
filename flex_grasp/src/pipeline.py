@@ -82,12 +82,11 @@ class Idle(smach.State):
         self.command_op_topic = 'pipeline_command'
         rospy.Subscriber("experiment", Bool, self.go_cb)
 
-        self.detect_commands =  ['detect_tomato', 'detect_truss', 'save_image']
+        self.detect_commands = ['detect_tomato', 'detect_truss', 'save_image']
         self.transform_commands = ['transform']
-        self.calibrate_commands =  ['calibrate', 'calibrate_height']
-        self.move_commands =  ['home', 'open', 'close', 'sleep', 'ready']
-        self.pick_place_commands = ['pick', 'place', 'pick_place', 'fake_pick', 'fake_place']
-        self.point_commands = ['point']
+        self.calibrate_commands = ['calibrate', 'calibrate_height']
+        self.move_commands = ['home', 'open', 'close', 'sleep', 'ready']
+        self.pick_place_commands = ['pick', 'place', 'pick_place']
         self.experiment = False
 
     def go_cb(self, msg):
@@ -106,11 +105,8 @@ class Idle(smach.State):
             userdata.mode = 'free'
         elif (not self.experiment) and userdata.mode == 'experiment':
             userdata.mode = 'free'
-            
-                
-        if userdata.mode == 'experiment':            
-#            if userdata.prev_command == None:
-#                userdata.command = 'calibrate'
+
+        if userdata.mode == 'experiment':
             if userdata.prev_command == None or userdata.prev_command == 'reset':
                 userdata.command = 'detect_truss'
             elif userdata.prev_command == 'detect_truss':
@@ -139,8 +135,6 @@ class Idle(smach.State):
             return 'calibrate'
         elif userdata.command in self.pick_place_commands:
             return 'pick_place'
-        elif userdata.command in self.point_commands:
-            return 'point'
         else:
             rospy.logwarn('Unknown command: %s', userdata.command)
             userdata.command = None
