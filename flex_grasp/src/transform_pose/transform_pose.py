@@ -74,6 +74,7 @@ class TransformPose(object):
         msg.data = self.peduncle_height
         peduncle_height_pub.publish(msg)
 
+        rospy.Subscriber("peduncle_height", Float32, self.peduncle_height_cb)
         random.seed(0)
 
         self.pose_transform = {'pre_grasp': point_to_pose(pre_grasp_xyz, ee_rpy),
