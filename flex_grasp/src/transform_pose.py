@@ -66,7 +66,7 @@ class TransformPose(object):
 
         grasp_xyz = [0, 0, self.grasp_height]  # [m]
         pre_grasp_xyz = [0, 0, self.pre_grasp_height]  # [m]
-        self.grasp_rpy = [-np.pi, np.pi/2, 0]
+        self.grasp_rpy = [0, np.pi/2, 0]  # [-np.pi, np.pi/2, 0]
 
         self.wrist_lower_limit = -np.pi/2
         self.wrist_upper_limit = np.pi/2
@@ -154,7 +154,7 @@ class TransformPose(object):
         pre_place_xyz = [x, y, pre_place_height]
         place_xyz = [x, y, place_height]
 
-        frame = self.robot_base_frame  # robot_base_frame
+        frame = self.robot_base_frame
         time = rospy.Time.now()
 
         place_pose = {}
@@ -194,7 +194,7 @@ class TransformPose(object):
         # transform cage location to world frame
         object_pose = self.object_features.cage_location
         original_frame = object_pose.header.frame_id
-        transform = get_transform(self.planning_frame, original_frame, self.tfBuffer)
+        transform = get_transform(self.planning_frame, original_frame, self.tfBuffer) #
 
         if transform is None:
             rospy.logwarn("[%s] Cannot transform pose, failed to lookup transform from %s to %s!", self.node_name, original_frame, self.planning_frame)
@@ -207,13 +207,15 @@ class TransformPose(object):
         grasp_height = self.peduncle_height - self.surface_height + self.robot_height()
         object_pose.pose.position = list_to_position((object_position[0], object_position[1], grasp_height))
 
-        # update orientation to take into account wrist limits
+        # update orientation to take into account wrist limits, shoudl be done in robot base frame!
         object_angle = object_orientation[2]
         base_angle = np.arctan2(object_position[1], object_position[0])
 
-        if self.wrist_upper_limit > (object_angle + base_angle) > self.wrist_lower_limit:
+        print 'object_angle: ', np.rad2deg(object_angle)
+        print 'base_angle: ', np.rad2deg(base_angle)
+        if self.wrist_lower_limit > (object_angle + base_angle) > self.wrist_upper_limit:
             object_angle = object_angle + np.pi
-
+        print 'result: : ', np.rad2deg(object_angle)
         object_pose.pose.orientation = list_to_orientation([0, 0, object_angle])  #
 
 

@@ -63,7 +63,6 @@ class MoveRobot(object):
         self.state = "idle"
         self.prev_state = None
         self.command = None
-        self.error = ''
         self.robot_pose = None
         self.rate = rospy.Rate(10)
         self.simulation = self.debug_mode = rospy.get_param("robot_sim")
@@ -232,7 +231,7 @@ class MoveRobot(object):
                     rospy.logdebug("[MOVE ROBOT] Continueing initialization, required object is present")
                     found_required_object = True
                 else:
-                    rospy.logwarn("[MOVE ROBOT] Refusing to continue untill %s is present.", required_object)
+                    rospy.logwarn("[MOVE ROBOT] Refusing to continue until %s is present.", required_object)
                     found_required_object = True # False
             self.rate.sleep()
 
@@ -332,7 +331,6 @@ class MoveRobot(object):
         else:
             self.set_operating_mode()
             return self.move_to_joint_target_pwm(self.close_pwm_cmd)
-        # 
 
     def apply_release_ee(self):
         rospy.logdebug("[MOVE ROBOT] Aplying release with end effector")
@@ -487,7 +485,7 @@ class MoveRobot(object):
         else:
             tol = self.man_joint_tolerance
 
-            # oscilations can cause the robot to be at and different pose than desired, thereofre we check several times
+            # oscilations can cause the robot to be at and different pose than desired, therefore we check several times
         if to_check:
             result = self.wait_for_joint_close(group, target_val, tol, 2.0)
 
