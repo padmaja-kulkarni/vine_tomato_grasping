@@ -125,7 +125,7 @@ def get_transform(to_frame, from_frame, tfBuffer):
             rospy.logwarn("Cannot find transform from %s, no frame is defined!", from_frame)
             return None
              
-        trans = tfBuffer.lookup_transform(to_frame, from_frame, time = rospy.Time.now())
+        trans = tfBuffer.lookup_transform(to_frame, from_frame, time=rospy.Time.now())
         return trans
         
     except:

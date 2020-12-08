@@ -5,18 +5,23 @@ import os
 from gazebo_msgs.srv import DeleteModel, SpawnModel, GetWorldProperties
 from flex_shared_resources.utils.misc import generate_pose
 
+TIMEOUT = 1     # [s]
+
 
 class ModelSpawner(object):
-    service_timeout = 1  # [s]
+    spawn_x_min = 0.18              # [m]
+    spawn_r_range = [0.15, 0.23]    # [m]
+    spawn_height = 0.1              # [m]
+    truss_types = ['2d', '3d']
 
     def __init__(self, model_ns="model"):
         self.model_ns = model_ns + '_'
         self.model_name = self.model_ns + "{0}"
 
         rospy.logdebug("Waiting for gazebo services...")
-        rospy.wait_for_service("/gazebo/delete_model", timeout=self.service_timeout)
-        rospy.wait_for_service("/gazebo/spawn_urdf_model",  timeout=self.service_timeout)
-        rospy.wait_for_service("/gazebo/get_world_properties",  timeout=self.service_timeout)
+        rospy.wait_for_service("/gazebo/delete_model", timeout=TIMEOUT)
+        rospy.wait_for_service("/gazebo/spawn_urdf_model",  timeout=TIMEOUT)
+        rospy.wait_for_service("/gazebo/get_world_properties",  timeout=TIMEOUT)
         rospy.logdebug("Found all services")
 
         self.delete_model = rospy.ServiceProxy("/gazebo/delete_model", DeleteModel)
@@ -29,15 +34,9 @@ class ModelSpawner(object):
         else:
             self.reference_frame = "world"
 
-        self.truss_types = ['2d', '3d']
         self.xml_models = {}
         for truss_type in self.truss_types:
             self.xml_models[truss_type] = self.load_sdf(truss_type)
-
-
-        self.spawn_x_min = 0.18  # [m]
-        self.spawn_r_range = [0.15, 0.23]  # [m]
-        self.spawn_height = 0.1  # [m]
 
     def load_sdf(self, truss_type):
 
@@ -56,21 +55,21 @@ class ModelSpawner(object):
 
     def delete_all_models(self):
         """
-            deletes all models in Gazebo which start with the model name space followed by an integer
+            Deletes all models present in Gazebo world
         """
 
         success = True
-        world_properties = self.get_world_properties()
-        model_names = []
-        for model_name in world_properties.model_names:
-            split_model_name = model_name.split(self.model_ns)
-            if len(split_model_name) == 2:
-                if (split_model_name[0] == '') and split_model_name[1].isdigit():
-                    model_names.append(model_name)
+        model_names = self.get_model_names()
 
         for model_name in model_names:
             rospy.loginfo("Deleting model: %s", model_name)
-            result = self.delete_model(model_name)
+
+            try:
+                result = self.delete_model(model_name)
+            except Exception as exc:
+                rospy.loginfo("Service did not process request: " + str(exc))
+                continue
+
             if result.success:
                 rospy.loginfo("Successfully deleted model: %s", model_name)
             else:
@@ -87,7 +86,7 @@ class ModelSpawner(object):
 
     def spawn_model(self, truss_type):
         """
-            adds a model to Gazebo, with a unique name
+            Spawns an sdf model to Gazebo, with an unique name
         """
 
         if truss_type not in self.truss_types:
@@ -103,7 +102,10 @@ class ModelSpawner(object):
         self.spawn_sdf_model(item_name, xml_model, "", pose, self.reference_frame)
         return True
 
-    def add_urdf_model(self):
+    def spawn_urdf_model(self):
+        """
+            Spawns an urdf model to gazebo, with an unique name
+        """
         new_id = self.get_unique_id()
         item_name = self.model_name.format(new_id)
 
@@ -112,18 +114,38 @@ class ModelSpawner(object):
         self.spawn_urdf_model(item_name, self.model_xml_urdf, "", pose, self.reference_frame)
 
     def get_unique_id(self):
-        world_properties = self.get_world_properties()
+        """
+            generate a new id which is the lowest value not already present in the gazebo world
+        """
+        used_ids = self.get_model_ids()
 
-        used_id = []
+        if not used_ids:
+            return 1
+        else:
+            # https://stackoverflow.com/a/28178803
+            return next(i for i, e in enumerate(sorted(used_ids) + [None], 1) if i != e)
+
+    def get_model_ids(self):
+        """
+            Gets al model ids from the Gazebo world
+        """
+        model_ids = []
+        model_names = self.get_model_names()
+        for model_name in model_names:
+            split_model_name = model_name.split(self.model_ns)
+            model_ids.append(int(split_model_name[1]))
+        return model_ids
+
+    def get_model_names(self):
+        """
+            Gets al model names from the Gazebo world which start with the model name space followed by an integer
+        """
+        world_properties = self.get_world_properties()
+        model_names = []
         for model_name in world_properties.model_names:
             split_model_name = model_name.split(self.model_ns)
             if len(split_model_name) == 2:
                 if (split_model_name[0] == '') and split_model_name[1].isdigit():
-                    used_id.append(int(split_model_name[1]))
+                    model_names.append(model_name)
 
-        # make the new id the lowest value which is not already present in the used_id list
-        if not used_id:
-            return 1
-        else:
-            # https://stackoverflow.com/a/28178803
-            return next(i for i, e in enumerate(sorted(used_id) + [None], 1) if i != e)
+        return model_names
