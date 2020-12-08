@@ -65,21 +65,21 @@ def flex_grasp_error_string(val):
         return 'UNKNOWN_ERROR_CODE: still need to be added!'
         
 def flex_grasp_error_log(val, node_name = None, mode = None):
-    if val == FlexGraspErrorCodes.SUCCESS:
-        if node_name is None:
-            rospy.logdebug("Excuted succesfully")
+    error_string = flex_grasp_error_string(val)
+
+    if node_name is None:
+        if val == FlexGraspErrorCodes.SUCCESS:
+            log_string = "Excuted with {0}".format(error_string)
         else:
-            rospy.logdebug("[%s] Excuted succesfully", node_name)
+            log_string = "Excuted with error {0}".format(error_string)
     else:
-        string = flex_grasp_error_string(val)
-        
-        if mode == 'debug':   
-            if node_name is None:
-                rospy.logdebug("Excuted with error: %s", string)
-            else:
-                rospy.logdebug("[%s] Excuted with error: %s", node_name, string)
+        if val == FlexGraspErrorCodes.SUCCESS:
+            log_string = "[{0}] Excuted with {1}".format(node_name, error_string)
         else:
-            if node_name is None:
-                rospy.logwarn("Excuted with error: %s", string)
-            else:
-                rospy.logwarn("[%s] Excuted with error: %s", node_name, string)
+            log_string = "[{0}] Excuted with error {1}".format(node_name, error_string)
+
+
+    if val == FlexGraspErrorCodes.SUCCESS or mode == 'debug':
+        rospy.logdebug(log_string)
+    else:
+        rospy.logwarn(log_string)

@@ -450,17 +450,17 @@ def main():
 
         smach.StateMachine.add('SpawnObject', SpawnObject(),
                                transitions={'success': 'Idle',
-                                            'failure':'DetectObject',
-                                            'complete_failure':'StopMode'})
+                                            'failure': 'SpawnObject',
+                                            'complete_failure': 'StopMode'})
 
         smach.StateMachine.add('DetectObject', DetectObject(),
                                transitions={'success': 'Idle',
-                                            'failure':'DetectObject',
-                                            'complete_failure':'StopMode'})
+                                            'failure': 'DetectObject',
+                                            'complete_failure': 'StopMode'})
 
         smach.StateMachine.add('PoseTransform', PoseTransform(),
-                               transitions={'success':'Idle',
-                                            'failure':'RestartMode'})
+                               transitions={'success': 'Idle',
+                                            'failure': 'RestartMode'})
 
         smach.StateMachine.add('MoveRobot', MoveRobot(),
                                transitions={'success':'Idle',

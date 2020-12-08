@@ -23,7 +23,7 @@
 	<arg name="visualize_object_debug"	default="false"/>
 	<arg name="pick_place_debug" 				default="false"/>
 	<arg name="calibrate_debug" 				default="false"/>
-	<arg name="transform_pose_debug"		default="false"/>
+	<arg name="transform_pose_debug"		default="true"/>
 	<arg name="model_spawner_debug"			default="false"/>
 
 	<include file="$(find flex_calibrate)/launch/calibrate.launch">
@@ -90,7 +90,7 @@
 
 		<node name="transform_pose"
 			pkg="flex_grasp"
-			type="transform_pose.py"
+			type="transform_pose_node.py"
 			output="screen">
 			<param name ="debug" value="$(arg transform_pose_debug)"/>
 		</node>

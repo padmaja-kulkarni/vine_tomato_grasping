@@ -3,7 +3,6 @@
 
 import rospy
 from flex_grasp.msg import FlexGraspErrorCodes
-from std_msgs.msg import String
 from flex_shared_resources.msg import SpawnInstruction
 
 
@@ -34,12 +33,13 @@ class StateMachineInput(object):
                 rospy.logdebug("[{0}] Received delete command".format(self.NODE_NAME))
             else:
                 rospy.logwarn("[{0}] Received unknown command {1}!".format(self.NODE_NAME, msg.type))
-                self.command_rejected()
+                self.command_rejected(FlexGraspErrorCodes.UNKNOWN_COMMAND)
 
-    def command_rejected(self):
-        """Callback called when the state machine rejects the requested model."""
+    def command_rejected(self, error_code=FlexGraspErrorCodes.FAILURE):
+        """method called when the state machine rejects the requested model."""
         rospy.logdebug("[%s] Rejected command in message", self.NODE_NAME)
-        self.pub_e_out.publish(FlexGraspErrorCodes.FAILURE)
+        msg = FlexGraspErrorCodes(error_code)
+        self.pub_e_out.publish(msg)
         self.reset()
 
     def command_accepted(self):
@@ -50,7 +50,7 @@ class StateMachineInput(object):
         self.pub_e_out.publish(msg)
 
     def command_completed(self, success=True):
-        """Callback called when the state machine rejects the requested model."""
+        """method called when the state machine rejects the requested model."""
         rospy.logdebug("[%s] Completed command in message: %s", self.NODE_NAME, self.command)
         if success:
             msg = FlexGraspErrorCodes.SUCCESS

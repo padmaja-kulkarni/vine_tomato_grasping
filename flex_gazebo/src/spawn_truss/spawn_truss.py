@@ -1,5 +1,5 @@
 #!/usr/bin/env python2
-
+# -*- coding: utf-8 -*-
 import rospy
 import os
 from gazebo_msgs.srv import DeleteModel, SpawnModel, GetWorldProperties
