@@ -30,7 +30,7 @@ class ExperimentPathInterface(object):
         self.publish_experiment_path()
 
 
-    def handle_experiment_name(self, button):
+    def handle_experiment_name(self):
         """
             callback called when experiment name is changed, updates experiment name
         """
@@ -39,7 +39,7 @@ class ExperimentPathInterface(object):
             self.experiment_name = value
             rospy.logdebug("Updated experiment name to %s", self.experiment_name)
 
-        # Update id button even if experiment name dit not change,
+        # Update id button even if experiment name did not change, since folder structure may have been changed!
         self.update_experiment_id_button()
         self.handle_experiment_id()
 
@@ -53,7 +53,8 @@ class ExperimentPathInterface(object):
         if self.experiment_id != value:
             self.experiment_id = value
             rospy.logdebug("Updated experiment id to %s", self.experiment_id)
-            self.publish_experiment_path()
+
+        self.publish_experiment_path()
 
     def update_experiment_id_button(self):
         """
@@ -70,7 +71,7 @@ class ExperimentPathInterface(object):
                 self.experiment_id_button.addItem(experiment_id)
 
                 if experiment_id == self.experiment_id:
-                    self.experiment_id_button.setCurrentIndex(100)
+                    self.experiment_id_button.setCurrentIndex(index)
 
             self.prev_experiment_ids = experiment_ids
 
