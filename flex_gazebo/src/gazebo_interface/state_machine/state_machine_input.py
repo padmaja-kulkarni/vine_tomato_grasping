@@ -3,7 +3,7 @@
 
 import rospy
 from flex_grasp.msg import FlexGraspErrorCodes
-from flex_shared_resources.msg import SpawnInstruction
+from flex_shared_resources.msg import GazeboInstruction
 
 
 class StateMachineInput(object):
@@ -13,7 +13,7 @@ class StateMachineInput(object):
         self.command = None
         self.model_type = None
 
-        self.sub_e_in = rospy.Subscriber("~e_in", SpawnInstruction, self.e_in_cb)
+        self.sub_e_in = rospy.Subscriber("~e_in", GazeboInstruction, self.e_in_cb)
         self.pub_e_out = rospy.Publisher("~e_out", FlexGraspErrorCodes, queue_size=10, latch=True)
 
     def reset(self):
@@ -24,15 +24,18 @@ class StateMachineInput(object):
     def e_in_cb(self, msg):
         """If the current command is empty take a command and set appropriate fields"""
         if self.command is None:
-            if msg.type == SpawnInstruction.SPAWN:
-                self.command = msg.type
+            if msg.command == GazeboInstruction.SPAWN:
+                self.command = msg.command
                 self.model_type = msg.model_type
                 rospy.logdebug("[{0}] Received spawn command for truss type {1}".format(self.NODE_NAME, self.model_type))
-            elif msg.type == SpawnInstruction.DELETE:
-                self.command = msg.type
+            elif msg.command == GazeboInstruction.DELETE:
+                self.command = msg.command
                 rospy.logdebug("[{0}] Received delete command".format(self.NODE_NAME))
+            elif msg.command == GazeboInstruction.SETPOSE:
+                self.command = msg.command
+                rospy.logdebug("[{0}] Received set pose command".format(self.NODE_NAME))
             else:
-                rospy.logwarn("[{0}] Received unknown command {1}!".format(self.NODE_NAME, msg.type))
+                rospy.logwarn("[{0}] Received unknown command {1}!".format(self.NODE_NAME, msg.command))
                 self.command_rejected(FlexGraspErrorCodes.UNKNOWN_COMMAND)
 
     def command_rejected(self, error_code=FlexGraspErrorCodes.FAILURE):

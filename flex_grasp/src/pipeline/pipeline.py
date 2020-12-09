@@ -6,15 +6,15 @@ import smach_ros
 
 from std_msgs.msg import String, Bool
 from flex_grasp.msg import FlexGraspErrorCodes
-from flex_shared_resources.msg import SpawnInstruction
+from flex_shared_resources.msg import GazeboInstruction
 
 from flex_shared_resources.errors.flex_grasp_error import flex_grasp_error_log
 from flex_shared_resources.utils.communication import Communication
 
-outcomes = ['success','control_failure', 'planning_failure', 'state_failure', 'dynamixel_failure', 'severe_failure', 'failure']
+outcomes = ['success', 'control_failure', 'planning_failure', 'state_failure', 'dynamixel_failure', 'severe_failure', 'failure']
 
 def error_handling(result):
-    
+
     if result == FlexGraspErrorCodes.SUCCESS:
         return 'success'
     elif result == FlexGraspErrorCodes.CONTROL_FAILED:
@@ -90,7 +90,7 @@ class Idle(smach.State):
         self.calibrate_commands = ['calibrate', 'calibrate_height']
         self.move_commands = ['home', 'open', 'close', 'sleep', 'ready']
         self.pick_place_commands = ['pick', 'place', 'pick_place']
-        self.spawn_commands = ['spawn_truss']
+        self.spawn_commands = ['spawn_truss', 'set_pose_truss']
         self.experiment = False
 
     def go_cb(self, msg):
@@ -112,7 +112,7 @@ class Idle(smach.State):
         if userdata.mode == 'experiment':
             if (userdata.prev_command is None or userdata.prev_command == 'reset') and self.simulation:
                 userdata.command = 'spawn_truss'
-            elif userdata.prev_command is None or userdata.prev_command == 'reset' or userdata.prev_command == 'spawn_truss':
+            elif userdata.prev_command is None or userdata.prev_command == 'reset' or userdata.prev_command == 'spawn_truss' or userdata.prev_command == 'set_pose_truss':
                 userdata.command = 'detect_truss'
             elif userdata.prev_command == 'detect_truss':
                 userdata.command = 'transform'
@@ -121,7 +121,7 @@ class Idle(smach.State):
             elif userdata.prev_command == 'pick':
                 userdata.command = 'place'
             elif userdata.prev_command == 'place' and self.simulation:
-                userdata.command = 'spawn_truss'
+                userdata.command = 'set_pose_truss'
             elif userdata.prev_command == 'place' and not self.simulation:
                 userdata.command = 'detect_truss'
             else:
@@ -151,7 +151,7 @@ class Idle(smach.State):
 
 class CalibrateRobot(smach.State):
     def __init__(self):
-        smach.State.__init__(self, outcomes = outcomes, 
+        smach.State.__init__(self, outcomes=outcomes,
                              input_keys=['mode', 'command', 'prev_command'], 
                              output_keys=['mode', 'command', 'prev_command'])
                              
@@ -203,16 +203,22 @@ class SpawnObject(smach.State):
         smach.State.__init__(self, outcomes=['success', 'failure', 'complete_failure'],
                              input_keys=['mode', 'command', 'prev_command'],
                              output_keys=['mode', 'command', 'prev_command'])
-        topic = 'model_spawner'
+        topic = 'gazebo_interface'
         timeout = 2.0
-        self.communication = Communication(topic, timeout=timeout, msg_type=SpawnInstruction)
+        self.communication = Communication(topic, timeout=timeout, msg_type=GazeboInstruction)
         self.counter = 3
 
     def execute(self, userdata):
         rospy.logdebug('Executing state SpawnObject')
 
         # command node
-        msg = SpawnInstruction(type=SpawnInstruction.SPAWN, model_type='3d')
+        if userdata.command == 'spawn_truss':
+            msg = GazeboInstruction(command=GazeboInstruction.SPAWN, model_type='3d')
+        elif userdata.command == 'set_pose_truss':
+            msg = GazeboInstruction(command=GazeboInstruction.SETPOSE)
+        else:
+            rospy.logerr("Unknown command %s", userdata.command)
+
         result = self.communication.wait_for_result(msg)
 
         if result == FlexGraspErrorCodes.SUCCESS:

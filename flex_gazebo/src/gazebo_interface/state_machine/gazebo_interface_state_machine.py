@@ -4,9 +4,10 @@
 import rospy
 from flex_shared_resources.msg import SpawnInstruction
 
-class ModelSpawnerStateMachine(object):
 
-    def __init__(self, model_spawner, input, update_rate, node_name):
+class GazeboInterfaceStateMachine(object):
+
+    def __init__(self, gazebo_interface, input, update_rate, node_name):
         """Generates a state machine
 
         In order to start the state machine see `run`.
@@ -18,7 +19,7 @@ class ModelSpawnerStateMachine(object):
         self.NODE_NAME = node_name
         self._update_rate = update_rate
         self._input = input
-        self._model_spawner = model_spawner
+        self._gazebo_interface = gazebo_interface
 
         self._is_idle = True
         self._shutdown_requested = False
@@ -62,6 +63,11 @@ class ModelSpawnerStateMachine(object):
             self._is_idle = False
             self._input.command_accepted()
 
+        elif command == SpawnInstruction.SETPOSE:
+            self._command = command
+            self._is_idle = False
+            self._input.command_accepted()
+
         else:
             rospy.logwarn('[{0}] Cannot execute command {1}: command is unknown! Known commands are: {2}'.format(self.NODE_NAME, command, self._commands))
             self._input.command_rejected()
@@ -70,12 +76,16 @@ class ModelSpawnerStateMachine(object):
 
         if self._command == SpawnInstruction.SPAWN:
             rospy.logdebug("[%s] Executing spawn command", self.NODE_NAME)
-            self._model_spawner.delete_all_models()
-            success = self._model_spawner.spawn_model(self._model_type)
+            self._gazebo_interface.delete_all_models()
+            success = self._gazebo_interface.spawn_model(self._model_type)
             self.command_completed(success)
 
         elif self._command == SpawnInstruction.DELETE:
-            success = self._model_spawner.delete_all_models()
+            success = self._gazebo_interface.delete_all_models()
+            self.command_completed(success)
+
+        elif self._command == SpawnInstruction.SETPOSE:
+            success = self._gazebo_interface.set_model_pose()
             self.command_completed(success)
 
         else:

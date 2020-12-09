@@ -6,7 +6,7 @@ from qt_gui.plugin import Plugin
 from python_qt_binding import loadUi
 from python_qt_binding.QtWidgets import QWidget, QMenu
 from std_msgs.msg import String, Bool
-from flex_shared_resources.msg import SpawnInstruction
+from flex_shared_resources.msg import GazeboInstruction
 from util import initialize_drop_down_button
 
 from experiment_path_interface import ExperimentPathInterface
@@ -49,14 +49,9 @@ class RqtFlexGrasp(Plugin):
         # Add widget to the user interface
         context.add_widget(self._widget)
 
-        self.pub_command = rospy.Publisher("pipeline_command",
-                                      String, queue_size=10, latch=False)
-
-        self.pub_experiment = rospy.Publisher("experiment",
-                                      Bool, queue_size=1, latch=True)
-
-        self.pub_spawn_command = rospy.Publisher("model_spawner/e_in",
-                                      SpawnInstruction, queue_size=1, latch=True)
+        self.pub_command = rospy.Publisher("pipeline_command", String, queue_size=10, latch=False)
+        self.pub_experiment = rospy.Publisher("experiment", Bool, queue_size=1, latch=True)
+        self.pub_gazebo_interface = rospy.Publisher("gazebo_interface/e_in", GazeboInstruction, queue_size=1, latch=True)
 
         self.experiment = False
         self._widget.ExperimentButton.setCheckable(True)
@@ -71,6 +66,7 @@ class RqtFlexGrasp(Plugin):
         self._widget.CalibrateHeightButton.clicked[bool].connect(lambda: self.pub_command.publish("calibrate_height"))
 
         self._widget.SpawnTrussButton.clicked[bool].connect(self.handle_spawn_truss)
+        self._widget.SetPoseTrussButton.clicked[bool].connect(self.handle_set_pose_truss)
         self._widget.DetectTrussButton.clicked[bool].connect(lambda: self.pub_command.publish("detect_truss"))
         self._widget.SaveImageButton.clicked[bool].connect(lambda: self.pub_command.publish("save_image"))
 
@@ -106,13 +102,15 @@ class RqtFlexGrasp(Plugin):
         # Usually used to open a modal configuration dialog
 
     def handle_spawn_type(self):
-        print "drop it"
         self.spawn_type = str(self._widget.SelectSpawnTypeButton.currentText())
 
+    def handle_set_pose_truss(self):
+        spawn_instruction = GazeboInstruction(command=GazeboInstruction.SETPOSE)
+        self.pub_gazebo_interface.publish(spawn_instruction)
+
     def handle_spawn_truss(self):
-        print "spawn"
-        spawn_instruction = SpawnInstruction(type=SpawnInstruction.SPAWN, model_type=self.spawn_type)
-        self.pub_spawn_command.publish(spawn_instruction)
+        spawn_instruction = GazeboInstruction(command=GazeboInstruction.SPAWN, model_type=self.spawn_type)
+        self.pub_gazebo_interface.publish(spawn_instruction)
 
     def handle_experiment(self):
         self.experiment = self._widget.ExperimentButton.isChecked()

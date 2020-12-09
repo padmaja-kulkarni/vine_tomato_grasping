@@ -68,18 +68,18 @@
     </widget>
    </item>
 
-   <item row="2" column="1">
-    <widget class="QPushButton" name="DetectTrussButton">
+  <item row="2" column="1">
+    <widget class="QPushButton" name="SetPoseTrussButton">
      <property name="text">
-      <string>Detect Truss</string>
+      <string>Randomize Pose Truss</string>
      </property>
     </widget>
    </item>
 
    <item row="3" column="1">
-    <widget class="QPushButton" name="SaveImageButton">
+    <widget class="QPushButton" name="DetectTrussButton">
      <property name="text">
-      <string>Save Image</string>
+      <string>Detect Truss</string>
      </property>
     </widget>
    </item>
@@ -95,6 +95,13 @@
     </widget>
    </item>
 
+   <item row="6" column="1">
+    <widget class="QPushButton" name="SaveImageButton">
+     <property name="text">
+      <string>Save Image</string>
+     </property>
+    </widget>
+   </item>
 
    <item row="0" column="2">
     <widget class="QPushButton" name="PickPlaceButton">

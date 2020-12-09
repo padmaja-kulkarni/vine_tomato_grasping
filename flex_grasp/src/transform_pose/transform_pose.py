@@ -120,7 +120,7 @@ class TransformPose(object):
             r = self.r_min + random.random() * (self.r_max - self.r_min)  # [m]
             x = r * np.cos(theta)
             y = r * np.sin(theta)
-            if x <= self.x_min:
+            if x >= self.x_min:
                 break
 
         orientation = np.deg2rad(random.randrange(-180, 180, 1))  # [rad]

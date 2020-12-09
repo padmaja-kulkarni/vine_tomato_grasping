@@ -3,10 +3,10 @@
 
 import rospy
 from state_machine.state_machine_input import StateMachineInput
-from state_machine.model_spawner_state_machine import ModelSpawnerStateMachine
-from spawn_truss import ModelSpawner
+from state_machine.gazebo_interface_state_machine import GazeboInterfaceStateMachine
+from gazebo_interface import GazeboInterface
 
-NODE_NAME = 'model_spawner'
+NODE_NAME = 'gazebo_interface'
 DEFAULT_UPDATE_RATE = 20.0
 DEFAULT_DEBUG_MODE = True
 
@@ -22,13 +22,13 @@ def main():
     update_rate = rospy.get_param('~update_rate', DEFAULT_UPDATE_RATE)
 
     state_machine_input = StateMachineInput(NODE_NAME)
-    model_spawner = ModelSpawner()
-    model_spawner_state_machine = ModelSpawnerStateMachine(model_spawner, state_machine_input, update_rate, NODE_NAME)
+    gazebo_interface = GazeboInterface()
+    gazebo_interface_state_machine = GazeboInterfaceStateMachine(gazebo_interface, state_machine_input, update_rate, NODE_NAME)
     rospy.loginfo('[%s] Model spawner state machine successfully generated', NODE_NAME)
 
-    rospy.core.add_preshutdown_hook(lambda reason: model_spawner_state_machine.request_shutdown())
+    rospy.core.add_preshutdown_hook(lambda reason: gazebo_interface_state_machine.request_shutdown())
 
-    model_spawner_state_machine.run()
+    gazebo_interface_state_machine.run()
 
 
 if __name__ == '__main__':
