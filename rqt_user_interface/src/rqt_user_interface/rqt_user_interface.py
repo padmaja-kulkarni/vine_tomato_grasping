@@ -7,6 +7,9 @@ from python_qt_binding import loadUi
 from python_qt_binding.QtWidgets import QWidget, QMenu
 from std_msgs.msg import String, Bool
 from flex_shared_resources.msg import SpawnInstruction
+from util import initialize_drop_down_button
+
+from experiment_path_interface import ExperimentPathInterface
 
 class RqtFlexGrasp(Plugin):
 
@@ -23,9 +26,9 @@ class RqtFlexGrasp(Plugin):
                       dest="quiet",
                       help="Put plugin in silent mode")
         args, unknowns = parser.parse_known_args(context.argv())
-#        if not args.quiet:
-#            print 'arguments: ', args
-#            print 'unknowns: ', unknowns
+        if not args.quiet:
+            print 'arguments: ', args
+            print 'unknowns: ', unknowns
 
         # Create QWidget
         self._widget = QWidget()
@@ -42,6 +45,7 @@ class RqtFlexGrasp(Plugin):
         # tell from pane to pane.
         if context.serial_number() > 1:
             self._widget.setWindowTitle(self._widget.windowTitle() + (' (%d)' % context.serial_number()))
+
         # Add widget to the user interface
         context.add_widget(self._widget)
 
@@ -50,10 +54,6 @@ class RqtFlexGrasp(Plugin):
 
         self.pub_experiment = rospy.Publisher("experiment",
                                       Bool, queue_size=1, latch=True)
-                                      
-
-        self.pub_experiment_pwd = rospy.Publisher("experiment_pwd",
-                                      String, queue_size=1, latch=True)
 
         self.pub_spawn_command = rospy.Publisher("model_spawner/e_in",
                                       SpawnInstruction, queue_size=1, latch=True)
@@ -62,7 +62,7 @@ class RqtFlexGrasp(Plugin):
         self._widget.ExperimentButton.setCheckable(True)
         
         # basic commands
-        self._widget.SleepButton.clicked[bool].connect(lambda: self.pub_command.publish("sleep"))
+        # self._widget.SleepButton.clicked[bool].connect(lambda: self.pub_command.publish("sleep"))
         self._widget.HomeButton.clicked[bool].connect(lambda: self.pub_command.publish("home"))
         self._widget.ReadyButton.clicked[bool].connect(lambda: self.pub_command.publish("ready"))
         self._widget.OpenButton.clicked[bool].connect(lambda: self.pub_command.publish("open"))
@@ -79,56 +79,13 @@ class RqtFlexGrasp(Plugin):
         self._widget.PlaceButton.clicked[bool].connect(lambda: self.pub_command.publish("place"))
         self._widget.ExperimentButton.clicked.connect(self.handle_experiment)
 
-        def handle_detect_tomato(self):
-            self.pub_command.publish("detect_tomato")
-
 
         # spawn types dropdown
         options = ['3d', '2d']
         initialize_drop_down_button(self._widget.SelectSpawnTypeButton, options, self.handle_spawn_type)
         self.spawn_type = options[0]
 
-        # experiment name dropdown
-        options = ['default', 'simple', 'moderate', 'advanced']
-        initialize_drop_down_button(self._widget.ExperimentNameButton, options, self.handle_experiment_name)
-        self.experiment_name = options[0]
-        
-        # experiment id dropdown
-        self.update_pwd()
-        options = self.get_experiment_ids()
-        initialize_drop_down_button(self._widget.ExperimentIDButton, options, self.handle_experiment_id)
-        self.experiment_id = options[0]
-
-    def get_experiment_ids(self):
-        options = []
-        if not os.path.isdir(self.pwd_truss_type):
-            options.append(str(1).zfill(3) + "  (new)")
-        else:
-            contents = os.listdir(self.pwd_truss_type)
-            if len(contents) == 0:
-                options.append(str(1).zfill(3) + " (new)")
-            else:
-                contents.sort()
-                for file_name in contents:
-                    file_id = int(file_name[:3])
-                    options.append(str(file_id).zfill(3))
-                options.append(str(file_id + 1).zfill(3) + " (new)")
-
-        return options
-
-    def update_button_options(self):
-        button = self._widget.ExperimentIDButton
-
-        # get ids
-        options = self.get_experiment_ids()
-
-        # add to menu  
-        button.clear()
-        for option in options:
-            button.addItem(option)
-                    
-    def update_pwd(self):
-        self.pwd_truss_type = os.path.join(os.getcwd(), 'thesis_data', self.experiment_name)
+        self.experiment_path_interface = ExperimentPathInterface(self._widget.ExperimentNameButton, self._widget.ExperimentIDButton)
 
     def shutdown_plugin(self):
         self.pub_command.unregister()
@@ -148,48 +105,15 @@ class RqtFlexGrasp(Plugin):
         # This will enable a setting button (gear icon) in each dock widget title bar
         # Usually used to open a modal configuration dialog
 
-    def handle_experiment(self):
-        self.experiment = self._widget.ExperimentButton.isChecked()
-        self.pub_experiment.publish(self.experiment)
-
     def handle_spawn_type(self):
+        print "drop it"
         self.spawn_type = str(self._widget.SelectSpawnTypeButton.currentText())
 
     def handle_spawn_truss(self):
+        print "spawn"
         spawn_instruction = SpawnInstruction(type=SpawnInstruction.SPAWN, model_type=self.spawn_type)
         self.pub_spawn_command.publish(spawn_instruction)
 
-
-    def handle_experiment_name(self):
-        button = self._widget.ExperimentNameButton
-        value = str(button.currentText())
-        if self.experiment_name != value:
-            self.experiment_name = value
-            rospy.logdebug("Updated experiment name to %s", self.experiment_name)
-            self.update_pwd()
-            self.update_button_options()
-            self.handle_experiment_id()
-            
-            self.pwd_experiment = os.path.join(self.pwd_truss_type, self.experiment_id)
-            self.pub_experiment_pwd.publish(self.pwd_experiment)
-        
-    def handle_experiment_id(self):
-        button = self._widget.ExperimentIDButton
-        value = str(button.currentText())[0:3]
-        
-        if self.experiment_id != value:
-            self.experiment_id = value
-            rospy.logdebug("Updated experiment id to %s", self.experiment_id)
-            
-            self.update_pwd()
-            self.pwd_experiment = os.path.join(self.pwd_truss_type, self.experiment_id)
-            self.pub_experiment_pwd.publish(self.pwd_experiment)
-
-def initialize_drop_down_button(button, options, cb):
-    button.clear()
-    button.setEditable(True)
-    for option in options:
-        button.addItem(option)
-
-    button.activated.connect(cb)
-    return button
+    def handle_experiment(self):
+        self.experiment = self._widget.ExperimentButton.isChecked()
+        self.pub_experiment.publish(self.experiment)
