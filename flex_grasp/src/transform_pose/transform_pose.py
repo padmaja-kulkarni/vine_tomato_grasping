@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import rospy
-import random
 import numpy as np
 
 # msgs
@@ -12,6 +11,8 @@ from std_msgs.msg import Float32
 
 from func.utils import add_pose
 from flex_shared_resources.utils.conversions import pose_to_lists, point_to_pose_stamped, list_to_orientation, list_to_position, point_to_pose
+
+from flex_shared_resources.utils.pose_generator import PoseGenerator
 
 import tf2_ros
 import tf2_geometry_msgs
@@ -52,13 +53,14 @@ class TransformPose(object):
         pre_place_xyz = pre_grasp_xyz
         ee_rpy = [0, np.pi/2, 0]                   # neutral rotation of ee relative to the robot base frame
 
-        self.wrist_lower_limit = -np.pi/2
-        self.wrist_upper_limit = np.pi/2
+        self.wrist_limits = [-np.pi/2, np.pi/2]  # [lower_limit, upper_limit]
 
         # for generating a place pose
-        self.r_min = 0.15
-        self.r_max = 0.23
-        self.x_min = 0.17
+        self.pose_generator = PoseGenerator(r_range=[0.15, 0.23],
+                                            x_min=0.17,
+                                            frame=self.robot_base_frame,
+                                            seed=self.node_name)
+
 
         # create dict which stores all poses
         keys = ['pre_grasp', 'grasp', 'pre_place', 'place']
@@ -75,7 +77,7 @@ class TransformPose(object):
         peduncle_height_pub.publish(msg)
 
         rospy.Subscriber("peduncle_height", Float32, self.peduncle_height_cb)
-        random.seed(0)
+
 
         self.pose_transform = {'pre_grasp': point_to_pose(pre_grasp_xyz, ee_rpy),
                                'grasp':     point_to_pose(grasp_xyz, ee_rpy),
@@ -90,15 +92,11 @@ class TransformPose(object):
         rospy.logdebug("[%s] Received new peduncle height: %s", self.node_name, self.peduncle_height)
 
     def get_object_height(self):
-        """
-            the object height, relative to the robot_base frame
-        """
+        """ return the object height, relative to the robot_base frame"""
         return self.peduncle_height - self.surface_height
 
     def transform_current_object_pose(self, current_object_pose):
-        """
-            transform the current pose of the target object to the robot_base_frame
-        """
+        """ transform the current pose of the target object to the robot_base_frame"""
         current_object_pose = self.transform_pose(current_object_pose, self.robot_base_frame)
 
         object_position, object_orientation = pose_to_lists(current_object_pose.pose, 'euler')
@@ -109,26 +107,9 @@ class TransformPose(object):
         return current_object_pose
 
     def get_target_object_pose(self, timeout=1):
-        """
-            Generate a random place pose
-        """
-
-        start_time = rospy.get_time()
-
-        while (rospy.get_time() - start_time < timeout) and not rospy.is_shutdown():
-            theta = np.deg2rad(random.randrange(-90, 90, 1))  # [rad]
-            r = self.r_min + random.random() * (self.r_max - self.r_min)  # [m]
-            x = r * np.cos(theta)
-            y = r * np.sin(theta)
-            if x >= self.x_min:
-                break
-
-        orientation = np.deg2rad(random.randrange(-180, 180, 1))  # [rad]
-
-        goal_rpy = [0, 0, orientation]
-        goal_xyz = [x, y, self.get_object_height()]
-
-        target_object_pose = point_to_pose_stamped(goal_xyz, goal_rpy, self.robot_base_frame, rospy.Time.now())
+        """Generate a random place pose"""
+        self.pose_generator.z = self.get_object_height()
+        target_object_pose = self.pose_generator.generate_pose_stamped()
         target_object_pose = self.limit_wrist_angle(target_object_pose)
         return target_object_pose
 
@@ -198,7 +179,7 @@ class TransformPose(object):
             limit orientation around z axis of a given pose_stamped, such that the desired wrist angle lies within the
             joint limits
         """
-        # TODO: currently this method only works if the angle_wrist lies within a 180gedree range of the limits!
+        # TODO: currently this method only works if the angle_wrist lies within a 180degree range of the limits!
 
         if not object_pose.header.frame_id == self.robot_base_frame:
             rospy.logwarn("Cannot limit orientation, pose is not given with respect to %s frame", self.robot_base_frame)
@@ -210,13 +191,12 @@ class TransformPose(object):
         angle_base = np.arctan2(object_position[1], object_position[0])
         angle_wrist = angle_object - angle_base
 
-        if not(self.wrist_lower_limit < angle_wrist < self.wrist_upper_limit):
+        if not(self.wrist_limits[0] < angle_wrist < self.wrist_limits[1]):
             angle_object = angle_object + np.pi
-
+            
         object_pose.pose.orientation = list_to_orientation([0, 0, angle_object])
         return object_pose
-
-
+    
     def transform_pose(self, pose_stamped, to_frame):
         original_frame = pose_stamped.header.frame_id
 
