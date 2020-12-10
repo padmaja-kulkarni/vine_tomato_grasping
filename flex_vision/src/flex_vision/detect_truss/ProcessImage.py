@@ -189,10 +189,7 @@ class ProcessImage(object):
         x = bbox[0]  # col
         y = bbox[1]  # rows to upper left corner
 
-
         translation = [x, y]
-        # print translation
-        # print [self.shape[1], self.shape[0]]
         self.transform = Transform(self.ORIGINAL_FRAME_ID,
                                    self.LOCAL_FRAME_ID,
                                    [self.shape[1], self.shape[0]],  # [width, height]
@@ -207,7 +204,7 @@ class ProcessImage(object):
         self.img_rgb_crop = self.img_rgb.copy().crop(-angle, bbox)
         self.truss_crop = truss_rotate.copy().cut(self.bbox)
 
-        if True: # self.save:
+        if self.save:
             img_rgb = self.get_rgb(local=True)
             save_img(img_rgb, pwd=pwd, name=self.name)
             # self.save_results(self.name, pwd=pwd, local=True)
