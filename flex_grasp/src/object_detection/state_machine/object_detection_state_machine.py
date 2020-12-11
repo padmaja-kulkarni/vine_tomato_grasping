@@ -1,5 +1,5 @@
 import rospy
-
+from flex_grasp.msg import FlexGraspErrorCodes
 
 class ObjectDetectionStateMachine(object):
 
@@ -35,32 +35,59 @@ class ObjectDetectionStateMachine(object):
             return
 
         elif command == "detect_truss":
-            rospy.logdebug("[OBEJCT DETECTION] Detect truss")
+            rospy.logdebug("[{0}] Detect truss".format(self.node_name))
             self._is_idle = False
-
-            # self.take_picture = True
-            # result = self.detect_object()
+            self.command = command
+            self._input.take_picture = True
+            self._input.command_accepted()
 
         elif command == "save_image":
-            rospy.logdebug("[OBEJCT DETECTION] Take picture")
-            self.take_picture = True
-            result = self.log_image()
+            rospy.logdebug("[{0}}] Take picture".format(self.node_name))
+            self._is_idle = False
+            self.command = command
+            self._input.take_picture = True
+            self._input.command_accepted()
 
         elif command == "e_init":
             self._input.command_accepted()
             self._input.command_completed()
 
-        else self.command is not None:
+        else:
             self._input.command_rejected()
 
 
     def _process_detect_state(self):
-        self._object_detection.take_action()
+        if self.command == "detect_truss":
+            if self._input.wait_for_data():
+                self._set_data()
+                result = self._object_detection.detect_object()
+            else:
+                result = FlexGraspErrorCodes.REQUIRED_DATA_MISSING
 
-        result = self.detect_object()
+        elif self.command == "save_image":
+            if self._input.wait_for_data():
+                self. _set_data()
+                result = self._object_detection.log_image()
+            else:
+                result = FlexGraspErrorCodes.REQUIRED_DATA_MISSING
+
+        else:
+            result = FlexGraspErrorCodes.Failure
+
+        self._input.command_completed(result)
+        self._transition_to_idle_state()
+
+
+    def _set_data(self):
+        self._object_detection.color_image = self._input.color_image
+        self._object_detection.depth_image = self._input.depth_image
+        self._object_detection.pcl = self._input.pcl
+        self._object_detection.color_info = self._input.color_info
 
     def _transition_to_idle_state(self):
-        pass
+        self._is_idle = True
+        self._command = None
+        rospy.logdebug("[{0}] Transitioned to idle".format(self.node_name))
 
     def request_shutdown(self):
         pass

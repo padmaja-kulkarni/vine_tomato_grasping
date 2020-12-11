@@ -11,7 +11,7 @@ import rospy
 import cv2
 import json
 import pyrealsense2 as rs
-from cv_bridge import CvBridge, CvBridgeError
+from cv_bridge import CvBridge
 
 # msg
 from std_msgs.msg import String
@@ -34,24 +34,15 @@ from func.utils import colored_depth_image
 
 
 from flex_grasp.msg import FlexGraspErrorCodes
-from flex_shared_resources.errors.flex_grasp_error import flex_grasp_error_log
-
-import os  # os.sep
+import os
 
 
 class ObjectDetection(object):
     """ObjectDetection"""
-    node_name = "OBJECT DETECTION"
 
-    def __init__(self):
+    def __init__(self, node_name):
 
-        # data
-        self.color_image = None
-        self.depth_image = None
-        self.depth_info = None
-        self.color_info = None
-        self.pcl = None
-        self.trans = None
+        self.node_name = node_name
 
         # state
         self.command = None
@@ -64,7 +55,6 @@ class ObjectDetection(object):
         self.camera_frame = "camera_color_optical_frame"
 
         # params
-        self.camera_sim = rospy.get_param("camera_sim")
         self.debug_mode = rospy.get_param("object_detection/debug")
         self.patch_size = 5
         self.surface_height = 0.019  # [m]
@@ -76,7 +66,7 @@ class ObjectDetection(object):
         self.data_set = 'default'
         self.pwd_data = os.path.join(os.getcwd(), 'thesis_data', self.data_set)
 
-        rospy.loginfo("Storing visual results in: ", self.pwd_data)
+        rospy.loginfo("[{0}] Storing visual results in {1}".format(self.node_name, self.pwd_data))
 
         self.process_image = ProcessImage(name='ros_tomato', pwd='', save=False)
 
@@ -92,27 +82,13 @@ class ObjectDetection(object):
 
         # Publish
         self.pub_truss_pose = rospy.Publisher("truss_pose", PoseStamped, queue_size=5, latch=True)
-
-        self.pub_e_out = rospy.Publisher("~e_out",
-                                         FlexGraspErrorCodes, queue_size=10, latch=True)
-
-        self.pub_object_features = rospy.Publisher("object_features",
-                                                   Truss, queue_size=5, latch=True)
-
-        self.pub_tomato_image = rospy.Publisher("tomato_image",
-                                                Image, queue_size=5, latch=True)
-
-        self.pub_depth_image = rospy.Publisher("depth_image",
-                                               Image, queue_size=5, latch=True)
-
-        self.pub_color_hue = rospy.Publisher("color_hue",
-                                             Image, queue_size=5, latch=True)
-
-        self.pub_peduncle_pcl = rospy.Publisher("peduncle_pcl",
-                                                PointCloud2, queue_size=10, latch=True)
-
-        self.pub_tomato_pcl = rospy.Publisher("tomato_pcl",
-                                              PointCloud2, queue_size=10, latch=True)
+        self.pub_e_out = rospy.Publisher("~e_out", FlexGraspErrorCodes, queue_size=10, latch=True)
+        self.pub_object_features = rospy.Publisher("object_features", Truss, queue_size=5, latch=True)
+        self.pub_tomato_image = rospy.Publisher("tomato_image", Image, queue_size=5, latch=True)
+        self.pub_depth_image = rospy.Publisher("depth_image", Image, queue_size=5, latch=True)
+        self.pub_color_hue = rospy.Publisher("color_hue", Image, queue_size=5, latch=True)
+        self.pub_peduncle_pcl = rospy.Publisher("peduncle_pcl", PointCloud2, queue_size=10, latch=True)
+        self.pub_tomato_pcl = rospy.Publisher("tomato_pcl", PointCloud2, queue_size=10, latch=True)
 
         pub_image_processing_settings = rospy.Publisher("image_processing_settings",
                                                         ImageProcessingSettings, queue_size=10, latch=True)
@@ -120,112 +96,20 @@ class ObjectDetection(object):
         pub_image_processing_settings.publish(settings)
 
         # Subscribe
-        rospy.Subscriber("~e_in", String, self.e_in_cb)
-        rospy.Subscriber("camera/color/image_raw", Image, self.color_image_cb)
-        rospy.Subscriber("camera/aligned_depth_to_color/image_raw", Image, self.depth_image_cb)
-        rospy.Subscriber("camera/color/camera_info", CameraInfo, self.color_info_cb)
-        rospy.Subscriber("camera/aligned_depth_to_color/camera_info", CameraInfo, self.depth_info_cb)
-        rospy.Subscriber("camera/depth_registered/points", PointCloud2, self.point_cloud_cb)
-        rospy.Subscriber("experiment_pwd", String, self.data_set_cb)
+        rospy.Subscriber("experiment_pwd", String, self.experiment_pwd_cb)
         rospy.Subscriber("image_processing_settings", ImageProcessingSettings, self.image_processing_settings_cb)
 
-    def data_set_cb(self, msg):
+    def experiment_pwd_cb(self, msg):
         if self.data_set != msg.data:
             self.data_set = msg.data
             self.pwd_data = self.data_set
-            # self.pwd_data = os.path.join(self.pwd_current, '..', '..', 'detect_truss', 'src', 'data', self.data_set)
             rospy.loginfo("[INFO] Storing results in folder %s", self.data_set)
-
-    def e_in_cb(self, msg):
-        if self.command is None:
-            self.command = msg.data
-            rospy.logdebug("[OBJECT DETECTION] Received object detection command: %s", self.command)
-
-            # reset outputting message
-            msg = FlexGraspErrorCodes()
-            msg.val = FlexGraspErrorCodes.NONE
-            self.pub_e_out.publish(msg)
-
-    def color_image_cb(self, msg):
-        if (self.color_image is None) and (self.take_picture):
-            rospy.logdebug("[OBJECT DETECTION] Received color image message")
-            try:
-                self.color_image = self.bridge.imgmsg_to_cv2(msg, "rgb8")
-            except CvBridgeError as e:
-                print(e)
-
-    def depth_image_cb(self, msg):
-        if (self.depth_image is None) and (self.take_picture):
-            rospy.logdebug("[OBJECT DETECTION] Received depth image message")
-            try:
-                if self.camera_sim:
-                    self.depth_image = self.bridge.imgmsg_to_cv2(msg, "passthrough")
-                else:
-                    self.depth_image = self.bridge.imgmsg_to_cv2(msg, "passthrough") / 1000.0
-            except CvBridgeError as e:
-                print(e)
-
-    def color_info_cb(self, msg):
-        if (self.color_info is None) and (self.take_picture):
-            rospy.logdebug("[OBJECT DETECTION] Received color info message")
-            self.color_info = msg
-
-    def depth_info_cb(self, msg):
-        if (self.depth_info is None) and (self.take_picture):
-            rospy.logdebug("[OBJECT DETECTION] Received depth info message")
-            self.depth_info = msg
-
-    def point_cloud_cb(self, msg):
-        if (self.pcl is None) and (self.take_picture):
-            rospy.logdebug("[OBJECT DETECTION] Received point_ cloud info message")
-            self.pcl = msg
 
     def image_processing_settings_cb(self, msg):
         self.settings = msg
         rospy.logdebug("[PICK PLACE] Received image processing settings")
 
-    def received_data(self):
-        received = {}
-        received['color_img'] = self.color_image is not None
-        received['depth_img'] = self.depth_image is not None
-        received['depth_info'] = self.depth_info is not None
-        received['color_info'] = self.color_info is not None
-        received['pcl'] = self.pcl is not None
-
-        all_data = True
-        for key in received:
-            all_data = all_data and received[key]
-
-        received['all'] = all_data
-
-        return received
-
-    def clear_all_data(self):
-        self.color_image = None
-        self.depth_image = None
-        self.depth_info = None
-        self.color_info = None
-        self.pcl = None
-
-    def wait_for_data(self, timeout):
-        start_time = rospy.get_time()
-
-        while (rospy.get_time() - start_time < timeout):
-            received_data = self.received_data()
-            if received_data['all'] is True:
-                self.take_picture = False
-                rospy.logdebug("[OBJECT DETECTION] Received all data")
-                return True
-
-            rospy.sleep(0.1)
-
-        rospy.logwarn("[OBJECT DETECTION] Did not receive all data %s", received_data)
-        return False
-
     def log_image(self, result_img=None):
-
-        if not self.wait_for_data(5):
-            return FlexGraspErrorCodes.REQUIRED_DATA_MISSING
 
         pwd_1 = os.path.join(os.sep, *self.pwd_data.split(os.sep)[0:-1])
         if not os.path.isdir(pwd_1):
@@ -236,7 +120,7 @@ class ObjectDetection(object):
             rospy.loginfo("New path, creating a new folder: " + self.pwd_data)
             os.mkdir(self.pwd_data)
 
-            # imaformation about the image which will be stored
+        # imaformation about the image which will be stored
         image_info = {}
         image_info['px_per_mm'] = self.compute_px_per_mm()
 
@@ -288,9 +172,6 @@ class ObjectDetection(object):
 
     def detect_object(self):
 
-        if not self.wait_for_data(5):
-            return FlexGraspErrorCodes.REQUIRED_DATA_MISSING
-
         px_per_mm = self.compute_px_per_mm()
         self.process_image.add_image(self.color_image, px_per_mm=px_per_mm)
 
@@ -299,36 +180,23 @@ class ObjectDetection(object):
 
         self.intrin = camera_info2intrinsics(self.color_info)
 
-        # process image
-        if self.use_truss:
+        if not self.process_image.process_image():
+            rospy.logwarn("[OBJECT DETECTION] Failed to process image")
+            return FlexGraspErrorCodes.FAILURE
 
-            if not self.process_image.process_image():
-                rospy.logwarn("[OBJECT DETECTION] Failed to process image")
-                return FlexGraspErrorCodes.FAILURE
+        object_features = self.process_image.get_object_features()
+        tomato_mask, peduncle_mask, _ = self.process_image.get_segments()
 
-            object_features = self.process_image.get_object_features()
-            tomato_mask, peduncle_mask, _ = self.process_image.get_segments()
+        cage_pose = self.generate_cage_pose(object_features['grasp_location'], peduncle_mask)
+        tomatoes = self.generate_tomatoes(object_features['tomato'])
+        peduncle = self.generate_peduncle(object_features['peduncle'], cage_pose)  # object_features['peduncle']
 
-            cage_pose = self.generate_cage_pose(object_features['grasp_location'], peduncle_mask)
-            tomatoes = self.generate_tomatoes(object_features['tomato'])
-            peduncle = self.generate_peduncle(object_features['peduncle'], cage_pose)  # object_features['peduncle']
+        self.visualive_tomatoes(tomato_mask)
+        self.visualive_peduncle(peduncle_mask)
 
-            self.visualive_tomatoes(tomato_mask)
-            self.visualive_peduncle(peduncle_mask)
+        img_tomato = self.process_image.get_truss_visualization(local=True)
 
-            img_tomato = self.process_image.get_truss_visualization(local=True)
 
-        elif not self.use_truss:
-            self.process_image.color_space()
-            self.process_image.segment_truss()
-            self.process_image.detect_tomatoes_global()
-            tomato_features = self.process_image.get_tomatoes()
-
-            cage_pose = PoseStamped()
-            tomatoes = self.generate_tomatoes(tomato_features)
-            peduncle = Peduncle()
-
-            img_tomato = self.process_image.get_tomato_visualization(local=True)
 
         truss = self.create_truss(tomatoes, cage_pose, peduncle)
 
@@ -364,7 +232,6 @@ class ObjectDetection(object):
 
         rospy.logdebug('angle: %s', np.rad2deg(angle))
         rpy = [0, 0, angle]
-
 
         table_height = self.get_table_height()
         depth = 0.47 #  self.get_table_height() - self.peduncle_height
@@ -454,9 +321,6 @@ class ObjectDetection(object):
 
     def generate_object(self):
 
-        # %%##################
-        ### Cage location ###
-        #####################
         table_height = 0.23
         frame = "world"
         object_x = rospy.get_param("object_x")
@@ -467,18 +331,12 @@ class ObjectDetection(object):
 
         cage_pose = point_to_pose_stamped(xyz, rpy, frame, rospy.Time.now())
 
-        # %%#############
-        ### Peduncle ###
-        ################
         L = 0.15
         peduncle = Peduncle()
         peduncle.pose = cage_pose
         peduncle.radius = 0.005
         peduncle.length = L
 
-        # %%#############
-        ### tomatoes ###
-        ################
         radii = [0.05, 0.05]
         t1x = xyz[0] + (L / 2 + radii[0]) * np.cos(angle)
         t1y = xyz[1] - (L / 2 + radii[0]) * np.sin(angle)
@@ -611,20 +469,6 @@ class ObjectDetection(object):
         depth_patch_non_zero = depth_patch[non_zero]
 
         return np.median(depth_patch_non_zero)
-
-    def take_action(self):
-        msg = FlexGraspErrorCodes()
-        result = None
-
-
-
-        # publish success
-        if result is not None:
-            msg.val = result
-            flex_grasp_error_log(result, self.node_name)
-            self.pub_e_out.publish(msg)
-            self.clear_all_data()
-            self.command = None
 
 
 def euclidean(v1, v2):

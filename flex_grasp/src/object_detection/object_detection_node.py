@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 import rospy
 
-# from state_machine.state_machine_input import StateMachineInput
+from state_machine.state_machine_input import StateMachineInput
 from state_machine.object_detection_state_machine import ObjectDetectionStateMachine
 from object_detection import ObjectDetection
 
@@ -23,14 +23,14 @@ def main():
     rospy.init_node(NODE_NAME, anonymous=True, log_level=log_level)
     update_rate = rospy.get_param('~update_rate', DEFAULT_UPDATE_RATE)
 
-    # state_machine_input = StateMachineInput(NODE_NAME)
+    state_machine_input = StateMachineInput(NODE_NAME)
     object_detection = ObjectDetection(NODE_NAME)
-    transform_pose_state_machine = TransformPoseStateMachine(transform_pose, state_machine_input, update_rate, NODE_NAME)
+    object_detection_state_machine = ObjectDetectionStateMachine(object_detection, state_machine_input, update_rate, NODE_NAME)
     rospy.loginfo('[%s] Object detection state machine successfully generated', NODE_NAME)
 
-    # rospy.core.add_preshutdown_hook(lambda reason: transform_pose_state_machine.request_shutdown())
+    rospy.core.add_preshutdown_hook(lambda reason: object_detection_state_machine.request_shutdown())
 
-    transform_pose_state_machine.run()
+    object_detection_state_machine.run()
 
 
 if __name__ == '__main__':

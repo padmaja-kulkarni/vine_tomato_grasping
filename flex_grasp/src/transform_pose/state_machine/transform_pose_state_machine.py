@@ -68,7 +68,7 @@ class TransformPoseStateMachine(object):
     def _transition_to_idle_state(self):
         self._is_idle = True
         self._command = None
-        rospy.logdebug('Transitioned to idle')
+        rospy.logdebug("[{0}] Transitioned to idle".format(self.node_name))
 
     def request_shutdown(self):
         self._shutdown_requested = True
