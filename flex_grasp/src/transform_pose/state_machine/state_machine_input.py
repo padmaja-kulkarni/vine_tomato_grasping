@@ -1,7 +1,7 @@
 import rospy
 from flex_grasp.msg import FlexGraspErrorCodes
 from std_msgs.msg import String
-from flex_grasp.msg import Truss
+from geometry_msgs.msg import PoseStamped
 from flex_shared_resources.errors.flex_grasp_error import flex_grasp_error_log
 
 class StateMachineInput(object):
@@ -10,7 +10,7 @@ class StateMachineInput(object):
         self.node_name = node_name
 
         rospy.Subscriber("~e_in", String, self.e_in_cb)
-        rospy.Subscriber("object_features", Truss, self.object_features_cb)
+        rospy.Subscriber("truss_pose", PoseStamped, self.truss_pose_cb)
 
         self.pub_e_out = rospy.Publisher("~e_out", FlexGraspErrorCodes, queue_size=10, latch=True)
 
@@ -28,8 +28,8 @@ class StateMachineInput(object):
                 rospy.logwarn("[{0}] Received unknown command {1}!".format(self.node_name, msg.data))
                 self.command_rejected(FlexGraspErrorCodes.UNKNOWN_COMMAND)
 
-    def object_features_cb(self, msg):
-        self.object_pose = msg.cage_location
+    def truss_pose_cb(self, msg):
+        self.object_pose = msg
         rospy.logdebug("[%s] Received new object feature message", self.node_name)
 
     def reset(self):

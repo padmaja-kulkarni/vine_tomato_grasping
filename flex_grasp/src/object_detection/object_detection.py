@@ -36,6 +36,8 @@ from func.utils import colored_depth_image
 from flex_grasp.msg import FlexGraspErrorCodes
 import os
 
+DEFAULT_PUBLISH_SEGMENTS = False
+
 
 class ObjectDetection(object):
     """ObjectDetection"""
@@ -44,41 +46,29 @@ class ObjectDetection(object):
 
         self.node_name = node_name
 
-        # state
-        self.command = None
-        self.init = None
-        self.take_picture = False
-
         # frames
         self.color_frame = "camera_color_optical_frame"
         self.depth_frame = "camera_depth_optical_frame"
         self.camera_frame = "camera_color_optical_frame"
 
+        # data
+        self.color_image = None
+        self.depth_image = None
+        self.color_info = None
+        self.pcl = None
+
         # params
-        self.debug_mode = rospy.get_param("object_detection/debug")
         self.patch_size = 5
         self.surface_height = 0.019  # [m]
         self.peduncle_height = 0.080  # [m]
+        self.settings = None
 
         self.bridge = CvBridge()
-
-        self.pwd_current = os.path.dirname(__file__)  # path to THIS file
-        self.data_set = 'default'
-        self.pwd_data = os.path.join(os.getcwd(), 'thesis_data', self.data_set)
-
-        rospy.loginfo("[{0}] Storing visual results in {1}".format(self.node_name, self.pwd_data))
+        self.pwd_data = os.path.join(os.getcwd(), 'thesis_data', 'default')
 
         self.process_image = ProcessImage(name='ros_tomato', pwd='', save=False)
 
         settings = settings_lib_to_msg(self.process_image.get_settings())
-
-        if self.debug_mode:
-            log_level = rospy.DEBUG
-            rospy.loginfo("[OBJECT DETECTION] Launching object detection node in debug mode")
-        else:
-            log_level = rospy.INFO
-
-        rospy.init_node("object_detection", anonymous=True, log_level=log_level)
 
         # Publish
         self.pub_truss_pose = rospy.Publisher("truss_pose", PoseStamped, queue_size=5, latch=True)
@@ -86,9 +76,9 @@ class ObjectDetection(object):
         self.pub_object_features = rospy.Publisher("object_features", Truss, queue_size=5, latch=True)
         self.pub_tomato_image = rospy.Publisher("tomato_image", Image, queue_size=5, latch=True)
         self.pub_depth_image = rospy.Publisher("depth_image", Image, queue_size=5, latch=True)
-        self.pub_color_hue = rospy.Publisher("color_hue", Image, queue_size=5, latch=True)
-        self.pub_peduncle_pcl = rospy.Publisher("peduncle_pcl", PointCloud2, queue_size=10, latch=True)
-        self.pub_tomato_pcl = rospy.Publisher("tomato_pcl", PointCloud2, queue_size=10, latch=True)
+        # self.pub_color_hue = rospy.Publisher("color_hue", Image, queue_size=5, latch=True)
+        # self.pub_peduncle_pcl = rospy.Publisher("peduncle_pcl", PointCloud2, queue_size=10, latch=True)
+        # self.pub_tomato_pcl = rospy.Publisher("tomato_pcl", PointCloud2, queue_size=10, latch=True)
 
         pub_image_processing_settings = rospy.Publisher("image_processing_settings",
                                                         ImageProcessingSettings, queue_size=10, latch=True)
@@ -99,11 +89,21 @@ class ObjectDetection(object):
         rospy.Subscriber("experiment_pwd", String, self.experiment_pwd_cb)
         rospy.Subscriber("image_processing_settings", ImageProcessingSettings, self.image_processing_settings_cb)
 
+    @property
+    def pwd_data(self):
+        return self.__pwd_data
+
+    @pwd_data.setter
+    def pwd_data(self, path):
+        """With this setter the user will always get an update when the path is changed"""
+        self.__pwd_data = path
+        rospy.loginfo("[{0}] Storing results in folder {1}".format(self.node_name, path))
+
     def experiment_pwd_cb(self, msg):
-        if self.data_set != msg.data:
-            self.data_set = msg.data
-            self.pwd_data = self.data_set
-            rospy.loginfo("[INFO] Storing results in folder %s", self.data_set)
+        """callback to update the data path"""
+        new_path = msg.data
+        if self.pwd_data != new_path:
+            self.pwd_data = new_path
 
     def image_processing_settings_cb(self, msg):
         self.settings = msg
@@ -188,20 +188,10 @@ class ObjectDetection(object):
         tomato_mask, peduncle_mask, _ = self.process_image.get_segments()
 
         cage_pose = self.generate_cage_pose(object_features['grasp_location'], peduncle_mask)
-        tomatoes = self.generate_tomatoes(object_features['tomato'])
-        peduncle = self.generate_peduncle(object_features['peduncle'], cage_pose)  # object_features['peduncle']
-
-        self.visualive_tomatoes(tomato_mask)
-        self.visualive_peduncle(peduncle_mask)
 
         img_tomato = self.process_image.get_truss_visualization(local=True)
 
-
-
-        truss = self.create_truss(tomatoes, cage_pose, peduncle)
-
         # get images
-        img_hue = self.process_image.get_color_components()
         img_depth = colored_depth_image(self.depth_image.copy())
 
         self.log_image(result_img=img_tomato)
@@ -209,16 +199,13 @@ class ObjectDetection(object):
         # publish results tomato_img
         imgmsg_tomato = self.bridge.cv2_to_imgmsg(img_tomato, encoding="rgba8")
         imgmsg_depth = self.bridge.cv2_to_imgmsg(img_depth, encoding="rgb8")
-        imgmsg_hue = self.bridge.cv2_to_imgmsg(img_hue)
 
         rospy.logdebug("Publishing results")
 
         self.pub_tomato_image.publish(imgmsg_tomato)
         self.pub_depth_image.publish(imgmsg_depth)
-        self.pub_color_hue.publish(imgmsg_hue)
         if cage_pose is False:
             return FlexGraspErrorCodes.FAILURE
-        self.pub_object_features.publish(truss)
         self.pub_truss_pose.publish(cage_pose)
         return FlexGraspErrorCodes.SUCCESS
 
@@ -255,106 +242,6 @@ class ObjectDetection(object):
 
         return cage_pose
 
-    def visualive_tomatoes(self, tomato_mask):
-        tomato_pcl = self.segment_pcl(tomato_mask, color=(200, 50, 50, 255))
-        # self.pub_tomato_mask.publish(self.bridge.cv2_to_imgmsg(tomato_mask))         
-        self.pub_tomato_pcl.publish(tomato_pcl)
-
-    def visualive_peduncle(self, peduncle_mask):
-        peduncle_pcl = self.segment_pcl(peduncle_mask, color=(50, 200, 50, 255))
-        self.pub_peduncle_pcl.publish(peduncle_pcl)
-
-    def generate_tomatoes(self, tomato_features):
-
-        tomatoes = []
-        for i in range(0, len(tomato_features['col'])):
-            # Load from struct
-            col = tomato_features['col'][i]
-            row = tomato_features['row'][i]
-            radius = tomato_features['radii'][i]
-
-            point = self.deproject(row, col)
-
-            depth = self.get_depth(row, col)  # depth = self.depth_image[(row, col)]
-            point1 = rs.rs2_deproject_pixel_to_point(self.intrin, [0, 0], depth)
-            point2 = rs.rs2_deproject_pixel_to_point(self.intrin, [0, radius], depth)
-            radius_m = euclidean(point1, point2)
-
-            tomatoes.append(point_to_tomato(point, radius_m, self.camera_frame))
-
-        return tomatoes
-
-    def generate_peduncle(self, peduncle_features, cage_pose):
-
-        peduncle = Peduncle()
-        peduncle.pose = cage_pose
-        # peduncle.pcl = peduncle_pcl
-        peduncle.radius = 0.01
-        peduncle.length = 0.15
-        return peduncle
-
-    def segment_pcl(self, img, color=(255, 255, 255, 255)):
-
-        r = color[0]
-        g = color[1]
-        b = color[2]
-        a = color[3]
-
-        index = np.nonzero(img)
-
-        uvs = list()
-        for row, col in zip(index[0], index[1]):
-            uvs.append([col, row])
-
-        rgba = struct.unpack('I', struct.pack('BBBB', b, g, r, a))[0]
-
-        points = self.get_points(uvs=uvs, field_names=("x", "y", "z"))
-        for i in range(0, len(points)):
-            points[i] = points[i] + (rgba,)
-
-        fields = [PointField('x', 0, PointField.FLOAT32, 1),
-                  PointField('y', 4, PointField.FLOAT32, 1),
-                  PointField('z', 8, PointField.FLOAT32, 1),
-                  PointField('rgba', 12, PointField.UINT32, 1)]
-
-        return pc2.create_cloud(self.pcl.header, fields, points)
-
-    def generate_object(self):
-
-        table_height = 0.23
-        frame = "world"
-        object_x = rospy.get_param("object_x")
-        object_y = rospy.get_param("object_y")
-        angle = rospy.get_param("object_angle")
-        xyz = [object_x, object_y, 0.05 + table_height]
-        rpy = [3.1415, 0, angle]  # 3.1415/2.0
-
-        cage_pose = point_to_pose_stamped(xyz, rpy, frame, rospy.Time.now())
-
-        L = 0.15
-        peduncle = Peduncle()
-        peduncle.pose = cage_pose
-        peduncle.radius = 0.005
-        peduncle.length = L
-
-        radii = [0.05, 0.05]
-        t1x = xyz[0] + (L / 2 + radii[0]) * np.cos(angle)
-        t1y = xyz[1] - (L / 2 + radii[0]) * np.sin(angle)
-        t2x = xyz[0] - (L / 2 + radii[1]) * np.cos(angle)
-        t2y = xyz[1] + (L / 2 + radii[1]) * np.sin(angle)
-        point1 = [t1x, t1y, table_height]
-        point2 = [t2x, t2y, table_height]
-        points = [point1, point2]
-
-        tomatoes = []
-        for point, radius in zip(points, radii):
-            # tomatoes.append(point_to_tomato(point, radius, frame))
-            pass
-
-        truss = self.create_truss(tomatoes, cage_pose, peduncle)
-        self.pub_object_features.publish(truss)
-        return True
-
     def get_table_height(self):
         heights = self.get_points(field_names=("z"))
         return np.nanmedian(np.array(heights))
@@ -370,15 +257,6 @@ class ObjectDetection(object):
         rospy.logdebug('Pixels per mm: %s [px/mm]', px_per_mm)
         return px_per_mm
 
-    def create_truss(self, tomatoes, cage_pose, peduncle):
-
-        truss = Truss()
-        truss.tomatoes = tomatoes
-        truss.cage_location = cage_pose
-        truss.peduncle = peduncle
-
-        return truss
-
     def get_point(self, uvs):
         points = self.get_points(uvs=uvs)
         point = np.mean(points, axis=0)
@@ -392,7 +270,7 @@ class ObjectDetection(object):
         # TODO: these should never be floats!
         row = int(row)
         col = int(col)
-        
+
         if depth is None:
             depth = self.get_depth(row, col, segment=segment)
 
@@ -475,14 +353,3 @@ def euclidean(v1, v2):
     return sum((p - q) ** 2 for p, q in zip(v1, v2)) ** .5
 
 
-def point_to_tomato(point, radius, frame):
-    tomato = Tomato()
-    tomato.header.frame_id = frame
-    tomato.header.stamp = rospy.Time.now()
-
-    tomato.position.x = point[0]
-    tomato.position.y = point[1]
-    tomato.position.z = point[2] + radius
-
-    tomato.radius = radius
-    return tomato

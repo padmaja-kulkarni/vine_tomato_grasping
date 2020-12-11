@@ -7,7 +7,7 @@ from flex_shared_resources.errors.flex_grasp_error import flex_grasp_error_log
 from sensor_msgs.msg import PointCloud2
 from cv_bridge import CvBridge, CvBridgeError
 
-CAMERA_SIM = True
+DEFAULT_CAMERA_SIM = True
 
 class StateMachineInput(object):
 
@@ -26,7 +26,7 @@ class StateMachineInput(object):
         self.command = False
 
         # params
-        self.camera_sim = rospy.get_param("camera_sim", CAMERA_SIM)
+        self.camera_sim = rospy.get_param("camera_sim", DEFAULT_CAMERA_SIM)
         self.bridge = CvBridge()
 
         # subscribe
