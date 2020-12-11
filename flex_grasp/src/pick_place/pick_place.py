@@ -186,12 +186,11 @@ class PickPlace(object):
  
         return success
 
-    ### Log state update
+    # Log state update
     def log_state_update(self):
         rospy.loginfo("[PICK PLACE] updated pick place state, from %s to %s",
                       self.prev_state, self.state)            
-            
-                  
+
     def update_state(self, success):
 
         if (self.state == "idle") and not self.received_all_data():
@@ -204,17 +203,16 @@ class PickPlace(object):
             self.state = "idle"
             self.log_state_update()           
 
-        elif (self.state == "idle") and ((self.command == "pick") or (self.command == "fake_pick") ) and success:
+        elif (self.state == "idle") and (self.command == "pick") and success:
             self.prev_state = self.state
             self.state = "picked"
             self.log_state_update()
 
-        elif (self.state == "picked") and (success == True or success == False):
+        elif (self.state == "picked") and (success is True or success is False):
             self.prev_state = self.state
             self.state = "init"
             self.log_state_update()                  
-                  
-                        
+
     def take_action(self):
         msg = FlexGraspErrorCodes()
         result = None
@@ -232,8 +230,6 @@ class PickPlace(object):
         if self.state == "idle":
             if self.command == "pick":
                 result = self.pick()
-            if self.command == "fake_pick":
-                result = self.fake_pick()
             elif self.command == "place":
                 rospy.logwarn("Can not place object, it is not picked!")
                 result = FlexGraspErrorCodes.STATE_ERROR
@@ -241,8 +237,6 @@ class PickPlace(object):
         elif self.state == "picked":
             if self.command == "place":
                 result = self.place()
-            elif self.command == "fake_place":
-                result = self.fake_place()
             elif self.command == "pick":
                 rospy.logwarn("[PICK PLACE] Can not pick object, it still needs to be placed!")
                 result = FlexGraspErrorCodes.STATE_ERROR

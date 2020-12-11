@@ -616,34 +616,7 @@ class ObjectDetection(object):
         msg = FlexGraspErrorCodes()
         result = None
 
-        if (self.command == "detect_tomato"):
-            rospy.logdebug("[OBEJCT DETECTION] Detect tomato")
-            # if not self.debug_mode:
-            #     success = self.generate_object()
-            # if self.debug_mode:
-            self.process_image.use_truss = False
-            self.use_truss = False
-            self.take_picture = True
-            result = self.detect_object()
 
-        elif (self.command == "detect_truss"):
-            rospy.logdebug("[OBEJCT DETECTION] Detect truss")
-            self.process_image.use_truss = True
-            self.use_truss = True
-            self.take_picture = True
-            result = self.detect_object()
-
-        elif (self.command == "save_image"):
-            rospy.logdebug("[OBEJCT DETECTION] Take picture")
-            self.take_picture = True
-            result = self.log_image()
-
-        elif (self.command == "e_init"):
-            self.init = True
-            result = FlexGraspErrorCodes.SUCCESS
-
-        elif self.command is not None:
-            result = FlexGraspErrorCodes.UNKNOWN_COMMAND
 
         # publish success
         if result is not None:
@@ -669,23 +642,3 @@ def point_to_tomato(point, radius, frame):
 
     tomato.radius = radius
     return tomato
-
-
-def main():
-    try:
-        object_detection = ObjectDetection()
-        rospy.loginfo("[OBJECT DETECTION] Initialized")
-        rate = rospy.Rate(10)
-
-        while not rospy.core.is_shutdown():
-            object_detection.take_action()
-            rate.sleep()
-
-    except rospy.ROSInterruptException:
-        return
-    except KeyboardInterrupt:
-        return
-
-
-if __name__ == '__main__':
-    main()
