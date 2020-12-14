@@ -1,6 +1,9 @@
 import rospy
 from flex_grasp.msg import FlexGraspErrorCodes
 
+
+DEFAULT_DREAM = True
+
 class ObjectDetectionStateMachine(object):
 
     def __init__(self, object_detection, state_input, update_rate, node_name):
@@ -12,6 +15,11 @@ class ObjectDetectionStateMachine(object):
         self._is_idle = True
         self._command = None
         self._shutdown_requested = False
+
+        self.dream = rospy.get_param("dream_camera", DEFAULT_DREAM)
+
+        if self.dream:
+            rospy.loginfo("[{0}] Object detection launched in dream mode!".format(self.node_name))
 
     def run(self):
 
@@ -39,10 +47,13 @@ class ObjectDetectionStateMachine(object):
             self._is_idle = False
             self.command = command
             self._input.take_picture = True
+            if self.dream:
+                self._input.load_data()
+
             self._input.command_accepted()
 
         elif command == "save_image":
-            rospy.logdebug("[{0}}] Take picture".format(self.node_name))
+            rospy.logdebug("[{0}] Take picture".format(self.node_name))
             self._is_idle = False
             self.command = command
             self._input.take_picture = True
@@ -55,10 +66,10 @@ class ObjectDetectionStateMachine(object):
         else:
             self._input.command_rejected()
 
-
     def _process_detect_state(self):
         if self.command == "detect_truss":
             if self._input.wait_for_data():
+                # self._input.log_data()
                 self._set_data()
                 result = self._object_detection.detect_object()
             else:
@@ -66,7 +77,8 @@ class ObjectDetectionStateMachine(object):
 
         elif self.command == "save_image":
             if self._input.wait_for_data():
-                self. _set_data()
+                self._input.log_data()
+                self._set_data()
                 result = self._object_detection.log_image()
             else:
                 result = FlexGraspErrorCodes.REQUIRED_DATA_MISSING
@@ -77,12 +89,13 @@ class ObjectDetectionStateMachine(object):
         self._input.command_completed(result)
         self._transition_to_idle_state()
 
-
     def _set_data(self):
         self._object_detection.color_image = self._input.color_image
         self._object_detection.depth_image = self._input.depth_image
         self._object_detection.pcl = self._input.pcl
-        self._object_detection.color_info = self._input.color_info
+        self._object_detection.color_info = self._input.camera_info
+        self._object_detection.pwd_data = self._input.data_path
+        self._object_detection.id = self._input.id
 
     def _transition_to_idle_state(self):
         self._is_idle = True

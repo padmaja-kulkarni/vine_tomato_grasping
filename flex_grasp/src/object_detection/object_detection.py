@@ -64,7 +64,8 @@ class ObjectDetection(object):
         self.settings = None
 
         self.bridge = CvBridge()
-        self.pwd_data = os.path.join(os.getcwd(), 'thesis_data', 'default')
+        self.pwd_data = None
+        self.id = None
 
         self.process_image = ProcessImage(name='ros_tomato', pwd='', save=False)
 
@@ -86,7 +87,6 @@ class ObjectDetection(object):
         pub_image_processing_settings.publish(settings)
 
         # Subscribe
-        rospy.Subscriber("experiment_pwd", String, self.experiment_pwd_cb)
         rospy.Subscriber("image_processing_settings", ImageProcessingSettings, self.image_processing_settings_cb)
 
     @property
@@ -94,16 +94,12 @@ class ObjectDetection(object):
         return self.__pwd_data
 
     @pwd_data.setter
-    def pwd_data(self, path):
+    def pwd_data(self, new_path):
         """With this setter the user will always get an update when the path is changed"""
-        self.__pwd_data = path
-        rospy.loginfo("[{0}] Storing results in folder {1}".format(self.node_name, path))
 
-    def experiment_pwd_cb(self, msg):
-        """callback to update the data path"""
-        new_path = msg.data
-        if self.pwd_data != new_path:
-            self.pwd_data = new_path
+        self.__pwd_data = new_path
+        if self.pwd_data is not None:
+            rospy.loginfo("[{0}] Storing results in folder {1}".format(self.node_name, new_path))
 
     def image_processing_settings_cb(self, msg):
         self.settings = msg
@@ -111,37 +107,11 @@ class ObjectDetection(object):
 
     def log_image(self, result_img=None):
 
-        pwd_1 = os.path.join(os.sep, *self.pwd_data.split(os.sep)[0:-1])
-        if not os.path.isdir(pwd_1):
-            rospy.loginfo("New path, creating a new folder: " + pwd_1)
-            os.mkdir(pwd_1)
 
-        if not os.path.isdir(self.pwd_data):
-            rospy.loginfo("New path, creating a new folder: " + self.pwd_data)
-            os.mkdir(self.pwd_data)
-
-        # imaformation about the image which will be stored
+        # information about the image which will be stored
         image_info = {}
         image_info['px_per_mm'] = self.compute_px_per_mm()
-
-        # check contents folder
-        contents = os.listdir(self.pwd_data)
-
-        # determine starting number
-        if len(contents) == 0:
-            id_int = 1
-        else:
-            contents.sort()
-            file_name = contents[-1]
-            file_id = file_name[:3]
-            id_int = int(file_id) + 1
-        id_string = str(id_int).zfill(3)
-
-        name_rgb = id_string + '_rgb.png'
-        name_depth = id_string + '_depth.png'
-        name_result = id_string + '_result.png'
-        json_file_name = id_string + '_info.json'
-        json_pwd = os.path.join(self.pwd_data, json_file_name)
+        json_pwd = os.path.join(self.pwd_data, self.id + '_info.json')
 
         rgb_img = self.color_image
         depth_img = colored_depth_image(self.depth_image.copy())
@@ -149,25 +119,36 @@ class ObjectDetection(object):
         with open(json_pwd, "w") as write_file:
             json.dump(image_info, write_file)
 
-        result = self.save_image(rgb_img, self.pwd_data, name_rgb)
-        result = self.save_image(depth_img, self.pwd_data, name_depth)
+        result = self.save_image(rgb_img, self.pwd_data,  name=self.id + '_rgb.png')
+        result = self.save_image(depth_img, self.pwd_data, name=self.id + '_depth.png')
         if result_img is not None:
-            result = self.save_image(result_img, self.pwd_data, name_result)
+            result = self.save_image(result_img, self.pwd_data, name=self.id + '_result.png')
 
         if result == FlexGraspErrorCodes.SUCCESS:
-            rospy.loginfo("[OBJECT DETECTION] Succesfully logged data of id %s", id_string)
+            rospy.loginfo("[{0}] Successfully logged data to path {1}".format(self.node_name, self.pwd_data))
 
         imgmsg_depth = self.bridge.cv2_to_imgmsg(depth_img, encoding="rgb8")
         self.pub_depth_image.publish(imgmsg_depth)
         return result
 
-    def save_image(self, img, pwd, name):
-        full_pwd = os.path.join(pwd, name)
+    def save_image(self, img, pwd, name=None):
+        """Save image to the given path, if the path does not exist create it."""
+        if name is None:
+            full_pwd = pwd
+        else:
+            full_pwd = os.path.join(pwd, name)
+
+        # Make sure the folder exists
+        pwd = os.path.join(os.sep, *full_pwd.split(os.sep)[0:-1])
+        if not os.path.isdir(pwd):
+            rospy.loginfo("[{0}]New path, creating a new folder {1}".format(self.node_name, pwd))
+            os.mkdir(pwd)
+
         if cv2.imwrite(full_pwd, cv2.cvtColor(img, cv2.COLOR_RGB2BGR)):
-            rospy.logdebug("[OBJECT DETECTION] File %s save successfully to path %s", name, self.pwd_data)
+            rospy.logdebug("[{0}] Successfully saved image to path {1}".format(self.node_name, full_pwd))
             return FlexGraspErrorCodes.SUCCESS
         else:
-            rospy.logwarn("[OBJECT DETECTION] Failed to save image %s to path %s", name, self.pwd_data)
+            rospy.logwarn("[{0}] Failed to save image to path %s".format(self.node_name, full_pwd))
             return FlexGraspErrorCodes.FAILURE
 
     def detect_object(self):

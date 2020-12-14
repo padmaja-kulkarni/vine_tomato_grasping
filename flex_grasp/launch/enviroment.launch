@@ -11,6 +11,7 @@
     <arg name="use_iiwa"            default="false"/>
     <arg name="use_interbotix"      default="false"/>
     <arg name="use_calibration"     default="true"/>
+    <arg name="dream_camera"        default="false"/>
 
     <!-- hardware_interface to use : PositionJointInterface, EffortJointInterface, VelocityJointInterface. -->
     <arg name="hardware_interface"  default="PositionJointInterface"/>
@@ -49,6 +50,8 @@
            to="/$(arg robot_name)/$(arg hardware_interface)_trajectory_controller/follow_joint_trajectory"/>
 
     <group ns="$(arg robot_name)">
+      <param name="dream_camera"        value="$(arg dream_camera)"/>
+
       <param name="use_iiwa"        value="$(arg use_iiwa)"/>
       <param name="use_sdh"         value="$(arg use_sdh)"/>
       <param name="use_interbotix"  value="$(arg use_interbotix)"/>
@@ -71,11 +74,10 @@
       <arg name="filters"           value="$(arg filters)"/>
     </include>
 
-    <!--
-    <remap from="/px150/camera/depth_registered" to="/px150/no_camera/depth_registered"/>
-    <remap from="/px150/camera/" to="/px150/no_camera/"/>
-    <remap from="/px150/camera/color/" to="/px150/no_camera/color"/>
-    -->
+
+    <remap if="$(arg dream_camera)" from="/px150/camera/depth_registered" to="/px150/no_camera/depth_registered"/>
+    <remap if="$(arg dream_camera)" from="/px150/camera/" to="/px150/no_camera/"/>
+    <remap if="$(arg dream_camera)" from="/px150/camera/color/" to="/px150/no_camera/color"/>
 
     <!-- Run the robot within a Gazebo simulation. -->
     <group if="$(eval arg('robot_sim') or arg('camera_sim'))">
