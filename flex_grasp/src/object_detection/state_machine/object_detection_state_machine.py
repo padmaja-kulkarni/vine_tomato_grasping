@@ -82,7 +82,7 @@ class ObjectDetectionStateMachine(object):
             if self._input.wait_for_messages():
                 self._input.log_messages()
                 self._set_data()
-                result = self._object_detection.log_image()
+                result = self._object_detection.save_data()
             else:
                 result = FlexGraspErrorCodes.REQUIRED_DATA_MISSING
 
@@ -106,4 +106,5 @@ class ObjectDetectionStateMachine(object):
         rospy.logdebug("[{0}] Transitioned to idle".format(self.node_name))
 
     def request_shutdown(self):
-        pass
+        rospy.loginfo("[{0}] Shutdown requested".format(self.node_name))
+        self._shutdown_requested = True

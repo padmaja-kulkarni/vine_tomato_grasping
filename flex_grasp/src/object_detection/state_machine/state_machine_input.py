@@ -13,7 +13,7 @@ from flex_shared_resources.errors.flex_grasp_error import flex_grasp_error_log, 
 from cv_bridge import CvBridge, CvBridgeError
 from data_logger import DataLogger
 
-DEFAULT_CAMERA_SIM = True
+DEFAULT_CAMERA_SIM = False
 
 class StateMachineInput(object):
 
@@ -25,7 +25,6 @@ class StateMachineInput(object):
         self.depth_image = None
         self.camera_info = None
         self.pcl = None
-        self.trans = None
 
         # state
         self.take_picture = False

@@ -20,24 +20,24 @@ from math import pi
 
 
 
-def camera_info2intrinsics(camera_info):
+def camera_info2rs_intrinsics(camera_info):
 
     # init object
-    intrin = rs.intrinsics()
+    rs_intrinsics = rs.intrinsics()
 
     # dimensions
-    intrin.width = camera_info.width
-    intrin.height = camera_info.height
+    rs_intrinsics.width = camera_info.width
+    rs_intrinsics.height = camera_info.height
 
     # principal point coordinates
-    intrin.ppx = camera_info.K[2]
-    intrin.ppy = camera_info.K[5]
+    rs_intrinsics.ppx = camera_info.K[2]
+    rs_intrinsics.ppy = camera_info.K[5]
 
     # focal point
-    intrin.fx = camera_info.K[0]
-    intrin.fy = camera_info.K[4]
+    rs_intrinsics.fx = camera_info.K[0]
+    rs_intrinsics.fy = camera_info.K[4]
 
-    return intrin
+    return rs_intrinsics
 
 
 def pose_close(goal, actual, position_tol, orientation_tol):

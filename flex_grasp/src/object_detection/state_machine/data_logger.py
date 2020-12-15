@@ -2,6 +2,7 @@ import rospy
 import rosbag
 import os
 
+
 class DataLogger(object):
     """Generic data logger class"""
 
@@ -57,22 +58,22 @@ class DataLogger(object):
 
         bag.close()
 
-    # def receive_messages(self):
-    #     """Read data from a rosbag and trigger the callbacks the received data"""
-    #     if self.callbacks is None:
-    #         rospy.logwarn("[{0}] Data logger can not trigger callbacks: they are not defined!".format(self.node_name))
-    #         return
-    #
-    #     rospy.logdebug("[{0}] Reading and publishing messages from file {1}".format(self.node_name, self.bag_name))
-    #     bag = rosbag.Bag(self.bag_name)
-    #
-    #     for key in self.topics:
-    #         topic = self.topics[key]
-    #         rospy.logdebug("[{0}] reading {1} from bag on topic {2}".format(self.node_name, key, topic))
-    #         for topic, message, t in bag.read_messages(topics=topic):
-    #             callback = self.callbacks[key]
-    #             callback(message, force=True)
-    #
-    #     bag.close()
+    def receive_messages(self):
+        """Read data from a rosbag and trigger the callbacks the received data"""
+        if self.callbacks is None:
+            rospy.logwarn("[{0}] Data logger can not trigger callbacks: they are not defined!".format(self.node_name))
+            return
+
+        rospy.logdebug("[{0}] Reading and publishing messages from file {1}".format(self.node_name, self.bag_name))
+        bag = rosbag.Bag(self.bag_name)
+
+        for key in self.topics:
+            topic = self.topics[key]
+            rospy.logdebug("[{0}] reading {1} from bag on topic {2}".format(self.node_name, key, topic))
+            for topic, message, t in bag.read_messages(topics=topic):
+                callback = self.callbacks[key]
+                callback(message, force=True)
+
+        bag.close()
 
 
