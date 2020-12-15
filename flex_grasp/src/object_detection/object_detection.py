@@ -10,21 +10,13 @@ import numpy as np
 import rospy
 import cv2
 import json
-import pyrealsense2 as rs
 from cv_bridge import CvBridge
 
 # msg
-from std_msgs.msg import String
 from sensor_msgs.msg import Image
-from sensor_msgs.msg import CameraInfo
 from geometry_msgs.msg import PoseStamped
-from sensor_msgs.msg import PointCloud2
-
-from sensor_msgs.msg import PointField
-import sensor_msgs.point_cloud2 as pc2
-import struct
-
 from flex_grasp.msg import Tomato, Truss, Peduncle, ImageProcessingSettings
+from depth_interface import DepthImageFilter, PointCloudFilter
 
 from flex_vision.detect_truss.ProcessImage import ProcessImage
 
@@ -59,7 +51,6 @@ class ObjectDetection(object):
 
         # params
         self.patch_size = 5
-        self.surface_height = 0.019  # [m]
         self.peduncle_height = 0.080  # [m]
         self.settings = None
 
@@ -106,7 +97,6 @@ class ObjectDetection(object):
         rospy.logdebug("[PICK PLACE] Received image processing settings")
 
     def log_image(self, result_img=None):
-
 
         # information about the image which will be stored
         image_info = {}
@@ -199,33 +189,33 @@ class ObjectDetection(object):
             rospy.logwarn("Failed to compute caging pose: object detection returned None!")
             return False
 
-        rospy.logdebug('angle: %s', np.rad2deg(angle))
+        # orientation
+        rospy.logdebug("[{0}] Object angle in degree {1}".format(self.node_name, np.rad2deg(angle)))
         rpy = [0, 0, angle]
 
-        table_height = self.get_table_height()
-        depth = 0.47 #  self.get_table_height() - self.peduncle_height
+        depth_image_filter = DepthImageFilter(self.depth_image, self.intrin, patch_size=5, node_name=self.node_name)
+        xyz = depth_image_filter.get_point(row, col)
 
-
-        rospy.loginfo("Table height: %s", table_height)
-        rospy.loginfo("Peduncle height: %s", self.peduncle_height)
-        rospy.loginfo("Depth based on assumptions: %s", depth)
-        rospy.loginfo("Depth measured: %s", self.get_depth(row, col))
-        xyz = self.deproject(row, col, depth=depth)
+        # location
+        # depth = self.get_table_height() - self.peduncle_height
+        # xyz = self.deproject(row, col, depth=depth)
+        # rospy.loginfo("[{0}] Depth based on assumptions: {1}".format(self.node_name, depth))
+        # rospy.loginfo("[{0}] Depth measured: {1}".format(self.node_name, self.get_depth(row, col)))
 
         if np.isnan(xyz).any():
-            rospy.logwarn("Failed to compute caging pose, will try based on segment!")
-            xyz = self.deproject(row, col, segment=peduncle_mask)
+            rospy.logwarn("[{0}] Failed to compute caging pose, will try based on segment!".format(self.node_name))
+            xyz = depth_image_filter.get_point(row, col, segment=peduncle_mask)
 
             if np.isnan(xyz).any():
                 rospy.loginfo("Failed to compute caging pose!")
                 return False
 
-        cage_pose = point_to_pose_stamped(xyz, rpy, self.camera_frame, rospy.Time.now())
-
-        return cage_pose
+        return point_to_pose_stamped(xyz, rpy, self.camera_frame, rospy.Time.now())
 
     def get_table_height(self):
-        heights = self.get_points(field_names=("z"))
+        """Estimate the distance between the camera and table"""
+        point_cloud_filter = PointCloudFilter(self.pcl, patch_size=5, node_name=self.node_name)
+        heights = point_cloud_filter.get_points(field_names=("z"))
         return np.nanmedian(np.array(heights))
 
     def compute_px_per_mm(self):
@@ -238,97 +228,6 @@ class ObjectDetection(object):
         rospy.logdebug('Height above table: %s [m]', height)
         rospy.logdebug('Pixels per mm: %s [px/mm]', px_per_mm)
         return px_per_mm
-
-    def get_point(self, uvs):
-        points = self.get_points(uvs=uvs)
-        point = np.mean(points, axis=0)
-        return point
-
-    def get_points(self, uvs=[], field_names=("x", "y", "z")):
-        points = list(pc2.read_points(self.pcl, skip_nans=False, field_names=field_names, uvs=uvs))
-        return points
-
-    def deproject(self, row, col, depth=None, segment=None):
-        # TODO: these should never be floats!
-        row = int(row)
-        col = int(col)
-
-        if depth is None:
-            depth = self.get_depth(row, col, segment=segment)
-
-        if np.isnan(depth):
-            rospy.logwarn("[OBJECT DETECTION] Computed depth is nan, can not compute point!")
-            return 3 * [np.nan]
-
-        # https://github.com/IntelRealSense/librealsense/wiki/Projection-in-RealSense-SDK-2.0
-        pixel = [float(col), float(row)]  # [x, y]
-        depth = float(depth)
-        point_depth = rs.rs2_deproject_pixel_to_point(self.intrin, pixel, depth)
-
-        uvs = self.gen_patch(row, col)
-        point_pcl = self.get_point(uvs)
-
-        rospy.logdebug("Point based on deprojection: %s", point_depth)
-        rospy.logdebug("Point obtained from point cloud: %s", point_pcl)
-
-        point = point_depth
-        return point
-
-    def gen_patch(self, row, col):
-        patch_width = (self.patch_size - 1) / 2
-
-        dim = self.depth_image.shape
-        H = dim[0]
-        W = dim[1]
-
-        row_start = max([row - patch_width, 0])
-        row_end = min([row + patch_width, H - 1])
-
-        col_start = max([col - patch_width, 0])
-        col_end = min([col + patch_width, W - 1])
-
-        rows = np.arange(row_start, row_end + 1)
-        cols = np.arange(col_start, col_end + 1)
-
-        uvs = list()  # [col, row]
-
-        for col in cols:
-            for row in rows:
-                uvs.append([col, row])
-
-        return uvs
-
-    def get_depth(self, row, col, segment=None):
-
-        # TODO: these should never be floats!
-        row = int(row)
-        col = int(col)
-
-        if segment is None:
-            patch_width = int((self.patch_size - 1) / 2)
-
-            dim = self.depth_image.shape
-            H = dim[0]
-            W = dim[1]
-           
-
-            row_start = max([row - patch_width, 0])
-            row_end = min([row + patch_width, H - 1])
-
-            col_start = max([col - patch_width, 0])
-            col_end = min([col + patch_width, W - 1])
-
-            rows = np.arange(row_start, row_end + 1)
-            cols = np.arange(col_start, col_end + 1)
-
-            depth_patch = self.depth_image[rows[:, np.newaxis], cols]
-        else:
-            depth_patch = self.depth_image[segment > 0]
-
-        non_zero = np.nonzero(depth_patch)
-        depth_patch_non_zero = depth_patch[non_zero]
-
-        return np.median(depth_patch_non_zero)
 
 
 def euclidean(v1, v2):

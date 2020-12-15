@@ -161,11 +161,7 @@ class StateMachineInput(object):
 
     def load_messages(self):
         """load messages"""
-        if self.id is None:
-            id_int = 1
-        else:
-            id_int = int(self.id) + 1
-        self.id = str(id_int).zfill(3)
+        self.id = self.get_next_attempt_id()
         self.logger.publish_messages(self.data_path, self.id)
 
     def reset(self):
@@ -213,3 +209,11 @@ class StateMachineInput(object):
                 new_id_int = int(file_id) + 1
 
         return str(new_id_int).zfill(3)
+
+    def get_next_attempt_id(self):
+        """increment the id by one if it exsists"""
+        if self.id is None:
+            id_int = 1
+        else:
+            id_int = int(self.id) + 1
+        return str(id_int).zfill(3)
