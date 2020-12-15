@@ -3,35 +3,120 @@
 
   <arg name="robot_sim"                     default="true"/>
   <arg name="camera_sim"                    default="true"/>
-
   <arg name="use_sdh"                       default="false"/>
   <arg name="use_iiwa"                      default="false"/>
   <arg name="use_interbotix"                default="true"/>
+  <arg name="use_calibration"		            default="true"/>
+  <arg name="dream_camera"                  default="false"/>
+
+  <!-- hardware_interface to use : PositionJointInterface, EffortJointInterface, VelocityJointInterface. -->
+  <arg name="hardware_interface"  default="PositionJointInterface"/>
 
   <!-- Model of the iiwa to use : iiwa7, iiwa14 -->
   <arg name="robot_model"                   default="px150"/>
   <arg name="rviz"                          default="true" />
 
   <!-- The is gonna have its nodes/topics under a namespace with the same name. -->
-  <arg name="robot_name"                    default="px150"/> <!-- $(arg robot_model) -->
+  <arg name="robot_name"                    default="$(arg robot_model)"/> <!-- $(arg robot_model) -->
   <arg name="camera_name"                   default="camera"/>
 
-  <arg name="use_calibration"		    default="true"/>
+  <!-- camera -->
+  <arg name="color_width"         default="1280"/> <!-- 1920 -->
+  <arg name="color_height"        default="720"/> <!-- 1080 -->
 
-  <include file="$(find flex_grasp)/launch/enviroment.launch">
-    <arg name="robot_sim"               value="$(arg robot_sim)"/>
-    <arg name="camera_sim"              value="$(arg camera_sim)"/>
+  <!-- control -->
+  <arg name="arm_operating_mode"  default="position"/> <!-- velocity-->
 
-    <arg name="use_interbotix"          value="$(arg use_interbotix)"/>
-    <arg name="use_sdh"                 value="$(arg use_sdh)"/>
-    <arg name="use_iiwa"                value="$(arg use_iiwa)"/>
 
-    <arg name="robot_model"             value="$(arg robot_model)"/>
-    <arg name="robot_name"              value="$(arg robot_name)"/>
-    <arg name="camera_name"             value="$(arg camera_name)"/>
+  <!-- TODO: simulation should also work for different rgb and depth resolution-->
+  <arg unless="$(arg robot_sim)" name="depth_width" default="848"/>
+  <arg unless="$(arg robot_sim)" name="depth_height" default="480"/>
+  <arg if="$(arg robot_sim)" name="depth_width" default="$(arg color_width)"/>
+  <arg if="$(arg robot_sim)" name="depth_height" default="$(arg color_height)"/>
 
-    <arg name="rviz"                    value="$(arg rviz)"/>
-    <arg name="use_calibration"		value="$(arg use_calibration)"/>
+  <arg name="filters"             default="disparity,spatial,temporal,pointcloud"/> <!-- disparity,spatial,temporal,decimation,hole_filling,pointcloud -->
+
+  <arg if="$(arg robot_sim)" name="scene_file" default="$(find flex_gazebo_interbotix)/config/simulation.scene"/>
+  <arg unless="$(arg robot_sim)" name="scene_file" default="$(find flex_gazebo_interbotix)/config/experiment.scene"/>
+
+  <group ns="$(arg robot_name)">
+    <param name="use_iiwa"        value="$(arg use_iiwa)"/>
+    <param name="use_sdh"         value="$(arg use_sdh)"/>
+    <param name="use_interbotix"  value="$(arg use_interbotix)"/>
+
+    <param name="camera_sim"      value="$(arg camera_sim)"/>
+    <param name="robot_sim"       value="$(arg robot_sim)"/>
+    <param name="dream_camera"        value="$(arg dream_camera)"/>
+  </group>
+
+  <!-- TODO: When IR is publsihed, we no longer receive depth info? -->
+  <include unless="$(arg camera_sim)" file="$(find realsense2_camera)/launch/rs_rgbd.launch" ns="$(arg robot_name)">
+    <arg name="camera" value="$(arg camera_name)"/>
+    <arg name="enable_infra1"     value="false"/>
+    <arg name="enable_infra2"     value="false"/>
+    <arg name="enable_pointcloud" value="true"/>
+    <arg name="align_depth"       value="true"/>
+    <arg name="depth_width"       value="$(arg depth_width)"/>
+    <arg name="depth_height"      value="$(arg depth_height)"/>
+    <arg name="color_width"       value="$(arg color_width)"/>
+    <arg name="color_height"      value="$(arg color_height)"/>
+    <arg name="filters"           value="$(arg filters)"/>
   </include>
+
+  <remap if="$(arg dream_camera)" from="/px150/camera/depth_registered" to="/px150/no_camera/depth_registered"/>
+  <remap if="$(arg dream_camera)" from="/px150/camera/" to="/px150/no_camera/"/>
+  <remap if="$(arg dream_camera)" from="/px150/camera/color/" to="/px150/no_camera/color"/>
+
+  <!-- Run the robot within a Gazebo simulation. -->
+  <group if="$(eval arg('robot_sim') or arg('camera_sim'))">
+
+    <!-- Load Gazebo with given values -->
+    <include if="$(arg use_interbotix)" file="$(find flex_gazebo_interbotix)/launch/gazebo.launch">
+        <arg name="hardware_interface"  value="$(arg hardware_interface)"/>
+        <arg name="robot_name"          value="$(arg robot_name)" />
+
+        <arg name="robot_model"         value="$(arg robot_model)"/>
+
+        <arg name="camera_sim"          value="$(arg camera_sim)"/>
+        <arg name="robot_sim"           value="$(arg robot_sim)"/>
+
+        <arg name="camera_name"         value="$(arg camera_name)"/>
+
+        <arg name="depth_width"         value="$(arg depth_width)"/>
+        <arg name="depth_height"        value="$(arg depth_height)"/>
+        <arg name="color_width"         value="$(arg color_width)"/>
+        <arg name="color_height"        value="$(arg color_height)"/>
+    </include>
+  </group>
+
+  <arg name="use_actual" if="$(arg robot_sim)" value="false"/>
+  <arg name="use_actual" unless="$(arg robot_sim)" value="true"/>
+
+  <include if="$(arg use_interbotix)" file="$(find interbotix_moveit)/launch/interbotix_moveit.launch">
+    <arg name="robot_name"                value="$(arg robot_name)"/>
+    <arg name="arm_operating_mode"        value="$(arg arm_operating_mode)"/>
+    <arg name="arm_profile_velocity"      value="131"/>
+    <arg name="arm_profile_acceleration"  value="15"/>
+    <arg name="use_pid_cntlrs"            value="false"/>
+    <arg name="use_gazebo"                value="false"/>
+    <arg name="use_actual"                value="$(arg use_actual)"/>
+    <arg name="use_fake"                  value="false"/>
+    <arg name="dof"                       value="5"/>
+    <arg name="use_world_frame"           value="false"/>
+    <arg name="external_urdf_loc"         value="$(find flex_gazebo_interbotix)/urdf/experiments.urdf.xacro"/>
+  </include>
+
+  <node name = "moveit_publish_scene_from_text"
+    pkg= "moveit_ros_planning"
+    type = "moveit_publish_scene_from_text"
+    args= "$(arg scene_file)"
+    ns="$(arg robot_name)"/>
+
+
+  <include if="$(arg use_calibration)" file="$(find easy_handeye)/launch/publish.launch">
+    <arg name="eye_on_hand"                       value="false"/>
+    <arg name="namespace_prefix"                  value="calibration"/>
+  </include>
+
 
 </launch>
