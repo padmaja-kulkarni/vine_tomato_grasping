@@ -11,7 +11,7 @@
     <arg name="use_iiwa"            default="false"/>
     <arg name="use_interbotix"      default="false"/>
     <arg name="use_calibration"     default="true"/>
-    <arg name="dream_camera"        default="false"/>
+    <arg name="dream_camera"        default="true"/>
 
     <!-- hardware_interface to use : PositionJointInterface, EffortJointInterface, VelocityJointInterface. -->
     <arg name="hardware_interface"  default="PositionJointInterface"/>

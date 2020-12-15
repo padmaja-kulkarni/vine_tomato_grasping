@@ -9,7 +9,7 @@ from sensor_msgs.msg import Image
 from sensor_msgs.msg import CameraInfo
 from sensor_msgs.msg import PointCloud2
 
-from flex_shared_resources.errors.flex_grasp_error import flex_grasp_error_log
+from flex_shared_resources.errors.flex_grasp_error import flex_grasp_error_log, flex_grasp_error_string
 from cv_bridge import CvBridge, CvBridgeError
 from data_logger import DataLogger
 
@@ -53,7 +53,7 @@ class StateMachineInput(object):
                       'camera_info': CameraInfo,
                       'pcl': PointCloud2}
 
-        self.logger = DataLogger(self.node_name, self.topics, self.types, callbacks=self.callbacks)
+        self.logger = DataLogger(self.node_name, self.topics, self.types)
 
         # subscribe
         rospy.Subscriber("~e_in", String, self.e_in_cb)
@@ -77,7 +77,7 @@ class StateMachineInput(object):
 
     def color_image_cb(self, msg, force=False):
         if ((self.color_image is None) and self.take_picture) or force:
-            rospy.logdebug("[OBJECT DETECTION] Received color image message")
+            rospy.logdebug("[{0}] Received color image message".format(self.node_name))
             try:
                 self.color_image = self.bridge.imgmsg_to_cv2(msg, "rgb8")
             except CvBridgeError as e:
@@ -85,7 +85,7 @@ class StateMachineInput(object):
 
     def depth_image_cb(self, msg, force=False):
         if ((self.depth_image is None) and self.take_picture) or force:
-            rospy.logdebug("[OBJECT DETECTION] Received depth image message")
+            rospy.logdebug("[{0}] Received depth image message".format(self.node_name))
             try:
                 if self.camera_sim:
                     self.depth_image = self.bridge.imgmsg_to_cv2(msg, "passthrough")
@@ -96,40 +96,39 @@ class StateMachineInput(object):
 
     def camera_info_cb(self, msg, force=False):
         if (self.camera_info is None) or force:
-            rospy.logdebug("[{0}] Received color info message".format(self.node_name))
+            rospy.logdebug("[{0}] Received camera info message".format(self.node_name))
             self.camera_info = msg
 
     def point_cloud_cb(self, msg, force=False):
         if ((self.pcl is None) and self.take_picture) or force:
-            rospy.logdebug("[{0}] Received point_ cloud info message".format(self.node_name))
+            rospy.logdebug("[{0}] Received point cloud info message".format(self.node_name))
             self.pcl = msg
 
-    def received_data(self):
+    def received_messages(self):
         """Returns a dictionary which contains information about what data has been received"""
-        is_received = {}
-        is_received['color_img'] = self.color_image is not None
-        is_received['depth_img'] = self.depth_image is not None
-        is_received['camera_info'] = self.camera_info is not None
-        is_received['pcl'] = self.pcl is not None
+        is_received = {'color_img': self.color_image is not None,
+                       'depth_img': self.depth_image is not None,
+                       'camera_info': self.camera_info is not None,
+                       'pcl': self.pcl is not None,
+                       'all': True}
 
-        is_received['all'] = True
         for key in is_received:
             is_received['all'] = is_received['all'] and is_received[key]
 
         return is_received
 
-    def print_received_data(self, is_received):
+    def print_received_messages(self, is_received):
         """Prints a warning for the data which has not been received"""
         for key in is_received:
             if not is_received[key]:
                 rospy.logwarn("[{0}] Did not receive {1} yet.".format(self.node_name, key))
 
-    def wait_for_data(self, timeout=1):
+    def wait_for_messages(self, timeout=1):
         start_time = rospy.get_time()
         is_received = {}
 
         while rospy.get_time() - start_time < timeout:
-            is_received = self.received_data()
+            is_received = self.received_messages()
             if is_received['all']:
                 self.take_picture = False
                 rospy.logdebug("[{0}] Received all data".format(self.node_name))
@@ -137,29 +136,36 @@ class StateMachineInput(object):
 
             rospy.sleep(0.1)
 
-        self.print_received_data(is_received)
+        self.print_received_messages(is_received)
         return False
 
     def get_messages(self):
-        return {'color_image': self.bridge.cv2_to_imgmsg(self.color_image, encoding="rgb8"),
-                'depth_image': self.bridge.cv2_to_imgmsg(self.depth_image, encoding="passthrough"),
-                'camera_info': self.camera_info,
-                'pcl': self.pcl}
-
-    def log_data(self):
-        """Store received data in a rosbag"""
-        is_received = self.received_data()
-        self.id = self.get_new_attempt_id()
-
-        if is_received['all']:
-            messages = self.get_messages()
-            self.logger.write_messages(messages, self.data_path, self.id)
+        messages = {}
+        if self.color_image is not None:
+            messages['color_image'] = self.bridge.cv2_to_imgmsg(self.color_image, encoding="rgb8")
         else:
-            rospy.logwarn("[{0}] Cannot log data: not all data is received".format(self.node_name))
-            self.print_received_data(is_received)
+            messages['color_image'] = None
+        if self.depth_image is not None:
+            messages['depth_image'] = self.bridge.cv2_to_imgmsg(self.depth_image, encoding="passthrough")
+        else:
+            messages['depth_image'] = None
 
-    def load_data(self):
-        self.id = '001'
+        messages['camera_info'] = self.camera_info
+        messages['pcl'] = self.pcl
+        return messages
+
+    def log_messages(self):
+        """"log messages"""
+        self.id = self.get_new_attempt_id()
+        self.logger.write_messages(self.get_messages(), self.data_path, self.id)
+
+    def load_messages(self):
+        """load messages"""
+        if self.id is None:
+            id_int = 1
+        else:
+            id_int = int(self.id) + 1
+        self.id = str(id_int).zfill(3)
         self.logger.publish_messages(self.data_path, self.id)
 
     def reset(self):
@@ -184,7 +190,8 @@ class StateMachineInput(object):
 
     def command_completed(self, result=FlexGraspErrorCodes.SUCCESS):
         """method called when the state machine completes the requested model."""
-        rospy.logdebug("[{0}] Completed command {1} with.".format(self.node_name, self.command))
+        result_string = flex_grasp_error_string(result)
+        rospy.logdebug("[{0}] Completed command {1} with {2}".format(self.node_name, self.command, result_string))
         flex_grasp_error_log(result, self.node_name)
         msg = FlexGraspErrorCodes(result)
         self.pub_e_out.publish(msg)

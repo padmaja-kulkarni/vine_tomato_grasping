@@ -23,7 +23,7 @@ class DataLogger(object):
         full_name = id + '_' + self.bag_name
         full_path = os.path.join(path, full_name)
 
-        rospy.logdebug("[{0}] Writing received messages to file {1}".format(self.node_name, full_path))
+        rospy.loginfo("[{0}] Writing received messages to file {1}".format(self.node_name, full_path))
         if not os.path.isdir(path):
             rospy.loginfo("[{0}] New path, creating a new folder {1}".format(self.node_name, path))
             os.makedirs(path)
@@ -38,10 +38,10 @@ class DataLogger(object):
 
     def publish_messages(self, bag_path, bag_id):
         """Read data from a rosbag and publish the received data"""
-        rospy.logdebug("[{0}] Reading and publishing messages from file {1}".format(self.node_name, bag_path))
 
         full_name = bag_id + '_' + self.bag_name
         full_path = os.path.join(bag_path, full_name)
+        rospy.loginfo("[{0}] Reading and publishing messages from file {1}".format(self.node_name, full_path))
 
         if os.path.exists(full_path):
             bag = rosbag.Bag(full_path)

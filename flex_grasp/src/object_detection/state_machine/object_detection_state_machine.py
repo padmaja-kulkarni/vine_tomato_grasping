@@ -48,7 +48,7 @@ class ObjectDetectionStateMachine(object):
             self.command = command
             self._input.take_picture = True
             if self.dream:
-                self._input.load_data()
+                self._input.load_messages()
 
             self._input.command_accepted()
 
@@ -68,16 +68,19 @@ class ObjectDetectionStateMachine(object):
 
     def _process_detect_state(self):
         if self.command == "detect_truss":
-            if self._input.wait_for_data():
-                # self._input.log_data()
+            if self._input.wait_for_messages():
+
+                # we do not wat to log the dream
+                if not self.dream:
+                    self._input.log_messages()
                 self._set_data()
-                result = self._object_detection.detect_object()
+                result = self._object_detection.detect_object(save_result=not self.dream)
             else:
                 result = FlexGraspErrorCodes.REQUIRED_DATA_MISSING
 
         elif self.command == "save_image":
-            if self._input.wait_for_data():
-                self._input.log_data()
+            if self._input.wait_for_messages():
+                self._input.log_messages()
                 self._set_data()
                 result = self._object_detection.log_image()
             else:

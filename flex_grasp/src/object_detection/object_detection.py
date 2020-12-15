@@ -151,7 +151,7 @@ class ObjectDetection(object):
             rospy.logwarn("[{0}] Failed to save image to path %s".format(self.node_name, full_pwd))
             return FlexGraspErrorCodes.FAILURE
 
-    def detect_object(self):
+    def detect_object(self, save_result=True):
 
         px_per_mm = self.compute_px_per_mm()
         self.process_image.add_image(self.color_image, px_per_mm=px_per_mm)
@@ -175,7 +175,8 @@ class ObjectDetection(object):
         # get images
         img_depth = colored_depth_image(self.depth_image.copy())
 
-        self.log_image(result_img=img_tomato)
+        if save_result:
+            self.log_image(result_img=img_tomato)
 
         # publish results tomato_img
         imgmsg_tomato = self.bridge.cv2_to_imgmsg(img_tomato, encoding="rgba8")
