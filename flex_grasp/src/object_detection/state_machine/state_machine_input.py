@@ -156,12 +156,14 @@ class StateMachineInput(object):
     def log_messages(self):
         """"log messages"""
         self.id = self.get_new_attempt_id()
-        self.logger.write_messages(self.get_messages(), self.data_path, self.id)
+        self.logger.open_bag(self.data_path, self.id)
+        self.logger.write_messages(self.get_messages())
 
     def load_messages(self):
         """load messages"""
         self.id = self.get_next_attempt_id()
-        self.logger.publish_messages(self.data_path, self.id)
+        self.logger.open_bag(self.data_path, self.id)
+        self.logger.publish_messages_from_bag()
 
     def reset(self):
         """Resets the input state to its original state on init."""
