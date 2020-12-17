@@ -3,6 +3,7 @@
 import rospy
 import smach
 import smach_ros
+import os
 
 from std_msgs.msg import String, Bool
 from flex_grasp.msg import FlexGraspErrorCodes
@@ -12,6 +13,7 @@ from flex_shared_resources.errors.flex_grasp_error import flex_grasp_error_log
 from flex_shared_resources.utils.communication import Communication
 
 outcomes = ['success', 'control_failure', 'planning_failure', 'state_failure', 'dynamixel_failure', 'severe_failure', 'failure']
+NODE_NAME = 'pipeline'
 
 def error_handling(result):
 
@@ -74,6 +76,8 @@ class Initializing(smach.State):
         else:
             return 'failure'
 
+DEFAULT_SIMULATION = True
+DEFAULT_PLAYBACK = False
 
 class Idle(smach.State):
     def __init__(self):
@@ -82,9 +86,16 @@ class Idle(smach.State):
                              output_keys=['mode', 'command', 'prev_command'])
                              
         self.command_op_topic = 'pipeline_command'
-        rospy.Subscriber("experiment", Bool, self.go_cb)
+        self.simulation = rospy.get_param("robot_sim", DEFAULT_SIMULATION)
+        self.playback = rospy.get_param("playback", DEFAULT_PLAYBACK)
+        self.experiment_id = None
+        self.experiment_path = None
 
-        self.simulation = rospy.get_param("robot_sim")
+        self.experiment_id_publisher = rospy.Publisher('experiment_id', String, queue_size=1, latch=True)
+        rospy.Subscriber("experiment", Bool, self.go_cb)
+        rospy.Subscriber("experiment_pwd", String, self.experiment_pwd_cb)
+
+        # commands
         self.detect_commands = ['detect_tomato', 'detect_truss', 'save_image']
         self.transform_commands = ['transform']
         self.calibrate_commands = ['calibrate', 'calibrate_height']
@@ -93,12 +104,19 @@ class Idle(smach.State):
         self.spawn_commands = ['spawn_truss', 'set_pose_truss']
         self.experiment = False
 
+    def experiment_pwd_cb(self, msg):
+        """callback to update the data path"""
+        new_path = msg.data
+        if self.experiment_path != new_path:
+            self.experiment_path = new_path
+            rospy.logdebug("[{0}] Storing results in folder {1}".format(NODE_NAME, new_path))
+
     def go_cb(self, msg):
         self.experiment = msg.data
-        rospy.logdebug("[PIPELINE] experiment: %s", self.experiment)
+        rospy.logdebug("[{0}] experiment mode is set to %s".format(NODE_NAME, self.experiment))
 
     def execute(self, userdata):
-        rospy.logdebug('Executing state Idle')
+        rospy.logdebug("[{0}] Executing state Idle".format(NODE_NAME))
         
         if self.experiment and (userdata.mode == 'free'):
             rospy.loginfo('[PIPELINE] Entering experiment mode!')
@@ -125,7 +143,7 @@ class Idle(smach.State):
             elif userdata.prev_command == 'place' and not self.simulation:
                 userdata.command = 'detect_truss'
             else:
-                rospy.logwarn('[PIPELINE] do not know what to do with previous command %s', userdata.prev_command)
+                rospy.logwarn("[{0}] do not know what to do with previous command {1}".format(NODE_NAME, userdata.prev_command))
         elif userdata.prev_command == 'detect_truss':
             userdata.command = 'transform'
         else:
@@ -133,7 +151,13 @@ class Idle(smach.State):
 
         if userdata.command in self.transform_commands:
             return 'transform_pose'
-        elif userdata.command in self.detect_commands:         
+        elif userdata.command in self.detect_commands:
+            if self.playback:
+                self.experiment_id = self.get_next_experiment_id()
+            else:
+                self.experiment_id = self.get_new_experiment_id()
+            rospy.logdebug("[{0}] Publishing experiment id {1}".format(NODE_NAME, self.experiment_id))
+            self.experiment_id_publisher.publish(self.experiment_id)
             return 'detect'
         elif userdata.command in self.move_commands:
             return 'move'
@@ -148,6 +172,31 @@ class Idle(smach.State):
             userdata.command = None
             userdata.mode = 'free'
             return 'failure'
+
+    def get_next_experiment_id(self):
+        """increment the id by one if it exsists"""
+        if self.experiment_id is None:
+            id_int = 1
+        else:
+            id_int = int(self.experiment_id) + 1
+        return str(id_int).zfill(3)
+
+    def get_new_experiment_id(self):
+        """returns the lowest available id in the given path"""
+
+        if not os.path.isdir(self.experiment_path):
+            new_id_int = 1
+        else:
+            contents = os.listdir(self.experiment_path)
+            if len(contents) == 0:
+                new_id_int = 1
+            else:
+                contents.sort()
+                file_name = contents[-1]
+                file_id = file_name[:3]
+                new_id_int = int(file_id) + 1
+
+        return str(new_id_int).zfill(3)
 
 class CalibrateRobot(smach.State):
     def __init__(self):

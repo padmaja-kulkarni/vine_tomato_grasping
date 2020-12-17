@@ -7,7 +7,7 @@
   <arg name="use_iiwa"                      default="false"/>
   <arg name="use_interbotix"                default="true"/>
   <arg name="use_calibration"		            default="true"/>
-  <arg name="dream_camera"                  default="false"/>
+  <arg name="playback"                      default="false"/>
 
   <!-- hardware_interface to use : PositionJointInterface, EffortJointInterface, VelocityJointInterface. -->
   <arg name="hardware_interface"  default="PositionJointInterface"/>
@@ -46,7 +46,7 @@
 
     <param name="camera_sim"      value="$(arg camera_sim)"/>
     <param name="robot_sim"       value="$(arg robot_sim)"/>
-    <param name="dream_camera"        value="$(arg dream_camera)"/>
+    <param name="playback"        value="$(arg playback)"/>
   </group>
 
   <!-- TODO: When IR is publsihed, we no longer receive depth info? -->
@@ -63,9 +63,9 @@
     <arg name="filters"           value="$(arg filters)"/>
   </include>
 
-  <remap if="$(arg dream_camera)" from="/px150/camera/depth_registered" to="/px150/no_camera/depth_registered"/>
-  <remap if="$(arg dream_camera)" from="/px150/camera/" to="/px150/no_camera/"/>
-  <remap if="$(arg dream_camera)" from="/px150/camera/color/" to="/px150/no_camera/color"/>
+  <remap if="$(arg playback)" from="/px150/camera/depth_registered" to="/px150/no_camera/depth_registered"/>
+  <remap if="$(arg playback)" from="/px150/camera/" to="/px150/no_camera/"/>
+  <remap if="$(arg playback)" from="/px150/camera/color/" to="/px150/no_camera/color"/>
 
   <!-- Run the robot within a Gazebo simulation. -->
   <group if="$(eval arg('robot_sim') or arg('camera_sim'))">

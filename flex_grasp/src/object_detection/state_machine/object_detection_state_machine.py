@@ -1,9 +1,6 @@
 import rospy
 from flex_grasp.msg import FlexGraspErrorCodes
 
-
-DEFAULT_DREAM = True
-
 class ObjectDetectionStateMachine(object):
 
     def __init__(self, object_detection, state_input, update_rate, node_name):
@@ -15,11 +12,6 @@ class ObjectDetectionStateMachine(object):
         self._is_idle = True
         self._command = None
         self._shutdown_requested = False
-
-        self.dream = rospy.get_param("dream_camera", DEFAULT_DREAM)
-
-        if self.dream:
-            rospy.loginfo("[{0}] Object detection launched in dream mode!".format(self.node_name))
 
     def run(self):
 
@@ -43,20 +35,15 @@ class ObjectDetectionStateMachine(object):
             return
 
         elif command == "detect_truss":
-            rospy.logdebug("[{0}] Detect truss".format(self.node_name))
             self._is_idle = False
             self.command = command
-            self._input.take_picture = True
-            if self.dream:
-                self._input.load_messages()
-
+            self._object_detection.collect_messages()
             self._input.command_accepted()
 
         elif command == "save_image":
-            rospy.logdebug("[{0}] Take picture".format(self.node_name))
             self._is_idle = False
             self.command = command
-            self._input.take_picture = True
+            self._object_detection.collect_messages()
             self._input.command_accepted()
 
         elif command == "e_init":
@@ -68,20 +55,15 @@ class ObjectDetectionStateMachine(object):
 
     def _process_detect_state(self):
         if self.command == "detect_truss":
-            if self._input.wait_for_messages():
-
-                # we do not wat to log the dream
-                if not self.dream:
-                    self._input.log_messages()
-                self._set_data()
-                result = self._object_detection.detect_object(save_result=not self.dream)
+            if self._object_detection.wait_for_messages():
+                self._object_detection.log_input_messages()
+                result = self._object_detection.detect_object()
             else:
                 result = FlexGraspErrorCodes.REQUIRED_DATA_MISSING
 
         elif self.command == "save_image":
-            if self._input.wait_for_messages():
-                self._input.log_messages()
-                self._set_data()
+            if self._object_detection.wait_for_messages():
+                self._object_detection.log_input_messages()
                 result = self._object_detection.save_data()
             else:
                 result = FlexGraspErrorCodes.REQUIRED_DATA_MISSING
@@ -89,16 +71,9 @@ class ObjectDetectionStateMachine(object):
         else:
             result = FlexGraspErrorCodes.Failure
 
+        self._object_detection.reset()
         self._input.command_completed(result)
         self._transition_to_idle_state()
-
-    def _set_data(self):
-        self._object_detection.color_image = self._input.color_image
-        self._object_detection.depth_image = self._input.depth_image
-        self._object_detection.pcl = self._input.pcl
-        self._object_detection.color_info = self._input.camera_info
-        self._object_detection.pwd_data = self._input.data_path
-        self._object_detection.id = self._input.id
 
     def _transition_to_idle_state(self):
         self._is_idle = True
