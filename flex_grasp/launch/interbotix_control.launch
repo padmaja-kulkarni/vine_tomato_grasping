@@ -5,11 +5,30 @@
   <arg name="ee_group_name"           default="interbotix_gripper"/>
 	<arg name="robot_base_frame" 				default="px150/base_link"/>
 
+  <arg name="pipeline_debug"					default="false"/>
+  <arg name="object_detection_debug"	default="false"/>
+  <arg name="move_robot_debug"				default="false"/>
+  <arg name="monitor_robot_debug"			default="false"/>
+  <arg name="pick_place_debug" 				default="false"/>
+  <arg name="calibrate_debug" 				default="false"/>
+  <arg name="transform_pose_debug"		default="false"/>
+  <arg name="gazebo_interface_debug"	default="false"/>
+
   <include file="$(find flex_grasp)/launch/control.launch">
   	<arg name="robot_base_frame" 				default="px150/base_link"/>
     <arg name="robot_name"              value="$(arg robot_name)"/>
     <arg name="manipulator_group_name"  value="$(arg manipulator_group_name)"/>
     <arg name="ee_group_name"           value="$(arg ee_group_name)"/>
+
+    <arg name="pipeline_debug"					value="$(arg pipeline_debug)"/>
+    <arg name="object_detection_debug"	value="$(arg object_detection_debug)"/>
+    <arg name="move_robot_debug"				value="$(arg move_robot_debug)"/>
+    <arg name="monitor_robot_debug"			value="$(arg monitor_robot_debug)"/>
+    <arg name="pick_place_debug" 				value="$(arg pick_place_debug)"/>
+    <arg name="calibrate_debug" 				value="$(arg calibrate_debug)"/>
+    <arg name="transform_pose_debug"		value="$(arg transform_pose_debug)"/>
+    <arg name="gazebo_interface_debug"	value="$(arg gazebo_interface_debug)"/>
+
   </include>
 
 </launch>
