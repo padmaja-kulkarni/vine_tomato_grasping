@@ -50,7 +50,7 @@ def load_rgb(name, pwd=None, horizontal=True):
     else:
         name_full = os.path.join(pwd, name)
 
-    if not os.path.exists(name_full):
+    if not os.path.isfile(name_full):
         print('Cannot load RGB: path does not exist' + name_full)
         return None
 

@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class Point2D(object):
     """
     class used for storing two-dimensional points, and getting the coordiante of a point with respect to a certain
@@ -7,7 +8,6 @@ class Point2D(object):
     """
 
     # TODO: currently only a single transform is supported.
-
     def __init__(self, coord, frame_id, transform=None):
         """
         coord: two-dimensional coordinates as [x, y]
@@ -46,7 +46,7 @@ class Point2D(object):
             return self._dist(points)
 
     def _dist(self, point):
-        # TODO: we can also you the transform stored in point(s)
+        # TODO: we can also apply the transform stored in point(s)
 
         transform = self.transform
 
