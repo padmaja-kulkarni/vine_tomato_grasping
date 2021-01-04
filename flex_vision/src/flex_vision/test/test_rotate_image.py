@@ -9,7 +9,7 @@ Created on Mon Feb 17 14:35:14 2020
 import numpy as np
 from matplotlib import pyplot as plt
 from flex_vision.utils.geometry import Transform, Point2D
-from flex_vision.utils import Image
+from flex_vision.utils.imgpy import Image
 
 
 def main():
