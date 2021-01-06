@@ -17,111 +17,55 @@ import warnings
 
 
 def check_dimensions(image1, image2):
-    return image1.data.shape == image2.data.shape
+    """check_dimensions"""
+    return image1.shape == image2.shape
 
 def add(image1, image2):
-    
+    """add two images"""
     if check_dimensions(image1, image2):
-        
-        image_new = image1.copy()        
-        image_new.data = cv2.bitwise_or(image1.data, image2.data) 
-        return image_new
+        return cv2.bitwise_or(image1, image2)
     else:
+        warnings.warn("Cannot add images: its dimensions do not match!")
         return None
-    
-    
-def crop(image, angle=None, bbox=None):
-    """returns a new image, rotated by angle in radians and cropped by the boundingbox"""
-    image_new = image.copy()
-    image_new.crop(angle=angle, bbox=bbox)
-    return image_new
 
 
 def rotate(image, angle):
-    """returns a new image, rotated by angle in radians"""
+    """returns a new image, rotated by angle in radians
+    angle: counter clockwise rotation in radians
+    """
+    dtype = image.dtype
+    value_max = np.iinfo(dtype).max
     image_new = image.copy()
-    image_new.rotate(angle)
-    return image_new
 
+    # rotate returns a float in range [0, 1], this needs to be converted
+    image_rotate = ski_rotate(image_new, np.rad2deg(angle), resize=True)
+    image_rotate = (value_max * image_rotate).astype(dtype, copy=False)
+    return image_rotate
+
+def crop(image, angle, bbox):
+    """returns a new image, rotated by angle in radians and cropped by the boundingbox"""
+    image = rotate(image, angle)
+    image = cut(image, bbox)
+    return image
 
 def cut(image, bbox):
-    """returns a new image, cut at the boundingbox"""
-    image_new = image.copy()
-    image_new.cut(bbox)
-    return image_new
+    """returns the image cut, cut at the boundingbox"""
+    x = bbox[0]
+    y = bbox[1]
+    w = bbox[2]
+    h = bbox[3]
+    return image[y:y+h, x:x+w]
 
-class Image(object):
-    
-    def __init__(self, data):
-        self.data = data
-        self.dtype = data.dtype
-        self.value_max = np.iinfo(self.dtype).max
 
-    def rescale(self, width_desired):
-        shape = self.data.shape[:2] # (height, width)
-        scale = float(width_desired)/float(shape[1])
-        new_shape = (int(scale * shape[1]), int(scale * shape[0])) # [width, height]
-        
-        self.data = cv2.resize(self.data, new_shape, 
-                               interpolation=cv2.INTER_AREA)
-                               
-        return scale
-        
-    def open_close(self, kernel):
-        image_open = cv2.morphologyEx(self.data, cv2.MORPH_OPEN, kernel)
-        self.data = cv2.morphologyEx(image_open, cv2.MORPH_CLOSE, kernel)        
+def compute_angle(image):
+    """returns the angle in radians based on the image"""
+    regions = regionprops(label(image), coordinates='xy')
 
-    def close_open(self, kernel):
-        image_close = cv2.morphologyEx(self.data, cv2.MORPH_CLOSE, kernel)
-        self.data = cv2.morphologyEx(image_close, cv2.MORPH_OPEN, kernel)       
-        
-    def is_empty(self):
-        return np.all((self.data == 0))        
-        
-    def rotate(self, angle):
-        """
-        Rot the image by a given angle counter clockwise
+    if len(regions) > 1:
+        warnings.warn("Multiple regions found!")
 
-        angle: counter clockwise rotation in radians
-        """
-        # rotate returns a float in range [0, 1], this needs to be converted
-        image_rotate = ski_rotate(self.data, np.rad2deg(angle), resize=True)
-        self.data = (self.value_max*image_rotate).astype(self.dtype, copy=False)
-        return self
+    return regions[0].orientation
 
-    def cut(self, bbox):
-        x = bbox[0]
-        y = bbox[1]
-        w = bbox[2]
-        h = bbox[3]        
-        self.data = self.data[y:y+h, x:x+w]
-        return self
-
-    def crop(self, angle, bbox):
-        
-        self.rotate(angle)
-        self.cut(bbox)
-        return self        
-
-    def copy(self):
-        image_new = Image(self.data.copy())
-        return image_new
-        
-    def show(self):
-        plt.imshow(self.data)
-        plt.axis('off')
-
-    def compute_angle(self):
-        """returns the angle in radians based on the Image data
-        """
-
-        regions = regionprops(label(self.data), coordinates='xy')
-
-        if len(regions) > 1:
-            warnings.warn("Multiple regions found!")
-
-        return regions[0].orientation
-
-    def bbox(self):
-        return cv2.boundingRect(self.data)
-
+def bbox(image):
+    """find bounding box around a mask"""
+    return cv2.boundingRect(image)

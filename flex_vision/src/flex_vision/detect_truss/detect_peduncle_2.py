@@ -66,7 +66,6 @@ def detect_peduncle(peduncle_img, settings=None, px_per_mm=None, bg_img=None, sa
     junc_nodes = coords_to_nodes(pixel_coordinates, junc_coords[:, [1, 0]])
 
     path, path_length_px, branch_data = find_path(dist, pred, junc_nodes, end_nodes, pixel_coordinates, bg_image=bg_img.copy())
-    print "Found a path of length: ", path_length_px/px_per_mm, " [mm]"
 
     branch_data = get_branch_center(branch_data, dist, pixel_coordinates, skeleton_img)
 

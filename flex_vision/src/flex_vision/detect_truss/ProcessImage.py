@@ -65,14 +65,13 @@ class ProcessImage(object):
 
         self.settings = settings.initialize_all()
 
-    def add_image(self, data_rgb, px_per_mm=None, name=None):
-        img_rgb = imgpy.Image(data_rgb)
+    def add_image(self, img_rgb, px_per_mm=None, name=None):
 
         # TODO: scaling is currently not supported, would be interesting to reduce computing power
 
         self.scale = 1.0
         self.img_rgb = img_rgb
-        self.shape = img_rgb.data.shape[:2]
+        self.shape = img_rgb.shape[:2]
         self.px_per_mm = px_per_mm
 
         self.grasp_point = None
@@ -85,8 +84,8 @@ class ProcessImage(object):
     @Timer("color space", name_space)
     def color_space(self, compute_a=True):
         pwd = os.path.join(self.pwd, '01_color_space')
-        self.img_hue = cv2.cvtColor(self.img_rgb.data, cv2.COLOR_RGB2HSV)[:, :, 0]
-        self.img_a = cv2.cvtColor(self.img_rgb.data, cv2.COLOR_RGB2LAB)[:, :, 1]  # L: 0 to 255, a: 0 to 255, b: 0 to 255
+        self.img_hue = cv2.cvtColor(self.img_rgb, cv2.COLOR_RGB2HSV)[:, :, 0]
+        self.img_a = cv2.cvtColor(self.img_rgb, cv2.COLOR_RGB2LAB)[:, :, 1]  # L: 0 to 255, a: 0 to 255, b: 0 to 255
 
         if self.save:
             save_img(self.img_hue, pwd, self.name + '_h_raw', vmin=0, vmax=180)
@@ -117,15 +116,15 @@ class ProcessImage(object):
                                                      pwd=pwd,
                                                      name=self.name)
 
-        self.background = imgpy.Image(background)
-        self.tomato = imgpy.Image(tomato)
-        self.peduncle = imgpy.Image(peduncle)
+        self.background = background
+        self.tomato = tomato
+        self.peduncle = peduncle
 
-        if self.tomato.data.sum() == 0:
+        if self.tomato.sum() == 0:
             warnings.warn("Segment truss: no pixel has been classified as tomato!")
             success = False
 
-        if self.peduncle.data.sum() == 0:
+        if self.peduncle.sum() == 0:
             warnings.warn("Segment truss: no pixel has been classified as peduncle!")
             success = False
 
@@ -145,19 +144,19 @@ class ProcessImage(object):
         if folder_name is not None:
             pwd = os.path.join(pwd, folder_name)
 
-        tomato, peduncle, background = filter_segments(self.tomato.data,
-                                                       self.peduncle.data,
-                                                       self.background.data,
+        tomato, peduncle, background = filter_segments(self.tomato,
+                                                       self.peduncle,
+                                                       self.background,
                                                        settings=self.settings['filter_segments'])
 
-        self.tomato.data = tomato
-        self.peduncle.data = peduncle
-        self.background.data = background
+        self.tomato = tomato
+        self.peduncle = peduncle
+        self.background = background
 
         if self.save:
             self.save_results(self.name, pwd=pwd)
 
-        if self.tomato.is_empty():
+        if self.tomato.sum() == 0:
             warnings.warn("filter segments: no pixel has been classified as tomato")
             return False
 
@@ -168,21 +167,21 @@ class ProcessImage(object):
         """crop the image"""
         pwd = os.path.join(self.pwd, '04_crop')
 
-        if self.peduncle.is_empty():
+        if self.peduncle.sum() == 0:
             warnings.warn("Cannot rotate based on peduncle, since it does not exist!")
             angle = 0
         else:
-            angle = self.peduncle.compute_angle()  # [rad]
+            angle = imgpy.compute_angle(self.peduncle)  # [rad]
 
         tomato_rotate = imgpy.rotate(self.tomato, -angle)
         peduncle_rotate = imgpy.rotate(self.peduncle, -angle)
         truss_rotate = imgpy.add(tomato_rotate, peduncle_rotate)
 
-        if truss_rotate.is_empty():
+        if truss_rotate.sum() == 0:
             warnings.warn("Cannot crop based on truss segment, since it does not exist!")
             return False
 
-        bbox = truss_rotate.bbox()
+        bbox = imgpy.bbox(truss_rotate)
         x = bbox[0]  # col
         y = bbox[1]  # rows to upper left corner
 
@@ -196,10 +195,10 @@ class ProcessImage(object):
         self.bbox = bbox
         self.angle = angle
 
-        self.tomato_crop = tomato_rotate.copy().cut(self.bbox)
-        self.peduncle_crop = peduncle_rotate.copy().cut(self.bbox)
-        self.img_rgb_crop = self.img_rgb.copy().crop(-angle, bbox)
-        self.truss_crop = truss_rotate.copy().cut(self.bbox)
+        self.tomato_crop = imgpy.cut(tomato_rotate, self.bbox)
+        self.peduncle_crop = imgpy.cut(peduncle_rotate, self.bbox)
+        self.img_rgb_crop = imgpy.crop(self.img_rgb, angle=-angle, bbox=bbox)
+        self.truss_crop = imgpy.cut(truss_rotate, self.bbox)
 
         if self.save:
             img_rgb = self.get_rgb(local=True)
@@ -211,16 +210,16 @@ class ProcessImage(object):
         """detect tomatoes based on the truss segment"""
         pwd = os.path.join(self.pwd, '05_tomatoes')
 
-        if self.truss_crop.is_empty():
+        if self.truss_crop.sum() == 0:
             warnings.warn("Detect tomato: no pixel has been classified as truss!")
             return False
 
         if self.save:
-            img_bg = self.img_rgb_crop.data
+            img_bg = self.img_rgb_crop
         else:
-            img_bg = self.img_rgb_crop.data
+            img_bg = self.img_rgb_crop
 
-        centers, radii, com = detect_tomato(self.truss_crop.data,
+        centers, radii, com = detect_tomato(self.truss_crop,
                                             self.settings['detect_tomato'],
                                             px_per_mm=self.px_per_mm,
                                             img_rgb=img_bg,
@@ -247,9 +246,9 @@ class ProcessImage(object):
         if self.save:
             img_bg = change_brightness(self.get_segmented_image(local=True), 0.85)
         else:
-            img_bg = self.img_rgb_crop.data
+            img_bg = self.img_rgb_crop
 
-        mask, branch_data, junc_coords, end_coords = detect_peduncle(self.peduncle_crop.data,
+        mask, branch_data, junc_coords, end_coords = detect_peduncle(self.peduncle_crop,
                                                                      self.settings['detect_peduncle'],
                                                                      px_per_mm=self.px_per_mm,
                                                                      save=self.save,
@@ -317,12 +316,12 @@ class ProcessImage(object):
             self.grasp_angle_global = grasp_angle_global
 
         else:
-            print('Did not detect a valid grasping branch')
+            warnings.warn('Did not detect a valid grasping branch')
 
             if self.save:
-                img_rgb = self.img_rgb_crop.data
+                img_rgb = self.img_rgb_crop
                 save_img(img_rgb, pwd=pwd, name=self.name)
-                img_rgb = self.img_rgb.data
+                img_rgb = self.img_rgb
                 save_img(img_rgb, pwd=pwd, name=self.name + '_g')
             return False
 
@@ -336,11 +335,11 @@ class ProcessImage(object):
 
                 if frame_id == self.LOCAL_FRAME_ID:
                     grasp_angle = self.grasp_angle_local
-                    img_rgb = self.img_rgb_crop.data
+                    img_rgb = self.img_rgb_crop
 
                 elif frame_id == self.ORIGINAL_FRAME_ID:
                     grasp_angle = self.grasp_angle_global
-                    img_rgb = self.img_rgb.data
+                    img_rgb = self.img_rgb
 
                 img_rgb_bright = change_brightness(img_rgb, brightness)
                 branch_image = np.zeros(img_rgb_bright.shape[0:2], dtype=np.uint8)
@@ -396,7 +395,6 @@ class ProcessImage(object):
         junc_xy = coords_from_points(self.junction_points, frame_id)
         end_xy = coords_from_points(self.end_points, frame_id)
         peduncle = {'junctions': junc_xy, 'ends': end_xy}
-
         return peduncle
 
     def get_grasp_location(self, local=False):
@@ -436,12 +434,12 @@ class ProcessImage(object):
     def get_tomato_visualization(self, local=False):
         if local is True:
             frame = self.LOCAL_FRAME_ID
-            img = self.crop(self.image).data
             zoom = True
         else:
             frame = self.ORIGINAL_FRAME_ID
-            img_rgb = self.image.data
             zoom = False
+
+        img_rgb = self.get_rgb(local=local)
         centers = coords_from_points(self.centers, frame)
         com = coords_from_points(self.com, frame)
 
@@ -451,10 +449,9 @@ class ProcessImage(object):
 
     def get_rgb(self, local=False):
         if local:
-            img = self.img_rgb_crop.data
+            return self.img_rgb_crop
         else:
-            img = self.img_rgb.data
-        return img
+            return self.img_rgb
 
     def get_truss_visualization(self, local=False, save=False, name=None):
         pwd = os.path.join(self.pwd, '08_result')
@@ -513,14 +510,13 @@ class ProcessImage(object):
 
     def get_segments(self, local=False):
         if local:
-            tomato = self.crop(self.tomato).data
-            peduncle = self.crop(self.peduncle).data
-            background = self.crop(self.background).data
-
+            tomato = self.tomato_crop # self.crop(self.tomato)
+            peduncle = self.peduncle_crop # self.crop(self.peduncle)
+            background = self.crop(self.background)
         else:
-            tomato = self.tomato.data
-            peduncle = self.peduncle.data
-            background = self.background.data
+            tomato = self.tomato
+            peduncle = self.peduncle
+            background = self.background
 
         return tomato, peduncle, background
 
