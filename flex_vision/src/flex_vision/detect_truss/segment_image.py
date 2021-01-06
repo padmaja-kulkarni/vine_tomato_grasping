@@ -23,6 +23,7 @@ from flex_vision.utils.util import grey_2_rgb
 
 final_image_id = '015' # used for plotting
 
+
 def k_means_hue(img_hue, n_clusters, centers=None):
     # convert hue value to angles, and place on unit circle
     angle = np.deg2rad(2 * np.float32(img_hue.flatten()))
@@ -92,12 +93,6 @@ def k_means_hue_a(img_hue, img_a, n_clusters, settings, centers=None):
     return centers_out, labels
 
 
-def normalize_image(img):
-    val_min = np.min(img)
-    val_max = np.max(img)
-    img_norm = np.float32(img - val_min) / np.float32(val_max - val_min) * 2 - 1
-    return img_norm
-
 
 def assign_labels(img_hue, centers_dict, hue_radius=1.0, img_a=None):
     data_angle = np.deg2rad(2 * np.float32(img_hue.flatten()))  # [rad]
@@ -115,6 +110,12 @@ def assign_labels(img_hue, centers_dict, hue_radius=1.0, img_a=None):
     labels = np.argmin(dist, axis=1)
     return labels
 
+def normalize_image(img):
+    """Normalizes image into the interval [-1, 1]"""
+    val_min = np.min(img)
+    val_max = np.max(img)
+    img_norm = np.float32(img - val_min) / np.float32(val_max - val_min) * 2 - 1
+    return img_norm
 
 def segment_truss(img_hue, img_a=None, save="False", name="", pwd="", settings=None):
     if settings is None:

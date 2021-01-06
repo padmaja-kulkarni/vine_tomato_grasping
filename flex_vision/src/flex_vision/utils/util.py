@@ -13,7 +13,7 @@ import copy
 from matplotlib import pyplot as plt
 import matplotlib as mpl
 
-from flex_vision import utils as color_maps
+from flex_vision.utils import color_maps
 
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 
@@ -44,14 +44,14 @@ def make_dirs(pwd):
 
 
 def load_rgb(name, pwd=None, horizontal=True):
-    # load image
+    """ load image """
     if pwd is None:
         name_full = os.path.join(name)
     else:
         name_full = os.path.join(pwd, name)
 
     if not os.path.isfile(name_full):
-        print('Cannot load RGB: path does not exist' + name_full)
+        print('Cannot load RGB data from file: ' + name_full + ', as it does not exist!')
         return None
 
     img_bgr = cv2.imread(name_full)
@@ -59,13 +59,11 @@ def load_rgb(name, pwd=None, horizontal=True):
     shape = img_rgb.shape[:2]
 
     # transpose image if required
-    if horizontal:
-        if shape[0] > shape[1]:
-            img_rgb = np.transpose(img_rgb, [1, 0, 2])
-            shape = img_rgb.shape[:2]
+    if horizontal and (shape[0] > shape[1]):
+        img_rgb = np.transpose(img_rgb, [1, 0, 2])
 
     if img_rgb is None:
-        print("Failed to load image from path: %s" % (name_full))
+        print("Failed to load image from path: %s" % name_full)
 
     return img_rgb
 
@@ -97,6 +95,19 @@ def change_brightness(img, brightness):
     else:
         print 'I can not do anything with a brightness value of ', brightness, '!'
         return img
+
+def change_color_brightness(color, brightness):
+    color = np.array(color)
+
+    if 0 < brightness < 1:
+        return color + ((255 - color) ** brightness).astype(np.uint8)
+
+    if -1 < brightness < 0:
+        return color - (color ** -brightness).astype(np.uint8)
+
+    else:
+        print 'I can not do anything with a brightness value of ', brightness, '!'
+        return color
 
 
 def angular_difference(x, y):
@@ -293,11 +304,11 @@ def plot_segments(img_rgb, background, tomato, peduncle, fig=None, show_backgrou
     return fig
 
 
-def plot_image(img, show_axis=False):
+def plot_image(img, show_axis=False, animated=False):
     """
         plot image
     """
-    plt.imshow(img)
+    plt.imshow(img, animated=animated)
     if not show_axis:
         clear_axis()
 
@@ -720,7 +731,7 @@ def add_com(center, radius=5):
 
 
 def add_circles(centers, radii=5, fc=(255, 255, 255), ec=(0, 0, 0), linewidth=1, alpha=1.0, linestyle='-', zorder=None,
-                pwd=None, name=None, title=""):
+                pwd=None, name=None, title="", get_artist=False):
     """
         centers: circle centers expressed in [col, row]
     """
@@ -734,6 +745,9 @@ def add_circles(centers, radii=5, fc=(255, 255, 255), ec=(0, 0, 0), linewidth=1,
     # if a single radius is give, we repeat the value
     if not isinstance(radii, (list, np.ndarray)):
         radii = [radii] * centers.shape[0]
+
+    if len(centers.shape) == 1:
+        centers = np.array(centers, ndmin=2)
 
     # if empty we can not add any circles
     if centers.shape[0] == 0:
@@ -751,16 +765,18 @@ def add_circles(centers, radii=5, fc=(255, 255, 255), ec=(0, 0, 0), linewidth=1,
     # centers should be integers
     centers = np.round(centers).astype(dtype=int)  # (col, row)
     radii = np.round(radii).astype(dtype=int)  # (col, row)
-    ax = plt.gca()
 
     for center, radius in zip(centers, radii):
         circle = mpl.patches.Circle(center, radius, ec=ec, fc=fc, fill=True, linewidth=linewidth,
                                            linestyle=linestyle, zorder=zorder)
-        ax.add_artist(circle)
+
+        ax = plt.gca()
+        artist = ax.add_artist(circle)
 
     if pwd is not None:
         save_fig(plt.gcf(), pwd, name, title="", titleSize=20)
 
+    return artist
 
 def add_contour(mask, color=(255, 255, 255), linewidth=1, zorder=None):
     if zorder is None:
@@ -816,15 +832,18 @@ def add_arrows(centers, angles, lengths=20, color=(255, 255, 255), linewidth=1, 
     if isinstance(centers, (list, tuple)):
         centers = np.array(centers, ndmin=2)
 
-    if not isinstance(angles, (list, tuple)):
+    if not isinstance(angles, (list, tuple, np.ndarray)):
         angles = [angles]
+
+    if not isinstance(lengths, (list, tuple, np.ndarray)):
+        lengths = [lengths]
 
     color = np.array(color).astype(float) / 255
 
-    for center, angle in zip(centers, angles):
+    for center, angle, length in zip(centers, angles, lengths):
         if not is_rad:
             angle = angle / 180 * np.pi
-        start_point, end_point = compute_line_points(center, angle, l)
+        start_point, end_point = compute_line_points(center, angle, length)
 
         plt.arrow(start_point[0], start_point[1], end_point[0] - start_point[0], end_point[1] - start_point[1],
                   color=color, lw=linewidth, head_width=head_width, head_length=head_length, zorder=top_layer)
