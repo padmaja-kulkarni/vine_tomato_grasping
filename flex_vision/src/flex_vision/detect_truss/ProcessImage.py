@@ -86,14 +86,11 @@ class ProcessImage(object):
     def color_space(self, compute_a=True):
         pwd = os.path.join(self.pwd, '01_color_space')
         self.img_hue = cv2.cvtColor(self.img_rgb.data, cv2.COLOR_RGB2HSV)[:, :, 0]
-        if compute_a:
-            self.img_a = cv2.cvtColor(self.img_rgb.data, cv2.COLOR_RGB2LAB)[:, :, 1]
-        else:
-            self.img_a = None
+        self.img_a = cv2.cvtColor(self.img_rgb.data, cv2.COLOR_RGB2LAB)[:, :, 1]  # L: 0 to 255, a: 0 to 255, b: 0 to 255
 
         if self.save:
             save_img(self.img_hue, pwd, self.name + '_h_raw', vmin=0, vmax=180)
-            save_img(self.img_a, pwd, self.name + '_a_raw', vmin=0, vmax=255)
+            save_img(self.img_a, pwd, self.name + '_a_raw', vmin=1, vmax=255)
 
             save_img(self.img_hue, pwd, self.name + '_h', color_map='HSV', vmin=0, vmax=180)
             save_img(self.img_a, pwd, self.name + '_a', color_map='Lab')
@@ -124,11 +121,11 @@ class ProcessImage(object):
         self.tomato = imgpy.Image(tomato)
         self.peduncle = imgpy.Image(peduncle)
 
-        if self.tomato.is_empty():
+        if self.tomato.data.sum() == 0:
             warnings.warn("Segment truss: no pixel has been classified as tomato!")
             success = False
 
-        if self.peduncle.is_empty():
+        if self.peduncle.data.sum() == 0:
             warnings.warn("Segment truss: no pixel has been classified as peduncle!")
             success = False
 
@@ -542,7 +539,7 @@ class ProcessImage(object):
 
         tomato, peduncle, background = self.get_segments(local=local)
         img_rgb = self.get_rgb(local=local)
-        plot_segments(img_rgb, background, tomato, peduncle, linewidth=0.5, pwd=pwd, name=name)
+        plot_segments(img_rgb, background, tomato, peduncle, linewidth=0.5, pwd=pwd, name=name, alpha=1)
 
     @Timer("process image")
     def process_image(self):
@@ -607,10 +604,10 @@ def main():
     i_end = 2
     N = i_end - i_start
 
-    save = False
+    save = True
     drive = "backup"  # "UBUNTU 16_0"  #
 
-    pwd_root = os.path.join(os.sep, 'home', 'taeke', 'Documents', "images")
+
     pwd_root = os.path.join(os.sep, "media" ,"taeke", "backup", "thesis_data", "detect_truss")
 
     dataset = "lidl"
@@ -629,10 +626,7 @@ def main():
         print("Analyzing image ID %d (%d/%d)" % (i_tomato, count + 1, N))
 
         tomato_name = str(i_tomato).zfill(3)
-        if i_tomato > 49:
-            file_name = tomato_name + "_rgb" + ".png"
-        else:
-            file_name = tomato_name + ".png"
+        file_name = tomato_name + "_rgb" + ".png"
 
         rgb_data = load_rgb(file_name, pwd=pwd_data, horizontal=True)
         px_per_mm = load_px_per_mm(pwd_data, tomato_name)
