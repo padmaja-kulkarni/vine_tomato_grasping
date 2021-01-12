@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import rospy
-from flex_shared_resources.msg import SpawnInstruction
+from flex_shared_resources.msg import GazeboInstruction
 
 
 class GazeboInterfaceStateMachine(object):
@@ -44,7 +44,7 @@ class GazeboInterfaceStateMachine(object):
         if command is None:
             return
 
-        if command == SpawnInstruction.SPAWN:
+        if command == GazeboInstruction.SPAWN:
             model_type = self._input.model_type
             rospy.loginfo("[{0}] Requested to spawn {1} model".format(self.NODE_NAME, model_type))
 
@@ -58,12 +58,12 @@ class GazeboInterfaceStateMachine(object):
                 self._is_idle = False
                 self._input.command_accepted()
 
-        elif command == SpawnInstruction.DELETE:
+        elif command == GazeboInstruction.DELETE:
             self._command = command
             self._is_idle = False
             self._input.command_accepted()
 
-        elif command == SpawnInstruction.SETPOSE:
+        elif command == GazeboInstruction.SETPOSE:
             self._command = command
             self._is_idle = False
             self._input.command_accepted()
@@ -74,17 +74,17 @@ class GazeboInterfaceStateMachine(object):
 
     def _process_spawn_state(self):
 
-        if self._command == SpawnInstruction.SPAWN:
+        if self._command == GazeboInstruction.SPAWN:
             rospy.logdebug("[%s] Executing spawn command", self.NODE_NAME)
             self._gazebo_interface.delete_all_models()
             success = self._gazebo_interface.spawn_model(self._model_type)
             self.command_completed(success)
 
-        elif self._command == SpawnInstruction.DELETE:
+        elif self._command == GazeboInstruction.DELETE:
             success = self._gazebo_interface.delete_all_models()
             self.command_completed(success)
 
-        elif self._command == SpawnInstruction.SETPOSE:
+        elif self._command == GazeboInstruction.SETPOSE:
             success = self._gazebo_interface.set_model_pose()
             self.command_completed(success)
 
