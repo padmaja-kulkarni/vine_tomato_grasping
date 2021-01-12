@@ -13,15 +13,13 @@ from matplotlib import animation
 
 from sklearn import linear_model
 
-from flex_vision.utils.util import add_circles, add_arrows, add_contour, change_color_brightness
+from flex_vision.utils.util import add_circles, add_arrows, add_contour, add_strings
 from flex_vision.utils.util import plot_image, save_fig
 from flex_vision.utils.util import remove_blobs, bin2img, img2bin
 from sklearn.metrics.pairwise import euclidean_distances
 import matplotlib as mpl
 
-NEW_PATH_COLOUR = [150, 150, 255]
-OLD_PATH_COLOUR = [0, 0, 255]
-
+NEW_PATH_COLOUR = [130, 50, 230]
 JUNC_COLOR = (100, 0, 200)
 END_COLOR = (200, 0, 0)
 
@@ -65,13 +63,13 @@ def detect_peduncle(peduncle_img, settings=None, px_per_mm=None, bg_img=None, sa
     end_nodes = coords_to_nodes(pixel_coordinates, end_coords[:, [1, 0]])
     junc_nodes = coords_to_nodes(pixel_coordinates, junc_coords[:, [1, 0]])
 
-    path, path_length_px, branch_data = find_path(dist, pred, junc_nodes, end_nodes, pixel_coordinates, bg_image=bg_img.copy())
+    path, path_length_px, branch_data = find_path(dist, pred, junc_nodes, end_nodes, pixel_coordinates, bg_image=bg_img.copy(), do_animate=False)
 
     branch_data = get_branch_center(branch_data, dist, pixel_coordinates, skeleton_img)
 
     path_img = path_mask(path, pixel_coordinates, skeleton_img.shape)
-    junc_coords = get_locations_on_path(path, pixel_coordinates, junc_nodes)
-    end_coords = get_locations_on_path(path, pixel_coordinates, end_nodes)
+    junc_coords = pixel_coordinates[get_ids_on_path(path, pixel_coordinates, junc_nodes)][:, [1, 0]]
+    end_coords = pixel_coordinates[get_ids_on_path(path, pixel_coordinates, end_nodes)][:, [1, 0]]
 
     end_coords = np.array([pixel_coordinates[path[0]][[1, 0]], pixel_coordinates[path[-1]][[1, 0]]])
 
@@ -93,15 +91,22 @@ def detect_peduncle(peduncle_img, settings=None, px_per_mm=None, bg_img=None, sa
     return path_img, branch_data, junc_coords, end_coords
 
 
-def find_path(dist, pred, junc_nodes, end_nodes, pixel_coordinates, bg_image=None, timeout=1000, do_animate=False):
+def find_path(dist, pred, junc_nodes, end_nodes, pixel_coordinates, bg_image=None, timeout=1000, do_animate=True):
     # initialize
     best_path = []
     best_length = 0
-    if do_animate:
-        my_animation = PeduncleAnimation(pixel_coordinates, bg_image=bg_image, name="animation")
-        my_animation.add_nodes(junc_nodes, end_nodes)
 
-    for start_node in end_nodes:
+    if do_animate:
+        start_nodes = [384]
+    else:
+        start_nodes = end_nodes
+
+    for start_node in start_nodes:
+
+        if do_animate:
+            my_animation = PeduncleAnimation(pixel_coordinates, junc_nodes, end_nodes, bg_image=bg_image,
+                                             name="animation_" + str(start_node))
+
         for end_node in end_nodes:
 
             count = 0
@@ -112,7 +117,7 @@ def find_path(dist, pred, junc_nodes, end_nodes, pixel_coordinates, bg_image=Non
             length = 0
 
             path = []
-            subpath = []  # from_node TODO: was fist an empty list!
+            subpath = [from_node]  # TODO: was fist an empty list!
             branch_data = []
 
             while count < timeout:
@@ -141,7 +146,7 @@ def find_path(dist, pred, junc_nodes, end_nodes, pixel_coordinates, bg_image=Non
                         if len(subpath) == 0:
                             print subpath
 
-                        subpath = []  # from_node TODO: was fist an empty list!
+                        subpath = [from_node]  # TODO: was fist an empty list!
 
                     else:
                         # reset path
@@ -157,13 +162,14 @@ def find_path(dist, pred, junc_nodes, end_nodes, pixel_coordinates, bg_image=Non
                         path = subpath
                         branch_data = []
                         branch_data.append(subpath)
-                        subpath = []  # from_node TODO: was fist an empty list!
+                        subpath = [from_node]  # TODO: was fist an empty list!
                         length = 0
                         angle_total = node_coord_angle(init_coord, new_coord)
 
-                    if do_animate:
-                        my_animation.add_image(path, subpath, start_node, end_node)
                     coord = new_coord
+
+                if do_animate:
+                    my_animation.add_frame(path, subpath, start_node, end_node)
 
             if len(path) > 1:
                 length = dist[(path[0], path[-1])]
@@ -175,6 +181,7 @@ def find_path(dist, pred, junc_nodes, end_nodes, pixel_coordinates, bg_image=Non
 
         if do_animate:
             my_animation.save()
+
     return best_path, best_length, best_branch_data
 
 
@@ -461,7 +468,7 @@ def fit_ransac(peduncle_img, bg_img=None, save=False, name="", pwd=""):
     return img_inlier
 
 
-def get_locations_on_path(path, pixel_coordinates, node_ids, threshold=0.001):
+def get_ids_on_path(path, pixel_coordinates, node_ids, threshold=0.001):
     row, col = get_path_coordinates(path, pixel_coordinates)
     path_coordinates = np.column_stack([row, col])  # [row, col]
     node_coordinates = pixel_coordinates[node_ids]  # [row, col]
@@ -470,16 +477,23 @@ def get_locations_on_path(path, pixel_coordinates, node_ids, threshold=0.001):
 
     # return the node coordaine, thus index = 1
     i_keep = np.argwhere(dist < threshold)[:, 1]
-    return pixel_coordinates[node_ids[i_keep]][:, [1, 0]]
+    return node_ids[i_keep]
 
 
 class PeduncleAnimation(object):
 
-    def __init__(self, pixel_coordinates, bg_image=None, shape=None, name="animation", save_path=None):
+    def __init__(self, pixel_coordinates, junc_node_ids, tail_node_ids, bg_image=None, shape=None, name="animation",
+                 save_path=None):
         self.artists = []
         self.fig, self.ax = plt.subplots()
         self.name = name
-        self.pixel_coordinates = pixel_coordinates
+        self.pixel_coordinates = pixel_coordinates[:, [1, 0]]
+        self.junc_node_ids = junc_node_ids
+        self.tail_node_ids = tail_node_ids
+        self.frame_limit = 1000
+
+        self.n_calls = 0
+        self.calls_per_frame = 5  # amount of calls per frame
 
         if save_path is None:
             self.save_path = os.path.dirname(os.path.realpath(__file__))
@@ -495,54 +509,80 @@ class PeduncleAnimation(object):
         else:
             print "Please provide either a shape or an background image"
 
-    def add_nodes(self, junc_node_ids, tail_node_ids):
-        self.junc_node_ids = junc_node_ids
-        self.tail_node_ids = tail_node_ids
+        self.initialize_static_background()
 
-        junc_coords = self.pixel_coordinates[junc_node_ids]
-        add_circles(junc_coords[:, [1, 0]], radii=3, fc=JUNC_COLOR, linewidth=0, zorder=1, alpha=0.25)
+    def initialize_static_background(self):
+        """initializes the static animation background by plotting the background image, nodes and possible paths"""
+        plot_image(self.bg_img, animated=True)
 
-        end_coords = self.pixel_coordinates[tail_node_ids]
-        add_circles(end_coords[:, [1, 0]], radii=3, fc=END_COLOR, linewidth=0, zorder=1, alpha=0.25)
+        junc_coords = self.pixel_coordinates[self.junc_node_ids]
+        add_circles(junc_coords, radii=3, fc=JUNC_COLOR, linewidth=0, zorder=1, alpha=0.25)
 
-    def add_image(self, path, subpath, src_node_id, dst_node_id):
-        """"""
+        end_coords = self.pixel_coordinates[self.tail_node_ids]
+        add_circles(end_coords, radii=3, fc=END_COLOR, linewidth=0, zorder=1, alpha=0.25)
+
+        color = np.array(JUNC_COLOR).astype(float) / 255
+        self.ax.scatter(self.pixel_coordinates[:, 0], self.pixel_coordinates[:, 1], color=color, linewidth=0, alpha=0.05)
+
+    def add_frame(self, path, subpath, src_node_id, dst_node_id):
+        """Add a frame"""
+
+        # we only save one per N frames
+        self.n_calls = self.n_calls % self.calls_per_frame
+        if not self.n_calls == 0:
+            self.n_calls += 1
+            print "."
+            return
+
+        self.n_calls += 1
+
+        n_frame = len(self.artists) + 1
+        if n_frame > self.frame_limit:
+            print "frame limit succeeded, refusing to add frame"
+            return
+        else:
+            print "adding frame number: ", n_frame
         frame_artists = []
 
-        image = self.bg_img.copy()
-
+        color = np.array(JUNC_COLOR).astype(float) / 255
         if len(path) != 0:
-            row, col = get_path_coordinates(path, self.pixel_coordinates)
-            image[row, col, :] = np.array(OLD_PATH_COLOUR, ndmin=3)
+            row, col = get_path_coordinates(path, self.pixel_coordinates[:, [1, 0]])
+            path_plt, = self.ax.plot(col, row, color=color)
+            frame_artists.append(path_plt)
 
+        color = np.array(NEW_PATH_COLOUR).astype(float) / 255
         if subpath is not None:
-            row, col = get_path_coordinates(subpath, self.pixel_coordinates)
-            image[row, col, :] = np.array(NEW_PATH_COLOUR, ndmin=3)
-
-        frame_artists.append(plt.imshow(image, animated=True))
-        plt.tight_layout()
-        plt.axis('off')
+            row, col = get_path_coordinates(subpath, self.pixel_coordinates[:, [1, 0]])
+            path_plt, = self.ax.plot(col, row, color=color)
+            frame_artists.append(path_plt)
 
         color = np.array(END_COLOR).astype(float) / 255
         for node_id in [src_node_id, dst_node_id]:
             node_coord = self.pixel_coordinates[node_id]
-            node_circle = mpl.patches.Circle(node_coord[[1, 0]], 3, color=color, animated=True, zorder=1)  #
-            frame_artists.append(self.ax.add_artist(node_circle))
+            tail_circle = mpl.patches.Circle(node_coord, 3, color=color, animated=True, zorder=1)
+            tail_text = self.ax.text(node_coord[0] + 5, node_coord[1] - 5, node_id)
+            frame_artists.append(self.ax.add_artist(tail_circle))
+            frame_artists.append(tail_text)
 
         total_path = list(path)
         total_path.extend(subpath)
-        junc_node_coords = get_locations_on_path(total_path, self.pixel_coordinates, self.junc_node_ids)
+        junc_node_ids = get_ids_on_path(total_path, self.pixel_coordinates[:, [1, 0]], self.junc_node_ids)
+        junc_node_coords = self.pixel_coordinates[junc_node_ids]
         color = np.array(JUNC_COLOR).astype(float) / 255
-        for coord in junc_node_coords:
-            junc_circle = mpl.patches.Circle(coord, 3, color=color, animated=True, zorder=1)
+        for junc_coord, junc_id in zip(junc_node_coords, junc_node_ids):
+            junc_circle = mpl.patches.Circle(junc_coord, 3, color=color, animated=True, zorder=1)
+            junc_text = self.ax.text(junc_coord[0] + 5, junc_coord[1] - 5, junc_id)
             frame_artists.append(self.ax.add_artist(junc_circle))
+            frame_artists.append(junc_text)
 
         self.artists.append(frame_artists)
 
-    def show(self):
-        plt.show()
-
-    def save(self, extension='.mp4'):
-        ani = animation.ArtistAnimation(self.fig, self.artists, interval=50, blit=True, repeat_delay=1000)
-        writer = animation.FFMpegWriter(fps=2.5, metadata=dict(artist='Taeke de Haan'), bitrate=1800)
-        ani.save(os.path.join(self.save_path, self.name) + extension, writer)
+    def save(self, extension='.mp4', dpi=200):
+        """Save and close figure"""
+        file_name = os.path.join(self.save_path, self.name) + extension
+        print "Saving animation to file" + file_name + "..."
+        ani = animation.ArtistAnimation(self.fig, self.artists)  # , interval=50, blit=True, repeat_delay=1000
+        writer = animation.FFMpegWriter(fps=30, metadata=dict(artist='Taeke de Haan'), bitrate=-1)
+        ani.save(file_name, writer, dpi=dpi)
+        plt.close()
+        print "Done saving!"

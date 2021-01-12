@@ -186,10 +186,8 @@ class ProcessImage(object):
         y = bbox[1]  # rows to upper left corner
 
         translation = [x, y]
-        self.transform = Transform(self.ORIGINAL_FRAME_ID,
-                                   self.LOCAL_FRAME_ID,
-                                   [self.shape[1], self.shape[0]],  # [width, height]
-                                   angle=-angle,
+        xy_shape = [self.shape[1], self.shape[0]] # [width, height]
+        self.transform = Transform(self.ORIGINAL_FRAME_ID, self.LOCAL_FRAME_ID, xy_shape, angle=-angle,
                                    translation=translation)
 
         self.bbox = bbox
@@ -251,7 +249,7 @@ class ProcessImage(object):
         mask, branch_data, junc_coords, end_coords = detect_peduncle(self.peduncle_crop,
                                                                      self.settings['detect_peduncle'],
                                                                      px_per_mm=self.px_per_mm,
-                                                                     save=self.save,
+                                                                     save=True,  # self.save,
                                                                      bg_img=img_bg,
                                                                      name=self.name,
                                                                      pwd=pwd)
@@ -600,7 +598,7 @@ def main():
     i_end = 2
     N = i_end - i_start
 
-    save = True
+    save = False
     drive = "backup"  # "UBUNTU 16_0"  #
 
 
