@@ -730,6 +730,15 @@ def add_com(center, radius=5):
     ax.add_artist(ab)
 
 
+def add_strings(strings, locations):
+    """
+    Add strings to current axis
+    locations -- [col, row]
+    """
+    for string, location in zip(strings, locations):
+        plt.text(location[0], location[1], string)
+
+
 def add_circles(centers, radii=5, fc=(255, 255, 255), ec=(0, 0, 0), linewidth=1, alpha=1.0, linestyle='-', zorder=None,
                 pwd=None, name=None, title="", get_artist=False):
     """
