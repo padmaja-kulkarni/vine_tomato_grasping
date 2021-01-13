@@ -9,7 +9,7 @@ Created on Mon Feb 17 14:35:14 2020
 import numpy as np
 from matplotlib import pyplot as plt
 from flex_vision.utils.geometry import Transform, Point2D
-from flex_vision.utils import Image
+# from flex_vision.utils import Image
 
 
 def main():
@@ -34,8 +34,8 @@ def main():
         point = Point2D(xy_original, original_frame, transform)
 
         # create and rotate image
-        img = Image(np.full([height, width], 100, dtype=np.uint8))
-        img.data[xy_original[1], xy_original[0]] = vmax
+        img = np.full([height, width], 100, dtype=np.uint8)
+        img[xy_original[1], xy_original[0]] = vmax
         img_rotate = img.copy().rotate(angle)
 
         coord_r = point.get_coord(local_frame)
@@ -45,19 +45,19 @@ def main():
         fig = plt.figure()
         plt.subplot(2, 2, 1)
         ax = fig.gca()
-        plt.imshow(img.data, vmin=vmin, vmax=vmax)
+        plt.imshow(img, vmin=vmin, vmax=vmax)
         circle = plt.Circle([xy_original[0], xy_original[1]], 3, color='r', fill=False)
         ax.add_artist(circle)
 
         plt.subplot(2, 2, 2)
         ax = fig.gca()
-        plt.imshow(img_rotate.data, vmin=vmin, vmax=vmax)
+        plt.imshow(img_rotate, vmin=vmin, vmax=vmax)
         circle = plt.Circle((coord_r[0], coord_r[1]), 3, color='r', fill=False)
         ax.add_artist(circle)
 
         plt.subplot(2, 2, 3)
         ax = fig.gca()
-        plt.imshow(img.data, vmin=vmin, vmax=vmax)
+        plt.imshow(img, vmin=vmin, vmax=vmax)
 
         circle = plt.Circle((coord_p[0], coord_p[1]), 3, color='r', fill=False)
         ax.add_artist(circle)

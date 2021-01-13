@@ -5,37 +5,17 @@ A python package to extract truss features from a given image and determined an 
 ## 1 Installation
 > :warning: This package uses python 2!
 
-This package can be used in two ways:
-1. This package can be used with ROS, in combination with the other packages.
-2. You can use this package independently of ROS.
-
-### 1.1 With ROS
-If you have ROS installed you can install most dependencies with rosdep:
-
+Install the dependencies with the requirements.txt file:
 ```
-rosdep install --from-paths src --ignore-src -r -y
-```
-Not all dependencies can be installed this way, first of all you need to manyally install colormath:
-```
-python2 -m pip install colormath
-```
-
-Finally you need to install a fork of the skan library wich offers python 2 support: 
-```
-python2 -m pip install git+https://github.com/TaekedeHaan/skan.git@python-2.7
-```
-
-
-### 1.2 Without ROS
-If you do not have ROS on your machine, you can also install the dependencies with the requirements.txt file:
-```
+cd ~/flexcraft_ws/src/taeke_msc/flex_vision
 python2 -m pip install -r requirements.txt
 ```
 
 ### 1.3 Verify Instalation
-make sure you are in the `flex_vision/src` direcotry, and run:
+Run the tests:
 ```
-python -m unittest discover test
+cd ~/flexcraft_ws/src/taeke_msc/flex_vision/src
+python2 -m unittest discover flex_vision/test
 ```
 
 ## 2 Genral introduction
@@ -54,6 +34,8 @@ Moreover, if you provide a ground truth, an error may be determined:
 </p>
 
 ## 3 Code structure
+> :warning: This information is depricated!
+
 Currently, this repository is fairly unstructured, I will improve this. For now:
 
 1. The main file for feature extraction and grasp pose determination is [detect_truss/ProcessImage.py](src/flex_vision/detect_truss/ProcessImage.py)
@@ -118,3 +100,4 @@ The workaround I found was to install opencv-python version 4.2.0.32 (which is t
 ```
 pip2 install opencv-python==4.2.0.32
 ```
+

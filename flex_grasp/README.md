@@ -45,7 +45,7 @@ python -m pip install modern_robotics
 ```
 Finally set up the udev rules for communication:
 ```
-$ sudo cp ~/interbotix_ws/src/interbotix_ros_arms/interbotix_sdk/10-interbotix-udev.rules /etc/udev/rules.d
+$ sudo cp ~/flexcraft_ws/src/interbotix_ros_arms/interbotix_sdk/10-interbotix-udev.rules /etc/udev/rules.d
 $ sudo udevadm control --reload-rules && udevadm trigger
 ```
 When running into any problems please refere to the [interbotix_ros_arms repo](https://github.com/Interbotix/interbotix_ros_arms)
@@ -103,6 +103,7 @@ python2 -m pip install git+https://github.com/TaekedeHaan/skan.git@python-2.7
 ### 1.5 Remaining Dependencies
 Install remaining dependencies:
 ```
+cd ~/flexcraft_ws
 rosdep install --from-paths src --ignore-src -r -y
 ```
 
