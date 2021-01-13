@@ -249,7 +249,7 @@ class ProcessImage(object):
         mask, branch_data, junc_coords, end_coords = detect_peduncle(self.peduncle_crop,
                                                                      self.settings['detect_peduncle'],
                                                                      px_per_mm=self.px_per_mm,
-                                                                     save=True,  # self.save,
+                                                                     save=self.save,
                                                                      bg_img=img_bg,
                                                                      name=self.name,
                                                                      pwd=pwd)

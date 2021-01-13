@@ -252,3 +252,10 @@ https://varhowto.com/how-to-fix-libcurl-51-ssl-no-alternative-certificate-subjec
 
 ### RLException: unused args [start_sampling_gui] for include of [/home/taeke/flexcraft_ws/src/easy_handeye/easy_handeye/launch/calibrate.launch]
 In older version of `calibrate.launch` the variable `start_sampling_gui` was called `start_rqt`. Thus to fix this command either update easy_handeye, of if this is not desired change `start_sampling_gui` in taeke_msc/flex_grasp/launch to `start_rqt`.
+
+### Calibration node does not initialize, but gets stuck
+If calibrate gets stuck at:
+```
+[INFO] [1610553811.946348, 0.001000]: Loading parameters for calibration /px150/calibration_eye_on_base/ from the parameters server
+```
+check this issue: https://github.com/IFL-CAMP/easy_handeye/issues/77
