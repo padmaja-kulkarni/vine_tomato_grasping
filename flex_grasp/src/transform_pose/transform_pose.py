@@ -82,8 +82,9 @@ class TransformPose(object):
 
         self.action_pose = dict.fromkeys(keys)
         self.output_logger = DataLogger(self.node_name, topics_out, types_out, bag_name=self.node_name)
+        self.settings_logger = DataLogger(self.node_name, {"settings": "peduncle_height"},
+                                          {"settings": Float32}, bag_name='peduncle_height')
 
-        # TODO: log peduncle height
         peduncle_height_pub = rospy.Publisher('peduncle_height', Float32, queue_size=5, latch=True)
         msg = Float32()
         msg.data = self.peduncle_height
@@ -138,6 +139,9 @@ class TransformPose(object):
             rospy.logwarn("[%s] Cannot transform pose, since object_pose still empty!", self.node_name)
             return FlexGraspErrorCodes.TRANSFORM_POSE_FAILED
 
+        peduncle_height = Float32()
+        peduncle_height.data = self.peduncle_height
+        self.settings_logger.write_messages_to_bag({"settings": peduncle_height}, self.exp_info.path, self.exp_info.id)
         current_object_pose = self.transform_current_object_pose(current_object_pose)
         target_object_pose = self.get_target_object_pose()
 

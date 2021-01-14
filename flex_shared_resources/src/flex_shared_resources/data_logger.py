@@ -28,9 +28,10 @@ class DataLogger(object):
             bag_name = self.node_name
         self.bag_name = bag_name
 
-        self.publisher = {}
-        for key in self.topics:
-            self.publisher[key] = rospy.Publisher(self.topics[key], self.types[key], queue_size=queue_size, latch=True)
+        if topics is not None:
+            self.publisher = {}
+            for key in self.topics:
+                self.publisher[key] = rospy.Publisher(self.topics[key], self.types[key], queue_size=queue_size, latch=True)
 
     def write_messages_to_bag(self, messages, bag_path, bag_id):
         """Write data in a rosbag"""
@@ -89,22 +90,30 @@ class DataLogger(object):
 
     def _write_message(self, key, message):
         """Write received data in a rosbag"""
-        if isinstance(message, self.types[key]):
+        my_type = self.types[key]
+        if isinstance(message, my_type):
             rospy.logdebug("[{0}] Writing {1} to {2} bag".format(self.node_name, key, self.bag_name))
             self.bag.write(self.topics[key], message)
             return FlexGraspErrorCodes.SUCCESS
         else:
-            rospy.logwarn("[{0}] Cannot write message to {1} bag: no instance of specified type".format(self.node_name, self.bag_name))
+            message_type_name = type(message).__name__
+            my_type_name = my_type.__name__
+            rospy.logwarn("[{0}] Cannot write message to {1} bag: message of type {2} does not match specified type {3}"
+                          .format(self.node_name, self.bag_name, message_type_name, my_type_name))
             return FlexGraspErrorCodes.FAILURE
 
     def _publish_message(self, key, message):
-        if isinstance(message, self.types[key]):
+        my_type = self.types[key]
+        if isinstance(message, my_type):
             rospy.logdebug("[{0}] Publishing {1}".format(self.node_name, key))
             self._write_message(key, message)
             self.publisher[key].publish(message)
             return FlexGraspErrorCodes.SUCCESS
         else:
-            rospy.logwarn("[{0}] Cannot publish message: no instance of specified type".format(self.node_name))
+            message_type_name = type(message).__name__
+            my_type_name = my_type.__name__
+            rospy.logwarn("[{0}] Cannot publish message: message of type {1} does not match specified type {2}"
+                          .format(self.node_name, message_type_name, my_type_name))
             return FlexGraspErrorCodes.FAILURE
 
     def _open_bag(self, bag_path, bag_id, read=False, write=False):
