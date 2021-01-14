@@ -71,7 +71,7 @@
 
 		<node name="pick_place"
 			pkg="flex_grasp"
-			type="pick_place.py"
+			type="pick_place_node.py"
 			output="screen">
 			<param name ="debug" value="$(arg pick_place_debug)"/>
 		</node>
