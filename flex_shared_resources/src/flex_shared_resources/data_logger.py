@@ -7,7 +7,17 @@ from flex_grasp.msg import FlexGraspErrorCodes
 class DataLogger(object):
     """Generic data logger class"""
 
-    def __init__(self, node_name, topics, types, bag_name=None, callbacks=None):
+    def __init__(self, node_name, topics, types, bag_name=None, callbacks=None, queue_size=1):
+        """topics and types should be provided as
+        1) String and Type dictionaries with corresponding keys
+        2) String and Type
+        """
+        if isinstance(topics, str):
+            my_topic = topics
+            my_type = types
+            topics = {my_topic: my_topic}
+            types = {my_topic: my_type}
+
         self.node_name = node_name
         self.topics = topics
         self.callbacks = callbacks
@@ -20,7 +30,7 @@ class DataLogger(object):
 
         self.publisher = {}
         for key in self.topics:
-            self.publisher[key] = rospy.Publisher(self.topics[key], self.types[key], queue_size=1, latch=True)
+            self.publisher[key] = rospy.Publisher(self.topics[key], self.types[key], queue_size=queue_size, latch=True)
 
     def write_messages_to_bag(self, messages, bag_path, bag_id):
         """Write data in a rosbag"""
@@ -51,14 +61,27 @@ class DataLogger(object):
             return FlexGraspErrorCodes.FAILURE
 
     def publish_messages(self, messages, bag_path, bag_id):
-        """write messages to a bag, and publishes them"""
+        """write message(s) to a bag, and publish it/them"""
         success = self._open_bag(bag_path, bag_id, write=True)
         if success:
             overall_result = FlexGraspErrorCodes.SUCCESS
-            for key in messages:
-                result = self._publish_message(key, messages[key])
-                if result is not FlexGraspErrorCodes.SUCCESS:
-                    overall_result = result
+
+            # if the messages are provided as a dict, loop over the keys
+            if isinstance(messages, dict):
+                for key in messages:
+                    result = self._publish_message(key, messages[key])
+                    if result is not FlexGraspErrorCodes.SUCCESS:
+                        overall_result = result
+
+            # if only a single message is provided, check if the DataLogger is intialized with a single topic in mind
+            else:
+                keys = self.topics.keys()
+                if len(keys) == 1:
+                    key = keys[0]
+                    overall_result = self._publish_message(key, messages)
+                else:
+                    rospy.logwarn("[{0}] Cannot publish message: unclear on which topic to publish!".format(self.node_name))
+                    overall_result = FlexGraspErrorCodes.FAILURE
             self._close_bag()
             return overall_result
         else:
@@ -76,7 +99,7 @@ class DataLogger(object):
 
     def _publish_message(self, key, message):
         if isinstance(message, self.types[key]):
-            rospy.loginfo("[{0}] Publishing {1}".format(self.node_name, key))
+            rospy.logdebug("[{0}] Publishing {1}".format(self.node_name, key))
             self._write_message(key, message)
             self.publisher[key].publish(message)
             return FlexGraspErrorCodes.SUCCESS
@@ -122,7 +145,7 @@ class DataLogger(object):
     def _close_bag(self):
         """close bag, if not properly closed information will be lost!"""
         if self.bag is not None:
-            rospy.loginfo("[{0}] Closing previous {1} bag".format(self.node_name, self.bag_name))
+            rospy.logdebug("[{0}] Closing previous {1} bag".format(self.node_name, self.bag_name))
             self.bag.close()
             self.bag = None
 
