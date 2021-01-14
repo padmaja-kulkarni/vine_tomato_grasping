@@ -14,13 +14,12 @@ import os
 from cv_bridge import CvBridge, CvBridgeError
 
 # msg
-from std_msgs.msg import String
 from sensor_msgs.msg import Image, CameraInfo, PointCloud2
 from geometry_msgs.msg import PoseStamped
 from flex_grasp.msg import ImageProcessingSettings
 from flex_grasp.msg import FlexGraspErrorCodes
 
-from depth_interface import DepthImageFilter, PointCloudFilter
+from flex_shared_resources.depth_interface import DepthImageFilter, PointCloudFilter
 from flex_vision.detect_truss.ProcessImage import ProcessImage
 from flex_shared_resources.data_logger import DataLogger
 from flex_shared_resources.experiment_info import ExperimentInfo
@@ -58,8 +57,9 @@ class ObjectDetection(object):
 
         self.input_logger = self.initialize_input_logger()
         self.output_logger = self.initialize_output_logger()
+        self.settings_logger = DataLogger(self.node_name, {"settings": "image_processing_settings"}, {"settings": ImageProcessingSettings}, bag_name='image_processing_settings')
 
-        #
+        # cv bridge
         self.bridge = CvBridge()
 
         # params
@@ -222,6 +222,8 @@ class ObjectDetection(object):
         if self.playback:
             success = self.output_logger.publish_messages_from_bag(self.experiment_info.path, self.experiment_info.id)
             return success
+
+        self.settings_logger.write_messages_to_bag({"settings": self.settings}, self.experiment_info.path, self.experiment_info.id)
 
         px_per_mm = self.compute_px_per_mm()
         self.process_image.add_image(self.color_image, px_per_mm=px_per_mm)
