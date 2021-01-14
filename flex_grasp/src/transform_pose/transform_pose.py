@@ -1,6 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 
+import os
 import rospy
 import numpy as np
 
@@ -13,15 +14,23 @@ from func.utils import add_pose
 from flex_shared_resources.utils.conversions import pose_to_lists, point_to_pose_stamped, list_to_orientation, list_to_position, point_to_pose
 
 from flex_shared_resources.utils.pose_generator import PoseGenerator
+from flex_shared_resources.data_logger import DataLogger
+from flex_shared_resources.experiment_info import ExperimentInfo
 
 import tf2_ros
 import tf2_geometry_msgs
 
 class TransformPose(object):
 
-    def __init__(self, node_name):
+    def __init__(self, node_name, playback=False):
 
         self.node_name = node_name
+
+        # state
+        self.playback = playback
+        if self.playback:
+            rospy.loginfo("[{0}] Transform pose launched in playback mode!".format(self.node_name))
+
 
         self.simulation = rospy.get_param("robot_sim")
         self.robot_base_frame = rospy.get_param('robot_base_frame')
@@ -61,23 +70,26 @@ class TransformPose(object):
                                             frame=self.robot_base_frame,
                                             seed=self.node_name)
 
-
-        # create dict which stores all poses
-        keys = ['pre_grasp', 'grasp', 'pre_place', 'place']
-        self.action_pose = dict.fromkeys(keys)
+        self.exp_info = ExperimentInfo(self.node_name)
 
         # Initialize Publishers
-        self.pose_pub = {}
-        for key in self.action_pose:
-            self.pose_pub[key] = rospy.Publisher(key + '_pose', PoseStamped, queue_size=5, latch=True)
+        keys = ['pre_grasp', 'grasp', 'pre_place', 'place']
+        topics_out = {}
+        types_out = {}
+        for key in keys:
+            topics_out[key] = key + '_pose'
+            types_out[key] = PoseStamped
 
+        self.action_pose = dict.fromkeys(keys)
+        self.output_logger = DataLogger(self.node_name, topics_out, types_out, bag_name=self.node_name)
+
+        # TODO: log peduncle height
         peduncle_height_pub = rospy.Publisher('peduncle_height', Float32, queue_size=5, latch=True)
         msg = Float32()
         msg.data = self.peduncle_height
         peduncle_height_pub.publish(msg)
 
         rospy.Subscriber("peduncle_height", Float32, self.peduncle_height_cb)
-
 
         self.pose_transform = {'pre_grasp': point_to_pose(pre_grasp_xyz, ee_rpy),
                                'grasp':     point_to_pose(grasp_xyz, ee_rpy),
@@ -117,6 +129,10 @@ class TransformPose(object):
         """
             generates action poses for the pre_grasp, grasp, pre_place and place actions
         """
+        if self.playback:
+            rospy.loginfo("[{0}] Playback is active: publishing messages from bag!".format(self.node_name))
+            success = self.output_logger.publish_messages_from_bag(self.exp_info.path, self.exp_info.id)
+            return success
 
         if current_object_pose is None:
             rospy.logwarn("[%s] Cannot transform pose, since object_pose still empty!", self.node_name)
@@ -159,14 +175,14 @@ class TransformPose(object):
                 action_pose[key] = self.compensate_for_sagging(action_pose[key])
 
         self.action_pose = action_pose
-        self.pub_all_poses()
-        return FlexGraspErrorCodes.SUCCESS
-
-    def pub_all_poses(self):
-        for key in self.pose_pub:
-            self.pose_pub[key].publish(self.action_pose[key])
+        success = self.output_logger.publish_messages(self.action_pose, self.exp_info.path, self.exp_info.id)
+        return success
 
     def compensate_for_sagging(self, pose_stamped):
+        """
+            The real robot bends under the weight of itself, therefore it may be desired to slightly increase the target
+            pose height.
+        """
         x = pose_stamped.pose.position.x
         y = pose_stamped.pose.position.y
         r = (x**2 + y**2)**0.5
@@ -203,9 +219,6 @@ class TransformPose(object):
         try:
             transform = self.tfBuffer.lookup_transform(to_frame, original_frame, time=rospy.Time.now())
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
-            pass
-
-        if transform is None:
             rospy.logwarn("[%s] Cannot transform pose, failed to lookup transform from %s to %s!", self.node_name,
                           original_frame, to_frame)
             return FlexGraspErrorCodes.TRANSFORM_POSE_FAILED

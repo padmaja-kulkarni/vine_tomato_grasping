@@ -90,7 +90,8 @@ class DataLogger(object):
             rospy.logwarn("[{0}] Did not close previous {1} bag".format(self.node_name, self.bag_name))
             self._close_bag()
 
-        full_name = bag_id + '_' + self.bag_name + '.bag'
+        bag_path = os.path.join(bag_path, bag_id)
+        full_name = self.bag_name + '.bag'
         full_path = os.path.join(bag_path, full_name)
 
         rospy.loginfo("[{0}] Opening bag {1}".format(self.node_name, full_path))

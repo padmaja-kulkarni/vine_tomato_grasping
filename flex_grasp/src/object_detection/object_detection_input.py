@@ -4,9 +4,8 @@ import os
 # msg
 from std_msgs.msg import String
 from sensor_msgs.msg import Image, CameraInfo, PointCloud2
-from geometry_msgs.msg import PoseStamped
 
-from state_machine.data_logger import DataLogger
+from flex_shared_resources.src.flex_shared_resources.data_logger import DataLogger
 from cv_bridge import CvBridge, CvBridgeError
 
 DEFAULT_CAMERA_SIM = False

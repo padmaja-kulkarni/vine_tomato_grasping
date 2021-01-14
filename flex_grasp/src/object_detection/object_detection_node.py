@@ -10,7 +10,6 @@ from object_detection import ObjectDetection
 NODE_NAME = 'object_detection'
 DEFAULT_UPDATE_RATE = 10.0
 DEFAULT_DEBUG_MODE = True
-
 DEFAULT_PLAYBACK = False
 
 def main():

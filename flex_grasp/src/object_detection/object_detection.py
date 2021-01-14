@@ -22,8 +22,8 @@ from flex_grasp.msg import FlexGraspErrorCodes
 
 from depth_interface import DepthImageFilter, PointCloudFilter
 from flex_vision.detect_truss.ProcessImage import ProcessImage
-from state_machine.data_logger import DataLogger
-
+from flex_shared_resources.data_logger import DataLogger
+from flex_shared_resources.experiment_info import ExperimentInfo
 
 from flex_shared_resources.utils.conversions import point_to_pose_stamped, settings_lib_to_msg, settings_msg_to_lib
 from func.utils import camera_info2rs_intrinsics
@@ -67,15 +67,12 @@ class ObjectDetection(object):
         self.peduncle_height = 0.080  # [m]
         self.settings = settings_lib_to_msg(self.process_image.get_settings())
 
-        self.experiment_path = os.path.join(os.getcwd(), 'thesis_data', 'default')
-        self.experiment_id = None
+        self.experiment_info = ExperimentInfo(self.node_name)
 
         pub_image_processing_settings = rospy.Publisher("image_processing_settings",
                                                         ImageProcessingSettings, queue_size=10, latch=True)
 
         pub_image_processing_settings.publish(self.settings)
-
-        rospy.Subscriber("experiment_id", String, self.experiment_id_cb)
 
         # TODO: log settings!
         rospy.Subscriber("image_processing_settings", ImageProcessingSettings, self.image_processing_settings_cb)
@@ -100,7 +97,6 @@ class ObjectDetection(object):
         for key in types_in:
             rospy.Subscriber(topics_in[key], types_in[key], callbacks[key])
 
-        rospy.Subscriber("experiment_pwd", String, self.experiment_pwd_cb)
         return DataLogger(self.node_name, topics_in, types_in, bag_name='camera')
 
     def initialize_output_logger(self):
@@ -114,21 +110,6 @@ class ObjectDetection(object):
                      'depth_image': Image}
 
         return DataLogger(self.node_name, topics_out, types_out, bag_name=self.node_name)
-
-    ## callbacks
-    def experiment_id_cb(self, msg):
-        """callback"""
-        new_id = msg.data
-        if self.experiment_id != new_id:
-            self.experiment_id = new_id
-            rospy.loginfo("[{0}] Storing results with experiment id {1}".format(self.node_name, new_id))
-
-    def experiment_pwd_cb(self, msg):
-        """callback to update the data path"""
-        new_path = msg.data
-        if self.experiment_path != new_path:
-            self.experiment_path = new_path
-            rospy.loginfo("[{0}] Storing results in folder {1}".format(self.node_name, new_path))
 
     def color_image_cb(self, msg):
         if (self.color_image is None) and self.take_picture:
@@ -203,7 +184,7 @@ class ObjectDetection(object):
 
         # information about the image which will be stored
         image_info = {'px_per_mm': self.compute_px_per_mm()}
-        json_pwd = os.path.join(self.experiment_path, self.experiment_id + '_info.json')
+        json_pwd = os.path.join(self.experiment_info.path, self.experiment_info.id + '_info.json')
 
         rgb_img = self.color_image
         depth_img = colored_depth_image(self.depth_image.copy())
@@ -211,19 +192,12 @@ class ObjectDetection(object):
         with open(json_pwd, "w") as write_file:
             json.dump(image_info, write_file)
 
-        self.save_image(rgb_img, self.experiment_path,  name=self.experiment_id + '_rgb.png')
-        self.save_image(depth_img, self.experiment_path, name=self.experiment_id + '_depth.png')
+        self.save_image(rgb_img, self.experiment_info.path,  name=self.experiment_info.id + '_rgb.png')
+        self.save_image(depth_img, self.experiment_info.path, name=self.experiment_info.id + '_depth.png')
         if result_img is not None:
-            self.save_image(result_img, self.experiment_path, name=self.experiment_id + '_result.png')
-
+            self.save_image(result_img, self.experiment_info.path, name=self.experiment_info.id + '_result.png')
 
         return FlexGraspErrorCodes.SUCCESS
-
-    def reset(self):
-        self.color_image = None
-        self.depth_image = None
-        self.camera_info = None
-        self.pcl = None
 
     def save_image(self, img, pwd, name):
         """Save an RGB image to the given path, if the path does not exist create it."""
@@ -245,38 +219,37 @@ class ObjectDetection(object):
     def detect_object(self):
         """Detect object"""
 
+        if self.playback:
+            success = self.output_logger.publish_messages_from_bag(self.experiment_info.path, self.experiment_info.id)
+            return success
+
+        px_per_mm = self.compute_px_per_mm()
+        self.process_image.add_image(self.color_image, px_per_mm=px_per_mm)
+
+        if self.settings is not None:
+            self.process_image.set_settings(settings_msg_to_lib(self.settings))
+
+        if not self.process_image.process_image():
+            rospy.logwarn("[OBJECT DETECTION] Failed to process image")
+            return FlexGraspErrorCodes.FAILURE
+
+        object_features = self.process_image.get_object_features()
+        tomato_mask, peduncle_mask, _ = self.process_image.get_segments()
+        truss_visualization = self.process_image.get_truss_visualization(local=True)
+
         if not self.playback:
+            self.save_data(result_img=truss_visualization)
 
-            px_per_mm = self.compute_px_per_mm()
-            self.process_image.add_image(self.color_image, px_per_mm=px_per_mm)
+        depth_img = colored_depth_image(self.depth_image.copy())
 
-            if self.settings is not None:
-                self.process_image.set_settings(settings_msg_to_lib(self.settings))
+        # publish results
+        output_messages = {}
+        output_messages['depth_image'] = self.bridge.cv2_to_imgmsg(depth_img, encoding="rgb8")
+        output_messages['tomato_image'] = self.bridge.cv2_to_imgmsg(truss_visualization, encoding="rgba8")
+        output_messages['truss_pose'] = self.generate_cage_pose(object_features['grasp_location'], peduncle_mask)
 
-            if not self.process_image.process_image():
-                rospy.logwarn("[OBJECT DETECTION] Failed to process image")
-                return FlexGraspErrorCodes.FAILURE
-
-            object_features = self.process_image.get_object_features()
-            tomato_mask, peduncle_mask, _ = self.process_image.get_segments()
-            truss_visualization = self.process_image.get_truss_visualization(local=True)
-
-            if not self.playback:
-                self.save_data(result_img=truss_visualization)
-
-            depth_img = colored_depth_image(self.depth_image.copy())
-
-            # publish results
-            output_messages = {}
-            output_messages['depth_image'] = self.bridge.cv2_to_imgmsg(depth_img, encoding="rgb8")
-            output_messages['tomato_image'] = self.bridge.cv2_to_imgmsg(truss_visualization, encoding="rgba8")
-            output_messages['truss_pose'] = self.generate_cage_pose(object_features['grasp_location'], peduncle_mask)
-
-            success = self.output_logger.publish_messages(output_messages, self.experiment_path, self.experiment_id)
-            return success
-        else:
-            success = self.output_logger.publish_messages_from_bag(self.experiment_path, self.experiment_id)
-            return success
+        success = self.output_logger.publish_messages(output_messages, self.experiment_info.path, self.experiment_info.id)
+        return success
 
     def generate_cage_pose(self, grasp_features, peduncle_mask):
         row = grasp_features['row']
@@ -333,7 +306,7 @@ class ObjectDetection(object):
         """When method is called the class will start collecting required messages"""
         self.take_picture = True
         if self.playback:
-            self.input_logger.publish_messages_from_bag(self.experiment_path, self.experiment_id)
+            self.input_logger.publish_messages_from_bag(self.experiment_info.path, self.experiment_info.id)
 
     def log_input_messages(self):
         """"log messages"""
@@ -341,7 +314,7 @@ class ObjectDetection(object):
             rospy.logdebug("[{0}] Will not logging input messages: running in playback mode!".format(self.node_name))
         else:
             rospy.logdebug("[{0}] Logging input messages".format(self.node_name))
-            self.input_logger.write_messages_to_bag(self.get_messages(), self.experiment_path, self.experiment_id)
+            self.input_logger.write_messages_to_bag(self.get_messages(), self.experiment_info.path, self.experiment_info.id)
 
     def get_messages(self):
         messages = {}
@@ -359,3 +332,9 @@ class ObjectDetection(object):
         messages['camera_info'] = self.camera_info
         messages['pcl'] = self.pcl
         return messages
+
+    def reset(self):
+        self.color_image = None
+        self.depth_image = None
+        self.camera_info = None
+        self.pcl = None
