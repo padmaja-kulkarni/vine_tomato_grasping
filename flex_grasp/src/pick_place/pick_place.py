@@ -23,28 +23,23 @@ class PickPlace(object):
     node_name = 'PICK PLACE' 
     frequency = 10
     
-    def __init__(self):
+    def __init__(self, node_name="pick_place", playback=False):
+
+        self.node_name = node_name
+
+        self.playback = playback
+        if self.playback:
+            rospy.loginfo("[{0}] Transform pose launched in playback mode!".format(self.node_name))
+
         self.state = "init"
         self.prev_state = None
         self.command = None
-        
-        
-        self.debug_mode = rospy.get_param("pick_place/debug")
-        
-        if self.debug_mode:
-            log_level = rospy.DEBUG
-            rospy.loginfo("[%s] Launching pick place node in debug mode", self.node_name)
-        else:
-            log_level = rospy.INFO
-        
-        rospy.init_node("pick_place", anonymous=True, log_level=log_level)
-        self.rate = rospy.Rate(self.frequency)               
                
         self.pub_e_out = rospy.Publisher("~e_out", FlexGraspErrorCodes, queue_size=10, latch=True)
         
         # init move robot communication
         move_robot_topic = "move_robot"
-        self.move_robot_communication = Communication(move_robot_topic, timeout = 15)                   
+        self.move_robot_communication = Communication(move_robot_topic, timeout=15)
                    
         self.pub_move_robot_pose = rospy.Publisher("robot_pose", PoseStamped, queue_size=10, latch=False)                   
                    
@@ -52,7 +47,7 @@ class PickPlace(object):
         rospy.Subscriber("~e_in", String, self.e_in_cb)
         
         # create dict which stores all poses        
-        keys = ['pre_grasp', 'grasp', 'pre_place','place']
+        keys = ['pre_grasp', 'grasp', 'pre_place', 'place']
         self.pose = dict.fromkeys(keys)
         
         # subscibe to corresponding poses
@@ -61,8 +56,7 @@ class PickPlace(object):
         
         for key in pose_topic:
             rospy.Subscriber(pose_topic[key], PoseStamped, self.pose_in_cb, key)
-        
-        
+
         self.robot_base_frame = rospy.get_param('robot_base_frame')
         self.planning_frame = rospy.get_param('planning_frame')
 
@@ -255,19 +249,3 @@ class PickPlace(object):
             flex_grasp_error_log(result, self.node_name)
             self.pub_e_out.publish(msg)            
             self.command = None
-                      
-                      
-def main():
-    try:
-        pick_place = PickPlace()
-        while not rospy.core.is_shutdown():
-            pick_place.take_action()
-            pick_place.rate.sleep()
-
-    except rospy.ROSInterruptException:
-        return
-    except KeyboardInterrupt:
-        return
-
-if __name__ == '__main__':
-    main()
