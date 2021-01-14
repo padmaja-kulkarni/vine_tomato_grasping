@@ -8,6 +8,7 @@ Created on Tue Mar 10 10:09:14 2020
 
 import cv2
 import numpy as np
+import rospy
 
 from geometry_msgs.msg import PoseStamped
 from moveit_commander.conversions import pose_to_list
@@ -19,6 +20,18 @@ import pyrealsense2 as rs
 from math import pi
 
 
+
+def wait_for_param(param, timeout):
+    """return parameter if it is present on the parameter server within timeout"""
+    start_time = rospy.get_time()
+
+    while (rospy.get_time() - start_time < timeout):
+
+        if rospy.has_param(param):
+            return rospy.get_param(param)
+
+    rospy.logwarn("Parameter %s can not be loaded from parameter server: timeout passed", param)
+    return None
 
 def camera_info2rs_intrinsics(camera_info):
 
