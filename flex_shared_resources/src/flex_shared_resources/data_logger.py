@@ -46,6 +46,21 @@ class DataLogger(object):
         else:
             return FlexGraspErrorCodes.FAILURE
 
+    def load_messages_from_bag(self, bag_path, bag_id):
+        """Read data from a rosbag and publish the received data"""
+        success = self._open_bag(bag_path, bag_id, read=True)
+        if success:
+            for key in self.topics:
+                topic = self.topics[key]
+                rospy.logdebug("[{0}] Reading {1} from bag on topic {2}".format(self.node_name, key, topic))
+                messages = {}
+                for topic, message, t in self.bag.read_messages(topics=topic):
+                    messages[key] = message
+            self._close_bag()
+            return messages
+        else:
+            return None
+
     def publish_messages_from_bag(self, bag_path, bag_id):
         """Read data from a rosbag and publish the received data"""
         success = self._open_bag(bag_path, bag_id, read=True)
@@ -126,7 +141,7 @@ class DataLogger(object):
         full_name = self.bag_name + '.bag'
         full_path = os.path.join(bag_path, full_name)
 
-        rospy.loginfo("[{0}] Opening bag {1}".format(self.node_name, full_path))
+        rospy.logdebug("[{0}] Opening bag {1}".format(self.node_name, full_path))
 
         if not os.path.isdir(bag_path):
             rospy.loginfo("[{0}] New path, creating a new folder {1}".format(self.node_name, bag_path))

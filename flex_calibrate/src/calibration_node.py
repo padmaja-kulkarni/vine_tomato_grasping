@@ -9,7 +9,7 @@ from calibration import Calibration
 
 NODE_NAME = 'calibration'
 DEFAULT_UPDATE_RATE = 10.0
-DEFAULT_DEBUG_MODE = True
+DEFAULT_DEBUG_MODE = False
 DEFAULT_PLAYBACK = False
 
 
@@ -23,7 +23,7 @@ def main():
 
     rospy.init_node(NODE_NAME, anonymous=True, log_level=log_level)
     update_rate = rospy.get_param('~update_rate', DEFAULT_UPDATE_RATE)
-    playback = rospy.get_param("playback", DEFAULT_PLAYBACK)
+    playback = rospy.get_param('/' + 'px150' + '/' + 'playback', DEFAULT_PLAYBACK)
 
     # state_machine_input = StateMachineInput(NODE_NAME)
     calibration = Calibration(NODE_NAME, playback=playback)

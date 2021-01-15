@@ -35,10 +35,13 @@ class Calibration(object):
         self.playback = playback
         self.command = None
 
+        if self.playback:
+            rospy.loginfo("[{0}] Calibration launched in playback mode!".format(self.node_name))
+
         rospy.sleep(5)
         rospy.logdebug("[CALIBRATE] initializing hand eye client")
         self.client = HandeyeClient()
-        self.experiment_info = ExperimentInfo(self.node_name, namespace=self.robot_ns)
+        self.experiment_info = ExperimentInfo(self.node_name, namespace=self.robot_ns, id="initial_calibration")
 
         # Listen
         rospy.logdebug("[CALIBRATE] initializing tf2_ros buffer")
@@ -165,7 +168,6 @@ class Calibration(object):
         self.pose_array = pose_array
         return FlexGraspErrorCodes.SUCCESS
 
-
     def generate_poses_2(self, r_vec, z_vec, ai_vec, aj_vec, ak_vec):
         pose_array = PoseArray()
         pose_array.header.frame_id = self.calibration_frame
@@ -193,6 +195,15 @@ class Calibration(object):
         return FlexGraspErrorCodes.SUCCESS
 
     def calibrate(self, track_marker=True):
+
+        if self.playback:
+            rospy.loginfo("[{0}] Playback is active: publishing messages from bag!".format(self.node_name))
+            messages = self.output_logger.load_messages_from_bag(self.experiment_info.path, self.experiment_info.id)
+            if messages is not None:
+                self.broadcast(messages['calibration'])
+                return FlexGraspErrorCodes.SUCCESS
+            else:
+                return FlexGraspErrorCodes.FAILURE
 
         if self.pose_array is None:
             rospy.logwarn("[CALIBRATE] pose_array is still empty")
@@ -247,27 +258,21 @@ class Calibration(object):
 
             if calibration_transform.valid:
                 rospy.loginfo("[CALIBRATE] Found valid transfrom")
-                self.broadcast(calibration_transform)
+                self.broadcast(calibration_transform.calibration.transform)
                 self.client.save()
                 return FlexGraspErrorCodes.SUCCESS
             else:
                 rospy.logwarn("[CALIBRATE] Computed calibration is invalid")
                 return FlexGraspErrorCodes.FAILURE
 
-    def broadcast(self, result):
+    def broadcast(self, transform):
         rospy.loginfo("[{0}] Broadcasting result".format(self.node_name))
         broadcaster = tf2_ros.StaticTransformBroadcaster()
+        broadcaster.sendTransform(transform)
 
-        static_transform_stamped = result.calibration.transform
-        broadcaster.sendTransform(static_transform_stamped)
-
-        if self.experiment_info.id is None:
-            experiment_id = "initial_calibration"
-        else:
-            experiment_id = self.experiment_info.id
-
-        self.output_logger.write_messages_to_bag({"calibration": static_transform_stamped},
-                                                 self.experiment_info.path, experiment_id)
+        if not self.playback:
+            self.output_logger.write_messages_to_bag({"calibration": transform},
+                                                     self.experiment_info.path, self.experiment_info.id)
 
     def take_action(self):
         msg = FlexGraspErrorCodes()

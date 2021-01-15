@@ -153,10 +153,12 @@ class Idle(smach.State):
             return 'transform_pose'
         elif userdata.command in self.detect_commands:
             if self.playback:
-                self.experiment_id = self.get_next_experiment_id()
+                experiment_id = self.get_next_experiment_id()
             else:
-                self.experiment_id = self.get_new_experiment_id()
-            rospy.logdebug("[{0}] Publishing experiment id {1}".format(NODE_NAME, self.experiment_id))
+                experiment_id = self.get_new_experiment_id()
+            print '\n'
+            rospy.loginfo("[{0}] Updating experiment ID from {1} to {2}".format(NODE_NAME, self.experiment_id, experiment_id))
+            self.experiment_id = experiment_id
             self.experiment_id_publisher.publish(self.experiment_id)
             return 'detect'
         elif userdata.command in self.move_commands:

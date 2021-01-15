@@ -220,6 +220,7 @@ class ObjectDetection(object):
         """Detect object"""
 
         if self.playback:
+            rospy.loginfo("[{0}] Playback is active: publishing object_detection messages from bag!".format(self.node_name))
             success = self.output_logger.publish_messages_from_bag(self.experiment_info.path, self.experiment_info.id)
             return success
 
@@ -308,6 +309,7 @@ class ObjectDetection(object):
         """When method is called the class will start collecting required messages"""
         self.take_picture = True
         if self.playback:
+            rospy.loginfo("[{0}] Playback is active: publishing camera messages from bag!".format(self.node_name))
             self.input_logger.publish_messages_from_bag(self.experiment_info.path, self.experiment_info.id)
 
     def log_input_messages(self):
