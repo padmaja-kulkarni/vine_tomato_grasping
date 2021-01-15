@@ -6,7 +6,7 @@ from std_msgs.msg import String
 
 class ExperimentPathInterface(object):
     EXPERIMENT_NAME_OPTIONS = ['default', 'simple', 'moderate', 'advanced']
-    LOG_FOLDER = 'thesis_data'
+    LOG_FOLDER = 'results'
     NEW_STRING = "  (new)"
 
     def __init__(self, experiment_name_button, experiment_id_button):
