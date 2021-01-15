@@ -34,7 +34,7 @@ def error_handling(result):
 
 class Initializing(smach.State):
     def __init__(self):
-        smach.State.__init__(self, outcomes=['success','failure', 'complete_failure'],
+        smach.State.__init__(self, outcomes=['success', 'failure', 'complete_failure'],
                              output_keys=['command', 'prev_command', 'mode'])
         timeout = 10.0
         
@@ -50,14 +50,14 @@ class Initializing(smach.State):
         # create for each node a communication channel
         communication = {}
         for key in topic:
-            communication[key] = Communication(topic[key], timeout = timeout)  
+            communication[key] = Communication(topic[key], timeout=timeout, node_name=NODE_NAME)
 
         self.communication = communication
 
     def execute(self, userdata):
         rospy.logdebug('Executing state Initializing')
         
-        # command all nodes via the initialized communication channels to initialize, wiat for their response
+        # command all nodes via the initialized communication channels to initialize, wait for their response
         result = {}
         for key in self.communication:
             result[key] = self.communication[key].wait_for_result('e_init')
@@ -192,8 +192,15 @@ class Idle(smach.State):
                 new_id_int = 1
             else:
                 contents.sort()
-                file_name = contents[-1]
-                file_id = file_name[:3]
+                options = []
+                for file_name in contents:
+                    file_id = file_name[:3]
+                    if file_id.isdigit():
+                        options.append(file_id)
+                if len(options) > 0:
+                    file_id = int(options[-1])
+                else:
+                    file_id = 0
                 new_id_int = int(file_id) + 1
 
         return str(new_id_int).zfill(3)
