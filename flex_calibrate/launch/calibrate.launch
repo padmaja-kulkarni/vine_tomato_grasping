@@ -103,7 +103,7 @@
         <!-- ns="$(arg namespace_prefix)_eye_on_base" -->
       <node name="calibrate"
         pkg="flex_calibrate"
-        type="calibrate.py"
+        type="calibration_node.py"
         ns="$(arg namespace_prefix)_eye_on_base"
         output="screen">
         <param name ="debug" value="$(arg calibrate_debug)"/>

@@ -13,85 +13,70 @@ import tf2_geometry_msgs
 
 # messages
 from std_msgs.msg import String
-from geometry_msgs.msg import PoseStamped, PoseArray, Pose
+from geometry_msgs.msg import PoseStamped, PoseArray, Pose, TransformStamped
 from flex_grasp.msg import FlexGraspErrorCodes
-
-
 
 from easy_handeye.handeye_client import HandeyeClient
 from flex_shared_resources.errors.flex_grasp_error import flex_grasp_error_log
 from flex_shared_resources.utils.conversions import list_to_position, list_to_orientation
 from flex_shared_resources.utils.communication import Communication
+from flex_shared_resources.data_logger import DataLogger
+from flex_shared_resources.experiment_info import ExperimentInfo
 
 class Calibration(object):
     """Calibration"""
     node_name = "CALIBRATION"
 
-    def __init__(self):
+    def __init__(self, node_name, playback=False):
+        # TODO: whe shouldn't have to run this node in a seperate calibration namespace, it would make things much better
+        self.robot_ns = 'px150'
 
-#        robot_name = rospy.get_param("robot_name")
-#        print(robot_name)
-        self.debug_mode = rospy.get_param("calibrate/debug")
-
-        if self.debug_mode:
-            log_level = rospy.DEBUG
-        else:
-            log_level = rospy.INFO
-
-        rospy.init_node("calibrate",
-                anonymous=True,
-                log_level=log_level)
-
-        if self.debug_mode:
-            rospy.loginfo("[CALIBRATE] Luanching calibrate in debug mode")
-
+        self.node_name = node_name
+        self.playback = playback
+        self.command = None
 
         rospy.sleep(5)
-
         rospy.logdebug("[CALIBRATE] initializing hand eye client")
         self.client = HandeyeClient()
-
+        self.experiment_info = ExperimentInfo(self.node_name, namespace=self.robot_ns)
 
         # Listen
         rospy.logdebug("[CALIBRATE] initializing tf2_ros buffer")
         self.tfBuffer = tf2_ros.Buffer()
         self.listener = tf2_ros.TransformListener(self.tfBuffer)
 
-
-        self.calibration_frame = rospy.get_param('/px150/robot_base_frame')# "px150/base_link"
-        self.planning_frame = rospy.get_param('/px150/planning_frame')
+        self.calibration_frame = rospy.get_param('/' + self.robot_ns + '/' + 'robot_base_frame')
+        self.planning_frame = rospy.get_param('/' + self.robot_ns + '/' + 'planning_frame')
         self.pose_array = None
 
-        self.command = None
+        self.pub_e_out = rospy.Publisher("~e_out", FlexGraspErrorCodes, queue_size=10, latch=True)
+        
+        move_robot_topic = '/' + self.robot_ns + '/' + 'move_robot'
+        robot_pose_topic = '/' + self.robot_ns + '/' + 'robot_pose'
+        pose_array_topic = '/' + self.robot_ns + '/' + 'pose_array'
+        
+        self.move_robot_communication = Communication(move_robot_topic, timeout=15, node_name=self.node_name)
+        self.robot_pose_publisher = rospy.Publisher(robot_pose_topic, PoseStamped, queue_size=10, latch=False)
+        self.pose_array_publisher = rospy.Publisher(pose_array_topic, PoseArray, queue_size=5, latch=True)
 
-        # we need to be sucsribed to the aruco tracker for it to publish the tf
-        rospy.Subscriber("/px150/aruco_tracker/pose", PoseStamped, self.aruco_tracker_cb)
-
-        self.pub_e_out = rospy.Publisher("~e_out",
-                                     FlexGraspErrorCodes, queue_size=10, latch=True)
-
-        self.pub_move_robot_pose = rospy.Publisher("/px150/robot_pose",
-                                  PoseStamped, queue_size=10, latch=False)
-
-        self.pub_pose_array = rospy.Publisher("/px150/pose_array",
-                                PoseArray, queue_size=5, latch=True)
-
-        move_robot_topic = "/px150/move_robot"
-        self.move_robot_communication = Communication(move_robot_topic, timeout = 15)
+        self.output_logger = DataLogger(self.node_name, {"calibration": "calibration_transform"},
+                                        {"calibration": TransformStamped}, bag_name=self.node_name)
 
         # Subscribe
         rospy.Subscriber("~e_in", String, self.e_in_cb)
 
+        # Subscribe to aruco tracker for it to publish the tf
+        rospy.Subscriber('/' + self.robot_ns + '/' + 'aruco_tracker/pose', PoseStamped, self.aruco_tracker_cb)
+
     def e_in_cb(self, msg):
         if self.command is None:
             self.command = msg.data
-            rospy.logdebug("[CALIBTRATION] Received event message: %s", self.command)
+            rospy.logdebug("[{0}] Received event message: {1}".format(self.node_name, self.command))
 
             # reset outputting message
             msg = FlexGraspErrorCodes()
             msg.val = FlexGraspErrorCodes.NONE
             self.pub_e_out.publish(msg)
-
 
     def aruco_tracker_cb(self, msg):
         pass
@@ -176,7 +161,7 @@ class Calibration(object):
 
         pose_array.poses = poses
 
-        self.pub_pose_array.publish(pose_array)
+        self.pose_array_publisher.publish(pose_array)
         self.pose_array = pose_array
         return FlexGraspErrorCodes.SUCCESS
 
@@ -203,15 +188,12 @@ class Calibration(object):
 
         pose_array.poses = poses
 
-        self.pub_pose_array.publish(pose_array)
+        self.pose_array_publisher.publish(pose_array)
         self.pose_array = pose_array
         return FlexGraspErrorCodes.SUCCESS
 
-
-
     def calibrate(self, track_marker=True):
 
-        # does pose array contain something?
         if self.pose_array is None:
             rospy.logwarn("[CALIBRATE] pose_array is still empty")
             return FlexGraspErrorCodes.REQUIRED_DATA_MISSING
@@ -235,7 +217,7 @@ class Calibration(object):
             # transform to planning frame
             pose_trans = tf2_geometry_msgs.do_transform_pose(pose_stamped, trans)
 
-            self.pub_move_robot_pose.publish(pose_trans)
+            self.robot_pose_publisher.publish(pose_trans)
             result = self.move_robot_communication.wait_for_result("move_manipulator") # timout = 5?
 
             if result == FlexGraspErrorCodes.SUCCESS:
@@ -248,10 +230,10 @@ class Calibration(object):
                         rospy.logwarn("[CALIBRATE] Failed to take sample, marker might not be visible.")
 
             elif result == FlexGraspErrorCodes.DYNAMIXEL_ERROR:
-                print('dynamixel error triggered, returning error')
+                rospy.logwarn("[{0}] Dynamixel error triggered, returning error".format(self.node_name))
                 return result
             elif result == FlexGraspErrorCodes.DYNAMIXEL_SEVERE_ERROR:
-                print('dynamixel error triggered, returning error')
+                rospy.logwarn("[{0}] Dynamixel error triggered, returning error".format(self.node_name))
                 return result
 
         # reset
@@ -273,26 +255,34 @@ class Calibration(object):
                 return FlexGraspErrorCodes.FAILURE
 
     def broadcast(self, result):
-        rospy.loginfo("Broadcasting result")
+        rospy.loginfo("[{0}] Broadcasting result".format(self.node_name))
         broadcaster = tf2_ros.StaticTransformBroadcaster()
 
-        static_transformStamped = result.calibration.transform
-        broadcaster.sendTransform(static_transformStamped)
+        static_transform_stamped = result.calibration.transform
+        broadcaster.sendTransform(static_transform_stamped)
+
+        if self.experiment_info.id is None:
+            experiment_id = "initial_calibration"
+        else:
+            experiment_id = self.experiment_info.id
+
+        self.output_logger.write_messages_to_bag({"calibration": static_transform_stamped},
+                                                 self.experiment_info.path, experiment_id)
 
     def take_action(self):
         msg = FlexGraspErrorCodes()
         result = None
 
-        if (self.command == 'e_init'):
+        if self.command == 'e_init':
             result = FlexGraspErrorCodes.SUCCESS
 
-        elif (self.command == 'calibrate'):
+        elif self.command == 'calibrate':
             result = self.init_poses_1()
 
             if result == FlexGraspErrorCodes.SUCCESS:
                 result = self.calibrate()
 
-        elif (self.command == 'calibrate_height'):
+        elif self.command == 'calibrate_height':
             result = self.init_poses_2()
 
             if result == FlexGraspErrorCodes.SUCCESS:
@@ -308,21 +298,3 @@ class Calibration(object):
             flex_grasp_error_log(result, self.node_name)
             self.pub_e_out.publish(msg)
             self.command = None
-
-
-def main():
-    try:
-        calibration = Calibration()
-        rate = rospy.Rate(10)
-
-        while not rospy.core.is_shutdown():
-            calibration.take_action()
-            rate.sleep()
-
-    except rospy.ROSInterruptException:
-        return
-    except KeyboardInterrupt:
-        return
-
-if __name__ == '__main__':
-    main()
