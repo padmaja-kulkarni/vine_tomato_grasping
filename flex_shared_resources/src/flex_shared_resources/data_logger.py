@@ -28,7 +28,7 @@ class DataLogger(object):
             bag_name = self.node_name
         self.bag_name = bag_name
 
-        if topics is not None:
+        if types is not None:
             self.publisher = {}
             for key in self.topics:
                 self.publisher[key] = rospy.Publisher(self.topics[key], self.types[key], queue_size=queue_size, latch=True)

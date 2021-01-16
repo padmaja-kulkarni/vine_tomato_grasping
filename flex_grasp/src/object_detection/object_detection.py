@@ -240,8 +240,10 @@ class ObjectDetection(object):
         tomato_mask, peduncle_mask, _ = self.process_image.get_segments()
         truss_visualization = self.process_image.get_truss_visualization(local=True)
 
-        if not self.playback:
-            self.save_data(result_img=truss_visualization)
+        json_pwd = os.path.join(self.experiment_info.path, self.experiment_info.id, 'truss_features.json')
+        with open(json_pwd, 'w') as outfile:
+            json.dump(object_features, outfile)
+        self.save_data(result_img=truss_visualization)
 
         depth_img = colored_depth_image(self.depth_image.copy())
 

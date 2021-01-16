@@ -384,19 +384,21 @@ class ProcessImage(object):
         return tomato
 
     def get_peduncle(self, local=False):
+        """Returns a dictionary containing a description of the peduncle"""
 
         if local:
             frame_id = self.LOCAL_FRAME_ID
         else:
             frame_id = self.ORIGINAL_FRAME_ID
 
+        peduncle_xy = coords_from_points(self.peduncle_points, frame_id)
         junc_xy = coords_from_points(self.junction_points, frame_id)
         end_xy = coords_from_points(self.end_points, frame_id)
-        peduncle = {'junctions': junc_xy, 'ends': end_xy}
+        peduncle = {'junctions': junc_xy, 'ends': end_xy, 'peduncle': peduncle_xy}
         return peduncle
 
     def get_grasp_location(self, local=False):
-
+        """Returns a dictionary containing a description of the peduncle"""
         if local:
             frame_id = self.LOCAL_FRAME_ID
             angle = self.grasp_angle_local
@@ -417,7 +419,9 @@ class ProcessImage(object):
         return grasp_location
 
     def get_object_features(self):
-
+        """
+        Returns a dictionary containing the grasp_location, peduncle, and tomato
+        """
         tomatoes = self.get_tomatoes()
         peduncle = self.get_peduncle()
         grasp_location = self.get_grasp_location()
