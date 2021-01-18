@@ -11,6 +11,13 @@ DEFAULT_UPDATE_RATE = 20.0
 DEFAULT_DEBUG_MODE = True
 
 def main():
+    simulation = rospy.get_param("robot_sim")
+
+    # Only launch node in simulation
+    # TODO: this should probably be fixed in the launch file...
+    if not simulation:
+        return
+
     debug_mode = rospy.get_param(NODE_NAME + "/debug", DEFAULT_DEBUG_MODE)
     if debug_mode:
         log_level = rospy.DEBUG
@@ -29,6 +36,7 @@ def main():
     rospy.core.add_preshutdown_hook(lambda reason: gazebo_interface_state_machine.request_shutdown())
 
     gazebo_interface_state_machine.run()
+
 
 
 if __name__ == '__main__':
