@@ -455,7 +455,7 @@ class ProcessImage(object):
         else:
             return self.img_rgb
 
-    def get_truss_visualization(self, local=False, save=False, name=None):
+    def get_truss_visualization(self, local=False, save=False):
         pwd = os.path.join(self.pwd, '08_result')
 
         if local:
@@ -550,25 +550,32 @@ class ProcessImage(object):
 
         success = self.segment_image()
         if success is False:
+            print "Failed to segment image"
             return success
 
         success = self.filter_image()
         if success is False:
+            print "Failed to filter image"
             return success
 
         success = self.rotate_cut_img()
         if success is False:
+            print "Failed to crop image"
             return success
 
         success = self.detect_tomatoes()
         if success is False:
+            print "Failed to detect tomatoes"
             return success
 
         success = self.detect_peduncle()
         if success is False:
+            print "Failed to detect peduncle"
             return success
 
         success = self.detect_grasp_location()
+        if success is False:
+            print "Failed to detect grasp location"
         return success
 
     def get_settings(self):

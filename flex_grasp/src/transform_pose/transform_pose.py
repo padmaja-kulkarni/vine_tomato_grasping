@@ -63,9 +63,7 @@ class TransformPose(object):
         self.wrist_limits = [-np.pi/2, np.pi/2]  # [lower_limit, upper_limit]
 
         # for generating a place pose
-        self.pose_generator = PoseGenerator(r_range=[0.15, 0.23],
-                                            x_min=0.17,
-                                            frame=self.robot_base_frame,
+        self.pose_generator = PoseGenerator(r_range=[0.15, 0.23], x_min=0.17, frame=self.robot_base_frame,
                                             seed=self.node_name)
 
         self.exp_info = ExperimentInfo(self.node_name)
@@ -117,10 +115,10 @@ class TransformPose(object):
         current_object_pose = self.limit_wrist_angle(current_object_pose)
         return current_object_pose
 
-    def get_target_object_pose(self, timeout=1):
+    def get_target_object_pose(self):
         """Generate a random place pose"""
         self.pose_generator.z = self.get_object_height()
-        target_object_pose = self.pose_generator.generate_pose_stamped()
+        target_object_pose = self.pose_generator.generate_pose_stamped(seed=int(int(self.exp_info.id)*np.pi*10**2))
         target_object_pose = self.limit_wrist_angle(target_object_pose)
         return target_object_pose
 

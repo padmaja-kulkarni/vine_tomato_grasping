@@ -103,10 +103,12 @@ class ObjectDetection(object):
         # outputs
         topics_out = {'truss_pose': 'truss_pose',
                       'tomato_image': 'tomato_image',
+                      'tomato_image_total': 'tomato_image_total',
                       'depth_image': 'depth_image'}
 
         types_out = {'truss_pose': PoseStamped,
                      'tomato_image': Image,
+                     'tomato_image_total': Image,
                      'depth_image': Image}
 
         return DataLogger(self.node_name, topics_out, types_out, bag_name=self.node_name)
@@ -234,11 +236,13 @@ class ObjectDetection(object):
 
         if not self.process_image.process_image():
             rospy.logwarn("[OBJECT DETECTION] Failed to process image")
+            self.save_data()
             return FlexGraspErrorCodes.FAILURE
 
         object_features = self.process_image.get_object_features()
         tomato_mask, peduncle_mask, _ = self.process_image.get_segments()
         truss_visualization = self.process_image.get_truss_visualization(local=True)
+        truss_visualization_total = self.process_image.get_truss_visualization(local=False)
 
         json_pwd = os.path.join(self.experiment_info.path, self.experiment_info.id, 'truss_features.json')
         with open(json_pwd, 'w') as outfile:
@@ -248,9 +252,11 @@ class ObjectDetection(object):
         depth_img = colored_depth_image(self.depth_image.copy())
 
         # publish results
+        # TODO: also publish result in global frame!
         output_messages = {}
         output_messages['depth_image'] = self.bridge.cv2_to_imgmsg(depth_img, encoding="rgb8")
         output_messages['tomato_image'] = self.bridge.cv2_to_imgmsg(truss_visualization, encoding="rgba8")
+        output_messages['tomato_image_total'] = self.bridge.cv2_to_imgmsg(truss_visualization_total, encoding="rgba8")
         output_messages['truss_pose'] = self.generate_cage_pose(object_features['grasp_location'], peduncle_mask)
 
         success = self.output_logger.publish_messages(output_messages, self.experiment_info.path, self.experiment_info.id)
