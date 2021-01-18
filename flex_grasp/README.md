@@ -31,7 +31,7 @@ git clone https://github.com/padmaja-kulkarni/taeke_msc.git
 ```
 
 ### 1.4 Basic Dependencies
-Some more packages need to be installed manually. 
+Some more packages need to be installed manually.
 
 #### Interbotix Support
 For Interbotix support we require interbotix_ros_arms:
@@ -67,7 +67,7 @@ git clone https://github.com/IFL-CAMP/easy_handeye.git
 #### Intel Realsense
 For Intel Realsense support realsense-ros and realsense2_description are used. Install these packages and dependencies as explained [here](https://github.com/IntelRealSense/realsense-ros). First define your ROS version, for example:
 ```
-export ROS_VER=melodic 
+export ROS_VER=melodic
 ```
 Than install both realsense2_camera and its dependents, including librealsense2 library:
 
@@ -80,6 +80,8 @@ Finally install the realsense2_description:
 sudo apt-get install ros-$ROS_VER-realsense2-description
 ```
 It includes the 3D-models of the devices and is necessary for running launch files that include these models (i.e. rs_d435_camera_with_model.launch).
+
+> :warning: In case you run into issues with the camera install the SDK as explained [here](https://www.intelrealsense.com/sdk-2/) and select Linux.
 
 #### Graphical User Interface
 For fine-tuning parameters of the computer vision pipeline rqt_ez_publisher is used:
@@ -94,7 +96,7 @@ Not all packages could be specified in the package.xml, and need to be installle
 ```
 python2 -m pip install colormath
 ```
-The flex_vision package relies on a fork of the skan library wich offers python 2 support: 
+The flex_vision package relies on a fork of the skan library wich offers python 2 support:
 ```
 python2 -m pip install git+https://github.com/TaekedeHaan/skan.git@python-2.7
 ```
@@ -112,20 +114,20 @@ rosdep install --from-paths src --ignore-src -r -y
     ```
     roslaunch flex_grasp interbotix_enviroment.launch use_calibration:=false
     ```
-    There is no calibration file available yet, therefore we put `use_calibration` to `false`. 
+    There is no calibration file available yet, therefore we put `use_calibration` to `false`.
 
 2. Gazebo should start by default it is paused (this behaviour can be chnaged in the launch files).
 
     <img src="doc/gazebo.png" alt="Gazebo" width="800"/>
 
 3. Unpause the simulation by hitting play on the bar shown at the bottom, RViz should start
-    
+
     <img src="doc/rviz.png" alt="RViz" width="800"/>
-    
+
 4. You have succesfully started the enviroment. To stat the controls run in your terminal:
     ```
     roslaunch flex_grasp interbotix_control.launch
-    ``` 
+    ```
 5. An rqt graphical user interface should pop up, sometimes in initializes incorrect, if this happens hit Ctrl + C, and retry
 
     <img src="doc/rqt.png" alt="rqt" width="800"/>
@@ -133,7 +135,7 @@ rosdep install --from-paths src --ignore-src -r -y
 6. You have succesfully initialized the controls, and the virtual robot is ready to go.
 
 ### Calibrate
-First we need to calibrate the robot, this will generate a yaml file, which is stored and can be reused. Simpy press `calibrate` in the GUI. The manipulator should move to several poses successivly. It should print someting as followes in the terminal:
+First we need to calibrate the robot, this will generate a yaml file, which is stored and can be reused. Simply press `calibrate` in the GUI. The manipulator should move to several poses successively. It should print something as follows in the terminal:
 
 ```
 [INFO] [1606135222.288133, 1573.747000]: State machine transitioning 'Idle':'calibrate'-->'CalibrateRobot'
@@ -143,12 +145,12 @@ First we need to calibrate the robot, this will generate a yaml file, which is s
 [INFO] [1606135234.128548, 1584.135000]: Got a sample
 ...
 [INFO] [1606135269.247164, 1615.083000]: Computing from 8 poses...
-[INFO] [1606135269.295404, 1615.128000]: Computed calibration: effector_camera: 
-  translation: 
+[INFO] [1606135269.295404, 1615.128000]: Computed calibration: effector_camera:
+  translation:
     x: -0.028680958287
     y: 0.0123665209654
     z: 0.572588152978
-  rotation: 
+  rotation:
     x: 0.174461585153
     y: 0.615597501442
     z: 0.158824096836
@@ -162,21 +164,23 @@ roslaunch flex_grasp interbotix_enviroment.launch
 And the previously generated calibration file will be loaded automatically.
 
 ### Run (Real Hardware)
-1. Again, first launch the enviroment. To launch the interbotix enviroment for real hardware run in your terminal:
+1. Again, first launch the environment. To launch the interbotix environment for real hardware run in your terminal:
     ```
     roslaunch flex_grasp interbotix_enviroment.launch camera_sim:=false robot_sim:=false
     ```
     Here we use the parameters to toggle between Gazebo simulation and real hardware:
     - camera_sim: simulate the camera (default: true)
     - robot_sim: simulate the manipulator (default: true)
-    
-2. You have succesfully started the enviroment. To stat the controls run in your terminal:
+
+2. You have successfully started the environment. To stat the controls run in your terminal:
     ```
     roslaunch flex_grasp interbotix_control.launch
-    ``` 
+    ```
 3. An rqt graphical user interface should pop up, sometimes in initializes incorrect, if this happens hit Ctrl + C, and retry
 
-4. You have succesfully initialized the controls, and the robot is ready to go.
+4. You have successfully initialized the controls, and the robot is ready to go.
+
+Note: if you get warnings that the end effector is not able to reach its targets upon closing you may consider redefining the Closed interbotix_gripper group state as stated in `/interbotix_ros_arms/interbotix_moveit/config/srdf/px150.srdf.xacro`. I am using values of 0.017 and -0.017 due to the additional finger tips.
 
 ### Command (Virtual) Robot
 To activate an action, a command needs to be published on the `ROBOT_NAME/pipeline_command`. This can be done using the GUI:
