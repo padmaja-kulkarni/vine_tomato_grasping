@@ -57,7 +57,7 @@ class RqtFlexGrasp(Plugin):
         self._widget.ExperimentButton.setCheckable(True)
         
         # basic commands
-        # self._widget.SleepButton.clicked[bool].connect(lambda: self.pub_command.publish("sleep"))
+        self._widget.SleepButton.clicked[bool].connect(lambda: self.pub_command.publish("sleep"))
         self._widget.HomeButton.clicked[bool].connect(lambda: self.pub_command.publish("home"))
         self._widget.ReadyButton.clicked[bool].connect(lambda: self.pub_command.publish("ready"))
         self._widget.OpenButton.clicked[bool].connect(lambda: self.pub_command.publish("open"))

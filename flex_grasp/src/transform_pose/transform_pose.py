@@ -31,22 +31,20 @@ class TransformPose(object):
         if self.playback:
             rospy.loginfo("[{0}] Transform pose launched in playback mode!".format(self.node_name))
 
-
         self.simulation = rospy.get_param("robot_sim")
         self.robot_base_frame = rospy.get_param('robot_base_frame')
         self.planning_frame = rospy.get_param('planning_frame')
 
-        # params
-        self.surface_height = 0.019  # [m]
-        self.peduncle_height = 0.070  # [m]
-
         # the sag_angle is used to take into account the sagging of the robot during operation
         if self.simulation:
             self.sag_angle = None
+            self.peduncle_height = 0.070  # [m]
         else:
-            self.sag_angle = np.deg2rad(6.0)
+            self.sag_angle = np.deg2rad(7.0)
+            self.peduncle_height = 0.080  # [m]
 
         # To determine the grasping height we need several dimensions of the manipulator
+        self.surface_height = 0.019  # [m]
         height_finger = 0.040  # [m]
         finger_link2ee_link = 0.023  # [m]
         height_finger_tip = 0.007
@@ -178,6 +176,9 @@ class TransformPose(object):
             for key in action_pose:
                 action_pose[key] = self.compensate_for_sagging(action_pose[key])
 
+        for key in action_pose:
+            action_pose[key] = self.transform_pose(action_pose[key], self.robot_base_frame)
+
         self.action_pose = action_pose
         success = self.output_logger.publish_messages(self.action_pose, self.exp_info.path, self.exp_info.id)
         return success
@@ -193,6 +194,7 @@ class TransformPose(object):
         delta_height = np.tan(self.sag_angle)*r
         rospy.logdebug("[%s] Adding %s [m] height to due to radius %s [m]", self.node_name, delta_height, r)
         pose_stamped.pose.position.z += delta_height
+        return pose_stamped
 
     def limit_wrist_angle(self, object_pose):
         """

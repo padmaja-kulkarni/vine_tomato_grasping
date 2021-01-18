@@ -196,6 +196,24 @@ class Calibration(object):
 
     def calibrate(self, track_marker=True):
 
+        sample_list = self.client.get_sample_list().camera_marker_samples
+        n_samples = len(sample_list)
+        if n_samples > 0:
+            rospy.loginfo("[{0}] Found {1} old calibration samples, deleting them before recalibrating!".format(self.node_name, n_samples))
+            for i in reversed(range(n_samples)):
+                rospy.loginfo("[{0}] Deleting sample {1}".format(self.node_name, i))
+                self.client.remove_sample(i)
+
+            sample_list = self.client.get_sample_list().camera_marker_samples
+            n_samples = len(sample_list)
+
+            if n_samples > 0:
+                rospy.logwarn("[{0}] Failed to remove all old samples, cannot calibrate".format(self.node_name))
+                print sample_list
+                return FlexGraspErrorCodes.FAILURE
+            else:
+                rospy.loginfo("[{0}] All old samples have been removed".format(self.node_name))
+
         if self.playback:
             rospy.loginfo("[{0}] Playback is active: publishing messages from bag!".format(self.node_name))
             messages = self.output_logger.load_messages_from_bag(self.experiment_info.path, self.experiment_info.id)

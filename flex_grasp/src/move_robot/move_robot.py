@@ -12,6 +12,8 @@ import sys
 import rospy
 import moveit_commander
 from flex_shared_resources.utils.communication import Communication
+import tf2_ros
+import tf2_geometry_msgs
 
 # functions
 from moveit_commander.conversions import pose_to_list
@@ -47,13 +49,11 @@ class MoveRobot(object):
 
         if self.debug_mode:
             log_level = rospy.DEBUG
-            rospy.loginfo("[MOVE ROBOT] Luanching move robot in debug mode")
+            rospy.loginfo("[MOVE ROBOT] Launching move robot in debug mode")
         else:
             log_level = rospy.INFO
 
-        rospy.init_node("move_robot",
-                        anonymous=True,
-                        log_level=log_level)
+        rospy.init_node("move_robot", anonymous=True, log_level=log_level)
 
         # wait until clock is initialized
         while rospy.get_time() < 0.1:
@@ -76,6 +76,9 @@ class MoveRobot(object):
         self.initialise_robot()
         self.initialise_enviroment()
 
+        self.tfBuffer = tf2_ros.Buffer()
+        tf2_ros.TransformListener(self.tfBuffer)
+
         self._compute_ik = rospy.ServiceProxy('compute_ik', GetPositionIK)
 
         # Subscribers
@@ -94,6 +97,9 @@ class MoveRobot(object):
 
     def robot_pose_cb(self, msg):
         if self.robot_pose is None:
+            if msg.header.frame_id != self.man_planning_frame:
+                msg = self.transform_pose(msg, self.man_planning_frame)
+
             self.robot_pose = msg
             rospy.logdebug("[MOVE ROBOT] Received new robot pose massage")
 
@@ -350,6 +356,7 @@ class MoveRobot(object):
         return result
 
     def monitor_group(self, group):
+        """Ask permission from robot monitor"""
 
         group_name = group.get_name()
         if group_name == self.man_group_name:
@@ -412,13 +419,12 @@ class MoveRobot(object):
 
     def move_to_joint_target_pwm(self, command, timeout=2.0):
         rospy.logdebug("[MOVE ROBOT] Set PWM target")
-        result = FlexGraspErrorCodes.SUCCESS
 
         if self.force_robot:
             rospy.loginfo("[MOVE ROBOT] Forcing to execute command!")
         else:
             result = self.monitor_group(self.ee_group)
-            if (result != FlexGraspErrorCodes.SUCCESS):
+            if result != FlexGraspErrorCodes.SUCCESS:
                 return result
 
         self.gripper_command.cmd = command
@@ -437,21 +443,30 @@ class MoveRobot(object):
                     self.pub_gripper_command.publish(self.gripper_command)
                     return FlexGraspErrorCodes.SUCCESS
 
+            if rospy.is_shutdown():
+                return FlexGraspErrorCodes.SHUTDOWN
+
             curr_time = rospy.get_time()
             self.rate.sleep()
 
-        if rospy.is_shutdown():
-            return FlexGraspErrorCodes.SHUTDOWN
+        if self.gripper_command.cmd > 0:
+            js_target = self.EE_OPEN[0]
+        elif self.gripper_command.cmd < 0:
+            js_target = self.EE_CLOSED[0]
+        else:
+            js_target = None
 
-        rospy.logwarn("[%s], Control failed: gripper did not reach target within allocated time", self.node_name)
+        rospy.logwarn("[{0}] Control failed: gripper did not reach target within allocated time".format(self.node_name))
+        rospy.loginfo("[{0}] joint state target is {1}".format(self.node_name, js_target))
+        rospy.loginfo("[{0}] joint state actual is {1}".format(self.node_name, js_msg[self.gripper_index]))
         return FlexGraspErrorCodes.CONTROL_FAILED
 
     def move_to_joint_target(self, group, target):
-        rospy.logdebug("[MOVE ROBOT] Go to joint target")
+        rospy.logdebug("[{0}] Go to joint target".format(self.node_name))
         result = FlexGraspErrorCodes.SUCCESS
 
         if self.force_robot:
-            rospy.loginfo("[MOVE ROBOT] Forcing to execute command!")
+            rospy.loginfo("[{0}] Forcing to execute command!".format(self.node_name))
         else:
             result = self.monitor_group(group)
             if (result != FlexGraspErrorCodes.SUCCESS):
@@ -556,6 +571,18 @@ class MoveRobot(object):
             rospy.sleep(0.1)
 
         return FlexGraspErrorCodes.NO_GOAL_POSE
+
+    def transform_pose(self, pose_stamped, to_frame):
+        original_frame = pose_stamped.header.frame_id
+
+        try:
+            transform = self.tfBuffer.lookup_transform(to_frame, original_frame, time=rospy.Time.now())
+        except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException):
+            rospy.logwarn("[%s] Cannot transform pose, failed to lookup transform from %s to %s!", self.node_name,
+                          original_frame, to_frame)
+            return FlexGraspErrorCodes.TRANSFORM_POSE_FAILED
+
+        return tf2_geometry_msgs.do_transform_pose(pose_stamped, transform)
 
     def reset(self):
         rospy.logdebug("[MOVE ROBOT] Resetting robot pose")

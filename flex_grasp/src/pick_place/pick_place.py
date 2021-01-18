@@ -54,9 +54,6 @@ class PickPlace(object):
         for key in pose_topic:
             rospy.Subscriber(pose_topic[key], PoseStamped, self.pose_in_cb, key)
 
-        self.robot_base_frame = rospy.get_param('robot_base_frame')
-        self.planning_frame = rospy.get_param('planning_frame')
-
     def e_in_cb(self, msg):
         if self.command is None:
             self.command = msg.data
@@ -168,10 +165,8 @@ class PickPlace(object):
         for key in self.pose:
             if self.pose[key] is None:
                 success = False
- 
         return success
 
-    # Log state update
     def log_state_update(self):
         rospy.loginfo("[{0}] updated pick place state, from {1} to {2}".format(self.node_name, self.prev_state, self.state))
 

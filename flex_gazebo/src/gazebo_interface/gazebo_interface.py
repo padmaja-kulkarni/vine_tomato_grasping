@@ -19,10 +19,15 @@ class GazeboInterface(object):
         self.model_name = self.model_ns + "{0}"
 
         rospy.logdebug("Waiting for gazebo services...")
-        rospy.wait_for_service("/gazebo/delete_model", timeout=TIMEOUT)
-        rospy.wait_for_service("/gazebo/spawn_urdf_model",  timeout=TIMEOUT)
-        rospy.wait_for_service("/gazebo/get_world_properties",  timeout=TIMEOUT)
-        rospy.wait_for_service("/gazebo/set_model_state", timeout=TIMEOUT)
+        try:
+            rospy.wait_for_service("/gazebo/delete_model", timeout=TIMEOUT)
+            rospy.wait_for_service("/gazebo/spawn_urdf_model",  timeout=TIMEOUT)
+            rospy.wait_for_service("/gazebo/get_world_properties",  timeout=TIMEOUT)
+            rospy.wait_for_service("/gazebo/set_model_state", timeout=TIMEOUT)
+        except rospy.exceptions.ROSException:
+            rospy.logwarn("Unable to find gazebo services, did you launch Gazebo?")
+            return
+
         rospy.logdebug("Found all services")
 
         self.delete_model_proxy = rospy.ServiceProxy("/gazebo/delete_model", DeleteModel)
