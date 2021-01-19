@@ -606,16 +606,15 @@ def load_px_per_mm(pwd, img_id):
 
 def main():
     i_start = 1
-    i_end = 2
+    i_end = 85
     N = i_end - i_start
 
     save = False
     drive = "backup"  # "UBUNTU 16_0"  #
 
-
     pwd_root = os.path.join(os.sep, "media" ,"taeke", "backup", "thesis_data", "detect_truss")
 
-    dataset = "lidl"
+    dataset = "lidl"  # "failures" #
     pwd_data = os.path.join(pwd_root, "data", dataset)
     pwd_results = os.path.join(pwd_root, "results", dataset)
     pwd_json = os.path.join(pwd_results, 'json')

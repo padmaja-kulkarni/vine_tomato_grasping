@@ -40,8 +40,8 @@ class TransformPose(object):
             self.sag_angle = None
             self.peduncle_height = 0.070  # [m]
         else:
-            self.sag_angle = np.deg2rad(7.0)
-            self.peduncle_height = 0.080  # [m]
+            self.sag_angle = np.deg2rad(6.0)
+            self.peduncle_height = 0.08  # 75  # [m]
 
         # To determine the grasping height we need several dimensions of the manipulator
         self.surface_height = 0.019  # [m]

@@ -7,7 +7,7 @@ from flex_shared_resources.utils.conversions import point_to_pose
 class PoseGenerator(object):
     """Class for generating random poses within a slice of a disk"""
 
-    def __init__(self, r_range, theta_range=None, x_min=0, z=0, frame=None, seed=0):
+    def __init__(self, r_range, theta_range=None, x_min=0.0, z=0.0, frame=None, seed=0):
         """
         :param r_range: minimum and maximum radius of the disk
         :param theta_range: minimum and maximum angle of the disk
@@ -71,12 +71,12 @@ def main():
     import matplotlib.pyplot as plt
     import matplotlib as mpl
     from tf.transformations import euler_from_quaternion
-    from utils.conversions import orientation_to_list
+    from flex_shared_resources.utils.conversions import orientation_to_list
     node_name = 'transform_pose'
     robot_base_frame = 'px150/base_link'
 
     rospy.init_node(node_name, anonymous=True, log_level=rospy.INFO)
-    pose_generator = PoseGenerator(r_range=[0.15, 0.23], x_min=0.17, frame=robot_base_frame, seed=node_name)
+    pose_generator = PoseGenerator(r_range=[0.15, 0.23], x_min=0.17, frame=robot_base_frame)
 
     pose_stamped_list = []
     for i in range(1, 21):
@@ -86,13 +86,14 @@ def main():
         pose_stamped_list.append(pose_stamped)
 
     plt.figure()
-    for pose_stamped in pose_stamped_list:
+    for i, pose_stamped in enumerate(pose_stamped_list):
         x = pose_stamped.pose.position.x
         y = pose_stamped.pose.position.y
         theta = euler_from_quaternion(orientation_to_list(pose_stamped.pose.orientation))[2]
         t = mpl.markers.MarkerStyle(marker='|')
         t._transform = t.get_transform().rotate_deg(np.rad2deg(theta))
         plt.scatter(y, x, marker=t, c='blue', s=300)
+        plt.text(y, x + 0.01, i + 1)
 
     plt.xlim((-0.23, 0.23))
     plt.ylim((0.17, 0.23))

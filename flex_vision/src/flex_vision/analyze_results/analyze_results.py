@@ -83,14 +83,15 @@ def index_true_positives(lbl_centers, res_centers, dist_tresh):
 
 def main():
     i_start = 1
-    i_end = 3
-    save_results = True
+    i_end = 85
+    save_results = False
     N = i_end - i_start
 
     drive = "backup"  # "UBUNTU 16_0"  #
-    pwd_root = os.path.join(os.sep, 'home', 'taeke', 'Documents', "images")
-    pwd_lbl = os.path.join(pwd_root, "data")
-    pwd_res = os.path.join(pwd_root, "results", 'json')
+    # pwd_root = os.path.join(os.sep, 'home', 'taeke', 'Documents', "images")
+    pwd_root = os.path.join(os.sep, "media", "taeke", "backup", "thesis_data", "detect_truss")
+    pwd_lbl = os.path.join(pwd_root, "data", "lidl")
+    pwd_res = os.path.join(pwd_root, "results", "lidl", 'json')
     if save_results:
         pwd_store = os.path.join(pwd_root, "results", 'final')
         make_dirs(pwd_store)
@@ -118,7 +119,7 @@ def main():
         file_res = os.path.join(pwd_res, truss_name + '.json')
 
         # load data
-        img_rgb = load_rgb(truss_name + extension + '.png', pwd_lbl, horizontal=False)
+        img_rgb = load_rgb(truss_name + '_rgb.png', pwd_lbl, horizontal=False)
 
         if not os.path.exists(file_lbl):
             print('Labels do not exist for image: ' + truss_name + ' skipping this file')
@@ -272,7 +273,7 @@ def main():
         n_predict_pos = len(peduncle_res['junctions'])
 
         center_error = euclidean_distances(junction_actual['true_pos']['centers'], junction_pred['true_pos']['centers'],
-                                            factor=1 / px_per_mm)
+                                            factor=1.0/px_per_mm)
 
         junctions_error = {'centers': center_error, 'true_pos': n_true_pos, 'false_pos': n_false_pos, 'labeled_pos': n_labeled_pos,
                            'predict_pos': n_predict_pos}

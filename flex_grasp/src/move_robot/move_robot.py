@@ -393,8 +393,8 @@ class MoveRobot(object):
 
         success = self.man_group.execute(plan, wait=True)
         if success is not True:
-            rospy.logwarn('[MOVE ROBOT] Controller failed during excution!')
-            return FlexGraspErrorCodes.CONTROL_FAILED
+            rospy.logwarn('[MOVE ROBOT] Controller failed during execution, trying to continue...')
+            # return FlexGraspErrorCodes.CONTROL_FAILED
 
         # Ensures that there is no residual movement and clear the target
         rospy.logdebug("[MOVE ROBOT] executed plan")
@@ -405,9 +405,6 @@ class MoveRobot(object):
                                           self.position_tol,
                                           self.orientation_tol, 3)
 
-        # This is bad but when removed move_robot does not always wait for a 
-        # plan to execute, or does not execute a plan at all!         
-        rospy.sleep(1)
         return result
 
     def set_operating_mode(self):

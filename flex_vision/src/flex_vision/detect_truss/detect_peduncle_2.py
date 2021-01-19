@@ -50,7 +50,10 @@ def detect_peduncle(peduncle_img, settings=None, px_per_mm=None, bg_img=None, sa
     if save:
         fit_ransac(peduncle_img, bg_img=bg_img.copy(), save=True, name=name + "_ransac", pwd=pwd)
 
-    skeleton_img = threshold_branch_length(skeleton_img, branch_length_min_px)
+    # update_image = True
+    # while update_image:
+    skeleton_img, b_remove = threshold_branch_length(skeleton_img, branch_length_min_px)
+    # update_image = b_remove.any()
     junc_coords, end_coords = get_node_coord(skeleton_img)
 
     if save:
@@ -117,7 +120,7 @@ def find_path(dist, pred, junc_nodes, end_nodes, pixel_coordinates, bg_image=Non
             length = 0
 
             path = []
-            subpath = [from_node]  # TODO: was fist an empty list!
+            subpath = []  # TODO: was fist an empty list! from_node
             branch_data = []
 
             while count < timeout:
@@ -146,7 +149,7 @@ def find_path(dist, pred, junc_nodes, end_nodes, pixel_coordinates, bg_image=Non
                         if len(subpath) == 0:
                             print subpath
 
-                        subpath = [from_node]  # TODO: was fist an empty list!
+                        subpath = []  # TODO: was fist an empty list! from_node
 
                     else:
                         # reset path
@@ -162,7 +165,7 @@ def find_path(dist, pred, junc_nodes, end_nodes, pixel_coordinates, bg_image=Non
                         path = subpath
                         branch_data = []
                         branch_data.append(subpath)
-                        subpath = [from_node]  # TODO: was fist an empty list!
+                        subpath = []  # TODO: was fist an empty list! from_node
                         length = 0
                         angle_total = node_coord_angle(init_coord, new_coord)
 
@@ -226,7 +229,7 @@ def threshold_branch_length(skeleton_img, distance_threshold):
     b_remove = (branch_data['branch-distance'] < distance_threshold) & tip_junction
     i_remove = b_remove.to_numpy().nonzero()[0]  # np.argwhere(b_remove)[:, 0]
 
-    return update_skeleton(skeleton_img, skeleton, i_remove)
+    return update_skeleton(skeleton_img, skeleton, i_remove), b_remove
 
 
 def get_node_coord(skeleton_img):
