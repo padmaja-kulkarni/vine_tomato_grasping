@@ -661,7 +661,7 @@ def plot_error(tomato_pred, tomato_act, error,
             kw['bbox']['fc'] = 'lightgrey'
             arrow_color = 'lightgrey'
 
-        print center, label
+        # print center, label
         y = center[1]
         x = center[0]
 

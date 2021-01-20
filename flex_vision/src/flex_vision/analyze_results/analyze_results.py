@@ -8,9 +8,54 @@ Created on Mon Jul 20 14:22:48 2020
 import os
 import json
 import numpy as np
-from flex_vision.utils.util import load_rgb, plot_features, plot_error, make_dirs, plot_features_result
+from flex_vision.utils.util import load_rgb, plot_features, plot_error, make_dirs, plot_features_result, save_fig
 from flex_vision.detect_truss.detect_tomato import compute_com
 from sklearn.metrics.pairwise import euclidean_distances as euclidean_distance_matrix
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+def boxplot(vals, labels, save_path):
+    xs = []
+    np.random.seed(2)
+    for i, val in enumerate(vals):
+        xs.append(np.random.normal(i + 1, 0.08, len(val)))
+
+    lw = 1
+    boxprops = dict(linestyle='-', linewidth=lw, color='k')  # layout of the box
+    flierprops = dict(marker='o', markersize=0)  # ,  )
+    whiskerprops = dict(linewidth=lw, color='k')  # layout of the vertical lines
+    capprops = dict(linewidth=lw, color='k')  # layout of the horizontal ends
+    medianprops = dict(linewidth=lw, linestyle='-', color='k')
+
+    plt.figure(figsize=(5, 4))
+    box_info = plt.boxplot(vals, vert=False, labels=labels, widths=0.6, boxprops=boxprops, whiskerprops=whiskerprops,
+                           capprops=capprops, medianprops=medianprops, flierprops=flierprops)
+    plt.title("Prediction Error")
+    plt.grid(axis='x')
+    plt.xlim([-0.1, 16])
+    plt.xlabel('absolute error [mm]')
+
+    palette = ['r', 'r', 'k', 'g']
+    for i, (x, val, c) in enumerate(zip(xs, vals, palette)):
+        face_color = mpl.colors.colorConverter.to_rgba(c, alpha=.1)
+        edge_color = mpl.colors.colorConverter.to_rgba(c, alpha=.5)
+        to_plot = range(0, len(val))
+
+        outliers = box_info["fliers"][i].get_data()[0]
+
+        for outlier in outliers:
+            if outlier in val:
+                outlier_i = val.index(outlier)
+                to_plot.remove(outlier_i)
+                plt.scatter(outlier, x[outlier_i], s=25, facecolors="None", edgecolors=edge_color, linewidths=1)  # i + 1
+
+        plt.scatter(np.array(val)[to_plot], np.array(x)[to_plot], s=50, color=face_color, edgecolors=edge_color,
+                    linewidths=0)
+    #
+    # sns.stripplot(data=vals, alpha=0.2, palette=palette, orient='h')
+    # plt.show
+    save_fig(plt.gcf(), save_path, 'error', resolution=600, ext='pdf', no_ticks=False)
 
 
 def remove_none_from_list(lst_none):
@@ -40,26 +85,27 @@ def euclidean_distance(p1, p2, factor=None):
     else:
         return factor*((p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2) ** 0.5
 
-def index_true_positives(lbl_centers, res_centers, dist_tresh):
+
+def index_true_positives(lbl_centers, res_centers, dist_tresh, px_per_mm):
     """
-    For each labeled center find the closest prediction. Is a distnace thershold is surpassed, it is a false negative.
+    For each labeled center find the closest prediction. Is a distance threshold is surpassed, it is a false negative.
     - lbl_centers: centers ground truth
     - res_centers: predicted centers
-    - dist_tresh: the maximum allowable distance, for which the predictions may still be labeled as a true possitive
+    - dist_tresh: the maximum allowable distance, for which the predictions may still be labeled as a true positive
     """
+    n_predictions = len(res_centers)
+    n_labels = len(lbl_centers)
 
-    dist = euclidean_distance_matrix(lbl_centers, res_centers)
+    dist = euclidean_distance_matrix(lbl_centers, res_centers) / px_per_mm
 
-    # if the distance is too large, it is a false positive!
-    i_keep = np.amin(dist, axis=1) < dist_tresh
-    true_pos = np.argmin(dist, axis=1)[i_keep].tolist()
-    false_pos = list(set(range(len(res_centers))) - set(true_pos))
-    false_neg = np.argwhere(np.logical_not(i_keep))[:, 0].tolist()
+    # find true positives, based on shortest distance
+    true_pos = np.argmin(dist, axis=1).tolist()
+    false_pos = list(set(range(n_predictions)) - set(true_pos))
+    false_neg = []
 
     # determine duplicates, one of these is a false negative!
-    duplicates = set([duplicates for duplicates in true_pos if true_pos.count(duplicates) > 1])
+    duplicates = set([x for x in true_pos if true_pos.count(x) > 1])
 
-    rows_remove = []
     for duplicate in duplicates:
         col = duplicate
 
@@ -69,16 +115,27 @@ def index_true_positives(lbl_centers, res_centers, dist_tresh):
         i_remove = list(set(range(len(rows))) - set([i_keep]))
 
         rows_remove = list(np.array(rows)[i_remove])
-
-        for row_remove in sorted(rows_remove, reverse=True):
-            true_pos.pop(row_remove)
-
         false_neg.extend(rows_remove)
 
-    true_pos_lbl = list(set(range(len(lbl_centers))) - set(false_neg))
-    true_pos_res = true_pos
+    for row_remove in sorted(false_neg, reverse=True):
+        true_pos.pop(row_remove)
 
-    return true_pos_res, true_pos_lbl, false_pos, false_neg
+    tp_labels = list(set(range(n_labels)) - set(false_neg))
+    tp_predictions = true_pos
+
+    # determine which pairs exceed the threshold, these are false positives!
+    i_pop = []
+    for i, (label, prediction) in enumerate(zip(tp_labels, tp_predictions)):
+        if dist[label, prediction] > dist_tresh:
+            false_neg.append(label)
+            false_pos.append(prediction)
+            i_pop.append(i)
+
+    for i in sorted(i_pop, reverse=True):
+        tp_predictions.pop(i)
+        tp_labels.pop(i)
+
+    return tp_predictions, tp_labels, false_pos, false_neg
 
 
 def main():
@@ -87,13 +144,14 @@ def main():
     save_results = False
     N = i_end - i_start
 
-    drive = "backup"  # "UBUNTU 16_0"  #
     # pwd_root = os.path.join(os.sep, 'home', 'taeke', 'Documents', "images")
     pwd_root = os.path.join(os.sep, "media", "taeke", "backup", "thesis_data", "detect_truss")
     pwd_lbl = os.path.join(pwd_root, "data", "lidl")
     pwd_res = os.path.join(pwd_root, "results", "lidl", 'json')
+
+    pwd_final_result = os.path.join(pwd_root, "results", 'final')
     if save_results:
-        pwd_store = os.path.join(pwd_root, "results", 'final')
+        pwd_store = pwd_final_result
         make_dirs(pwd_store)
     else:
         pwd_store = None
@@ -101,48 +159,37 @@ def main():
     tomato_error_all = {}
     junction_error_all = {}
 
-    dist_thresh_tomato = 15  # [mm]
-    dist_thresh_peduncle = 10  # [mm]
+    use_mm = True
+    dist_thresh_tomato = 15  # [mm] maximum distance for which the predictions may still be labeled as a true positive
+    dist_thresh_peduncle = 10  # [mm] maximum distance for which the predictions may still be labeled as a true positive
 
     for count, i_truss in enumerate(range(i_start, i_end)):
         print("Analyzing image %d out of %d" % (count + 1, N))
-
         truss_name = str(i_truss).zfill(3)
 
-        if i_truss > 49:
-            extension = "_rgb"
-        else:
-            extension = ""
-
-        file_lbl = os.path.join(pwd_lbl, truss_name + extension + '.json')
+        file_lbl = os.path.join(pwd_lbl, truss_name + '.json')
         file_inf = os.path.join(pwd_lbl, truss_name + '_info.json')
         file_res = os.path.join(pwd_res, truss_name + '.json')
 
         # load data
         img_rgb = load_rgb(truss_name + '_rgb.png', pwd_lbl, horizontal=False)
 
-        if not os.path.exists(file_lbl):
-            print('Labels do not exist for image: ' + truss_name + ' skipping this file')
+        if not os.path.isfile(file_lbl):
+            print('Labels do not exist for image: ' + truss_name + ' skipping this file!')
             continue
 
-        if not os.path.exists(file_inf):
-            print('Info does not exist for image: ' + truss_name + 'continueing without info. THIS MAY YIELD '
-                                                                         'STRANGE RESULTS!')
-            use_mm = False
-        else:
-            use_mm = True
+        if not os.path.isfile(file_inf):
+            print('Info does not exist for image: ' + truss_name + ' skipping this file!')
+            continue
 
         with open(file_lbl, "r") as read_file:
             data_lbl = json.load(read_file)
 
-        data_lbl.pop('imageData', None)
-        shapes = data_lbl['shapes']
-
         tomato_lbl = {'radii': [], 'centers': []}
         peduncle_lbl = {'junctions': [], 'ends': []}
+        shapes = data_lbl['shapes']
 
         for shape in shapes:
-
             label = shape['label']
             shape_type = shape['shape_type']
             if label == 'tomato':
@@ -203,7 +250,8 @@ def main():
 
         i_true_pos_res, i_true_pos_lbl, i_false_pos, i_false_neg = index_true_positives(tomato_lbl['centers'],
                                                                                         tomato_res['centers'],
-                                                                                        dist_thresh_tomato * px_per_mm)
+                                                                                        dist_thresh_tomato,
+                                                                                        px_per_mm)
 
         tomato_pred = {}
         tomato_pred['true_pos'] = {}
@@ -250,7 +298,8 @@ def main():
 
         i_true_pos_res, i_true_pos_lbl, i_false_pos, i_false_neg = index_true_positives(peduncle_lbl['junctions'],
                                                                                         peduncle_res['junctions'],
-                                                                                        dist_thresh_peduncle * px_per_mm)
+                                                                                        dist_thresh_peduncle,
+                                                                                        px_per_mm)
 
         junction_pred = {}
         junction_pred['true_pos'] = {}
@@ -347,7 +396,6 @@ def main():
 
     # Junctions https://stackoverflow.com/questions/22307628/python-how-to-extend-the-content-of-a-list-store-in-a-dict
     junction_error_centers = {k:[] for k in cases}
-    junction_error_radii = {k:[] for k in cases}
     n_true_pos = dict.fromkeys(cases, 0)
     n_false_pos = dict.fromkeys(cases, 0)
     n_labeled_pos = dict.fromkeys(cases, 0)
@@ -364,11 +412,20 @@ def main():
             print '?'
 
         for key in ['all', case]:
+            max_error = np.amax(junction_error_all[id]['centers'])
+            if max_error > dist_thresh_peduncle:
+                print("On image {0} a junction error of {1} was found, which exceeds the limit of {2}"
+                      .format(id, max_error, dist_thresh_peduncle))
+
             junction_error_centers[key].extend(junction_error_all[id]['centers'])
             n_true_pos[key] += junction_error_all[id]['true_pos']
             n_false_pos[key] += junction_error_all[id]['false_pos']
             n_labeled_pos[key] += junction_error_all[id]['labeled_pos']
             n_predict_pos[key] += junction_error_all[id]['predict_pos']
+
+    labels = ['Tomtato\n center', 'Tomato\n radius', 'Center of\n mass', 'Junction\n location']
+    vals = [tomato_error_centers, tomato_error_radii, tomato_error_com, junction_error_centers['all']]
+    boxplot(vals, labels, pwd_final_result)
 
     # mean and std without None
     for key in junction_error_centers:
@@ -377,7 +434,6 @@ def main():
             junction_error_centers_key = remove_none_from_list(junction_error_centers[key])
             error_juncion_center_mean = np.mean(junction_error_centers_key)
             error_junction_center_std = np.std(junction_error_centers_key)
-
 
             true_pos_perc = int(round(float(n_true_pos[key]) / float(n_labeled_pos[key]) * 100))
             false_pos_perc = int(round(float(n_false_pos[key]) / float(n_predict_pos[key]) * 100))
