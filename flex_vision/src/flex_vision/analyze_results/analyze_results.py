@@ -14,8 +14,32 @@ from sklearn.metrics.pairwise import euclidean_distances as euclidean_distance_m
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import seaborn as sns
+import scipy.stats as stats
+from matplotlib import rc
 
-def boxplot(vals, labels, save_path):
+# plt.rc('text', usetex=True)
+# plt.rc('font', family='serif')
+# rc('text.latex', preamble='\usepackage{sfmath}')
+
+#Options
+params = {'text.usetex': True,
+          'font.size': 10,        # controls default text sizes
+          # 'legend.fontsize': 10,    # fontsize of the legend
+          # 'axes.labelsize': 10,     # fontsize of axis labels
+          # 'xtick.labelsize': 10,    # fontsize of x-axis ticks
+          # 'ytick.labelsize': 10,    # fontsize of y-axis ticks
+          'font.family': 'serif',
+          'font.serif' : 'Times',
+          # 'text.latex.unicode': True,
+          # 'pdf.fonttype': 42  # https://jdhao.github.io/2018/01/18/mpl-plotting-notes-201801/
+          }
+plt.rcParams.update(params)
+
+
+def box_plot(vals, labels, save_path, ext='png', name="error_box_plot"):
+    vals.reverse()
+    labels.reverse()
+
     xs = []
     np.random.seed(2)
     for i, val in enumerate(vals):
@@ -28,18 +52,26 @@ def boxplot(vals, labels, save_path):
     capprops = dict(linewidth=lw, color='k')  # layout of the horizontal ends
     medianprops = dict(linewidth=lw, linestyle='-', color='k')
 
-    plt.figure(figsize=(5, 4))
+    fig, ax = plt.subplots(1, 1, figsize=(3.4, 2.5))
+    palette = ['r', 'r', 'k', 'g']
+    palette.reverse()
+
     box_info = plt.boxplot(vals, vert=False, labels=labels, widths=0.6, boxprops=boxprops, whiskerprops=whiskerprops,
                            capprops=capprops, medianprops=medianprops, flierprops=flierprops)
-    plt.title("Prediction Error")
-    plt.grid(axis='x')
-    plt.xlim([-0.1, 16])
+
+    plt.suptitle("Prediction Error")
+    loc = mpl.ticker.MultipleLocator(base=2.0)  # this locator puts ticks at regular intervals
+
+    ax.set_xlim(left=0.0, right=16)
+    ax.xaxis.set_major_locator(loc)
+    ax.grid(axis='x')
+    ax.set_axisbelow(True)  # set grid behind other plot elements
+
     plt.xlabel('absolute error [mm]')
 
-    palette = ['r', 'r', 'k', 'g']
     for i, (x, val, c) in enumerate(zip(xs, vals, palette)):
         face_color = mpl.colors.colorConverter.to_rgba(c, alpha=.1)
-        edge_color = mpl.colors.colorConverter.to_rgba(c, alpha=.5)
+        edge_color = mpl.colors.colorConverter.to_rgba(c, alpha=1)
         to_plot = range(0, len(val))
 
         outliers = box_info["fliers"][i].get_data()[0]
@@ -48,14 +80,88 @@ def boxplot(vals, labels, save_path):
             if outlier in val:
                 outlier_i = val.index(outlier)
                 to_plot.remove(outlier_i)
-                plt.scatter(outlier, x[outlier_i], s=25, facecolors="None", edgecolors=edge_color, linewidths=1)  # i + 1
+                plt.scatter(outlier, x[outlier_i], s=15, facecolors="None", edgecolors=edge_color, linewidths=.6)  # i + 1
 
-        plt.scatter(np.array(val)[to_plot], np.array(x)[to_plot], s=50, color=face_color, edgecolors=edge_color,
+        ax.scatter(np.array(val)[to_plot], np.array(x)[to_plot], s=25, color=face_color, edgecolors=edge_color,
                     linewidths=0)
-    #
+
+    save_fig(plt.gcf(), save_path, name, resolution=600, ext=ext, no_ticks=False)
+
+def dist_plot(vals, labels, save_path, ext='png', name="error_dist_plot"):
+    vals.reverse()
+    labels.reverse()
+    ymin = -0.4
+    ymax = 0.4
+    xmin = 0
+    xmax = 16
+
+    xs = []
+    np.random.seed(2)
+    for i, val in enumerate(vals):
+        xs.append(np.random.normal(0, 0.08, len(val)))
+
+    fig, axs = plt.subplots(nrows=4, figsize=(3.4, 2.5), sharex=True)
+    plt.subplots_adjust(hspace=.0)
+    palette = ['r', 'r', 'k', 'g']
+
+    # make kde plot
+    for i, (val, c, ax) in enumerate(zip(vals, palette, axs)):
+        sns.kdeplot(data=val, color=c, ax=ax, clip=[xmin, xmax], cut=xmax/0.25, bw=0.25)
+        mu = np.mean(val)
+        sigma = np.std(val)
+        # ax.vlines(mu, ymin, ymax, lw=1, linestyles='--')
+
+        x = np.linspace(xmin, xmax, 1000)
+        ax.plot(x, stats.norm.pdf(x, mu, sigma), lw=1.5, linestyle='--')
+
+    plt.suptitle("Prediction Error")
+    loc = mpl.ticker.MultipleLocator(base=2.0)  # this locator puts ticks at regular intervals
+
+    for ax, label in zip(axs, labels):
+        plt.sca(ax)
+        ax.set_xlim(left=xmin, right=xmax)
+        ax.set_ylim(bottom=ymin, top=ymax)
+
+        ax.xaxis.set_major_locator(loc)
+        ax.grid(axis='x')
+        ax.set_axisbelow(True)  # set grid behind other plot elements
+        # ax.set_ylabel(label)
+        plt.gca()
+        plt.yticks([0], [label], rotation=0)
+        if label != labels[-1]:
+            remove_ticks(ax, 'x')
+
+    plt.xlabel('absolute error [mm]')
+
+    for i, (x, val, c, ax) in enumerate(zip(xs, vals, palette, axs)):
+        face_color = mpl.colors.colorConverter.to_rgba(c, alpha=.1)
+        edge_color = mpl.colors.colorConverter.to_rgba(c, alpha=.5)
+        to_plot = range(0, len(val))
+        outliers = [] # box_info["fliers"][i].get_data()[0]
+
+        for outlier in outliers:
+            if outlier in val:
+                outlier_i = val.index(outlier)
+                to_plot.remove(outlier_i)
+                plt.scatter(outlier, x[outlier_i], s=10, facecolors="None", edgecolors=edge_color, linewidths=1)  # i + 1
+
+        ax.scatter(np.array(val)[to_plot], np.array(x)[to_plot], s=25, color=face_color, edgecolors=edge_color,
+                    linewidths=0)
+
     # sns.stripplot(data=vals, alpha=0.2, palette=palette, orient='h')
-    # plt.show
-    save_fig(plt.gcf(), save_path, 'error', resolution=600, ext='pdf', no_ticks=False)
+    save_fig(plt.gcf(), save_path, name, resolution=600, ext=ext, no_ticks=False)
+
+
+def remove_ticks(ax, axis):
+    ax.tick_params(
+        axis=axis,  # changes apply to the x-axis
+        which='both',  # both major and minor ticks are affected
+        bottom=False,  # ticks along the bottom edge are off
+        top=False,      # ticks along the top edge are off
+        left=False,
+        right=False,
+        labelbottom=False,
+        labelleft=False)  # labels along the bottom edge are off
 
 
 def remove_none_from_list(lst_none):
@@ -140,8 +246,8 @@ def index_true_positives(lbl_centers, res_centers, dist_tresh, px_per_mm):
 
 def main():
     i_start = 1
-    i_end = 85
-    save_results = False
+    i_end = 2
+    save_results = True
     N = i_end - i_start
 
     # pwd_root = os.path.join(os.sep, 'home', 'taeke', 'Documents', "images")
@@ -423,9 +529,10 @@ def main():
             n_labeled_pos[key] += junction_error_all[id]['labeled_pos']
             n_predict_pos[key] += junction_error_all[id]['predict_pos']
 
-    labels = ['Tomtato\n center', 'Tomato\n radius', 'Center of\n mass', 'Junction\n location']
-    vals = [tomato_error_centers, tomato_error_radii, tomato_error_com, junction_error_centers['all']]
-    boxplot(vals, labels, pwd_final_result)
+    labels = ['tomtato\n center', 'tomato\n radius', 'center of\n mass', 'junction\n location']
+    vals = [tomato_error_centers, tomato_error_radii, tomato_error_com, remove_none_from_list(junction_error_centers['all'])]
+    box_plot(vals, labels, pwd_final_result, ext='png')
+    dist_plot(vals, labels, pwd_final_result, ext='png')
 
     # mean and std without None
     for key in junction_error_centers:

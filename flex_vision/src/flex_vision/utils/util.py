@@ -246,16 +246,8 @@ def save_fig(fig, pwd, name, resolution=300, no_ticks=True, title="", titleSize=
         ext = default_ext
 
     # eps does not support transparancy
-    SMALL_SIZE = 8
-    MEDIUM_SIZE = 15
-    BIGGER_SIZE = 20
-
     plt.rcParams["savefig.format"] = ext
     plt.rcParams["savefig.bbox"] = 'tight'
-    # plt.rcParams['axes.titlesize'] = titleSize
-
-    # plt.rc('axes', labelsize=MEDIUM_SIZE)  # fontsize of the x and y labels
-    # plt.rc('xtick', labelsize=MEDIUM_SIZE)  # fontsize of the tick labels
 
     for ax in fig.get_axes():
         pass
@@ -266,10 +258,10 @@ def save_fig(fig, pwd, name, resolution=300, no_ticks=True, title="", titleSize=
             # ax.yaxis.set_major_locator(plt.nulllocator())\
             ax.set_yticklabels([])
             ax.set_xticklabels([])
-    else:
+    # else:
         # We change the fontsize of minor ticks label
-        ax.tick_params(axis='both', which='major', labelsize=10)
-        ax.tick_params(axis='both', which='minor', labelsize=8)
+        # ax.tick_params(axis='both', which='major', labelsize=10)
+        # ax.tick_params(axis='both', which='minor', labelsize=8)
 
     plt.margins(0, 0)
 
