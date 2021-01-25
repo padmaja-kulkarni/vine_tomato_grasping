@@ -8,9 +8,12 @@ Created on Wed May 20 13:32:31 2020
 ## imports ##
 import cv2
 import numpy as np
+import os
 
 from matplotlib import pyplot as plt
+from matplotlib import cm
 import matplotlib as mpl
+import settings
 
 from sklearn.metrics.pairwise import euclidean_distances
 
@@ -22,7 +25,7 @@ from flex_vision.utils.util import plot_segments
 from flex_vision.utils.util import grey_2_rgb
 
 final_image_id = '015' # used for plotting
-
+LINEWIDTH = 3.4  # inch
 
 def k_means_hue(img_hue, n_clusters, centers=None):
     # convert hue value to angles, and place on unit circle
@@ -55,17 +58,17 @@ def k_means_hue(img_hue, n_clusters, centers=None):
 #     angle = np.deg2rad(2 * np.float32(img_hue.flatten()))
 #     data = np.stack((np.cos(angle), np.sin(angle), img_a.flatten()), axis=1)
 
-def k_means_hue_a(img_hue, img_a, n_clusters, settings, centers=None):
+def k_means_hue_a(img_hue, img_a, n_clusters, my_settings, centers=None):
     # convert hue value to angles, and place on unit circle
 
     h, w = img_hue.shape
 
-    new_shape = (w / settings['f'], h / settings['f'])
+    new_shape = (w / my_settings['f'], h / my_settings['f'])
     img_hue = cv2.resize(img_hue, new_shape, interpolation=cv2.INTER_NEAREST)
     img_a = cv2.resize(img_a, new_shape, interpolation=cv2.INTER_NEAREST)
 
     angle = np.deg2rad(2 * np.float32(img_hue.flatten()))
-    hue_radius = settings['hue_radius']
+    hue_radius = my_settings['hue_radius']
     data = np.stack((hue_radius * np.cos(angle), hue_radius * np.sin(angle), img_a.flatten()), axis=1)
 
     if centers is not None:
@@ -78,7 +81,7 @@ def k_means_hue_a(img_hue, img_a, n_clusters, settings, centers=None):
         attempts = 3
 
     # Define criteria = ( type, max_iter = 10 , epsilon = 1.0 )
-    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, settings['i_max'], settings['epsilon'])
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, my_settings['i_max'], my_settings['epsilon'])
     compactness, labels, centers_xy = cv2.kmeans(data=data,
                                                  K=n_clusters,
                                                  bestLabels=labels,  # None, #
@@ -117,9 +120,9 @@ def normalize_image(img):
     img_norm = np.float32(img - val_min) / np.float32(val_max - val_min) * 2 - 1
     return img_norm
 
-def segment_truss(img_hue, img_a=None, save="False", name="", pwd="", settings=None):
-    if settings is None:
-        settings = settings.segment_image()
+def segment_truss(img_hue, img_a=None, save="False", name="", pwd="", my_settings=None):
+    if my_settings is None:
+        my_settings = settings.segment_image()
 
     n = 3
 
@@ -139,8 +142,8 @@ def segment_truss(img_hue, img_a=None, save="False", name="", pwd="", settings=N
         a_min = np.min(img_a)
         a_max = np.max(img_a)
         img_a_norm = normalize_image(img_a)
-        centers, _ = k_means_hue_a(img_hue, img_a_norm, n, settings, centers=centers)  # centers
-        labels = assign_labels(img_hue, centers, hue_radius=settings['hue_radius'], img_a=img_a)
+        centers, _ = k_means_hue_a(img_hue, img_a_norm, n, my_settings, centers=centers)  # centers
+        labels = assign_labels(img_hue, centers, hue_radius=my_settings['hue_radius'], img_a=img_a)
 
     # determine which center corresponds to which segment
     lbl = {}
@@ -160,7 +163,7 @@ def segment_truss(img_hue, img_a=None, save="False", name="", pwd="", settings=N
         background = label2img(labels, lbl["background"], dim)
     if save:
         both_hist(img_hue, img_a_norm, centers, lbl, a_bins=a_max - a_min + 1, pwd=pwd, name=name,
-                  hue_radius=settings['hue_radius'])
+                  hue_radius=my_settings['hue_radius'])
         hue_hist(img_hue, np.rad2deg(centers['hue']), lbl, name, pwd)
         if img_a is not None:
             a_hist(img_a_norm, centers['a'], lbl, bins=a_max - a_min + 1, name=name, pwd=pwd)
@@ -201,7 +204,7 @@ def hue_hist(img_hue, centers, lbl, name, pwd):
     radii, bins, patches = ax.hist(angle, bins=bins, range=(0, 360), color="black", lw=0)
     ax.set_xlabel("hue [$^\circ$]")
     ax.set_ylabel("frequency")
-    save_fig(fig, pwd, name + "_hue_hist", titleSize=10)
+    save_fig(fig, pwd, name + "_hue_hist") # , titleSize=10
 
 
 def a_hist(img_a, centers, lbl, bins=80, a_min=-1.0, a_max=1.0, name="", pwd=""):
@@ -231,7 +234,7 @@ def a_hist(img_a, centers, lbl, bins=80, a_min=-1.0, a_max=1.0, name="", pwd="")
     radii, bins, patches = ax.hist(angle, bins=bins, range=(a_min, a_max), color="black", lw=0)
     ax.set_xlabel("a")
     ax.set_ylabel("frequency")
-    save_fig(fig, pwd, name + "_a_hist", titleSize=10)
+    save_fig(fig, pwd, name + "_a_hist") # , titleSize=10
 
 
 def both_hist(img_hue, img_a, centers, lbl, a_bins=80, pwd="", name="", hue_min=0, hue_max=180, hue_radius=1.0,
@@ -274,8 +277,12 @@ def both_hist(img_hue, img_a, centers, lbl, a_bins=80, pwd="", name="", hue_min=
     img_hist_rgb = cv2.resize(img_hist_rgb, new_shape, interpolation=cv2.INTER_NEAREST)
 
     # overlay with histogram
-    fig = plot_segments(img_hist_rgb, background, tomato, peduncle, show_background=True, alpha=0.1, linewidth=1,
-                        show_axis=True, use_image_colours=False)
+    plot_segments(img_hist_rgb, background, tomato, peduncle, show_background=True, alpha=0.1, linewidth=1,
+                  show_axis=True, use_image_colours=False, ncols=2)
+
+    # cmap = mpl.cm.hot_r
+    # norm = mpl.colors.Normalize(vmin=0, vmax=100)
+    # plt.gcf().colorbar(cm.ScalarMappable(norm=norm, cmap=cmap)) # ticks=['low', 'high'], format='%s'
 
     # plot cluster centers
     centers_hue = np.rad2deg(centers['hue'])
@@ -291,21 +298,33 @@ def both_hist(img_hue, img_a, centers, lbl, a_bins=80, pwd="", name="", hue_min=
             color = 'g'
         elif label == 'background':
             color = 'b'
-        plt.plot(hue_coords[i], a_coords[i], 'o', color=color, markeredgecolor='w', markersize=8, markeredgewidth=1,
+        plt.plot(hue_coords[i], a_coords[i], 'o', color=color, markeredgecolor='w', markersize=4, markeredgewidth=0.5,
                  alpha=1.0)
 
     # fix axis, only plot x axis for last image, only plot title for first
-    if name == final_image_id:
-        plt.xticks([hue_min, hue_height / 2, hue_height - 1], map(str, (0, 180, 360)))
-        plt.xlabel("hue [$^\circ$]")
-    else:
-        plt.xticks([])
+    # if name == final_image_id:
+    plt.xticks([hue_min, hue_height / 2, hue_height - 1], map(str, (0, 180, 360)))
+    plt.xlabel("hue [$^\circ$]")
+    plt.title('K-means clustering result')
+    # else:
+    #     plt.xticks([])
 
     plt.ylabel("a*")
     plt.yticks([0, a_height / 2, a_height - 1], map(str, (a_min, (a_min + a_max) / 2, a_max)))
 
-    save_fig(fig, pwd, name + "_hist", no_ticks=False)
+    if True:
+        axs = plt.gcf().get_axes()
+        plt.sca(axs[-1])
+        cmap = mpl.cm.hot_r
+        norm = mpl.colors.Normalize(vmin=0, vmax=100)
+        cb1 = mpl.colorbar.ColorbarBase(plt.gca(), cmap=cmap, norm=norm, orientation='vertical')
+        cb1.set_label('frequency', labelpad=-20)
+        plt.yticks([])
+        cb1.set_ticks([0, 100], True)
+        plt.yticks([0, 100], ['low', 'high'])
 
+    save_fig(plt.gcf(), pwd, name + "_hist", no_ticks=False)
+    # plt.savefig(os.path.join(pwd, name + "_hist" + '.png'))
 
 def label2img(labels, label, dim):
     data = labels.ravel() == label

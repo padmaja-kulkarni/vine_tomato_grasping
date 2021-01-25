@@ -111,7 +111,7 @@ class ProcessImage(object):
         success = True
         background, tomato, peduncle = segment_truss(self.img_hue,
                                                      img_a=self.img_a,
-                                                     settings=self.settings['segment_image'],
+                                                     my_settings=self.settings['segment_image'],
                                                      save=self.save,
                                                      pwd=pwd,
                                                      name=self.name)
@@ -606,7 +606,7 @@ def load_px_per_mm(pwd, img_id):
 
 def main():
     i_start = 1
-    i_end = 85
+    i_end = 2
     N = i_end - i_start
 
     save = False

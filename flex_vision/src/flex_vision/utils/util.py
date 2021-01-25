@@ -14,7 +14,7 @@ from matplotlib import pyplot as plt
 import matplotlib as mpl
 
 from flex_vision.utils import color_maps
-
+import matplotlib.gridspec as gridspec
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 
 ee_color = (255, 150, 0)
@@ -34,8 +34,26 @@ vertex_layer = 7
 high_layer = 8  # arrows, com
 top_layer = 10  # junctions, com, text
 
-default_ext = 'png'
+EXT = 'pdf'
+LINEWIDTH = 3.4  # inch
 
+# IEEE standards for non-vector graphics for color and grayscale images are >300dpi.
+# IEEE standards for black and white line art are >600dpi.
+DPI = 600
+
+#Options
+params = {'text.usetex': True,
+          'font.size': 10,        # controls default text sizes
+          # 'legend.fontsize': 10,    # fontsize of the legend
+          # 'axes.labelsize': 10,     # fontsize of axis labels
+          # 'xtick.labelsize': 10,    # fontsize of x-axis ticks
+          # 'ytick.labelsize': 10,    # fontsize of y-axis ticks
+          'font.family': 'serif',
+          'font.serif': 'Times',
+          # 'text.latex.unicode': True,
+          # 'pdf.fonttype': 42  # https://jdhao.github.io/2018/01/18/mpl-plotting-notes-201801/
+          }
+plt.rcParams.update(params)
 
 def make_dirs(pwd):
     if not os.path.isdir(pwd):
@@ -206,10 +224,14 @@ def grey_2_rgb(img_grey, vmin=0, vmax=255):
     return img_rgb
 
 
-def save_img(img, pwd, name, resolution=300, title="", title_size=20, ext=None, color_map='plasma', vmin=None,
+def save_img(img, pwd, name, dpi=None, title="", title_size=20, ext=None, color_map='plasma', vmin=None,
              vmax=None):
+
+    if dpi is None:
+        dpi = DPI
+
     if ext is None:
-        ext = default_ext
+        ext = EXT
 
     plt.rcParams["savefig.format"] = ext
     plt.rcParams["savefig.bbox"] = 'tight'
@@ -221,68 +243,73 @@ def save_img(img, pwd, name, resolution=300, title="", title_size=20, ext=None, 
     elif color_map == 'Lab':
         color_map = color_maps.lab_color_scale()
 
+    sizes = np.shape(img)
     fig = plt.figure()
-    plt.imshow(img, cmap=color_map, vmin=vmin, vmax=vmax)
-    plt.axis('off')
+    fig.set_size_inches(float(sizes[1])/float(sizes[0]), 1, forward=False)
+    ax = plt.Axes(fig, [0., 0., 1., 1.])
+    ax.set_axis_off()
+    fig.add_axes(ax)
+    ax.imshow(img, cmap=color_map, vmin=vmin, vmax=vmax)
+    # plt.axis('off')
     if title is not None:
         plt.title(title)
 
     # https://stackoverflow.com/a/27227718
-    plt.gca().set_axis_off()
-    plt.subplots_adjust(top=1, bottom=0, right=1, left=0,
-                        hspace=0, wspace=0)
-    plt.margins(0, 0)
-    plt.gca().xaxis.set_major_locator(plt.NullLocator())
-    plt.gca().yaxis.set_major_locator(plt.NullLocator())
+    # plt.gca().set_axis_off()
+    # plt.subplots_adjust(top=1, bottom=0, right=1, left=0,
+    #                     hspace=0, wspace=0)
+    # plt.margins(0, 0)
+    # plt.gca().xaxis.set_major_locator(plt.NullLocator())
+    # plt.gca().yaxis.set_major_locator(plt.NullLocator())
 
     # make dir if it does not yet exist
     make_dirs(pwd)
-    fig.savefig(os.path.join(pwd, name), dpi=resolution, bbox_inches='tight', pad_inches=0)
+    fig.savefig(os.path.join(pwd, name), dpi=dpi)
     plt.close(fig)
 
 
-def save_fig(fig, pwd, name, resolution=300, no_ticks=True, title="", titleSize=20, ext=None):
+def save_fig(fig, pwd, name, dpi=None, no_ticks=True, ext=None):
     if ext is None:
-        ext = default_ext
+        ext = EXT
+
+    if dpi is None:
+        dpi =DPI
 
     # eps does not support transparancy
-    plt.rcParams["savefig.format"] = ext
-    plt.rcParams["savefig.bbox"] = 'tight'
+    # plt.rcParams["savefig.format"] = ext
 
-    for ax in fig.get_axes():
-        pass
-        # ax.label_outer()
+    # for ax in fig.get_axes():
+    #     pass
+    #     # ax.label_outer()
 
     if no_ticks:
         for ax in fig.get_axes():
-            # ax.yaxis.set_major_locator(plt.nulllocator())\
             ax.set_yticklabels([])
             ax.set_xticklabels([])
-    # else:
-        # We change the fontsize of minor ticks label
-        # ax.tick_params(axis='both', which='major', labelsize=10)
-        # ax.tick_params(axis='both', which='minor', labelsize=8)
 
-    plt.margins(0, 0)
+    # plt.subplots_adjust(top=1, bottom=0, right=1, left=0, hspace=0, wspace=0)
+    # plt.margins(0, 0)
+    # plt.gca().xaxis.set_major_locator(plt.NullLocator())
+    # plt.gca().yaxis.set_major_locator(plt.NullLocator())
 
     # make dir if it does not yet exist
     make_dirs(pwd)
-    fig.savefig(os.path.join(pwd, name), dpi=resolution, bbox_inches='tight', pad_inches=0)
+    fig.savefig(os.path.join(pwd, name + '.' + ext), dpi=dpi) #, bbox_inches='tight', pad_inches=0)
     plt.close(fig)
 
 
 def plot_segments(img_rgb, background, tomato, peduncle, fig=None, show_background=False, pwd=None,
-                  use_image_colours=True, show_axis=False, name=None, title="", alpha=0.4, linewidth=0.5):
+                  use_image_colours=True, show_axis=False, name=None, title=None, alpha=0.4, linewidth=0.5, ncols=1):
     """
         alpha: trasparancy of segments, low value is more transparant!
     """
 
-    if fig is None:
-        fig = plt.figure()
+    # if fig is None:
+    #     fig = plt.figure()
 
     img_segments = stack_segments(img_rgb, background, tomato, peduncle, use_image_colours=use_image_colours)
     added_image = cv2.addWeighted(img_rgb, 1 - alpha, img_segments, alpha, 0)
-    plot_image(added_image, show_axis=show_axis)
+    plot_image(added_image, show_axis=show_axis, ncols=ncols)
 
     # plot all contours
     if show_background:
@@ -290,17 +317,41 @@ def plot_segments(img_rgb, background, tomato, peduncle, fig=None, show_backgrou
     add_contour(tomato, color=tomato_color, linewidth=linewidth)
     add_contour(peduncle, color=peduncle_color, linewidth=linewidth)
 
+    if title is not None:
+        plt.title(title)
+
     if pwd is not None:
         save_fig(fig, pwd, name, title=title)
 
     return fig
 
 
-def plot_image(img, show_axis=False, animated=False):
+def plot_image(img, show_axis=False, animated=False, nrows=1, ncols=1):
     """
         plot image
     """
+    sizes = np.shape(img)
+    fig = plt.figure()
+    fig.set_size_inches(LINEWIDTH, LINEWIDTH * float(sizes[0]) / float(sizes[1]), forward=False)
+
+    # if multiple axes are desired we add them using gridspec
+    if (nrows > 1) or (ncols > 1):
+        # add axs   left  bott  width height
+        rect_bot = [0.06, 0.24, 0.82, 0.63]
+        rect_top = [0.85, 0.24, 0.02, 0.63]
+        plt.axes(rect_bot)
+        plt.axes(rect_top)
+
+        # set first axs active
+        plt.sca(plt.gcf().get_axes()[0])
+
+    if not show_axis:
+        ax = plt.Axes(fig, [0., 0., 1., 1.])
+        ax.set_axis_off()
+        fig.add_axes(ax)
+
     plt.imshow(img, animated=animated)
+
     if not show_axis:
         clear_axis()
 
@@ -330,21 +381,21 @@ def plot_truss(img_rgb=None, tomato=None, peduncle=None):
 
 def plot_features(img_rgb=None, tomato=None, peduncle=None, grasp=None,
                   alpha=0.4, linewidth=1, zoom=False, pwd=None, file_name=None, title=""):
+
     if img_rgb is not None:
-        fig = plt.figure()
         plot_image(img_rgb)
-    else:
-        fig = plt.gcf()
+
+    fig = plt.gcf()
 
     if zoom:
         tom_linestyle = (0, (10, 10))
-        tom_width = 2
-        com_radius = 16
+        tom_width = 1.5
+        com_radius = 10
         junc_radius = 8
     else:
         tom_linestyle = (0, (5, 5))
-        tom_width = 2
-        com_radius = 8
+        tom_width = 1.5
+        com_radius = 6
         junc_radius = 8
 
     if tomato:
@@ -355,7 +406,7 @@ def plot_features(img_rgb=None, tomato=None, peduncle=None, grasp=None,
             add_com(tomato['com'], radius=com_radius)
 
     if peduncle:
-        add_circles(peduncle['junctions'], radii=junc_radius, fc=junction_color, linewidth=linewidth, zorder=top_layer)
+        add_circles(peduncle['junctions'], radii=junc_radius, fc=junction_color, linewidth=0.5, zorder=top_layer)
 
     if grasp:
         col = grasp['col']
@@ -364,34 +415,34 @@ def plot_features(img_rgb=None, tomato=None, peduncle=None, grasp=None,
         plot_grasp_location([[col, row]], angle, finger_width=20, finger_thickness=15, linewidth=2)
 
     if pwd is not None:
-        save_fig(fig, pwd, file_name, title=title)
+        save_fig(fig, pwd, file_name)
 
 
-def plot_features_result(img_rgb, tomato_pred=None, peduncle=None, grasp=None,
-                         alpha=0.5, linewidth=1, zoom=False, pwd=None, name=None, title=""):
-    fig = plt.figure()
+def plot_features_result(img_rgb, tomato_pred=None, peduncle=None, grasp=None, alpha=0.5, linewidth=1.5, zoom=False,
+                         pwd=None, name=None, title="", fig=None):
+
     plot_image(img_rgb)
-
+    fig = plt.gcf()
     if zoom:
         tom_linestyle = (0, (10, 10))
         com_radius = 10
         junc_radius = 8
     else:
         tom_linestyle = (0, (5, 5))
-        com_radius = 10
+        com_radius = 6
         junc_radius = 8
 
     if tomato_pred:
         add_circles(tomato_pred['true_pos']['centers'], radii=tomato_pred['true_pos']['radii'], fc=tomato_color,
-                    linewidth=2, alpha=alpha, linestyle=tom_linestyle)
+                    linewidth=linewidth, alpha=alpha, linestyle=tom_linestyle)
         add_circles(tomato_pred['false_pos']['centers'], radii=tomato_pred['false_pos']['radii'], fc=tomato_color,
                     linewidth=linewidth, alpha=alpha, linestyle=tom_linestyle)
         add_com(tomato_pred['com'], radius=com_radius)
 
     if peduncle:
-        add_circles(peduncle['false_pos']['centers'], radii=junc_radius, ec=(255, 0, 0), linewidth=linewidth, alpha=0,
+        add_circles(peduncle['false_pos']['centers'], radii=junc_radius, ec=(255, 0, 0), linewidth=0.5, alpha=0,
                     zorder=top_layer)
-        add_circles(peduncle['true_pos']['centers'], radii=junc_radius, fc=junction_color, linewidth=linewidth,
+        add_circles(peduncle['true_pos']['centers'], radii=junc_radius, fc=junction_color, linewidth=0.5,
                     zorder=top_layer)
 
     if grasp:
@@ -485,7 +536,8 @@ def donut(data, labels, pwd=None, name=None, title=None, startangle=-45):
         save_fig(fig, pwd, name, no_ticks=False)
 
 
-def plot_grasp_location(loc, angle, finger_width=20, finger_thickness=10, finger_dist=None, linewidth=1, pwd=None, name=None, title=''):
+def plot_grasp_location(loc, angle, finger_width=20, finger_thickness=10, finger_dist=None, linewidth=1, pwd=None,
+                        name=None, title=''):
     """
         angle in rad
     """
@@ -541,21 +593,21 @@ def plot_error(tomato_pred, tomato_act, error,
                pwd=None,
                name=None,
                use_mm=False,
-               title="",
-               resolution=300,
-               title_size=20,
+               title=None,
+               dpi=None,
                ext=None):
+
     if ext is None:
-        ext = default_ext
+        ext = EXT
+
+    if dpi is None:
+        dpi = DPI
 
     fig = plt.gcf()
     ax = plt.gca()
 
-    plt.rcParams["savefig.format"] = ext
-    plt.rcParams["savefig.bbox"] = 'tight'
-    plt.rcParams['axes.titlesize'] = title_size
-
-    plt.title(title)
+    if title is not None:
+        plt.title(title)
 
     if use_mm:
         unit = 'mm'
@@ -606,18 +658,26 @@ def plot_error(tomato_pred, tomato_act, error,
     centers, error_centers, error_radii, labels = zip(*zipped)
 
     # default bbox style
-    bbox_props = dict(boxstyle="square,pad=0.3", fc="w", ec="w", lw=0.72)
-    kw_default = dict(arrowprops=dict(arrowstyle="-"),
-                      bbox=bbox_props, va="center", size=12, color='k')
+    bbox_props = dict(boxstyle="square,pad=0.2", fc="w", ec="w", lw=0)
+    kw_default = dict(arrowprops=dict(arrowstyle="-", linewidth=0.5),
+                      bbox=bbox_props, va="center", size=8, color='k')
 
     y_lim = ax.get_ylim()
     h = y_lim[0] - y_lim[1]
     x_lim = ax.get_xlim()
     w = x_lim[1] - x_lim[0]
 
-    # h, w = img.shape[:2]
-    n = len(centers) + 1
-    y_text = 0  # 1.0/n* h
+    # n determines the spacing of the baxes from the top of the image
+    if 'radii' in error.keys():
+        n = 0.5
+
+    else:
+        n = 3
+
+    y_increment = h / (len(centers) + n)
+    y_text = (n/2.0 + 0.5) * y_increment  # 1.0/n* h
+
+    # kw_list = []
     for center, error_center, error_radius, label in zip(centers, error_centers, error_radii, labels):
 
         # copy default style
@@ -631,7 +691,7 @@ def plot_error(tomato_pred, tomato_act, error,
                 text = 'loc: {c:d}{u:s} \nr: {r:d}{u:s}'.format(c=center_error, r=radius_error, u=unit)
             else:
                 text = 'loc: {c:d}{u:s}'.format(c=center_error, u=unit)
-            arrow_color = 'k'
+            arrow_color = mpl.colors.colorConverter.to_rgba('w', alpha=1)
 
         elif label == 'com':
             center_error = int(round(error_center))
@@ -639,7 +699,7 @@ def plot_error(tomato_pred, tomato_act, error,
             kw['bbox']['fc'] = 'k'
             kw['bbox']['ec'] = 'k'
             kw['color'] = 'w'
-            arrow_color = 'k'
+            arrow_color = mpl.colors.colorConverter.to_rgba('w', alpha=1)
 
         elif label == 'false_pos':
             text = 'false positive'
@@ -658,15 +718,13 @@ def plot_error(tomato_pred, tomato_act, error,
         x = center[0]
 
         if x <= 0.35 * w:
-            x_text = 0.6 * w  # -0.2*w
+            x_text = 0.6 * w
         elif x <= 0.5 * w:
-            x_text = 0.2 * w * 0.25
+            x_text = 0.05 * w
         elif x <= 0.65 * w:
             x_text = 0.8 * w
         else:
             x_text = 0.2 * w  # w
-
-        y_text = y_text + 1.0 / n * h
 
         x_diff = x_text - x
         y_diff = y_text - y
@@ -677,10 +735,12 @@ def plot_error(tomato_pred, tomato_act, error,
 
         connectionstyle = "angle,angleA=0,angleB={}".format(ang)
         kw["arrowprops"].update({"connectionstyle": connectionstyle, 'color': arrow_color})
+        # kw_list.append(kw)
         plt.annotate(text, xy=(x, y), xytext=(x_text, y_text), zorder=high_layer, **kw)  #
+        y_text = y_text + y_increment
 
     if pwd:
-        fig.savefig(os.path.join(pwd, name), dpi=resolution, bbox_inches='tight', pad_inches=0)
+        save_fig(fig, pwd=pwd, name=name, dpi=dpi, ext=ext)
 
 
 def compute_line_points(center, angle, l):

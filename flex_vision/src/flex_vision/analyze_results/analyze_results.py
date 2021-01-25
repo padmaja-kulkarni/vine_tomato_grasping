@@ -15,25 +15,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import seaborn as sns
 import scipy.stats as stats
-from matplotlib import rc
 
-# plt.rc('text', usetex=True)
-# plt.rc('font', family='serif')
-# rc('text.latex', preamble='\usepackage{sfmath}')
-
-#Options
-params = {'text.usetex': True,
-          'font.size': 10,        # controls default text sizes
-          # 'legend.fontsize': 10,    # fontsize of the legend
-          # 'axes.labelsize': 10,     # fontsize of axis labels
-          # 'xtick.labelsize': 10,    # fontsize of x-axis ticks
-          # 'ytick.labelsize': 10,    # fontsize of y-axis ticks
-          'font.family': 'serif',
-          'font.serif' : 'Times',
-          # 'text.latex.unicode': True,
-          # 'pdf.fonttype': 42  # https://jdhao.github.io/2018/01/18/mpl-plotting-notes-201801/
-          }
-plt.rcParams.update(params)
 
 
 def box_plot(vals, labels, save_path, ext='png', name="error_box_plot"):
@@ -85,7 +67,8 @@ def box_plot(vals, labels, save_path, ext='png', name="error_box_plot"):
         ax.scatter(np.array(val)[to_plot], np.array(x)[to_plot], s=25, color=face_color, edgecolors=edge_color,
                     linewidths=0)
 
-    save_fig(plt.gcf(), save_path, name, resolution=600, ext=ext, no_ticks=False)
+    fig.savefig(os.path.join(save_path, name + '.' + ext), dpi=600, bbox_inches='tight', pad_inches=0)  # format=ext
+    plt.close(fig)
 
 def dist_plot(vals, labels, save_path, ext='png', name="error_dist_plot"):
     vals.reverse()
@@ -148,8 +131,7 @@ def dist_plot(vals, labels, save_path, ext='png', name="error_dist_plot"):
         ax.scatter(np.array(val)[to_plot], np.array(x)[to_plot], s=25, color=face_color, edgecolors=edge_color,
                     linewidths=0)
 
-    # sns.stripplot(data=vals, alpha=0.2, palette=palette, orient='h')
-    save_fig(plt.gcf(), save_path, name, resolution=600, ext=ext, no_ticks=False)
+    fig.savefig(os.path.join(save_path, name + '.' + ext), dpi=600, bbox_inches='tight', pad_inches=0)
 
 
 def remove_ticks(ax, axis):
@@ -246,8 +228,8 @@ def index_true_positives(lbl_centers, res_centers, dist_tresh, px_per_mm):
 
 def main():
     i_start = 1
-    i_end = 2
-    save_results = True
+    i_end = 85
+    save_results = False
     N = i_end - i_start
 
     # pwd_root = os.path.join(os.sep, 'home', 'taeke', 'Documents', "images")
@@ -391,6 +373,7 @@ def main():
 
         # plot
         if save_results:
+            ratio = float(img_res.shape[1])/float(img_res.shape[0])
             plot_features_result(img_res, tomato_pred=tomato_pred, name=truss_name + '_temp')
             plot_error(tomato_pred=tomato_pred,  # centers, com,
                        tomato_act=tomato_actual,
